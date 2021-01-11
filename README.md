@@ -15,7 +15,23 @@ import Purchasely from "react-native-purchasely";
 
 // ...
 
-const result = await Purchasely.multiply(3, 7);
+Purchasely.startWithAPIKey(
+  'afa96c76-1d8e-4e3c-a48f-204a3cd93a15',
+  ['Google'],
+  null,
+  Purchasely.logLevelDebug
+);
+
+Purchasely.presentProductWithIdentifier(
+  'PURCHASELY_PLUS',
+  null,
+  (msg) => {
+    console.error(msg);
+  },
+  (someData) => {
+    console.log(someData);
+  }
+);
 ```
 
 ## Contributing

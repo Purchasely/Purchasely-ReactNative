@@ -14,7 +14,6 @@ import Purchasely from 'react-native-purchasely';
 const eventEmitter = new NativeEventEmitter(NativeModules.Purchasely);
 eventEmitter.addListener('Purchasely-Events', (data) => console.log(data));
 
-//Purchasely.startWithAPIKey("a9bcc756-b3a2-4e17-b46d-d5da40b6d202", ["Google"], "kev1", Purchasely.logLevelDebug)
 Purchasely.startWithAPIKey(
   'afa96c76-1d8e-4e3c-a48f-204a3cd93a15',
   ['Google'],
