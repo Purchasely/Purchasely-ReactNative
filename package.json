@@ -1,10 +1,10 @@
 {
   "name": "react-native-purchasely",
-  "version": "0.1.0",
+  "title": "Purchasely React Native",
+  "version": "2.1.1",
   "description": "Purchasely is a solution to ease the integration and boost your In-App Purchase & Subscriptions on the App Store, Google Play Store and Huawei App Gallery.",
-  "main": "lib/commonjs/index",
-  "module": "lib/module/index",
-  "types": "lib/typescript/src/index.d.ts",
+  "main": "index.js",
+  "types": "index.d.ts",
   "react-native": "src/index",
   "source": "src/index",
   "files": [
@@ -14,7 +14,6 @@
     "ios",
     "cpp",
     "react-native-purchasely.podspec",
-    "!lib/typescript/example",
     "!android/build",
     "!ios/build",
     "!**/__tests__",
@@ -34,10 +33,23 @@
   "keywords": [
     "react-native",
     "ios",
-    "android"
+    "android",
+    "in-app",
+    "iap",
+    "Purchases",
+    "Subscription",
+    "StoreKit",
+    "billing",
+    "Purchasely",
+    "Google",
+    "Play",
+    "App",
+    "Store",
+    "Huawei",
+    "HMS"
   ],
   "repository": "https://github.com/Purchasely/Purchasely-ReactNative",
-  "author": "Jean-François Grang <jeff@purchasely.com> (https://github.com/jfgrang)",
+  "author": "Purchasely SAS",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/Purchasely/Purchasely-ReactNative/issues"
@@ -57,7 +69,7 @@
     "eslint": "^7.2.0",
     "eslint-config-prettier": "^7.0.0",
     "eslint-plugin-prettier": "^3.1.3",
-    "husky": "^4.2.5",
+    "husky": "^4.3.7",
     "jest": "^26.0.1",
     "pod-install": "^0.1.0",
     "prettier": "^2.0.5",
