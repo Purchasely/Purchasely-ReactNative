@@ -27,15 +27,6 @@ Purchasely.isReadyToPurchase(true);
 Purchasely.getAnonymousUserId((anonymousUserId) => {
   console.log('Anonymous User Id is ' + anonymousUserId);
 });
-Purchasely.getProducts(
-  (error) => {
-    console.error('Error found ! ${error}');
-  },
-  (products) => {
-    console.log('==> Products');
-    console.log(products);
-  }
-);
 
 Purchasely.productWithIdentifier(
   'PURCHASELY_PLUS',
