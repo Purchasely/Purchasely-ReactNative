@@ -14,37 +14,32 @@ import Purchasely from 'react-native-purchasely';
 const eventEmitter = new NativeEventEmitter(NativeModules.Purchasely);
 eventEmitter.addListener('Purchasely-Events', (data) => console.log(data));
 
-Purchasely.startWithAPIKey(
-  'afa96c76-1d8e-4e3c-a48f-204a3cd93a15',
-  ['Google'],
-  null,
-  Purchasely.logLevelDebug
-);
-Purchasely.setLogLevel(Purchasely.logLevelDebug);
-Purchasely.setAppUserId('DEMO_USER');
-Purchasely.isReadyToPurchase(true);
+async function startPurchasely() {
+  Purchasely.startWithAPIKey(
+    'afa96c76-1d8e-4e3c-a48f-204a3cd93a15',
+    ['Google'],
+    null,
+    Purchasely.logLevelDebug
+  );
+  Purchasely.setLogLevel(Purchasely.logLevelDebug);
+  Purchasely.setAppUserId('DEMO_USER');
+  Purchasely.isReadyToPurchase(true);
 
-console.log('Anonymous userId: ' + Purchasely.getAnonymousUserId());
+  const anonymousUserId = await Purchasely.getAnonymousUserId();
+  console.log('Anonymous userId: ' + anonymousUserId);
 
-Purchasely.productWithIdentifier(
-  'PURCHASELY_PLUS',
-  (errorMsg) => {
-    console.error(errorMsg);
-  },
-  (product) => {
+  try {
+    const product = await Purchasely.productWithIdentifier('PURCHASELY_PLUS');
     console.log(' ==> Product');
     console.log(product.vendorId);
     console.log(product.name);
     console.log(product.plans);
+  } catch (e) {
+    console.log(e);
   }
-);
 
-Purchasely.planWithIdentifier(
-  'PURCHASELY_PLUS_YEARLY',
-  (errorMsg) => {
-    console.error(errorMsg);
-  },
-  (plan) => {
+  try {
+    const plan = await Purchasely.planWithIdentifier('PURCHASELY_PLUS_YEARLY');
     console.log(' ==> Plan');
     console.log(plan.vendorId);
     console.log(plan.name);
@@ -55,14 +50,12 @@ Purchasely.planWithIdentifier(
     console.log(plan.introPrice);
     console.log(plan.introAmount);
     console.log(plan.introDuration);
+  } catch (e) {
+    console.log(e);
   }
-);
 
-Purchasely.userSubscriptions(
-  (errorMsg) => {
-    console.error(errorMsg);
-  },
-  (subscriptions) => {
+  try {
+    const subscriptions = await Purchasely.userSubscriptions();
     console.log(' ==> Subscriptions');
     if (subscriptions[0] !== undefined) {
       console.log(subscriptions[0].plan);
@@ -70,64 +63,59 @@ Purchasely.userSubscriptions(
       console.log(subscriptions[0].nextRenewalDate);
       console.log(subscriptions[0].cancelledDate);
     }
+  } catch (e) {
+    console.log(e);
   }
-);
+}
+
+startPurchasely();
+
+async function onPressProduct() {
+  try {
+    await Purchasely.presentProductWithIdentifier('PURCHASELY_PLUS', null);
+  } catch (e) {
+    console.log(e);
+  }
+}
+
+async function onPressPurchase() {
+  try {
+    const plan = await Purchasely.purchaseWithPlanVendorId(
+      'PURCHASELY_PLUS_MONTHLY'
+    );
+    console.log('Purchased ' + plan);
+  } catch (e) {
+    console.log(e);
+  }
+}
+
+async function onPressSubscriptions() {
+  Purchasely.presentSubscriptions();
+}
+
+async function onPressRestore() {
+  try {
+    const restored = await Purchasely.restoreAllProducts();
+    console.log('Restoration success ? ' + restored);
+  } catch (e) {
+    console.log(e);
+  }
+}
 
 class App extends Component {
-  _onPressProduct() {
-    Purchasely.presentProductWithIdentifier(
-      'PURCHASELY_PLUS',
-      null,
-      (msg) => {
-        console.error(msg);
-      },
-      (someData) => {
-        console.log(someData);
-      }
-    );
-  }
-
-  _onPressPurchase() {
-    Purchasely.purchaseWithPlanVendorId(
-      'PURCHASELY_PLUS_MONTHLY',
-      (msg) => {
-        console.error(msg);
-      },
-      (someData) => {
-        console.log(someData);
-      }
-    );
-  }
-
-  _onPressSubscriptions() {
-    Purchasely.presentSubscriptions();
-  }
-
-  _onPressRestore() {
-    Purchasely.restoreAllProducts(
-      (errorMsg) => {
-        console.log('Restoration error');
-        console.error(errorMsg);
-      },
-      (restored) => {
-        console.log(' ==> Restored');
-      }
-    );
-  }
-
   render() {
     return (
       <View style={styles.container}>
-        <TouchableHighlight onPress={this._onPressProduct}>
+        <TouchableHighlight onPress={onPressProduct}>
           <Text style={styles.text}>Display product</Text>
         </TouchableHighlight>
-        <TouchableHighlight onPress={this._onPressPurchase}>
+        <TouchableHighlight onPress={onPressPurchase}>
           <Text style={styles.text}>Tap to purchase</Text>
         </TouchableHighlight>
-        <TouchableHighlight onPress={this._onPressSubscriptions}>
+        <TouchableHighlight onPress={onPressSubscriptions}>
           <Text style={styles.text}>My subscriptions</Text>
         </TouchableHighlight>
-        <TouchableHighlight onPress={this._onPressRestore}>
+        <TouchableHighlight onPress={onPressRestore}>
           <Text style={styles.text}>Restore purchases</Text>
         </TouchableHighlight>
       </View>
