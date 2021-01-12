@@ -40,6 +40,11 @@ RCT_EXPORT_METHOD(setAppUserId:(NSString * _Nullable)appUserId) {
   [Purchasely setAppUserId: appUserId];
 }
 
+RCT_EXPORT_SYNCHRONOUS_TYPED_METHOD(NSString *, getAnonymousUserId)
+{
+	return [Purchasely anonymousUserId];
+}
+
 RCT_EXPORT_METHOD(isReadyToPurchase:(BOOL)ready) {
   [Purchasely isReadyToPurchase: ready];
 }

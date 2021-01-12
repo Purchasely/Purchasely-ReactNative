@@ -23,9 +23,8 @@ Purchasely.startWithAPIKey(
 Purchasely.setLogLevel(Purchasely.logLevelDebug);
 Purchasely.setAppUserId('DEMO_USER');
 Purchasely.isReadyToPurchase(true);
-Purchasely.getAnonymousUserId((anonymousUserId) => {
-  console.log('Anonymous User Id is ' + anonymousUserId);
-});
+
+console.log('Anonymous userId: ' + Purchasely.getAnonymousUserId());
 
 Purchasely.productWithIdentifier(
   'PURCHASELY_PLUS',
@@ -74,28 +73,6 @@ Purchasely.userSubscriptions(
   }
 );
 
-console.log(' ==> Restorations');
-Purchasely.restoreAllProducts(
-  (errorMsg) => {
-    console.log('Restoration error');
-    console.error(errorMsg);
-  },
-  (restored) => {
-    console.log(' ==> Restored');
-  }
-);
-
-Purchasely.handle(
-  'ply://products/PURCHASELY_PLUS/default',
-  (errorMsg) => {
-    console.log('Deeplink error');
-    console.error(errorMsg);
-  },
-  (handled) => {
-    console.log(' ==> Deeplink handled');
-  }
-);
-
 class App extends Component {
   _onPressProduct() {
     Purchasely.presentProductWithIdentifier(
@@ -126,6 +103,18 @@ class App extends Component {
     Purchasely.presentSubscriptions();
   }
 
+  _onPressRestore() {
+    Purchasely.restoreAllProducts(
+      (errorMsg) => {
+        console.log('Restoration error');
+        console.error(errorMsg);
+      },
+      (restored) => {
+        console.log(' ==> Restored');
+      }
+    );
+  }
+
   render() {
     return (
       <View style={styles.container}>
@@ -137,6 +126,9 @@ class App extends Component {
         </TouchableHighlight>
         <TouchableHighlight onPress={this._onPressSubscriptions}>
           <Text style={styles.text}>My subscriptions</Text>
+        </TouchableHighlight>
+        <TouchableHighlight onPress={this._onPressRestore}>
+          <Text style={styles.text}>Restore purchases</Text>
         </TouchableHighlight>
       </View>
     );
