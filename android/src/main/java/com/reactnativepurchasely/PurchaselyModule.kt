@@ -1,4 +1,4 @@
-package io.reactnativepurchasely
+package com.reactnativepurchasely
 
 import android.content.Intent
 import android.net.Uri

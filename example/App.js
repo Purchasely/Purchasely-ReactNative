@@ -72,9 +72,9 @@ startPurchasely();
 
 function onPressProduct() {
   Purchasely.presentProductWithIdentifier('PURCHASELY_PLUS', null, (data) => {
-      console.log('Product View Result : ' + data['result']);
-      console.log('Plan Vendor ID : ' + data['plan']['vendorId']);
-      console.log('Plan Name : ' + data['plan']['name']);
+    console.log('Product View Result : ' + data['result']);
+    console.log('Plan Vendor ID : ' + data['plan']['vendorId']);
+    console.log('Plan Name : ' + data['plan']['name']);
   });
 }
 

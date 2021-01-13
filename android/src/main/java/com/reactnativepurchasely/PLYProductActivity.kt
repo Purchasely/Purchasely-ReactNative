@@ -1,4 +1,4 @@
-package io.reactnativepurchasely
+package com.reactnativepurchasely
 
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
