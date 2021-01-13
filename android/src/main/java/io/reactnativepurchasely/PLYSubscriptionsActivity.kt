@@ -1,7 +1,8 @@
-package com.reactnativepurchasely
+package io.reactnativepurchasely
 
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
+import com.reactnativepurchasely.R
 import io.purchasely.views.subscriptions.PLYSubscriptionsFragment
 
 class PLYSubscriptionsActivity : AppCompatActivity() {

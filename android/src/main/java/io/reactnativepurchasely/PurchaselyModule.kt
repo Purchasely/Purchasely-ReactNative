@@ -1,4 +1,4 @@
-package com.reactnativepurchasely
+package io.reactnativepurchasely
 
 import android.content.Intent
 import android.net.Uri
@@ -8,15 +8,13 @@ import com.facebook.react.bridge.*
 import com.facebook.react.modules.core.DeviceEventManagerModule.RCTDeviceEventEmitter
 import io.purchasely.billing.Store
 import io.purchasely.ext.*
-import io.purchasely.ext.EventListener
 import io.purchasely.models.PLYPlan
 import io.purchasely.models.PLYProduct
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import java.util.*
-import kotlin.collections.ArrayList
 
 class PurchaselyModule internal constructor(context: ReactApplicationContext?) : ReactContextBaseJavaModule(context) {
+
   private val eventListener: EventListener = object: EventListener {
     override fun onEvent(event: PLYEvent) {
       val params = Arguments.createMap()
@@ -113,7 +111,8 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext?) :
   @ReactMethod
   fun presentProductWithIdentifier(productVendorId: String,
                                    presentationVendorId: String?,
-                                   promise: Promise) {
+                                   callback: Callback) {
+    purchaseCallback = callback
     val intent = Intent(reactApplicationContext.applicationContext, PLYProductActivity::class.java)
     intent.putExtra("productId", productVendorId)
     intent.putExtra("presentationId", presentationVendorId)
@@ -147,7 +146,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext?) :
     GlobalScope.launch {
       try {
         val product = Purchasely.getProduct(vendorId)
-        promise.resolve(Arguments.makeNativeMap(mapProduct(product)))
+        promise.resolve(Arguments.makeNativeMap(product.map()))
       } catch (e: Exception) {
         promise.reject(e)
       }
@@ -159,7 +158,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext?) :
     GlobalScope.launch {
       try {
         val plan = Purchasely.getPlan(vendorId)
-        promise.resolve(Arguments.makeNativeMap(mapPlan(plan)))
+        promise.resolve(Arguments.makeNativeMap(plan.map()))
       } catch (e: Exception) {
         promise.reject(e)
       }
@@ -173,7 +172,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext?) :
           when(state) {
             is State.PurchaseComplete -> {
                 Purchasely.purchaseListener = null
-                promise.resolve(Arguments.makeNativeMap(mapPlan(state.plan)))
+                promise.resolve(Arguments.makeNativeMap(state.plan.map()))
             }
             is State.PurchaseFailed -> {
               Purchasely.purchaseListener = null
@@ -253,8 +252,8 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext?) :
           map["subscriptionSource"] = data.data.storeType
           map["nextRenewalDate"] = data.data.nextRenewalAt
           map["cancelledDate"] = data.data.cancelledAt
-          map["plan"] = mapPlan(data.plan)
-          map["product"] = mapProduct(data.product)
+          map["plan"] = data.plan.map()
+          map["product"] = data.product.map()
           result.add(Arguments.makeNativeMap(map))
           Log.d("PurchaselyModule", data.toString())
         }
@@ -281,39 +280,6 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext?) :
     promise.resolve(Purchasely.handle(uri))
   }
 
-  private fun mapPlan(plan: PLYPlan?): Map<String, Any?> {
-    val map: MutableMap<String, Any?> = HashMap()
-    if (plan == null) return map
-    map["vendorId"] = plan.vendorId
-    map["name"] = plan.name
-    map["distributionType"] = plan.distributionType?.name
-    map["amount"] = plan.getPrice()
-    map["priceCurrency"] = plan.getPriceCurrency()
-    map["price"] = plan.localizedFullPrice()
-    map["period"] = plan.localizedPeriod()
-    map["hasIntroductoryPrice"] = plan.hasIntroductoryPrice()
-    map["introPrice"] = plan.localizedFullIntroductoryPrice()
-    map["introAmount"] = plan.introductoryPrice()
-    map["introDuration"] = plan.localizedIntroductoryDuration()
-    map["introPeriod"] = plan.localizedIntroductoryPeriod()
-    map["hasFreeTrial"] = plan.hasFreeTrial()
-    return map
-  }
-
-  private fun mapProduct(product: PLYProduct?): Map<String, Any?> {
-    val map: MutableMap<String, Any?> = HashMap()
-    if (product == null) return map
-    map["id"] = product.id
-    map["name"] = product.name
-    map["vendorId"] = product.vendorId
-    val plans: MutableMap<String?, Any> = HashMap()
-    product.plans.forEach { plan ->
-      plans[plan.name] = mapPlan(plan)
-    }
-    map["plans"] = plans
-    return map
-  }
-
   private fun sendEvent(reactContext: ReactContext,
                         eventName: String,
                         params: WritableMap?) {
@@ -321,4 +287,54 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext?) :
       .getJSModule(RCTDeviceEventEmitter::class.java)
       .emit(eventName, params)
   }
+
+  companion object {
+    var purchaseCallback: Callback? = null
+
+    fun sendPurchaseResult(result: PLYProductViewResult, plan: PLYPlan?) {
+      val productViewResult = when(result) {
+        PLYProductViewResult.PURCHASED -> "productResultPurchased"
+        PLYProductViewResult.CANCELLED -> "productResultCancelled"
+        PLYProductViewResult.RESTORED -> "productResultRestored"
+      }
+
+      val map: MutableMap<String, Any?> = HashMap()
+      map["result"] = productViewResult
+      map["plan"] = plan.map()
+      purchaseCallback?.invoke(Arguments.makeNativeMap(map))
+    }
+  }
+}
+
+fun PLYPlan?.map() : Map<String, Any?> {
+  val map: MutableMap<String, Any?> = HashMap()
+  if (this == null) return map
+  map["vendorId"] = this.vendorId
+  map["name"] = this.name
+  map["distributionType"] = this.distributionType?.name
+  map["amount"] = this.getPrice()
+  map["priceCurrency"] = this.getPriceCurrency()
+  map["price"] = this.localizedFullPrice()
+  map["period"] = this.localizedPeriod()
+  map["hasIntroductoryPrice"] = this.hasIntroductoryPrice()
+  map["introPrice"] = this.localizedFullIntroductoryPrice()
+  map["introAmount"] = this.introductoryPrice()
+  map["introDuration"] = this.localizedIntroductoryDuration()
+  map["introPeriod"] = this.localizedIntroductoryPeriod()
+  map["hasFreeTrial"] = this.hasFreeTrial()
+  return map
+}
+
+fun PLYProduct?.map() : Map<String, Any?> {
+  val map: MutableMap<String, Any?> = HashMap()
+  if (this == null) return map
+  map["id"] = this.id
+  map["name"] = this.name
+  map["vendorId"] = this.vendorId
+  val plans: MutableMap<String?, Any> = HashMap()
+  this.plans.forEach { plan ->
+    plans[plan.name] = plan.map()
+  }
+  map["plans"] = plans
+  return map
 }

@@ -1,9 +1,13 @@
-package com.reactnativepurchasely
+package io.reactnativepurchasely
 
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
+import com.reactnativepurchasely.R
+import io.purchasely.ext.PLYProductViewResult
+import io.purchasely.ext.ProductViewResultListener
 import io.purchasely.ext.Purchasely
+import io.purchasely.models.PLYPlan
 
 class PLYProductActivity : AppCompatActivity() {
 
@@ -20,7 +24,11 @@ class PLYProductActivity : AppCompatActivity() {
     val fragment: Fragment = Purchasely.productFragment(
       productId,
       presentationId,
-    null)
+      object: ProductViewResultListener {
+        override fun onResult(result: PLYProductViewResult, plan: PLYPlan?) {
+          PurchaselyModule.sendPurchaseResult(result, plan)
+        }
+    })
 
     supportFragmentManager
       .beginTransaction()

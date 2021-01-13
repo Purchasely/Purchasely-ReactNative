@@ -2,8 +2,8 @@
           package="com.reactnativepurchasely">
 
   <application>
-    <activity android:name=".PLYProductActivity" android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
-    <activity android:name=".PLYSubscriptionsActivity" android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
+    <activity android:name="io.reactnativepurchasely.PLYProductActivity" android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
+    <activity android:name="io.reactnativepurchasely.PLYSubscriptionsActivity" android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
   </application>
 
 </manifest>

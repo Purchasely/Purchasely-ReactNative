@@ -1,4 +1,4 @@
-package com.reactnativepurchasely
+package io.reactnativepurchasely
 
 import com.facebook.react.ReactPackage
 import com.facebook.react.bridge.NativeModule
