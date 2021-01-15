@@ -3,8 +3,9 @@
   "title": "Purchasely React Native",
   "version": "1.0.0",
   "description": "Purchasely is a solution to ease the integration and boost your In-App Purchase & Subscriptions on the App Store, Google Play Store and Huawei App Gallery.",
-  "main": "index.js",
-  "types": "index.d.ts",
+  "main": "lib/commonjs/index",
+  "module": "lib/module/index",
+  "types": "lib/typescript/index.d.ts",
   "react-native": "src/index",
   "source": "src/index",
   "files": [
@@ -14,6 +15,7 @@
     "ios",
     "cpp",
     "react-native-purchasely.podspec",
+    "!lib/typescript/example",
     "!android/build",
     "!ios/build",
     "!**/__tests__",
@@ -155,12 +157,7 @@
     "targets": [
       "commonjs",
       "module",
-      [
-        "typescript",
-        {
-          "project": "tsconfig.build.json"
-        }
-      ]
+      "typescript"
     ]
   }
 }
