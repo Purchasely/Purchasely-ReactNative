@@ -2,7 +2,7 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "react-native-purchasely": ["./index"]
+      "react-native-purchasely": ["./src/index"]
     },
     "allowUnreachableCode": false,
     "allowUnusedLabels": false,
