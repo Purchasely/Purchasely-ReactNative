@@ -17,151 +17,177 @@
 RCT_EXPORT_MODULE(Purchasely);
 
 - (NSDictionary *)constantsToExport {
-  return @{
-	@"logLevelDebug": @(LogLevelDebug),
-	@"logLevelInfo": @(LogLevelInfo),
-	@"logLevelWarn": @(LogLevelWarn),
-	@"logLevelError": @(LogLevelError),
-	@"productResultPurchased": @(PLYProductViewControllerResultPurchased),
-	@"productResultCancelled": @(PLYProductViewControllerResultCancelled),
-	@"productResultRestored": @(PLYProductViewControllerResultRestored)
-  };
+	return @{
+		@"logLevelDebug": @(LogLevelDebug),
+		@"logLevelInfo": @(LogLevelInfo),
+		@"logLevelWarn": @(LogLevelWarn),
+		@"logLevelError": @(LogLevelError),
+		@"productResultPurchased": @(PLYProductViewControllerResultPurchased),
+		@"productResultCancelled": @(PLYProductViewControllerResultCancelled),
+		@"productResultRestored": @(PLYProductViewControllerResultRestored)
+	};
 }
 
 RCT_EXPORT_METHOD(startWithAPIKey:(NSString * _Nonnull)apiKey stores:(NSArray * _Nullable)stores appUserId:(NSString * _Nullable)appUserId logLevel:(NSInteger)logLevel) {
-  [Purchasely startWithAPIKey:apiKey appUserId:appUserId eventDelegate:self uiDelegate:nil logLevel:logLevel];
+	[Purchasely startWithAPIKey:apiKey appUserId:appUserId eventDelegate:self uiDelegate:nil logLevel:logLevel];
 }
 
 RCT_EXPORT_METHOD(setLogLevel:(NSInteger)logLevel) {
-  [Purchasely setLogLevel:logLevel];
+	[Purchasely setLogLevel:logLevel];
 }
 
 RCT_EXPORT_METHOD(setAppUserId:(NSString * _Nullable)appUserId) {
-  [Purchasely setAppUserId: appUserId];
+	[Purchasely setAppUserId: appUserId];
 }
 
-RCT_EXPORT_SYNCHRONOUS_TYPED_METHOD(NSString *, getAnonymousUserId)
+RCT_REMAP_METHOD(getAnonymousUserId,
+				 getAnonymousUserId:(RCTPromiseResolveBlock)resolve
+				 reject:(RCTPromiseRejectBlock)reject)
 {
-	return [Purchasely anonymousUserId];
+	return resolve([Purchasely anonymousUserId]);
 }
 
 RCT_EXPORT_METHOD(isReadyToPurchase:(BOOL)ready) {
-  [Purchasely isReadyToPurchase: ready];
+	[Purchasely isReadyToPurchase: ready];
 }
 
 RCT_EXPORT_METHOD(presentProductWithIdentifier:(NSString * _Nonnull)productVendorId
 				  with:(NSString * _Nullable)presentationVendorId
-				  errorCallback: (RCTResponseSenderBlock)errorCallback
-				  successCallback: (RCTResponseSenderBlock)successCallback)
+				  resolve:(RCTPromiseResolveBlock)resolve
+				  reject:(RCTPromiseRejectBlock)reject)
 {
-  dispatch_async(dispatch_get_main_queue(), ^{
-	UIViewController *ctrl = [Purchasely productControllerFor:productVendorId with:presentationVendorId completion:^(enum PLYProductViewControllerResult result, PLYPlan * _Nullable plan) {
-	  if (result == PLYProductViewControllerResultCancelled) {
-		errorCallback(@[@"Cancelled", [NSNull null]]);
-	  } else {
-		successCallback(@[[NSNull null], [NSNull null]]);
-	  }
-	}];
-	[[[[[UIApplication sharedApplication] delegate] window] rootViewController] presentViewController:ctrl animated:true completion:nil];
-  });
+	dispatch_async(dispatch_get_main_queue(), ^{
+		UIViewController *ctrl = [Purchasely productControllerFor:productVendorId with:presentationVendorId completion:^(enum PLYProductViewControllerResult result, PLYPlan * _Nullable plan) {
+
+			NSMutableDictionary<NSString *, NSObject *> *productViewResult = [NSMutableDictionary new];
+			NSString *resultString;
+
+			switch (result) {
+				case PLYProductViewControllerResultPurchased:
+					resultString = @"productResultPurchased";
+					break;
+				case PLYProductViewControllerResultRestored:
+					resultString = @"productResultRestored";
+					break;
+				case PLYProductViewControllerResultCancelled:
+					resultString = @"productResultCancelled";
+					break;
+			}
+
+			[productViewResult setObject:resultString forKey:@"result"];
+
+			if (plan != nil) {
+				[productViewResult setObject:[plan asDictionary] forKey:@"plan"];
+			}
+			resolve(@[productViewResult]);
+
+		}];
+		[Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
+	});
 }
 
 RCT_EXPORT_METHOD(presentSubscriptions)
 {
-  dispatch_async(dispatch_get_main_queue(), ^{
-	UIViewController *ctrl = [Purchasely subscriptionsController];
-	[[[[[UIApplication sharedApplication] delegate] window] rootViewController] presentViewController:ctrl animated:true completion:nil];
-  });
+	dispatch_async(dispatch_get_main_queue(), ^{
+		UIViewController *ctrl = [Purchasely subscriptionsController];
+		UINavigationController *navCtrl = [[UINavigationController alloc] initWithRootViewController:ctrl];
+
+		ctrl.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem: UIBarButtonSystemItemDone target:navCtrl action:@selector(close)];
+		[Purchasely showController:navCtrl type: PLYUIControllerTypeSubscriptionList];
+	});
 }
 
 RCT_EXPORT_METHOD(purchaseWithPlanVendorId:(NSString * _Nonnull)planVendorId
-				  errorCallback: (RCTResponseSenderBlock)errorCallback
-				  successCallback: (RCTResponseSenderBlock)successCallback)
+				  resolve:(RCTPromiseResolveBlock)resolve
+				  reject:(RCTPromiseRejectBlock)reject)
 {
-  dispatch_async(dispatch_get_main_queue(), ^{
-	[Purchasely planWith:planVendorId
-				 success:^(PLYPlan * _Nonnull plan) {
-	  [Purchasely purchaseWithPlan:plan
-						   success:^{
-		successCallback(@[plan.asDictionary]);
-	  }
-						   failure:^(NSError * _Nonnull error) {
-		errorCallback(@[error.localizedDescription]);
-	  }];
-	}
-				 failure:^(NSError * _Nullable error) {
-	  errorCallback(@[error.localizedDescription]);
-	}];
-  });
+	dispatch_async(dispatch_get_main_queue(), ^{
+		[Purchasely planWith:planVendorId
+					 success:^(PLYPlan * _Nonnull plan) {
+			[Purchasely purchaseWithPlan:plan
+								 success:^{
+				resolve(plan.asDictionary);
+			}
+								 failure:^(NSError * _Nonnull error) {
+				[self reject: reject with: error];
+			}];
+		}
+					 failure:^(NSError * _Nullable error) {
+			[self reject: reject with: error];
+		}];
+	});
 }
 
-RCT_EXPORT_METHOD(restoreAllProducts: (RCTResponseSenderBlock)errorCallback
-				  successCallback: (RCTResponseSenderBlock)successCallback)
+RCT_REMAP_METHOD(restoreAllProducts,
+				 resolve:(RCTPromiseResolveBlock)resolve
+				 reject:(RCTPromiseRejectBlock)reject)
 {
-  dispatch_async(dispatch_get_main_queue(), ^{
-	[Purchasely restoreAllProductsWithSuccess:^{
-	  successCallback(@[[NSNull null]]);
-	}
-									  failure:^(NSError * _Nonnull error) {
-	  errorCallback(@[error.localizedDescription]);
-	}];
-  });
+	dispatch_async(dispatch_get_main_queue(), ^{
+		[Purchasely restoreAllProductsWithSuccess:^{
+			resolve([NSNumber numberWithBool:true]);
+		}
+										  failure:^(NSError * _Nonnull error) {
+			[self reject: reject with: error];
+		}];
+	});
 }
 
-RCT_EXPORT_METHOD(productWithIdentifier:(NSString * _Nonnull)productVendorId
-				  errorCallback: (RCTResponseSenderBlock)errorCallback
-				  successCallback: (RCTResponseSenderBlock)successCallback)
+RCT_REMAP_METHOD(productWithIdentifier,
+				 productWithIdentifier:(NSString * _Nonnull)productVendorId
+				 resolve:(RCTPromiseResolveBlock)resolve
+				 reject:(RCTPromiseRejectBlock)reject)
 {
-  dispatch_async(dispatch_get_main_queue(), ^{
-	[Purchasely productWith:productVendorId
-				 success:^(PLYProduct * _Nonnull product) {
-	  NSDictionary* productDict = product.asDictionary;
-	  successCallback(@[productDict]);
-	}
-				 failure:^(NSError * _Nullable error) {
-	  errorCallback(@[[error localizedDescription]]);
-	}];
-  });
+	dispatch_async(dispatch_get_main_queue(), ^{
+		[Purchasely productWith:productVendorId
+						success:^(PLYProduct * _Nonnull product) {
+			NSDictionary* productDict = product.asDictionary;
+			resolve(productDict);
+		}
+						failure:^(NSError * _Nullable error) {
+			[self reject: reject with: error];
+		}];
+	});
 }
 
 RCT_EXPORT_METHOD(planWithIdentifier:(NSString * _Nonnull)planVendorId
-				  errorCallback: (RCTResponseSenderBlock)errorCallback
-				  successCallback: (RCTResponseSenderBlock)successCallback)
+				  resolve:(RCTPromiseResolveBlock)resolve
+				  reject:(RCTPromiseRejectBlock)reject)
 {
-  dispatch_async(dispatch_get_main_queue(), ^{
-	[Purchasely planWith:planVendorId
-				 success:^(PLYPlan * _Nonnull plan) {
-	  NSDictionary* planDict = plan.asDictionary;
-	  successCallback(@[planDict]);
-	}
-				 failure:^(NSError * _Nullable error) {
-	  errorCallback(@[[error localizedDescription]]);
-	}];
-  });
+	dispatch_async(dispatch_get_main_queue(), ^{
+		[Purchasely planWith:planVendorId
+					 success:^(PLYPlan * _Nonnull plan) {
+			NSDictionary* planDict = plan.asDictionary;
+			resolve(planDict);
+		}
+					 failure:^(NSError * _Nullable error) {
+			[self reject: reject with: error];
+		}];
+	});
 }
 
-RCT_EXPORT_METHOD(userSubscriptions: (RCTResponseSenderBlock)errorCallback
-				  successCallback: (RCTResponseSenderBlock)successCallback)
+RCT_EXPORT_METHOD(userSubscriptions:(RCTPromiseResolveBlock)resolve
+				  reject:(RCTPromiseRejectBlock)reject)
 {
-  dispatch_async(dispatch_get_main_queue(), ^{
-	[Purchasely userSubscriptionsWithSuccess:^(NSArray<PLYSubscription *> * _Nullable subscriptions) {
-	  NSMutableArray *result = [NSMutableArray new];
-	  for (PLYSubscription *subscription in subscriptions) {
-		[result addObject:subscription.asDictionary];
-	  }
-	  successCallback(@[result]);
-	}
-									 failure:^(NSError * _Nonnull error) {
-	  errorCallback(@[[error localizedDescription]]);
-	}];
-  });
+	dispatch_async(dispatch_get_main_queue(), ^{
+		[Purchasely userSubscriptionsWithSuccess:^(NSArray<PLYSubscription *> * _Nullable subscriptions) {
+			NSMutableArray *result = [NSMutableArray new];
+			for (PLYSubscription *subscription in subscriptions) {
+				[result addObject:subscription.asDictionary];
+			}
+			resolve(result);
+		}
+										 failure:^(NSError * _Nonnull error) {
+			[self reject: reject with: error];
+		}];
+	});
 }
+
 
 // ****************************************************************************
 #pragma mark - Events
 
 - (NSArray<NSString *> *)supportedEvents {
-	return @[@"PLYEventAppInstalled", @"PLYEventAppUpdated", @"PLYEventAppStarted", @"PLYEventDeeplinkOpened", @"PLYEventProductPageViewed", @"PLYEventLoginTapped", @"PLYEventPurchaseFromStoreTapped", @"PLYEventPurchaseTapped", @"PLYEventPurchaseCancelled", @"PLYEventInAppPurchasing", @"PLYEventInAppPurchased", @"PLYEventInAppRenewed", @"PLYEventReceiptCreated", @"PLYEventReceiptValidated", @"PLYEventReceiptFailed", @"PLYEventRestoreStarted", @"PLYEventInAppRestored", @"PLYEventRestoreSucceeded", @"PLYEventRestoreFailed", @"PLYEventInAppDeferred", @"PLYEventInAppPurchaseFailed", @"PLYEventLinkOpened", @"PLYEventSubscriptionsListViewed", @"PLYEventSubscriptionDetailsViewed", @"PLYEventSubscriptionCancelTapped", @"PLYEventSubscriptionPlanTapped", @"PLYEventCancellationReasonPublished"];
+	return @[@"APP_INSTALLED", @"APP_UPDATED", @"APP_STARTED", @"DEEPLINK_OPENED", @"PRODUCT_PAGE_VIEWED", @"LOGIN_TAPPED", @"PURCHASE_FROM_STORE_TAPPED", @"PURCHASE_TAPPED", @"PURCHASE_CANCELLED", @"IN_APP_PURCHASING", @"IN_APP_PURCHASED", @"IN_APP_RENEWED", @"RECEIPT_CREATED", @"RECEIPT_VALIDATED", @"RECEIPT_FAILED", @"RESTORE_STARTED", @"IN_APP_RESTORED", @"RESTORE_SUCCEEDED", @"RESTORE_FAILED", @"IN_APP_DEFERRED", @"IN_APP_PURCHASE_FAILED", @"LINK_OPENED", @"SUBSCRIPTIONS_LIST_VIEWED", @"SUBSCRIPTION_DETAILS_VIEWED", @"SUBSCRIPTION_CANCEL_TAPPED", @"SUBSCRIPTION_PLAN_TAPPED", @"CANCELLATION_REASON_PUBLISHED"];
 }
 
 - (void)eventTriggered:(enum PLYEvent)event properties:(NSDictionary<NSString *,id> * _Nullable)properties {
@@ -169,7 +195,14 @@ RCT_EXPORT_METHOD(userSubscriptions: (RCTResponseSenderBlock)errorCallback
 }
 
 + (BOOL)requiresMainQueueSetup {
-  return YES;
+	return YES;
+}
+
+// ****************************************************************************
+#pragma mark - Error
+
+- (void)reject:(RCTPromiseRejectBlock)reject with:(NSError *)error {
+	reject([NSString stringWithFormat: @"%ld", (long)error.code], [error localizedDescription], error);
 }
 
 @end

@@ -2,6 +2,9 @@
   "name": "react-native-purchasely-example",
   "description": "Example app for react-native-purchasely",
   "version": "0.0.1",
+  "main": "lib/commonjs/index",
+  "module": "lib/module/index",
+  "types": "lib/typescript/src/index.d.ts",
   "private": true,
   "scripts": {
     "android": "react-native run-android",
