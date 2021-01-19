@@ -145,9 +145,7 @@ type PurchaselyEventMap = {
   deeplink?: { description?: string; url?: string };
 };
 
-type EventListenerCallback = (event: {
-  [name: string]: PurchaselyEventMap | '';
-}) => void;
+type EventListenerCallback = (event: PurchaselyEventMap | '') => void;
 
 const addListener = (
   event: PurchaselyEventsNames,
