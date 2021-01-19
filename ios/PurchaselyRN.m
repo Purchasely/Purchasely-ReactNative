@@ -79,7 +79,7 @@ RCT_EXPORT_METHOD(presentProductWithIdentifier:(NSString * _Nonnull)productVendo
 			if (plan != nil) {
 				[productViewResult setObject:[plan asDictionary] forKey:@"plan"];
 			}
-			resolve(@[productViewResult]);
+			resolve(productViewResult);
 
 		}];
 		[Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
