@@ -17,13 +17,13 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext?) :
 
   private val eventListener: EventListener = object: EventListener {
     override fun onEvent(event: PLYEvent) {
-      val params = Arguments.createMap()
+      Log.d("Purchasely", "Event from Module : ${event::class.java.simpleName}")
+      Log.d("Purchasely", "${event.name} : ${event.properties?.toMap()}")
       if (event.properties != null) {
-        params.putMap(event.name, Arguments.makeNativeMap(event.properties!!.toMap()))
+        sendEvent(reactApplicationContext, event.name, Arguments.makeNativeMap(event.properties!!.toMap()))
       } else {
-        params.putString(event.name, "")
+        sendEvent(reactApplicationContext, event.name, Arguments.createMap())
       }
-      sendEvent(reactApplicationContext, "Purchasely-Events", params)
     }
   }
 
@@ -50,7 +50,6 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext?) :
       && Package.getPackage("io.purchasely.google") != null) {
       try {
         result.add(Class.forName("io.purchasely.google.GoogleStore").newInstance() as Store)
-        Log.d("Purchasley", "Google Store found")
       } catch (e: Exception) {
         Log.e("Purchasely", "Google Store not found :" + e.message, e)
       }
@@ -111,8 +110,8 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext?) :
   @ReactMethod
   fun presentProductWithIdentifier(productVendorId: String,
                                    presentationVendorId: String?,
-                                   callback: Callback) {
-    purchaseCallback = callback
+                                   promise: Promise) {
+    purchasePromise = promise
     val intent = Intent(reactApplicationContext.applicationContext, PLYProductActivity::class.java)
     intent.putExtra("productId", productVendorId)
     intent.putExtra("presentationId", presentationVendorId)
@@ -289,7 +288,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext?) :
   }
 
   companion object {
-    var purchaseCallback: Callback? = null
+    var purchasePromise: Promise? = null
 
     fun sendPurchaseResult(result: PLYProductViewResult, plan: PLYPlan?) {
       val productViewResult = when(result) {
@@ -301,7 +300,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext?) :
       val map: MutableMap<String, Any?> = HashMap()
       map["result"] = productViewResult
       map["plan"] = plan.map()
-      purchaseCallback?.invoke(Arguments.makeNativeMap(map))
+      purchasePromise?.resolve(Arguments.makeNativeMap(map))
     }
   }
 }
