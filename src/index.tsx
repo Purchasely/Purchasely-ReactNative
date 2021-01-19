@@ -96,6 +96,35 @@ const RNPurchasely = NativeModules.Purchasely as PurchaselyType;
 
 const PurchaselyEventEmitter = new NativeEventEmitter(NativeModules.Purchasely);
 
+type PurchaselyEventsNames =
+  | 'PLYEventAppInstalled'
+  | 'PLYEventAppUpdated'
+  | 'PLYEventAppStarted'
+  | 'PLYEventDeeplinkOpened'
+  | 'PLYEventProductPageViewed'
+  | 'PLYEventLoginTapped'
+  | 'PLYEventPurchaseFromStoreTapped'
+  | 'PLYEventPurchaseTapped'
+  | 'PLYEventPurchaseCancelled'
+  | 'PLYEventInAppPurchasing'
+  | 'PLYEventInAppPurchased'
+  | 'PLYEventInAppRenewed'
+  | 'PLYEventReceiptCreated'
+  | 'PLYEventReceiptValidated'
+  | 'PLYEventReceiptFailed'
+  | 'PLYEventRestoreStarted'
+  | 'PLYEventInAppRestored'
+  | 'PLYEventRestoreSucceeded'
+  | 'PLYEventRestoreFailed'
+  | 'PLYEventInAppDeferred'
+  | 'PLYEventInAppPurchaseFailed'
+  | 'PLYEventLinkOpened'
+  | 'PLYEventSubscriptionsListViewed'
+  | 'PLYEventSubscriptionDetailsViewed'
+  | 'PLYEventSubscriptionCancelTapped'
+  | 'PLYEventSubscriptionPlanTapped'
+  | 'PLYEventCancellationReasonPublished';
+
 type PurchaselyEventMap = {
   error?: { message?: string };
   transaction?: {
@@ -120,16 +149,52 @@ type EventListenerCallback = (event: {
   [name: string]: PurchaselyEventMap | '';
 }) => void;
 
-const addListener = (callback: EventListenerCallback) => {
-  return PurchaselyEventEmitter.addListener('Purchasely-Events', callback);
+const addListener = (
+  event: PurchaselyEventsNames,
+  callback: EventListenerCallback
+) => {
+  return PurchaselyEventEmitter.addListener(event, callback);
 };
 
-const removeListener = (callback: EventListenerCallback) => {
-  return PurchaselyEventEmitter.removeListener('Purchasely-Events', callback);
+const removeListener = (
+  event: PurchaselyEventsNames,
+  callback: EventListenerCallback
+) => {
+  return PurchaselyEventEmitter.removeListener(event, callback);
 };
 
 const removeAllListeners = () => {
-  return PurchaselyEventEmitter.removeAllListeners('Purchasely-Events');
+  PurchaselyEventEmitter.removeAllListeners('PLYEventAppInstalled');
+  PurchaselyEventEmitter.removeAllListeners('PLYEventAppUpdated');
+  PurchaselyEventEmitter.removeAllListeners('PLYEventAppStarted');
+  PurchaselyEventEmitter.removeAllListeners('PLYEventDeeplinkOpened');
+  PurchaselyEventEmitter.removeAllListeners('PLYEventProductPageViewed');
+  PurchaselyEventEmitter.removeAllListeners('PLYEventLoginTapped');
+  PurchaselyEventEmitter.removeAllListeners('PLYEventPurchaseFromStoreTapped');
+  PurchaselyEventEmitter.removeAllListeners('PLYEventPurchaseTapped');
+  PurchaselyEventEmitter.removeAllListeners('PLYEventPurchaseCancelled');
+  PurchaselyEventEmitter.removeAllListeners('PLYEventInAppPurchasing');
+  PurchaselyEventEmitter.removeAllListeners('PLYEventInAppPurchased');
+  PurchaselyEventEmitter.removeAllListeners('PLYEventInAppRenewed');
+  PurchaselyEventEmitter.removeAllListeners('PLYEventReceiptCreated');
+  PurchaselyEventEmitter.removeAllListeners('PLYEventReceiptValidated');
+  PurchaselyEventEmitter.removeAllListeners('PLYEventReceiptFailed');
+  PurchaselyEventEmitter.removeAllListeners('PLYEventRestoreStarted');
+  PurchaselyEventEmitter.removeAllListeners('PLYEventInAppRestored');
+  PurchaselyEventEmitter.removeAllListeners('PLYEventRestoreSucceeded');
+  PurchaselyEventEmitter.removeAllListeners('PLYEventRestoreFailed');
+  PurchaselyEventEmitter.removeAllListeners('PLYEventInAppDeferred');
+  PurchaselyEventEmitter.removeAllListeners('PLYEventInAppPurchaseFailed');
+  PurchaselyEventEmitter.removeAllListeners('PLYEventLinkOpened');
+  PurchaselyEventEmitter.removeAllListeners('PLYEventSubscriptionsListViewed');
+  PurchaselyEventEmitter.removeAllListeners(
+    'PLYEventSubscriptionDetailsViewed'
+  );
+  PurchaselyEventEmitter.removeAllListeners('PLYEventSubscriptionCancelTapped');
+  PurchaselyEventEmitter.removeAllListeners('PLYEventSubscriptionPlanTapped');
+  PurchaselyEventEmitter.removeAllListeners(
+    'PLYEventCancellationReasonPublished'
+  );
 };
 
 const Purchasely = {

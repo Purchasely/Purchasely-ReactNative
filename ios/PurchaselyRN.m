@@ -161,11 +161,11 @@ RCT_EXPORT_METHOD(userSubscriptions: (RCTResponseSenderBlock)errorCallback
 #pragma mark - Events
 
 - (NSArray<NSString *> *)supportedEvents {
-  return @[@"Purchasely-Events"];
+	return @[@"PLYEventAppInstalled", @"PLYEventAppUpdated", @"PLYEventAppStarted", @"PLYEventDeeplinkOpened", @"PLYEventProductPageViewed", @"PLYEventLoginTapped", @"PLYEventPurchaseFromStoreTapped", @"PLYEventPurchaseTapped", @"PLYEventPurchaseCancelled", @"PLYEventInAppPurchasing", @"PLYEventInAppPurchased", @"PLYEventInAppRenewed", @"PLYEventReceiptCreated", @"PLYEventReceiptValidated", @"PLYEventReceiptFailed", @"PLYEventRestoreStarted", @"PLYEventInAppRestored", @"PLYEventRestoreSucceeded", @"PLYEventRestoreFailed", @"PLYEventInAppDeferred", @"PLYEventInAppPurchaseFailed", @"PLYEventLinkOpened", @"PLYEventSubscriptionsListViewed", @"PLYEventSubscriptionDetailsViewed", @"PLYEventSubscriptionCancelTapped", @"PLYEventSubscriptionPlanTapped", @"PLYEventCancellationReasonPublished"];
 }
 
 - (void)eventTriggered:(enum PLYEvent)event properties:(NSDictionary<NSString *,id> * _Nullable)properties {
-  [self sendEventWithName:@"Purchasely-Events" body:@{@"name": [NSString fromPLYEvent: event], @"properties": properties}];
+	[self sendEventWithName: [NSString fromPLYEvent:event] body: properties];
 }
 
 + (BOOL)requiresMainQueueSetup {
