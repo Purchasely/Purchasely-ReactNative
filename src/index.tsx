@@ -97,7 +97,8 @@ type PurchaselyType = {
   ): void;
   close(): void;
   getAnonymousUserId(): Promise<string>;
-  setAppUserId(userId: string | null): void;
+  userLogin(userId: string): void;
+  userLogout(): void;
   setLogLevel(logLevel: LogLevels): void;
   isReadyToPurchase(isReadyToPurchase: boolean): void;
   presentProductWithIdentifier(

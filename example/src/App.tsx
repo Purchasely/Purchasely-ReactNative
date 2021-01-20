@@ -20,7 +20,7 @@ const App: React.FunctionComponent<{}> = () => {
     LogLevels.WARNING
   );
   Purchasely.setLogLevel(LogLevels.DEBUG);
-  Purchasely.setAppUserId('DEMO_USER');
+  Purchasely.userLogin('DEMO_USER');
   Purchasely.isReadyToPurchase(true);
 
   React.useEffect(() => {
