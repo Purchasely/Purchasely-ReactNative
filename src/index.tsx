@@ -1,5 +1,6 @@
 import { NativeModules, NativeEventEmitter } from 'react-native';
-interface Constants {
+
+interface ConstantsIOS {
   logLevelDebug: number;
   logLevelWarn: number;
   logLevelInfo: number;
@@ -8,8 +9,32 @@ interface Constants {
   productResultCancelled: number;
   productResultRestored: number;
 }
+interface ConstantsAndroid {
+  logLevelDebug: number;
+  logLevelWarn: number;
+  logLevelInfo: number;
+  logLevelError: number;
+  logLevelVerbose: number;
+  productResultPurchased: number;
+  productResultCancelled: number;
+  productResultRestored: number;
+}
 
-const constants = NativeModules.Purchasely.getConstants() as Constants;
+const constants = NativeModules.Purchasely.getConstants() as
+  | ConstantsIOS
+  | ConstantsAndroid;
+
+export function isConstantAndroid(
+  c: ConstantsIOS | ConstantsAndroid
+): c is ConstantsAndroid {
+  return (c as ConstantsAndroid).logLevelWarn !== undefined;
+}
+
+export function isConstantIOS(
+  c: ConstantsIOS | ConstantsAndroid
+): c is ConstantsIOS {
+  return (c as ConstantsIOS).logLevelWarn !== undefined;
+}
 
 export enum ProductResult {
   PRODUCT_RESULT_CANCELLED = constants.productResultCancelled,
@@ -63,7 +88,7 @@ export type PresentProductResult = {
 };
 
 type PurchaselyType = {
-  getConstants(): Constants;
+  getConstants(): ConstantsIOS | ConstantsAndroid;
   startWithAPIKey(
     apiKey: string,
     stores: string[],

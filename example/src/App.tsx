@@ -36,7 +36,7 @@ const App: React.FunctionComponent<{}> = () => {
       console.log('Subscriptions', subscriptions);
     })();
 
-    return Purchasely.removeAllListeners();
+    // return Purchasely.removeAllListeners();
   }, []);
 
   const onPressProduct = async () => {

@@ -34,7 +34,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext?) :
   override fun getConstants(): Map<String, Any>? {
     val constants: MutableMap<String, Any> = HashMap()
     constants["logLevelDebug"] = LogLevel.DEBUG.ordinal
-    constants["logLevelWarning"] = LogLevel.WARNING.ordinal
+    constants["logLevelWarn"] = LogLevel.WARNING.ordinal
     constants["logLevelInfo"] = LogLevel.INFO.ordinal
     constants["logLevelVerbose"] = LogLevel.VERBOSE.ordinal
     constants["logLevelError"] = LogLevel.ERROR.ordinal
