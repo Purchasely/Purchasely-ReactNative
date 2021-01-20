@@ -17,10 +17,10 @@ const App: React.FunctionComponent<{}> = () => {
     'afa96c76-1d8e-4e3c-a48f-204a3cd93a15',
     ['Google'],
     null,
-    Purchasely.getConstants().logLevelDebug
+    LogLevels.WARNING
   );
   Purchasely.setLogLevel(LogLevels.DEBUG);
-  Purchasely.setAppUserId('DEMO_USER');
+  Purchasely.userLogin('DEMO_USER');
   Purchasely.isReadyToPurchase(true);
 
   React.useEffect(() => {
@@ -36,15 +36,25 @@ const App: React.FunctionComponent<{}> = () => {
       console.log('Subscriptions', subscriptions);
     })();
 
-    return Purchasely.removeAllListeners();
+    // return Purchasely.removeAllListeners();
   }, []);
 
-  const onPressProduct = () => {
-    Purchasely.presentProductWithIdentifier('PURCHASELY_PLUS', null, (data) => {
-      console.log('Product View Result : ' + data.result);
-      console.log('Plan Vendor ID : ' + data.plan.vendorId);
-      console.log('Plan Name : ' + data.plan.name);
-    });
+  const onPressProduct = async () => {
+    try {
+      const result = await Purchasely.presentProductWithIdentifier(
+        'PURCHASELY_PLUS',
+        null
+      );
+      console.log(result);
+      console.log('Product View Result : ' + result.result);
+
+      if (result.plan != null) {
+        console.log('Plan Vendor ID : ' + result.plan.vendorId);
+        console.log('Plan Name : ' + result.plan.name);
+      }
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const onPressPurchase = async () => {
