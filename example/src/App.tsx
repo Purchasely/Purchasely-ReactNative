@@ -17,7 +17,7 @@ const App: React.FunctionComponent<{}> = () => {
     'afa96c76-1d8e-4e3c-a48f-204a3cd93a15',
     ['Google'],
     null,
-    Purchasely.getConstants().logLevelDebug
+    LogLevels.WARNING
   );
   Purchasely.setLogLevel(LogLevels.DEBUG);
   Purchasely.setAppUserId('DEMO_USER');
@@ -36,7 +36,7 @@ const App: React.FunctionComponent<{}> = () => {
       console.log('Subscriptions', subscriptions);
     })();
 
-    return Purchasely.removeAllListeners();
+    // return Purchasely.removeAllListeners();
   }, []);
 
   const onPressProduct = async () => {
