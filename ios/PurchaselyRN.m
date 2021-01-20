@@ -36,8 +36,12 @@ RCT_EXPORT_METHOD(setLogLevel:(NSInteger)logLevel) {
 	[Purchasely setLogLevel:logLevel];
 }
 
-RCT_EXPORT_METHOD(setAppUserId:(NSString * _Nullable)appUserId) {
-	[Purchasely setAppUserId: appUserId];
+RCT_EXPORT_METHOD(userLogin:(NSString * _Nullable)userId) {
+	[Purchasely userLoginWith: userId];
+}
+
+RCT_EXPORT_METHOD(userLogout) {
+	[Purchasely userLogout];
 }
 
 RCT_REMAP_METHOD(getAnonymousUserId,
