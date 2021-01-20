@@ -1,9 +1,8 @@
 import { NativeModules, NativeEventEmitter } from 'react-native';
 interface Constants {
   logLevelDebug: number;
-  logLevelWarning: number;
+  logLevelWarn: number;
   logLevelInfo: number;
-  logLevelVerbose: number;
   logLevelError: number;
   productResultPurchased: number;
   productResultCancelled: number;
@@ -20,9 +19,8 @@ export enum ProductResult {
 
 export enum LogLevels {
   DEBUG = constants.logLevelDebug,
-  VERBOSE = constants.logLevelVerbose,
   INFO = constants.logLevelInfo,
-  WARNING = constants.logLevelWarning,
+  WARNING = constants.logLevelWarn,
   ERROR = constants.logLevelError,
 }
 
