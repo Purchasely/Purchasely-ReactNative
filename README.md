@@ -19,7 +19,7 @@ Purchasely.startWithAPIKey(
   'afa96c76-1d8e-4e3c-a48f-204a3cd93a15',
   ['Google'],
   null,
-  Purchasely.logLevelDebug
+  LogLevels.WARNING
 );
 
 Purchasely.presentProductWithIdentifier(
@@ -34,6 +34,6 @@ Purchasely.presentProductWithIdentifier(
 );
 ```
 
-## Contributing
+## 🏁 Documentation
 
-See the [contributing guide](CONTRIBUTING.md) to learn how to contribute to the repository and the development workflow.
+A complete documentation is available on our website [https://docs.purchasely.com](https://docs.purchasely.com/v/2.1.3/quick-start/sdk-installation/react-native-sdk)
