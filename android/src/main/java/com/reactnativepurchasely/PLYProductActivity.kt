@@ -36,4 +36,9 @@ class PLYProductActivity : AppCompatActivity() {
       .commit()
   }
 
+  override fun onDestroy() {
+    super.onDestroy()
+    PurchaselyModule.sendPurchaseResult(PLYProductViewResult.CANCELLED, null)
+  }
+
 }
