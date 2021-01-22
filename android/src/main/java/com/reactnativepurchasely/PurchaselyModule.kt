@@ -13,7 +13,7 @@ import io.purchasely.models.PLYProduct
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 
-class PurchaselyModule internal constructor(context: ReactApplicationContext?) : ReactContextBaseJavaModule(context) {
+class PurchaselyModule internal constructor(context: ReactApplicationContext) : ReactContextBaseJavaModule(context) {
 
   private val eventListener: EventListener = object: EventListener {
     override fun onEvent(event: PLYEvent) {
