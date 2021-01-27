@@ -82,7 +82,7 @@ export type PurchaselySubscription = {
   product: PurchaselyProduct;
 };
 
-export type PresentProductResult = {
+export type PresentPresentationResult = {
   result: ProductResult;
   plan: PurchaselyPlan;
 };
@@ -101,10 +101,9 @@ type PurchaselyType = {
   userLogout(): void;
   setLogLevel(logLevel: LogLevels): void;
   isReadyToPurchase(isReadyToPurchase: boolean): void;
-  presentProductWithIdentifier(
-    productVendorId: string,
+  presentPresentationWithIdentifier(
     presentationVendorId: string | null
-  ): Promise<PresentProductResult>;
+  ): Promise<PresentPresentationResult>;
   productWithIdentifier(vendorId: string): Promise<PurchaselyProduct>;
   planWithIdentifier(vendorId: string): Promise<PurchaselyPlan>;
   purchaseWithPlanVendorId(planVendorId: string): Promise<PurchaselyPlan>;
@@ -124,7 +123,7 @@ type PurchaselyEventsNames =
   | 'APP_UPDATED'
   | 'APP_STARTED'
   | 'DEEPLINK_OPENED'
-  | 'PRODUCT_PAGE_VIEWED'
+  | 'PRESENTATION_VIEWED'
   | 'LOGIN_TAPPED'
   | 'PURCHASE_FROM_STORE_TAPPED'
   | 'PURCHASE_TAPPED'
@@ -189,7 +188,7 @@ const removeAllListeners = () => {
   PurchaselyEventEmitter.removeAllListeners('APP_UPDATED');
   PurchaselyEventEmitter.removeAllListeners('APP_STARTED');
   PurchaselyEventEmitter.removeAllListeners('DEEPLINK_OPENED');
-  PurchaselyEventEmitter.removeAllListeners('PRODUCT_PAGE_VIEWED');
+  PurchaselyEventEmitter.removeAllListeners('PRESENTATION_VIEWED');
   PurchaselyEventEmitter.removeAllListeners('LOGIN_TAPPED');
   PurchaselyEventEmitter.removeAllListeners('PURCHASE_FROM_STORE_TAPPED');
   PurchaselyEventEmitter.removeAllListeners('PURCHASE_TAPPED');

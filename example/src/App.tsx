@@ -41,10 +41,7 @@ const App: React.FunctionComponent<{}> = () => {
 
   const onPressProduct = async () => {
     try {
-      const result = await Purchasely.presentProductWithIdentifier(
-        'PURCHASELY_PLUS',
-        null
-      );
+      const result = await Purchasely.presentPresentationWithIdentifier(null);
       console.log(result);
       console.log('Product View Result : ' + result.result);
 
