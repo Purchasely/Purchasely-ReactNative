@@ -112,12 +112,10 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   }
 
   @ReactMethod
-  fun presentProductWithIdentifier(productVendorId: String,
-                                   presentationVendorId: String?,
-                                   promise: Promise) {
+  fun presentPresentationWithIdentifier(presentationVendorId: String?,
+                                        promise: Promise) {
     purchasePromise = promise
     val intent = Intent(reactApplicationContext.applicationContext, PLYProductActivity::class.java)
-    intent.putExtra("productId", productVendorId)
     intent.putExtra("presentationId", presentationVendorId)
     reactApplicationContext.currentActivity?.startActivity(intent)
   }
