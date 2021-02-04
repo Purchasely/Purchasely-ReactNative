@@ -36,4 +36,4 @@ Purchasely.presentProductWithIdentifier(
 
 ## 🏁 Documentation
 
-A complete documentation is available on our website [https://docs.purchasely.com](https://docs.purchasely.com/v/2.1.3/quick-start/sdk-installation/react-native-sdk)
+A complete documentation is available on our website [https://docs.purchasely.com](https://docs.purchasely.com/quick-start/sdk-installation/react-native-sdk)

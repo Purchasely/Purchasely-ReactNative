@@ -39,6 +39,21 @@ const App: React.FunctionComponent<{}> = () => {
     // return Purchasely.removeAllListeners();
   }, []);
 
+  const onPressPresentation = async () => {
+    try {
+      const result = await Purchasely.presentPresentationWithIdentifier(null);
+      console.log(result);
+      console.log('Presentation View Result : ' + result.result);
+
+      if (result.plan != null) {
+        console.log('Plan Vendor ID : ' + result.plan.vendorId);
+        console.log('Plan Name : ' + result.plan.name);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const onPressProduct = async () => {
     try {
       const result = await Purchasely.presentProductWithIdentifier(
@@ -46,7 +61,25 @@ const App: React.FunctionComponent<{}> = () => {
         null
       );
       console.log(result);
-      console.log('Product View Result : ' + result.result);
+      console.log('Presentation View Result : ' + result.result);
+
+      if (result.plan != null) {
+        console.log('Plan Vendor ID : ' + result.plan.vendorId);
+        console.log('Plan Name : ' + result.plan.name);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const onPressPlan = async () => {
+    try {
+      const result = await Purchasely.presentPlanWithIdentifier(
+        'PURCHASELY_PLUS_WEEKLY',
+        null
+      );
+      console.log(result);
+      console.log('Presentation View Result : ' + result.result);
 
       if (result.plan != null) {
         console.log('Plan Vendor ID : ' + result.plan.vendorId);
@@ -89,6 +122,18 @@ const App: React.FunctionComponent<{}> = () => {
     <View style={styles.container}>
       <Text>Anonymous User Id {anonymousUserId}</Text>
       <TouchableHighlight
+        onPress={onPressPresentation}
+        disabled={loading}
+        style={loading ? styles.buttonDisabled : styles.button}
+      >
+        <Text style={styles.text}>
+          {loading && (
+            <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
+          )}{' '}
+          Display presentation
+        </Text>
+      </TouchableHighlight>
+      <TouchableHighlight
         onPress={onPressProduct}
         disabled={loading}
         style={loading ? styles.buttonDisabled : styles.button}
@@ -98,6 +143,18 @@ const App: React.FunctionComponent<{}> = () => {
             <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
           )}{' '}
           Display product
+        </Text>
+      </TouchableHighlight>
+      <TouchableHighlight
+        onPress={onPressPlan}
+        disabled={loading}
+        style={loading ? styles.buttonDisabled : styles.button}
+      >
+        <Text style={styles.text}>
+          {loading && (
+            <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
+          )}{' '}
+          Display plan
         </Text>
       </TouchableHighlight>
       <TouchableHighlight
