@@ -43,7 +43,7 @@ const App: React.FunctionComponent<{}> = () => {
     try {
       const result = await Purchasely.presentPresentationWithIdentifier(null);
       console.log(result);
-      console.log('Product View Result : ' + result.result);
+      console.log('Presentation View Result : ' + result.result);
 
       if (result.plan != null) {
         console.log('Plan Vendor ID : ' + result.plan.vendorId);
@@ -61,7 +61,7 @@ const App: React.FunctionComponent<{}> = () => {
         null
       );
       console.log(result);
-      console.log('Product View Result : ' + result.result);
+      console.log('Presentation View Result : ' + result.result);
 
       if (result.plan != null) {
         console.log('Plan Vendor ID : ' + result.plan.vendorId);
@@ -79,7 +79,7 @@ const App: React.FunctionComponent<{}> = () => {
         null
       );
       console.log(result);
-      console.log('Product View Result : ' + result.result);
+      console.log('Presentation View Result : ' + result.result);
 
       if (result.plan != null) {
         console.log('Plan Vendor ID : ' + result.plan.vendorId);

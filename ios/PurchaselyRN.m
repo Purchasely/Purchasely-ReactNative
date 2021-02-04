@@ -28,6 +28,30 @@ RCT_EXPORT_MODULE(Purchasely);
 	};
 }
 
+- (NSDictionary<NSString *, NSObject *> *) resultDictionaryForPresentationController:(PLYProductViewControllerResult)result plan:(PLYPlan * _Nullable)plan {
+	NSMutableDictionary<NSString *, NSObject *> *productViewResult = [NSMutableDictionary new];
+	NSString *resultString;
+
+	switch (result) {
+		case PLYProductViewControllerResultPurchased:
+			resultString = @"productResultPurchased";
+			break;
+		case PLYProductViewControllerResultRestored:
+			resultString = @"productResultRestored";
+			break;
+		case PLYProductViewControllerResultCancelled:
+			resultString = @"productResultCancelled";
+			break;
+	}
+
+	[productViewResult setObject:resultString forKey:@"result"];
+
+	if (plan != nil) {
+		[productViewResult setObject:[plan asDictionary] forKey:@"plan"];
+	}
+	return productViewResult;
+}
+
 RCT_EXPORT_METHOD(startWithAPIKey:(NSString * _Nonnull)apiKey stores:(NSArray * _Nullable)stores appUserId:(NSString * _Nullable)appUserId logLevel:(NSInteger)logLevel) {
 	[Purchasely startWithAPIKey:apiKey appUserId:appUserId eventDelegate:self uiDelegate:nil logLevel:logLevel];
 }
@@ -61,29 +85,33 @@ RCT_EXPORT_METHOD(presentPresentationWithIdentifier:(NSString * _Nullable)presen
 {
 	dispatch_async(dispatch_get_main_queue(), ^{
 		UIViewController *ctrl = [Purchasely presentationControllerWith:presentationVendorId completion:^(enum PLYProductViewControllerResult result, PLYPlan * _Nullable plan) {
+			resolve([self resultDictionaryForPresentationController:result plan:plan]);
+		}];
+		[Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
+	});
+}
 
-			NSMutableDictionary<NSString *, NSObject *> *productViewResult = [NSMutableDictionary new];
-			NSString *resultString;
+RCT_EXPORT_METHOD(presentPlanWithIdentifier:(NSString * _Nonnull)planVendorId
+				  presentationVendorId:(NSString * _Nullable)presentationVendorId
+				  resolve:(RCTPromiseResolveBlock)resolve
+				  reject:(RCTPromiseRejectBlock)reject)
+{
+	dispatch_async(dispatch_get_main_queue(), ^{
+		UIViewController *ctrl = [Purchasely planControllerFor:planVendorId with:presentationVendorId completion:^(enum PLYProductViewControllerResult result, PLYPlan * _Nullable plan) {
+			resolve([self resultDictionaryForPresentationController:result plan:plan]);
+		}];
+		[Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
+	});
+}
 
-			switch (result) {
-				case PLYProductViewControllerResultPurchased:
-					resultString = @"productResultPurchased";
-					break;
-				case PLYProductViewControllerResultRestored:
-					resultString = @"productResultRestored";
-					break;
-				case PLYProductViewControllerResultCancelled:
-					resultString = @"productResultCancelled";
-					break;
-			}
-
-			[productViewResult setObject:resultString forKey:@"result"];
-
-			if (plan != nil) {
-				[productViewResult setObject:[plan asDictionary] forKey:@"plan"];
-			}
-			resolve(productViewResult);
-
+RCT_EXPORT_METHOD(presentProductWithIdentifier:(NSString * _Nonnull)productVendorId
+				  presentationVendorId:(NSString * _Nullable)presentationVendorId
+				  resolve:(RCTPromiseResolveBlock)resolve
+				  reject:(RCTPromiseRejectBlock)reject)
+{
+	dispatch_async(dispatch_get_main_queue(), ^{
+		UIViewController *ctrl = [Purchasely productControllerFor:productVendorId with:presentationVendorId completion:^(enum PLYProductViewControllerResult result, PLYPlan * _Nullable plan) {
+			resolve([self resultDictionaryForPresentationController:result plan:plan]);
 		}];
 		[Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
 	});
