@@ -120,6 +120,28 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     reactApplicationContext.currentActivity?.startActivity(intent)
   }
 
+  @ReactMethod
+  fun presentProductWithIdentifier(productVendorId: String,
+                                    presentationVendorId: String?,
+                                    promise: Promise) {
+    purchasePromise = promise
+    val intent = Intent(reactApplicationContext.applicationContext, PLYProductActivity::class.java)
+    intent.putExtra("presentationId", presentationVendorId)
+    intent.putExtra("productId", productVendorId)
+    reactApplicationContext.currentActivity?.startActivity(intent)
+  }
+
+  @ReactMethod
+  fun presentPlanWithIdentifier(planVendorId: String,
+                                presentationVendorId: String?,
+                                promise: Promise) {
+    purchasePromise = promise
+    val intent = Intent(reactApplicationContext.applicationContext, PLYProductActivity::class.java)
+    intent.putExtra("presentationId", presentationVendorId)
+    intent.putExtra("planId", planVendorId)
+    reactApplicationContext.currentActivity?.startActivity(intent)
+  }
+
   /*@ReactMethod
     public void products(@NonNull Callback failureCallback, @NonNull Callback callback) {
         Purchasely.getProducts(new ProductsListener() {

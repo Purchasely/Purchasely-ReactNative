@@ -104,6 +104,14 @@ type PurchaselyType = {
   presentPresentationWithIdentifier(
     presentationVendorId: string | null
   ): Promise<PresentPresentationResult>;
+  presentProductWithIdentifier(
+    productVendorId: string,
+    presentationVendorId: string | null
+  ): Promise<PresentPresentationResult>;
+  presentPlanWithIdentifier(
+    planVendorId: string,
+    presentationVendorId: string | null
+  ): Promise<PresentPresentationResult>;
   productWithIdentifier(vendorId: string): Promise<PurchaselyProduct>;
   planWithIdentifier(vendorId: string): Promise<PurchaselyPlan>;
   purchaseWithPlanVendorId(planVendorId: string): Promise<PurchaselyPlan>;
