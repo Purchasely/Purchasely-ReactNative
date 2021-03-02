@@ -146,6 +146,7 @@ type PurchaselyEventsNames =
   | 'IN_APP_RESTORED'
   | 'RESTORE_SUCCEEDED'
   | 'RESTORE_FAILED'
+  | 'STORE_PRODUCT_FETCH_FAILED'
   | 'IN_APP_DEFERRED'
   | 'IN_APP_PURCHASE_FAILED'
   | 'LINK_OPENED'
@@ -211,6 +212,7 @@ const removeAllListeners = () => {
   PurchaselyEventEmitter.removeAllListeners('IN_APP_RESTORED');
   PurchaselyEventEmitter.removeAllListeners('RESTORE_SUCCEEDED');
   PurchaselyEventEmitter.removeAllListeners('RESTORE_FAILED');
+  PurchaselyEventEmitter.removeAllListeners('STORE_PRODUCT_FETCH_FAILED');
   PurchaselyEventEmitter.removeAllListeners('IN_APP_DEFERRED');
   PurchaselyEventEmitter.removeAllListeners('IN_APP_PURCHASE_FAILED');
   PurchaselyEventEmitter.removeAllListeners('LINK_OPENED');
