@@ -128,33 +128,38 @@ const PurchaselyEventEmitter = new NativeEventEmitter(NativeModules.Purchasely);
 
 type PurchaselyEventsNames =
   | 'APP_INSTALLED'
+  | 'APP_CONFIGURED'
   | 'APP_UPDATED'
   | 'APP_STARTED'
+  | 'CANCELLATION_REASON_PUBLISHED'
   | 'DEEPLINK_OPENED'
-  | 'PRESENTATION_VIEWED'
-  | 'LOGIN_TAPPED'
-  | 'PURCHASE_FROM_STORE_TAPPED'
-  | 'PURCHASE_TAPPED'
-  | 'PURCHASE_CANCELLED'
   | 'IN_APP_PURCHASING'
   | 'IN_APP_PURCHASED'
   | 'IN_APP_RENEWED'
+  | 'IN_APP_RESTORED'
+  | 'IN_APP_DEFERRED'
+  | 'IN_APP_PURCHASE_FAILED'
+  | 'LINK_OPENED'
+  | 'LOGIN_TAPPED'
+  | 'PLAN_SELECTED'
+  | 'PRESENTATION_OPENED'
+  | 'PRESENTATION_SELECTED'
+  | 'PRESENTATION_VIEWED'
+  | 'PURCHASE_FROM_STORE_TAPPED'
+  | 'PURCHASE_TAPPED'
+  | 'PURCHASE_CANCELLED'
+  | 'PURCHASE_CANCELLED_BY_APP'
   | 'RECEIPT_CREATED'
   | 'RECEIPT_VALIDATED'
   | 'RECEIPT_FAILED'
   | 'RESTORE_STARTED'
-  | 'IN_APP_RESTORED'
   | 'RESTORE_SUCCEEDED'
   | 'RESTORE_FAILED'
   | 'STORE_PRODUCT_FETCH_FAILED'
-  | 'IN_APP_DEFERRED'
-  | 'IN_APP_PURCHASE_FAILED'
-  | 'LINK_OPENED'
   | 'SUBSCRIPTIONS_LIST_VIEWED'
   | 'SUBSCRIPTION_DETAILS_VIEWED'
   | 'SUBSCRIPTION_CANCEL_TAPPED'
-  | 'SUBSCRIPTION_PLAN_TAPPED'
-  | 'CANCELLATION_REASON_PUBLISHED';
+  | 'SUBSCRIPTION_PLAN_TAPPED';
 
 type PurchaselyEventMap = {
   error?: { message?: string };
@@ -195,32 +200,37 @@ const removeListener = (
 const removeAllListeners = () => {
   PurchaselyEventEmitter.removeAllListeners('APP_INSTALLED');
   PurchaselyEventEmitter.removeAllListeners('APP_UPDATED');
+  PurchaselyEventEmitter.removeAllListeners('APP_CONFIGURED');
   PurchaselyEventEmitter.removeAllListeners('APP_STARTED');
+  PurchaselyEventEmitter.removeAllListeners('CANCELLATION_REASON_PUBLISHED');
   PurchaselyEventEmitter.removeAllListeners('DEEPLINK_OPENED');
-  PurchaselyEventEmitter.removeAllListeners('PRESENTATION_VIEWED');
-  PurchaselyEventEmitter.removeAllListeners('LOGIN_TAPPED');
-  PurchaselyEventEmitter.removeAllListeners('PURCHASE_FROM_STORE_TAPPED');
-  PurchaselyEventEmitter.removeAllListeners('PURCHASE_TAPPED');
-  PurchaselyEventEmitter.removeAllListeners('PURCHASE_CANCELLED');
   PurchaselyEventEmitter.removeAllListeners('IN_APP_PURCHASING');
   PurchaselyEventEmitter.removeAllListeners('IN_APP_PURCHASED');
   PurchaselyEventEmitter.removeAllListeners('IN_APP_RENEWED');
+  PurchaselyEventEmitter.removeAllListeners('IN_APP_RESTORED');
+  PurchaselyEventEmitter.removeAllListeners('IN_APP_DEFERRED');
+  PurchaselyEventEmitter.removeAllListeners('IN_APP_PURCHASE_FAILED');
+  PurchaselyEventEmitter.removeAllListeners('LINK_OPENED');
+  PurchaselyEventEmitter.removeAllListeners('LOGIN_TAPPED');
+  PurchaselyEventEmitter.removeAllListeners('PLAN_SELECTED');
+  PurchaselyEventEmitter.removeAllListeners('PRESENTATION_OPENED');
+  PurchaselyEventEmitter.removeAllListeners('PRESENTATION_SELECTED');
+  PurchaselyEventEmitter.removeAllListeners('PRESENTATION_VIEWED');
+  PurchaselyEventEmitter.removeAllListeners('PURCHASE_FROM_STORE_TAPPED');
+  PurchaselyEventEmitter.removeAllListeners('PURCHASE_TAPPED');
+  PurchaselyEventEmitter.removeAllListeners('PURCHASE_CANCELLED');
+  PurchaselyEventEmitter.removeAllListeners('PURCHASE_CANCELLED_BY_APP');
   PurchaselyEventEmitter.removeAllListeners('RECEIPT_CREATED');
   PurchaselyEventEmitter.removeAllListeners('RECEIPT_VALIDATED');
   PurchaselyEventEmitter.removeAllListeners('RECEIPT_FAILED');
   PurchaselyEventEmitter.removeAllListeners('RESTORE_STARTED');
-  PurchaselyEventEmitter.removeAllListeners('IN_APP_RESTORED');
   PurchaselyEventEmitter.removeAllListeners('RESTORE_SUCCEEDED');
   PurchaselyEventEmitter.removeAllListeners('RESTORE_FAILED');
   PurchaselyEventEmitter.removeAllListeners('STORE_PRODUCT_FETCH_FAILED');
-  PurchaselyEventEmitter.removeAllListeners('IN_APP_DEFERRED');
-  PurchaselyEventEmitter.removeAllListeners('IN_APP_PURCHASE_FAILED');
-  PurchaselyEventEmitter.removeAllListeners('LINK_OPENED');
   PurchaselyEventEmitter.removeAllListeners('SUBSCRIPTIONS_LIST_VIEWED');
   PurchaselyEventEmitter.removeAllListeners('SUBSCRIPTION_DETAILS_VIEWED');
   PurchaselyEventEmitter.removeAllListeners('SUBSCRIPTION_CANCEL_TAPPED');
   PurchaselyEventEmitter.removeAllListeners('SUBSCRIPTION_PLAN_TAPPED');
-  PurchaselyEventEmitter.removeAllListeners('CANCELLATION_REASON_PUBLISHED');
 };
 
 const Purchasely = {

@@ -17,8 +17,8 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
 
   private val eventListener: EventListener = object: EventListener {
     override fun onEvent(event: PLYEvent) {
-      Log.d("Purchasely", "Event from Module : ${event::class.java.simpleName}")
-      Log.d("Purchasely", "${event.name} : ${event.properties?.toMap()}")
+      //Log.d("Purchasely", "Event from Module : ${event::class.java.simpleName}")
+      //Log.d("Purchasely", "${event.name} : ${event.properties?.toMap()}")
       if (event.properties != null) {
         sendEvent(reactApplicationContext, event.name, Arguments.makeNativeMap(event.properties!!.toMap()))
       } else {
