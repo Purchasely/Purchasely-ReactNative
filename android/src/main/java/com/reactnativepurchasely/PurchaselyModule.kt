@@ -27,6 +27,14 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     }
   }
 
+  private val purchaseListener: PurchaseListener = object: PurchaseListener {
+    override fun onPurchaseStateChanged(state: State) {
+      if(state is State.PurchaseComplete || state is State.RestorationComplete) {
+        sendEvent(reactApplicationContext, "PURCHASE_LISTENER", null)
+      }
+    }
+  }
+
   override fun getName(): String {
     return "Purchasely"
   }
@@ -79,6 +87,8 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
       .logLevel(LogLevel.values()[logLevel])
       .build()
       .start()
+
+    Purchasely.purchaseListener = purchaseListener
   }
 
   @ReactMethod

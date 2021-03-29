@@ -27,6 +27,11 @@ const App: React.FunctionComponent<{}> = () => {
   });*/
   // Purchasely.removeAllListeners();
 
+  /*Purchasely.addPurchasedListener(() => {
+    console.log("Purchased Listener called");
+    //user has successfully purchased a product, reload content
+  });*/
+
   React.useEffect(() => {
     (async () => {
       setAnonymousUserId(await Purchasely.getAnonymousUserId());

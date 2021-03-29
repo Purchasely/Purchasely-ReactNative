@@ -233,11 +233,23 @@ const removeAllListeners = () => {
   PurchaselyEventEmitter.removeAllListeners('SUBSCRIPTION_PLAN_TAPPED');
 };
 
+type PurchaseListenerCallback = () => void;
+
+const addPurchasedListener = (callback: PurchaseListenerCallback) => {
+  return PurchaselyEventEmitter.addListener('PURCHASE_LISTENER', callback);
+};
+
+const removePurchasedListener = () => {
+  return PurchaselyEventEmitter.removeAllListeners('PURCHASE_LISTENER');
+};
+
 const Purchasely = {
   ...RNPurchasely,
   addListener,
   removeListener,
   removeAllListeners,
+  addPurchasedListener,
+  removePurchasedListener,
 };
 
 export default Purchasely;
