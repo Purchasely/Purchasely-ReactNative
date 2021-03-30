@@ -48,6 +48,9 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     constants["productResultPurchased"] = PLYProductViewResult.PURCHASED.ordinal
     constants["productResultCancelled"] = PLYProductViewResult.CANCELLED.ordinal
     constants["productResultRestored"] = PLYProductViewResult.RESTORED.ordinal
+    constants["amplitudeSessionId"] = Attribute.AMPLITUDE_SESSION_ID.ordinal
+    constants["firebaseAppInstanceId"] = Attribute.FIREBASE_APP_INSTANCE_ID.ordinal
+    constants["airshipChannelId"] = Attribute.AIRSHIP_CHANNEL_ID.ordinal
     return constants
   }
 
@@ -121,6 +124,11 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   @ReactMethod
   fun isReadyToPurchase(readyToPurchase: Boolean) {
     Purchasely.isReadyToPurchase = readyToPurchase
+  }
+
+  @ReactMethod
+  fun setAttribute(attribute: Int, value: String) {
+    Purchasely.setAttribute(Attribute.values()[attribute], value)
   }
 
   @ReactMethod
