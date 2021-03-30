@@ -106,8 +106,8 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
 
   @ReactMethod
   fun userLogin(userId: String, promise: Promise) {
-    Purchasely.userLogin(userId) {
-        promise.resolve(true)
+    Purchasely.userLogin(userId) { refresh ->
+        promise.resolve(refresh)
     }
   }
 

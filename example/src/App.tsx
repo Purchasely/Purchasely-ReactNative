@@ -33,9 +33,11 @@ const App: React.FunctionComponent<{}> = () => {
   React.useEffect(() => {
     (async () => {
       setAnonymousUserId(await Purchasely.getAnonymousUserId());
-      Purchasely.userLogin('DEMO_USER').then((logged) =>
-        console.log('User logged ?', logged)
-      );
+      Purchasely.userLogin('DEMO_USER').then((refresh) => {
+        if (refresh) {
+          //call your backend to refresh user information
+        }
+      });
       const product = await Purchasely.productWithIdentifier('PURCHASELY_PLUS');
       console.log('Product', product);
       const plan = await Purchasely.planWithIdentifier(
