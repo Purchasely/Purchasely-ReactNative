@@ -102,8 +102,10 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   }
 
   @ReactMethod
-  fun userLogin(userId: String) {
-    Purchasely.userLogin(userId)
+  fun userLogin(userId: String, promise: Promise) {
+    Purchasely.userLogin(userId) {
+        promise.resolve(true)
+    }
   }
 
   @ReactMethod
@@ -200,33 +202,19 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
 
   @ReactMethod
   fun purchaseWithPlanVendorId(planVendorId: String, promise: Promise) {
-    val listener = object: PurchaseListener {
-      override fun onPurchaseStateChanged(state: State) {
-          when(state) {
-            is State.PurchaseComplete -> {
-                Purchasely.purchaseListener = null
-                promise.resolve(Arguments.makeNativeMap(state.plan?.toMap() ?: emptyMap()))
-            }
-            is State.PurchaseFailed -> {
-              Purchasely.purchaseListener = null
-              promise.reject(state.error)
-            }
-            is State.Error -> {
-              Purchasely.purchaseListener = null
-              promise.reject(state.error)
-            }
-            else -> {
-              //do nothing
-            }
-          }
-      }
-    }
-
     GlobalScope.launch {
       try {
         val plan = Purchasely.getPlan(planVendorId)
         if(plan != null) {
-          Purchasely.purchase(reactApplicationContext.currentActivity!!, plan, listener)
+          Purchasely.purchase(reactApplicationContext.currentActivity!!,
+            plan,
+            success = {
+              promise.resolve(Arguments.makeNativeMap(it?.toMap() ?: emptyMap()))
+            },
+            error = {
+              promise.reject(it)
+            }
+          )
         } else {
           promise.reject(IllegalStateException("plan $planVendorId not found"))
         }
@@ -238,33 +226,14 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
 
   @ReactMethod
   fun restoreAllProducts(promise: Promise) {
-    val listener = object: PurchaseListener {
-      override fun onPurchaseStateChanged(state: State) {
-        when(state) {
-          is State.RestorationComplete -> {
-            Purchasely.purchaseListener = null
-            promise.resolve(true)
-          }
-          is State.RestorationFailed -> {
-            Purchasely.purchaseListener = null
-            promise.reject(state.error)
-          }
-          is State.RestorationNoProducts -> {
-            Purchasely.purchaseListener = null
-            promise.resolve(false)
-          }
-          is State.Error -> {
-            Purchasely.purchaseListener = null
-            promise.reject(state.error)
-          }
-          else -> {
-            //do nothing
-          }
-        }
+    Purchasely.restoreAllProducts(
+      success = {
+        promise.resolve(true)
+      },
+      error = {
+        promise.reject(it)
       }
-    }
-
-    Purchasely.restoreAllProducts(listener)
+    )
   }
 
   @ReactMethod

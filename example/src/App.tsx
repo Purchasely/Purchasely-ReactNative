@@ -19,7 +19,6 @@ const App: React.FunctionComponent<{}> = () => {
     LogLevels.WARNING
   );
   Purchasely.setLogLevel(LogLevels.DEBUG);
-  Purchasely.userLogin('DEMO_USER');
   Purchasely.isReadyToPurchase(true);
 
   /*Purchasely.addListener('PRESENTATION_VIEWED', (event) => {
@@ -28,13 +27,15 @@ const App: React.FunctionComponent<{}> = () => {
   // Purchasely.removeAllListeners();
 
   /*Purchasely.addPurchasedListener(() => {
-    console.log("Purchased Listener called");
     //user has successfully purchased a product, reload content
   });*/
 
   React.useEffect(() => {
     (async () => {
       setAnonymousUserId(await Purchasely.getAnonymousUserId());
+      Purchasely.userLogin('DEMO_USER').then((logged) =>
+        console.log('User logged ?', logged)
+      );
       const product = await Purchasely.productWithIdentifier('PURCHASELY_PLUS');
       console.log('Product', product);
       const plan = await Purchasely.planWithIdentifier(

@@ -97,7 +97,7 @@ type PurchaselyType = {
   ): void;
   close(): void;
   getAnonymousUserId(): Promise<string>;
-  userLogin(userId: string): void;
+  userLogin(userId: string): Promise<boolean>;
   userLogout(): void;
   setLogLevel(logLevel: LogLevels): void;
   isReadyToPurchase(isReadyToPurchase: boolean): void;
