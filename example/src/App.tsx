@@ -11,8 +11,7 @@ import Purchasely, { LogLevels } from 'react-native-purchasely';
 const App: React.FunctionComponent<{}> = () => {
   const [anonymousUserId, setAnonymousUserId] = React.useState<string>('');
   const [loading, setLoading] = React.useState<boolean>(false);
-  // Purchasely.removeAllListeners();
-  // Purchasely.addListener(console.log);
+
   Purchasely.startWithAPIKey(
     'afa96c76-1d8e-4e3c-a48f-204a3cd93a15',
     ['Google'],
@@ -22,6 +21,11 @@ const App: React.FunctionComponent<{}> = () => {
   Purchasely.setLogLevel(LogLevels.DEBUG);
   Purchasely.userLogin('DEMO_USER');
   Purchasely.isReadyToPurchase(true);
+
+  /*Purchasely.addListener('PRESENTATION_VIEWED', (event) => {
+    console.log(event);
+  });*/
+  // Purchasely.removeAllListeners();
 
   React.useEffect(() => {
     (async () => {
