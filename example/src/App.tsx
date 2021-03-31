@@ -22,21 +22,24 @@ const App: React.FunctionComponent<{}> = () => {
   Purchasely.setLogLevel(LogLevels.DEBUG);
   Purchasely.isReadyToPurchase(true);
 
-  /*Purchasely.addListener('PRESENTATION_VIEWED', (event) => {
+  Purchasely.addListener('PRESENTATION_VIEWED', (event) => {
     console.log(event);
-  });*/
+  });
   // Purchasely.removeAllListeners();
 
-  /*Purchasely.addPurchasedListener(() => {
-    //user has successfully purchased a product, reload content
-  });*/
+  Purchasely.addPurchasedListener(() => {
+    // User has successfully purchased a product, reload content
+    console.log('User has purchased');
+  });
+
+  // Purchasely.setAttribute(Purchasely.airshipChannelId, 'test0');
 
   React.useEffect(() => {
     (async () => {
       setAnonymousUserId(await Purchasely.getAnonymousUserId());
       Purchasely.userLogin('DEMO_USER').then((refresh) => {
         if (refresh) {
-          //call your backend to refresh user information
+          // Call your backend to refresh user information
         }
       });
       const product = await Purchasely.productWithIdentifier('PURCHASELY_PLUS');
