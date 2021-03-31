@@ -105,7 +105,8 @@ type PurchaselyType = {
     apiKey: string,
     stores: string[],
     userId: string | null,
-    logLevel: number
+    logLevel: number,
+    observerMode: boolean | false
   ): void;
   close(): void;
   getAnonymousUserId(): Promise<string>;
@@ -133,6 +134,7 @@ type PurchaselyType = {
   userSubscriptions(): Promise<PurchaselySubscription[]>;
   presentSubscriptions(): void;
   handle(deeplink: string | null): Promise<boolean>;
+  synchronize(): void;
 };
 
 const RNPurchasely = NativeModules.Purchasely as PurchaselyType;

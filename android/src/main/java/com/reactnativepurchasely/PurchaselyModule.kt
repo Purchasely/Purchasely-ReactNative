@@ -79,7 +79,8 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   fun startWithAPIKey(apiKey: String,
                       stores: ReadableArray,
                       userId: String?,
-                      logLevel: Int) {
+                      logLevel: Int,
+                      observerMode: Boolean) {
     val storesInstances = getStoresInstances(stores.toArrayList())
 
     Purchasely.Builder(reactApplicationContext.applicationContext)
@@ -88,6 +89,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
       .userId(userId)
       .eventListener(eventListener)
       .logLevel(LogLevel.values()[logLevel])
+      .observerMode(observerMode)
       .build()
       .start()
 
@@ -129,6 +131,11 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   @ReactMethod
   fun setAttribute(attribute: Int, value: String) {
     Purchasely.setAttribute(Attribute.values()[attribute], value)
+  }
+
+  @ReactMethod
+  fun synchronize() {
+    Purchasely.synchronize()
   }
 
   @ReactMethod

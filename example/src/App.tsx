@@ -16,7 +16,8 @@ const App: React.FunctionComponent<{}> = () => {
     'afa96c76-1d8e-4e3c-a48f-204a3cd93a15',
     ['Google'],
     null,
-    LogLevels.WARNING
+    LogLevels.WARNING,
+    false
   );
   Purchasely.setLogLevel(LogLevels.DEBUG);
   Purchasely.isReadyToPurchase(true);
