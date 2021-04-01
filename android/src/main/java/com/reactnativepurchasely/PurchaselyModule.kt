@@ -27,6 +27,14 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     }
   }
 
+  private val purchaseListener: PurchaseListener = object: PurchaseListener {
+    override fun onPurchaseStateChanged(state: State) {
+      if(state is State.PurchaseComplete || state is State.RestorationComplete) {
+        sendEvent(reactApplicationContext, "PURCHASE_LISTENER", null)
+      }
+    }
+  }
+
   override fun getName(): String {
     return "Purchasely"
   }
@@ -40,6 +48,9 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     constants["productResultPurchased"] = PLYProductViewResult.PURCHASED.ordinal
     constants["productResultCancelled"] = PLYProductViewResult.CANCELLED.ordinal
     constants["productResultRestored"] = PLYProductViewResult.RESTORED.ordinal
+    constants["amplitudeSessionId"] = Attribute.AMPLITUDE_SESSION_ID.ordinal
+    constants["firebaseAppInstanceId"] = Attribute.FIREBASE_APP_INSTANCE_ID.ordinal
+    constants["airshipChannelId"] = Attribute.AIRSHIP_CHANNEL_ID.ordinal
     return constants
   }
 
@@ -68,7 +79,8 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   fun startWithAPIKey(apiKey: String,
                       stores: ReadableArray,
                       userId: String?,
-                      logLevel: Int) {
+                      logLevel: Int,
+                      observerMode: Boolean) {
     val storesInstances = getStoresInstances(stores.toArrayList())
 
     Purchasely.Builder(reactApplicationContext.applicationContext)
@@ -77,8 +89,11 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
       .userId(userId)
       .eventListener(eventListener)
       .logLevel(LogLevel.values()[logLevel])
+      .observerMode(observerMode)
       .build()
       .start()
+
+    Purchasely.purchaseListener = purchaseListener
   }
 
   @ReactMethod
@@ -92,8 +107,10 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   }
 
   @ReactMethod
-  fun userLogin(userId: String) {
-    Purchasely.userLogin(userId)
+  fun userLogin(userId: String, promise: Promise) {
+    Purchasely.userLogin(userId) { refresh ->
+        promise.resolve(refresh)
+    }
   }
 
   @ReactMethod
@@ -109,6 +126,16 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   @ReactMethod
   fun isReadyToPurchase(readyToPurchase: Boolean) {
     Purchasely.isReadyToPurchase = readyToPurchase
+  }
+
+  @ReactMethod
+  fun setAttribute(attribute: Int, value: String) {
+    Purchasely.setAttribute(Attribute.values()[attribute], value)
+  }
+
+  @ReactMethod
+  fun synchronize() {
+    Purchasely.synchronize()
   }
 
   @ReactMethod
@@ -190,33 +217,19 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
 
   @ReactMethod
   fun purchaseWithPlanVendorId(planVendorId: String, promise: Promise) {
-    val listener = object: PurchaseListener {
-      override fun onPurchaseStateChanged(state: State) {
-          when(state) {
-            is State.PurchaseComplete -> {
-                Purchasely.purchaseListener = null
-                promise.resolve(Arguments.makeNativeMap(state.plan?.toMap() ?: emptyMap()))
-            }
-            is State.PurchaseFailed -> {
-              Purchasely.purchaseListener = null
-              promise.reject(state.error)
-            }
-            is State.Error -> {
-              Purchasely.purchaseListener = null
-              promise.reject(state.error)
-            }
-            else -> {
-              //do nothing
-            }
-          }
-      }
-    }
-
     GlobalScope.launch {
       try {
         val plan = Purchasely.getPlan(planVendorId)
         if(plan != null) {
-          Purchasely.purchase(reactApplicationContext.currentActivity!!, plan, listener)
+          Purchasely.purchase(reactApplicationContext.currentActivity!!,
+            plan,
+            success = {
+              promise.resolve(Arguments.makeNativeMap(it?.toMap() ?: emptyMap()))
+            },
+            error = {
+              promise.reject(it)
+            }
+          )
         } else {
           promise.reject(IllegalStateException("plan $planVendorId not found"))
         }
@@ -228,33 +241,14 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
 
   @ReactMethod
   fun restoreAllProducts(promise: Promise) {
-    val listener = object: PurchaseListener {
-      override fun onPurchaseStateChanged(state: State) {
-        when(state) {
-          is State.RestorationComplete -> {
-            Purchasely.purchaseListener = null
-            promise.resolve(true)
-          }
-          is State.RestorationFailed -> {
-            Purchasely.purchaseListener = null
-            promise.reject(state.error)
-          }
-          is State.RestorationNoProducts -> {
-            Purchasely.purchaseListener = null
-            promise.resolve(false)
-          }
-          is State.Error -> {
-            Purchasely.purchaseListener = null
-            promise.reject(state.error)
-          }
-          else -> {
-            //do nothing
-          }
-        }
+    Purchasely.restoreAllProducts(
+      success = {
+        promise.resolve(true)
+      },
+      error = {
+        promise.reject(it)
       }
-    }
-
-    Purchasely.restoreAllProducts(listener)
+    )
   }
 
   @ReactMethod

@@ -24,7 +24,10 @@ RCT_EXPORT_MODULE(Purchasely);
 		@"logLevelError": @(LogLevelError),
 		@"productResultPurchased": @(PLYProductViewControllerResultPurchased),
 		@"productResultCancelled": @(PLYProductViewControllerResultCancelled),
-		@"productResultRestored": @(PLYProductViewControllerResultRestored)
+		@"productResultRestored": @(PLYProductViewControllerResultRestored),
+		@"amplitudeSessionId": @(PLYAttributeAmplitudeSessionId),
+		@"firebaseAppInstanceId": @(PLYAttributeFirebaseAppInstanceId),
+		@"airshipChannelId": @(PLYAttributeAirshipChannelId)
 	};
 }
 
@@ -52,20 +55,30 @@ RCT_EXPORT_MODULE(Purchasely);
 	return productViewResult;
 }
 
-RCT_EXPORT_METHOD(startWithAPIKey:(NSString * _Nonnull)apiKey stores:(NSArray * _Nullable)stores appUserId:(NSString * _Nullable)appUserId logLevel:(NSInteger)logLevel) {
-	[Purchasely startWithAPIKey:apiKey appUserId:appUserId observerMode:false eventDelegate:self uiDelegate:nil confirmPurchaseHandler:nil logLevel:logLevel];
+RCT_EXPORT_METHOD(startWithAPIKey:(NSString * _Nonnull)apiKey stores:(NSArray * _Nullable)stores userId:(NSString * _Nullable)userId logLevel:(NSInteger)logLevel observerMode:(BOOL)observerMode) {
+	[Purchasely startWithAPIKey:apiKey appUserId:userId observerMode:observerMode eventDelegate:self uiDelegate:nil confirmPurchaseHandler:nil logLevel:logLevel];
+	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(purchasePerformed) name:@"ply_purchasedSubscription" object:nil];
 }
 
 RCT_EXPORT_METHOD(setLogLevel:(NSInteger)logLevel) {
 	[Purchasely setLogLevel:logLevel];
 }
 
-RCT_EXPORT_METHOD(userLogin:(NSString * _Nullable)userId) {
-	[Purchasely userLoginWith: userId];
+RCT_EXPORT_METHOD(userLogin:(NSString * _Nonnull)userId
+				  resolve:(RCTPromiseResolveBlock)resolve
+				  reject:(RCTPromiseRejectBlock)reject)
+{
+	[Purchasely userLoginWith:userId shouldRefresh:^(BOOL shouldRefresh) {
+		resolve(@(shouldRefresh));
+	}];
 }
 
 RCT_EXPORT_METHOD(userLogout) {
 	[Purchasely userLogout];
+}
+
+RCT_EXPORT_METHOD(setAttribute:(NSInteger)attribute value:(NSString * _Nonnull)value) {
+	[Purchasely setAttribute:attribute value:value];
 }
 
 RCT_REMAP_METHOD(getAnonymousUserId,
@@ -218,11 +231,15 @@ RCT_EXPORT_METHOD(userSubscriptions:(RCTPromiseResolveBlock)resolve
 #pragma mark - Events
 
 - (NSArray<NSString *> *)supportedEvents {
-	return @[@"APP_CONFIGURED", @"APP_INSTALLED", @"APP_STARTED", @"APP_UPDATED", @"CANCELLATION_REASON_PUBLISHED", @"DEEPLINK_OPENED", @"IN_APP_DEFERRED", @"IN_APP_PURCHASE_FAILED", @"IN_APP_PURCHASED", @"IN_APP_PURCHASING", @"IN_APP_RENEWED", @"IN_APP_RESTORED", @"LINK_OPENED", @"LOGIN_TAPPED", @"PLAN_SELECTED", @"PRESENTATION_OPENED", @"PRESENTATION_SELECTED", @"PRESENTATION_VIEWED", @"PURCHASE_CANCELLED", @"PURCHASE_CANCELLED_BY_APP", @"PURCHASE_FROM_STORE_TAPPED", @"PURCHASE_TAPPED", @"RECEIPT_CREATED", @"RECEIPT_FAILED", @"RECEIPT_VALIDATED", @"RESTORE_FAILED", @"RESTORE_STARTED", @"RESTORE_SUCCEEDED", @"STORE_PRODUCT_FETCH_FAILED", @"SUBSCRIPTION_CANCEL_TAPPED", @"SUBSCRIPTION_DETAILS_VIEWED", @"SUBSCRIPTION_PLAN_TAPPED", @"SUBSCRIPTIONS_LIST_VIEWED"];
+	return @[@"APP_CONFIGURED", @"APP_INSTALLED", @"APP_STARTED", @"APP_UPDATED", @"CANCELLATION_REASON_PUBLISHED", @"DEEPLINK_OPENED", @"IN_APP_DEFERRED", @"IN_APP_PURCHASE_FAILED", @"IN_APP_PURCHASED", @"IN_APP_PURCHASING", @"IN_APP_RENEWED", @"IN_APP_RESTORED", @"LINK_OPENED", @"LOGIN_TAPPED", @"PLAN_SELECTED", @"PRESENTATION_OPENED", @"PRESENTATION_SELECTED", @"PRESENTATION_VIEWED", @"PURCHASE_CANCELLED", @"PURCHASE_CANCELLED_BY_APP", @"PURCHASE_FROM_STORE_TAPPED", @"PURCHASE_TAPPED", @"RECEIPT_CREATED", @"RECEIPT_FAILED", @"RECEIPT_VALIDATED", @"RESTORE_FAILED", @"RESTORE_STARTED", @"RESTORE_SUCCEEDED", @"STORE_PRODUCT_FETCH_FAILED", @"SUBSCRIPTION_CANCEL_TAPPED", @"SUBSCRIPTION_DETAILS_VIEWED", @"SUBSCRIPTION_PLAN_TAPPED", @"SUBSCRIPTIONS_LIST_VIEWED", @"PURCHASE_LISTENER"];
 }
 
 - (void)eventTriggered:(enum PLYEvent)event properties:(NSDictionary<NSString *,id> * _Nullable)properties {
 	[self sendEventWithName: [NSString fromPLYEvent:event] body: properties];
+}
+
+- (void)purchasePerformed {
+	[self sendEventWithName: @"PURCHASE_LISTENER" body: nil];
 }
 
 + (BOOL)requiresMainQueueSetup {

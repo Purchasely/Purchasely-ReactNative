@@ -8,6 +8,9 @@ interface ConstantsIOS {
   productResultPurchased: number;
   productResultCancelled: number;
   productResultRestored: number;
+  amplitudeSessionId: number;
+  firebaseAppInstanceId: number;
+  airshipChannelId: number;
 }
 interface ConstantsAndroid {
   logLevelDebug: number;
@@ -18,6 +21,9 @@ interface ConstantsAndroid {
   productResultPurchased: number;
   productResultCancelled: number;
   productResultRestored: number;
+  amplitudeSessionId: number;
+  firebaseAppInstanceId: number;
+  airshipChannelId: number;
 }
 
 const constants = NativeModules.Purchasely.getConstants() as
@@ -47,6 +53,12 @@ export enum LogLevels {
   INFO = constants.logLevelInfo,
   WARNING = constants.logLevelWarn,
   ERROR = constants.logLevelError,
+}
+
+export enum Attributes {
+  AMPLITUDE_SESSION_ID = constants.amplitudeSessionId,
+  FIREBASE_APP_INSTANCE_ID = constants.firebaseAppInstanceId,
+  AIRSHIP_CHANNEL_ID = constants.airshipChannelId,
 }
 
 export type PurchaselyPlan = {
@@ -93,14 +105,16 @@ type PurchaselyType = {
     apiKey: string,
     stores: string[],
     userId: string | null,
-    logLevel: number
+    logLevel: number,
+    observerMode: boolean | false
   ): void;
   close(): void;
   getAnonymousUserId(): Promise<string>;
-  userLogin(userId: string): void;
+  userLogin(userId: string): Promise<boolean>;
   userLogout(): void;
   setLogLevel(logLevel: LogLevels): void;
   isReadyToPurchase(isReadyToPurchase: boolean): void;
+  setAttribute(attribute: Attributes, value: string): void;
   presentPresentationWithIdentifier(
     presentationVendorId: string | null
   ): Promise<PresentPresentationResult>;
@@ -120,6 +134,7 @@ type PurchaselyType = {
   userSubscriptions(): Promise<PurchaselySubscription[]>;
   presentSubscriptions(): void;
   handle(deeplink: string | null): Promise<boolean>;
+  synchronize(): void;
 };
 
 const RNPurchasely = NativeModules.Purchasely as PurchaselyType;
@@ -233,11 +248,23 @@ const removeAllListeners = () => {
   PurchaselyEventEmitter.removeAllListeners('SUBSCRIPTION_PLAN_TAPPED');
 };
 
+type PurchaseListenerCallback = () => void;
+
+const addPurchasedListener = (callback: PurchaseListenerCallback) => {
+  return PurchaselyEventEmitter.addListener('PURCHASE_LISTENER', callback);
+};
+
+const removePurchasedListener = () => {
+  return PurchaselyEventEmitter.removeAllListeners('PURCHASE_LISTENER');
+};
+
 const Purchasely = {
   ...RNPurchasely,
   addListener,
   removeListener,
   removeAllListeners,
+  addPurchasedListener,
+  removePurchasedListener,
 };
 
 export default Purchasely;

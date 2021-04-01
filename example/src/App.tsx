@@ -16,20 +16,32 @@ const App: React.FunctionComponent<{}> = () => {
     'afa96c76-1d8e-4e3c-a48f-204a3cd93a15',
     ['Google'],
     null,
-    LogLevels.WARNING
+    LogLevels.WARNING,
+    false
   );
   Purchasely.setLogLevel(LogLevels.DEBUG);
-  Purchasely.userLogin('DEMO_USER');
   Purchasely.isReadyToPurchase(true);
 
-  /*Purchasely.addListener('PRESENTATION_VIEWED', (event) => {
+  Purchasely.addListener('PRESENTATION_VIEWED', (event) => {
     console.log(event);
-  });*/
+  });
   // Purchasely.removeAllListeners();
+
+  Purchasely.addPurchasedListener(() => {
+    // User has successfully purchased a product, reload content
+    console.log('User has purchased');
+  });
+
+  // Purchasely.setAttribute(Purchasely.airshipChannelId, 'test0');
 
   React.useEffect(() => {
     (async () => {
       setAnonymousUserId(await Purchasely.getAnonymousUserId());
+      Purchasely.userLogin('DEMO_USER').then((refresh) => {
+        if (refresh) {
+          // Call your backend to refresh user information
+        }
+      });
       const product = await Purchasely.productWithIdentifier('PURCHASELY_PLUS');
       console.log('Product', product);
       const plan = await Purchasely.planWithIdentifier(

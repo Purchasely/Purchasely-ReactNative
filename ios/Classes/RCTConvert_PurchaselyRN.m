@@ -22,4 +22,9 @@ RCT_ENUM_CONVERTER(PLYProductViewControllerResult, (@{ @"productResultPurchased"
                                                        @"productResultRestored": @(PLYProductViewControllerResultRestored)}),
                    PLYProductViewControllerResultPurchased, integerValue)
 
+RCT_ENUM_CONVERTER(PLYAttribute, (@{ @"amplitudeSessionId": @(PLYAttributeAmplitudeSessionId),
+									 @"firebaseAppInstanceId": @(PLYAttributeFirebaseAppInstanceId),
+									 @"airshipChannelId": @(PLYAttributeAirshipChannelId)}),
+				   PLYAttributeAmplitudeSessionId, integerValue)
+
 @end
