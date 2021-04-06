@@ -32,7 +32,7 @@ const App: React.FunctionComponent<{}> = () => {
     console.log('User has purchased');
   });
 
-  // Purchasely.setAttribute(Purchasely.airshipChannelId, 'test0');
+  //Purchasely.setAttribute(Attributes.FIREBASE_APP_INSTANCE_ID, 'test0');
 
   React.useEffect(() => {
     (async () => {
