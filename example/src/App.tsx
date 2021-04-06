@@ -22,7 +22,7 @@ const App: React.FunctionComponent<{}> = () => {
   Purchasely.setLogLevel(LogLevels.DEBUG);
   Purchasely.isReadyToPurchase(true);
 
-  Purchasely.addListener('PRESENTATION_VIEWED', (event) => {
+  Purchasely.addEventListener((event) => {
     console.log(event);
   });
   // Purchasely.removeAllListeners();

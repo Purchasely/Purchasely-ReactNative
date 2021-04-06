@@ -20,9 +20,14 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
       //Log.d("Purchasely", "Event from Module : ${event::class.java.simpleName}")
       //Log.d("Purchasely", "${event.name} : ${event.properties?.toMap()}")
       if (event.properties != null) {
-        sendEvent(reactApplicationContext, event.name, Arguments.makeNativeMap(event.properties!!.toMap()))
+        val map = mapOf(
+          Pair("name", event.name),
+          Pair("properties", event.properties!!.toMap())
+        )
+        sendEvent(reactApplicationContext, "PURCHASELY_EVENTS", Arguments.makeNativeMap(map))
       } else {
-        sendEvent(reactApplicationContext, event.name, Arguments.createMap())
+        val map = mapOf(Pair("name", event.name))
+        sendEvent(reactApplicationContext, "PURCHASELY_EVENTS", Arguments.makeNativeMap(map))
       }
     }
   }
