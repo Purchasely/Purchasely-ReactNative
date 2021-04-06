@@ -181,21 +181,21 @@ type PurchaselyEventMap = {
   properties?: {
     error?: { message?: string };
     transaction?: {
-      originalTransactionIdentifier?: string;
-      payment?: { productIdentifier?: string; quantity: number };
+      original_transaction_identifier?: string;
+      payment?: { product_identifier?: string; quantity: number };
     };
-    url?: { absoluteUrl?: string };
-    payment?: { productIdentifier?: string; quantity: number };
+    url?: { absolute_url?: string };
+    payment?: { product_identifier?: string; quantity: number };
     product?: {
       amount?: number;
       android_product_id?: string;
       currency?: string;
-      vendorId?: string;
+      vendor_id?: string;
     };
-    displayedPresentation?: string;
-    plan?: { vendorId?: string };
-    presentation?: { vendorId?: string };
-    cancellationReason?: { code: string; currentLocale: string };
+    displayed_presentation?: string;
+    plan?: { vendor_id?: string };
+    presentation?: { vendor_id?: string };
+    reason?: { code: string; current_locale: string };
     deeplink?: { description?: string; url?: string };
   };
 };
