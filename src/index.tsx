@@ -181,6 +181,7 @@ type PurchaselyEventMap = {
   properties?: {
     error?: { message?: string };
     transaction?: {
+      transaction_identifier?: string;
       original_transaction_identifier?: string;
       payment?: { product_identifier?: string; quantity: number };
     };
