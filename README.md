@@ -22,8 +22,7 @@ Purchasely.startWithAPIKey(
   LogLevels.WARNING
 );
 
-Purchasely.presentProductWithIdentifier(
-  'PURCHASELY_PLUS',
+Purchasely.presentPresentationWithIdentifier(
   null,
   (msg) => {
     console.error(msg);
