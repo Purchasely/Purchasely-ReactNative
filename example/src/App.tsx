@@ -6,7 +6,7 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
-import Purchasely, { LogLevels } from 'react-native-purchasely';
+import Purchasely, { LogLevels, Attributes } from 'react-native-purchasely';
 
 const App: React.FunctionComponent<{}> = () => {
   const [anonymousUserId, setAnonymousUserId] = React.useState<string>('');
@@ -32,7 +32,7 @@ const App: React.FunctionComponent<{}> = () => {
     console.log('User has purchased');
   });
 
-  //Purchasely.setAttribute(Attributes.FIREBASE_APP_INSTANCE_ID, 'test0');
+  Purchasely.setAttribute(Attributes.FIREBASE_APP_INSTANCE_ID, 'test0');
 
   React.useEffect(() => {
     (async () => {
