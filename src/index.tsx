@@ -177,75 +177,43 @@ type PurchaselyEventsNames =
   | 'SUBSCRIPTION_PLAN_TAPPED';
 
 type PurchaselyEventMap = {
-  error?: { message?: string };
-  transaction?: {
-    originalTransactionIdentifier?: string;
-    payment?: { productIdentifier?: string; quantity: number };
+  name: PurchaselyEventsNames;
+  properties?: {
+    error?: { message?: string };
+    transaction?: {
+      transaction_identifier?: string;
+      original_transaction_identifier?: string;
+      payment?: { product_identifier?: string; quantity: number };
+    };
+    url?: { absolute_url?: string };
+    payment?: { product_identifier?: string; quantity: number };
+    product?: {
+      amount?: number;
+      currency?: string;
+      intro_amount?: number;
+      intro_period?: string;
+      intro_duration?: number;
+      intro_cycles?: number;
+      apple_product_id?: string;
+      android_product_id?: string;
+      vendor_id?: string;
+    };
+    displayed_presentation?: string;
+    plan?: { vendor_id?: string };
+    presentation?: { vendor_id?: string };
+    reason?: { code: string; current_locale: string };
+    deeplink?: { description?: string; url?: string };
   };
-  url?: { absoluteUrl?: string };
-  payment?: { productIdentifier?: string; quantity: number };
-  product?: {
-    amount?: number;
-    android_product_id?: string;
-    currency?: string;
-    vendorId?: string;
-  };
-  displayedPresentation?: string;
-  plan?: { vendorId?: string };
-  cancellationReason?: { code: string; currentLocale: string };
-  deeplink?: { description?: string; url?: string };
 };
 
-type EventListenerCallback = (event: PurchaselyEventMap | '') => void;
+type EventListenerCallback = (event: PurchaselyEventMap) => void;
 
-const addListener = (
-  event: PurchaselyEventsNames,
-  callback: EventListenerCallback
-) => {
-  return PurchaselyEventEmitter.addListener(event, callback);
+const addEventListener = (callback: EventListenerCallback) => {
+  return PurchaselyEventEmitter.addListener('PURCHASELY_EVENTS', callback);
 };
 
-const removeListener = (
-  event: PurchaselyEventsNames,
-  callback: EventListenerCallback
-) => {
-  return PurchaselyEventEmitter.removeListener(event, callback);
-};
-
-const removeAllListeners = () => {
-  PurchaselyEventEmitter.removeAllListeners('APP_INSTALLED');
-  PurchaselyEventEmitter.removeAllListeners('APP_UPDATED');
-  PurchaselyEventEmitter.removeAllListeners('APP_CONFIGURED');
-  PurchaselyEventEmitter.removeAllListeners('APP_STARTED');
-  PurchaselyEventEmitter.removeAllListeners('CANCELLATION_REASON_PUBLISHED');
-  PurchaselyEventEmitter.removeAllListeners('DEEPLINK_OPENED');
-  PurchaselyEventEmitter.removeAllListeners('IN_APP_PURCHASING');
-  PurchaselyEventEmitter.removeAllListeners('IN_APP_PURCHASED');
-  PurchaselyEventEmitter.removeAllListeners('IN_APP_RENEWED');
-  PurchaselyEventEmitter.removeAllListeners('IN_APP_RESTORED');
-  PurchaselyEventEmitter.removeAllListeners('IN_APP_DEFERRED');
-  PurchaselyEventEmitter.removeAllListeners('IN_APP_PURCHASE_FAILED');
-  PurchaselyEventEmitter.removeAllListeners('LINK_OPENED');
-  PurchaselyEventEmitter.removeAllListeners('LOGIN_TAPPED');
-  PurchaselyEventEmitter.removeAllListeners('PLAN_SELECTED');
-  PurchaselyEventEmitter.removeAllListeners('PRESENTATION_OPENED');
-  PurchaselyEventEmitter.removeAllListeners('PRESENTATION_SELECTED');
-  PurchaselyEventEmitter.removeAllListeners('PRESENTATION_VIEWED');
-  PurchaselyEventEmitter.removeAllListeners('PURCHASE_FROM_STORE_TAPPED');
-  PurchaselyEventEmitter.removeAllListeners('PURCHASE_TAPPED');
-  PurchaselyEventEmitter.removeAllListeners('PURCHASE_CANCELLED');
-  PurchaselyEventEmitter.removeAllListeners('PURCHASE_CANCELLED_BY_APP');
-  PurchaselyEventEmitter.removeAllListeners('RECEIPT_CREATED');
-  PurchaselyEventEmitter.removeAllListeners('RECEIPT_VALIDATED');
-  PurchaselyEventEmitter.removeAllListeners('RECEIPT_FAILED');
-  PurchaselyEventEmitter.removeAllListeners('RESTORE_STARTED');
-  PurchaselyEventEmitter.removeAllListeners('RESTORE_SUCCEEDED');
-  PurchaselyEventEmitter.removeAllListeners('RESTORE_FAILED');
-  PurchaselyEventEmitter.removeAllListeners('STORE_PRODUCT_FETCH_FAILED');
-  PurchaselyEventEmitter.removeAllListeners('SUBSCRIPTIONS_LIST_VIEWED');
-  PurchaselyEventEmitter.removeAllListeners('SUBSCRIPTION_DETAILS_VIEWED');
-  PurchaselyEventEmitter.removeAllListeners('SUBSCRIPTION_CANCEL_TAPPED');
-  PurchaselyEventEmitter.removeAllListeners('SUBSCRIPTION_PLAN_TAPPED');
+const removeEventListener = (callback: EventListenerCallback) => {
+  return PurchaselyEventEmitter.removeListener('PURCHASELY_EVENTS', callback);
 };
 
 type PurchaseListenerCallback = () => void;
@@ -260,9 +228,8 @@ const removePurchasedListener = () => {
 
 const Purchasely = {
   ...RNPurchasely,
-  addListener,
-  removeListener,
-  removeAllListeners,
+  addEventListener,
+  removeEventListener,
   addPurchasedListener,
   removePurchasedListener,
 };

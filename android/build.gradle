@@ -131,5 +131,5 @@ dependencies {
   implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.4.2'
   implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.4.2'
 
-  api 'io.purchasely:core:2.4.0'
+  api 'io.purchasely:core:2.4.1'
 }

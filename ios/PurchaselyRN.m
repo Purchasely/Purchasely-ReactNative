@@ -231,11 +231,18 @@ RCT_EXPORT_METHOD(userSubscriptions:(RCTPromiseResolveBlock)resolve
 #pragma mark - Events
 
 - (NSArray<NSString *> *)supportedEvents {
-	return @[@"APP_CONFIGURED", @"APP_INSTALLED", @"APP_STARTED", @"APP_UPDATED", @"CANCELLATION_REASON_PUBLISHED", @"DEEPLINK_OPENED", @"IN_APP_DEFERRED", @"IN_APP_PURCHASE_FAILED", @"IN_APP_PURCHASED", @"IN_APP_PURCHASING", @"IN_APP_RENEWED", @"IN_APP_RESTORED", @"LINK_OPENED", @"LOGIN_TAPPED", @"PLAN_SELECTED", @"PRESENTATION_OPENED", @"PRESENTATION_SELECTED", @"PRESENTATION_VIEWED", @"PURCHASE_CANCELLED", @"PURCHASE_CANCELLED_BY_APP", @"PURCHASE_FROM_STORE_TAPPED", @"PURCHASE_TAPPED", @"RECEIPT_CREATED", @"RECEIPT_FAILED", @"RECEIPT_VALIDATED", @"RESTORE_FAILED", @"RESTORE_STARTED", @"RESTORE_SUCCEEDED", @"STORE_PRODUCT_FETCH_FAILED", @"SUBSCRIPTION_CANCEL_TAPPED", @"SUBSCRIPTION_DETAILS_VIEWED", @"SUBSCRIPTION_PLAN_TAPPED", @"SUBSCRIPTIONS_LIST_VIEWED", @"PURCHASE_LISTENER"];
+	return @[@"PURCHASELY_EVENTS", @"PURCHASE_LISTENER"];
 }
 
 - (void)eventTriggered:(enum PLYEvent)event properties:(NSDictionary<NSString *,id> * _Nullable)properties {
-	[self sendEventWithName: [NSString fromPLYEvent:event] body: properties];
+
+	if (properties != nil) {
+		NSDictionary<NSString *, id> *body = @{@"name": [NSString fromPLYEvent:event], @"properties": properties};
+		[self sendEventWithName: @"PURCHASELY_EVENTS" body: body];
+	} else {
+		NSDictionary<NSString *, id> *body = @{@"name": [NSString fromPLYEvent:event]};
+		[self sendEventWithName:@"PURCHASELY_EVENTS" body:body];
+	}
 }
 
 - (void)purchasePerformed {
