@@ -188,8 +188,13 @@ type PurchaselyEventMap = {
     payment?: { product_identifier?: string; quantity: number };
     product?: {
       amount?: number;
-      android_product_id?: string;
       currency?: string;
+      intro_amount?: number;
+      intro_period?: string;
+      intro_duration?: number;
+      intro_cycles?: number;
+      apple_product_id?: string;
+      android_product_id?: string;
       vendor_id?: string;
     };
     displayed_presentation?: string;
