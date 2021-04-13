@@ -96,7 +96,10 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
       .logLevel(LogLevel.values()[logLevel])
       .observerMode(observerMode)
       .build()
-      .start()
+
+    Purchasely.appTechnology = PLYAppTechnology.REACT_NATIVE
+
+    Purchasely.start()
 
     Purchasely.purchaseListener = purchaseListener
   }
