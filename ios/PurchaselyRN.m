@@ -16,6 +16,13 @@
 
 RCT_EXPORT_MODULE(Purchasely);
 
+- (instancetype)init {
+	self = [super init];
+
+	[Purchasely setAppTechnology:PLYAppTechnologyReactNative];
+	return self;
+}
+
 - (NSDictionary *)constantsToExport {
 	return @{
 		@"logLevelDebug": @(LogLevelDebug),
