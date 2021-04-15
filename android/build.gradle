@@ -54,7 +54,6 @@ repositories {
   mavenCentral()
   jcenter()
   google()
-  maven { url  "https://dl.bintray.com/purchasely/Purchasely" }
 
   def found = false
   def defaultDir = null
@@ -131,5 +130,5 @@ dependencies {
   implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.4.2'
   implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.4.2'
 
-  api 'io.purchasely:core:2.4.3'
+  api 'io.purchasely:core:2.4.4'
 }
