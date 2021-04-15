@@ -12,3 +12,4 @@ This file provides the underlying native SDK versions that the React Native SDK 
 | 1.4.0   | 2.4.0       | 2.4.0           |
 | 1.4.1   | 2.4.2       | 2.4.1           |
 | 1.4.2   | 2.4.3       | 2.4.3           |
+| 1.4.3   | 2.4.3       | 2.4.4           |
