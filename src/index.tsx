@@ -215,8 +215,8 @@ const addEventListener = (callback: EventListenerCallback) => {
   return PurchaselyEventEmitter.addListener('PURCHASELY_EVENTS', callback);
 };
 
-const removeEventListener = (callback: EventListenerCallback) => {
-  return PurchaselyEventEmitter.removeListener('PURCHASELY_EVENTS', callback);
+const removeEventListener = () => {
+  return PurchaselyEventEmitter.removeAllListeners('PURCHASELY_EVENTS');
 };
 
 type PurchaseListenerCallback = () => void;
