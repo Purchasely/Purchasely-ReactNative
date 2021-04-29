@@ -107,7 +107,14 @@ RCT_EXPORT_METHOD(presentPresentationWithIdentifier:(NSString * _Nullable)presen
 		UIViewController *ctrl = [Purchasely presentationControllerWith:presentationVendorId completion:^(enum PLYProductViewControllerResult result, PLYPlan * _Nullable plan) {
 			resolve([self resultDictionaryForPresentationController:result plan:plan]);
 		}];
-		[Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
+
+		UINavigationController *navCtrl = [[UINavigationController alloc] initWithRootViewController:ctrl];
+		[navCtrl.navigationBar setTranslucent:YES];
+		[navCtrl.navigationBar setBackgroundImage:[UIImage new] forBarMetrics:UIBarMetricsDefault];
+		[navCtrl.navigationBar setShadowImage: [UIImage new]];
+		[navCtrl.navigationBar setTintColor: [UIColor whiteColor]];
+
+		[Purchasely showController:navCtrl type: PLYUIControllerTypeProductPage];
 	});
 }
 
