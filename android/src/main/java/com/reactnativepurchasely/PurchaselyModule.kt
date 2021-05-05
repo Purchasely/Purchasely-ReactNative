@@ -77,6 +77,14 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
         Log.e("Purchasely", e.message, e)
       }
     }
+    if (stores.contains("Amazon")
+      && Package.getPackage("io.purchasely.amazon") != null) {
+      try {
+        result.add(Class.forName("io.purchasely.amazon.AmazonStore").newInstance() as Store)
+      } catch (e: Exception) {
+        Log.e("Purchasely", e.message, e)
+      }
+    }
     return result
   }
 
