@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import com.reactnativepurchasely.R
 import io.purchasely.views.subscriptions.PLYSubscriptionsFragment
+import io.purchasely.ext.Purchasely
 
 class PLYSubscriptionsActivity : AppCompatActivity() {
 
@@ -14,7 +15,7 @@ class PLYSubscriptionsActivity : AppCompatActivity() {
     supportFragmentManager
               .beginTransaction()
               .addToBackStack(null)
-              .replace(R.id.fragmentContainer, PLYSubscriptionsFragment(), "SubscriptionsFragment")
+              .replace(R.id.fragmentContainer, Purchasely.subscriptionsFragment(), "SubscriptionsFragment")
               .commitAllowingStateLoss()
 
     supportFragmentManager.addOnBackStackChangedListener {
