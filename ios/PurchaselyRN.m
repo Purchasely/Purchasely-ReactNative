@@ -150,7 +150,11 @@ RCT_EXPORT_METHOD(presentSubscriptions)
 		UIViewController *ctrl = [Purchasely subscriptionsController];
 		UINavigationController *navCtrl = [[UINavigationController alloc] initWithRootViewController:ctrl];
 
+#if TARGET_OS_TV
+		[navCtrl setNavigationBarHidden:YES];
+#else
 		ctrl.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem: UIBarButtonSystemItemDone target:navCtrl action:@selector(close)];
+#endif
 		[Purchasely showController:navCtrl type: PLYUIControllerTypeSubscriptionList];
 	});
 }
