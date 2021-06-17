@@ -135,6 +135,7 @@ type PurchaselyType = {
   presentSubscriptions(): void;
   handle(deeplink: string | null): Promise<boolean>;
   synchronize(): void;
+  setDefaultPresentationResultHandler(): Promise<PresentPresentationResult>;
 };
 
 const RNPurchasely = NativeModules.Purchasely as PurchaselyType;
@@ -229,12 +230,33 @@ const removePurchasedListener = () => {
   return PurchaselyEventEmitter.removeAllListeners('PURCHASE_LISTENER');
 };
 
+type DefaultPresentationResultCallback = (
+  result: PresentPresentationResult
+) => void;
+
+const setDefaultPresentationResultCallback = (
+  callback: DefaultPresentationResultCallback
+) => {
+  Purchasely.setDefaultPresentationResultHandler().then((result) => {
+    setDefaultPresentationResultCallback(callback);
+    try {
+      callback(result);
+    } catch (e) {
+      console.warn(
+        '[Purchasely] Error with callback for default presentation result',
+        e
+      );
+    }
+  });
+};
+
 const Purchasely = {
   ...RNPurchasely,
   addEventListener,
   removeEventListener,
   addPurchasedListener,
   removePurchasedListener,
+  setDefaultPresentationResultCallback,
 };
 
 export default Purchasely;

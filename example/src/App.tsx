@@ -22,6 +22,10 @@ const App: React.FunctionComponent<{}> = () => {
   Purchasely.setLogLevel(LogLevels.DEBUG);
   Purchasely.isReadyToPurchase(true);
 
+  Purchasely.setDefaultPresentationResultCallback((result) => {
+    console.log('Result is ' + result.result);
+  });
+
   Purchasely.addEventListener((event) => {
     console.log(event);
   });

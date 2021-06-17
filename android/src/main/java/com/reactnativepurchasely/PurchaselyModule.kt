@@ -150,6 +150,14 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   }
 
   @ReactMethod
+  fun setDefaultPresentationResultHandler(promise: Promise) {
+    defaultPurchasePromise = promise
+    Purchasely.setDefaultPresentationResultHandler { result, plan ->
+      sendPurchaseResult(result, plan)
+    }
+  }
+
+  @ReactMethod
   fun synchronize() {
     Purchasely.synchronize()
   }
@@ -314,6 +322,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
 
   companion object {
     var purchasePromise: Promise? = null
+    var defaultPurchasePromise: Promise? = null
 
     fun sendPurchaseResult(result: PLYProductViewResult, plan: PLYPlan?) {
       val productViewResult = when(result) {
@@ -325,7 +334,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
       val map: MutableMap<String, Any?> = HashMap()
       map["result"] = productViewResult
       map["plan"] = plan?.toMap()
-      purchasePromise?.resolve(Arguments.makeNativeMap(map))
+      purchasePromise?.resolve(Arguments.makeNativeMap(map)) ?: defaultPurchasePromise?.resolve(Arguments.makeNativeMap(map))
     }
   }
 }
