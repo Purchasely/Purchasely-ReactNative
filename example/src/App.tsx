@@ -19,6 +19,8 @@ const App: React.FunctionComponent<{}> = () => {
     LogLevels.WARNING,
     false
   );
+
+  Purchasely.userLogin('JEFF');
   Purchasely.setLogLevel(LogLevels.DEBUG);
   Purchasely.isReadyToPurchase(true);
 
