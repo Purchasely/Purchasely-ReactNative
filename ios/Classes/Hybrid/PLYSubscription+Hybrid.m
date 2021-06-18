@@ -11,30 +11,36 @@
 @implementation PLYSubscription (Hybrid)
 
 - (NSDictionary *)asDictionary {
-  NSMutableDictionary<NSString *, NSObject *> *dict = [NSMutableDictionary new];
+	NSMutableDictionary<NSString *, NSObject *> *dict = [NSMutableDictionary new];
 
-  [dict setObject:self.plan.asDictionary forKey:@"plan"];
+	[dict setObject:self.plan.asDictionary forKey:@"plan"];
 
-  switch (self.subscriptionSource) {
-    case PLYSubscriptionSourceAppStore:
-      [dict setObject:@"APPSTORE" forKey:@"subscriptionSource"];
-      break;
-    case PLYSubscriptionSourcePlayStore:
-      [dict setObject:@"PLAYSTORE" forKey:@"subscriptionSource"];
-      break;
-    case PLYSubscriptionSourceNone:
-      break;
-  }
+	switch (self.subscriptionSource) {
+		case PLYSubscriptionSourceAppleAppStore:
+			[dict setObject:@"sourceAppStore" forKey:@"subscriptionSource"];
+			break;
+		case PLYSubscriptionSourceGooglePlayStore:
+			[dict setObject:@"sourcePlayStore" forKey:@"subscriptionSource"];
+			break;
+		case PLYSubscriptionSourceAmazonAppstore:
+			[dict setObject:@"sourceAmazonAppstore" forKey:@"subscriptionSource"];
+			break;
+		case PLYSubscriptionSourceHuaweiAppGallery:
+			[dict setObject:@"sourceHuaweiAppGallery" forKey:@"subscriptionSource"];
+			break;
+		case PLYSubscriptionSourceNone:
+			break;
+	}
 
-  if (self.nextRenewalDate != nil) {
-    [dict setObject:@(self.nextRenewalDate.timeIntervalSince1970) forKey:@"nextRenewalDate"];
-  }
+	if (self.nextRenewalDate != nil) {
+		[dict setObject:@(self.nextRenewalDate.timeIntervalSince1970) forKey:@"nextRenewalDate"];
+	}
 
-  if (self.cancelledDate != nil) {
-    [dict setObject:@(self.cancelledDate.timeIntervalSince1970) forKey:@"cancelledDate"];
-  }
+	if (self.cancelledDate != nil) {
+		[dict setObject:@(self.cancelledDate.timeIntervalSince1970) forKey:@"cancelledDate"];
+	}
 
-  return dict;
+	return dict;
 }
 
 @end

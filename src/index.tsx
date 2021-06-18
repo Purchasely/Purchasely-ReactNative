@@ -8,6 +8,10 @@ interface ConstantsIOS {
   productResultPurchased: number;
   productResultCancelled: number;
   productResultRestored: number;
+  sourceAppStore: number;
+  sourcePlayStore: number;
+  sourceHuaweiAppGallery: number;
+  sourceAmazonAppstore: number;
   amplitudeSessionId: number;
   firebaseAppInstanceId: number;
   airshipChannelId: number;
@@ -21,6 +25,10 @@ interface ConstantsAndroid {
   productResultPurchased: number;
   productResultCancelled: number;
   productResultRestored: number;
+  sourceAppStore: number;
+  sourcePlayStore: number;
+  sourceHuaweiAppGallery: number;
+  sourceAmazonAppstore: number;
   amplitudeSessionId: number;
   firebaseAppInstanceId: number;
   airshipChannelId: number;
@@ -55,6 +63,13 @@ export enum LogLevels {
   ERROR = constants.logLevelError,
 }
 
+export enum SubscriptionSource {
+  APPLE_APP_STORE = constants.sourceAppStore,
+  GOOGLE_PLAY_STORE = constants.sourcePlayStore,
+  HUAWEI_APP_GALLERY = constants.sourceHuaweiAppGallery,
+  AMAZON_APPSTORE = constants.sourceAmazonAppstore,
+}
+
 export enum Attributes {
   AMPLITUDE_SESSION_ID = constants.amplitudeSessionId,
   FIREBASE_APP_INSTANCE_ID = constants.firebaseAppInstanceId,
@@ -87,7 +102,7 @@ export type PurchaselyProduct = {
 export type PurchaselySubscription = {
   id: number;
   purchaseToken: string;
-  subscriptionSource: number;
+  subscriptionSource: SubscriptionSource;
   nextRenewalDate: number;
   cancelledDate: number;
   plan: PurchaselyPlan;
@@ -135,6 +150,7 @@ type PurchaselyType = {
   presentSubscriptions(): void;
   handle(deeplink: string | null): Promise<boolean>;
   synchronize(): void;
+  setDefaultPresentationResultHandler(): Promise<PresentPresentationResult>;
 };
 
 const RNPurchasely = NativeModules.Purchasely as PurchaselyType;
@@ -229,12 +245,33 @@ const removePurchasedListener = () => {
   return PurchaselyEventEmitter.removeAllListeners('PURCHASE_LISTENER');
 };
 
+type DefaultPresentationResultCallback = (
+  result: PresentPresentationResult
+) => void;
+
+const setDefaultPresentationResultCallback = (
+  callback: DefaultPresentationResultCallback
+) => {
+  Purchasely.setDefaultPresentationResultHandler().then((result) => {
+    setDefaultPresentationResultCallback(callback);
+    try {
+      callback(result);
+    } catch (e) {
+      console.warn(
+        '[Purchasely] Error with callback for default presentation result',
+        e
+      );
+    }
+  });
+};
+
 const Purchasely = {
   ...RNPurchasely,
   addEventListener,
   removeEventListener,
   addPurchasedListener,
   removePurchasedListener,
+  setDefaultPresentationResultCallback,
 };
 
 export default Purchasely;

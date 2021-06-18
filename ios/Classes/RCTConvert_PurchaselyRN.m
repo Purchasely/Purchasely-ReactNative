@@ -27,4 +27,9 @@ RCT_ENUM_CONVERTER(PLYAttribute, (@{ @"amplitudeSessionId": @(PLYAttributeAmplit
 									 @"airshipChannelId": @(PLYAttributeAirshipChannelId)}),
 				   PLYAttributeAmplitudeSessionId, integerValue)
 
+RCT_ENUM_CONVERTER(PLYSubscriptionSource, (@{ @"sourceAppStore": @(PLYSubscriptionSourceAppleAppStore),
+								 @"sourcePlayStore": @(PLYSubscriptionSourceGooglePlayStore),
+								 @"sourceHuaweiAppGallery": @(PLYSubscriptionSourceHuaweiAppGallery),
+								 @"sourceAmazonAppstore": @(PLYSubscriptionSourceAmazonAppstore)}),
+				   PLYSubscriptionSourceNone, integerValue)
 @end

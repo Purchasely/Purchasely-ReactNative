@@ -32,6 +32,10 @@ RCT_EXPORT_MODULE(Purchasely);
 		@"productResultPurchased": @(PLYProductViewControllerResultPurchased),
 		@"productResultCancelled": @(PLYProductViewControllerResultCancelled),
 		@"productResultRestored": @(PLYProductViewControllerResultRestored),
+		@"sourceAppStore": @(PLYSubscriptionSourceAppleAppStore),
+		@"sourcePlayStore": @(PLYSubscriptionSourceGooglePlayStore),
+		@"sourceHuaweiAppGallery": @(PLYSubscriptionSourceHuaweiAppGallery),
+		@"sourceAmazonAppstore": @(PLYSubscriptionSourceAmazonAppstore),
 		@"amplitudeSessionId": @(PLYAttributeAmplitudeSessionId),
 		@"firebaseAppInstanceId": @(PLYAttributeFirebaseAppInstanceId),
 		@"airshipChannelId": @(PLYAttributeAirshipChannelId)
@@ -97,6 +101,16 @@ RCT_REMAP_METHOD(getAnonymousUserId,
 
 RCT_EXPORT_METHOD(isReadyToPurchase:(BOOL)ready) {
 	[Purchasely isReadyToPurchase: ready];
+}
+
+RCT_EXPORT_METHOD(setDefaultPresentationResultHandler:(RCTPromiseResolveBlock)resolve
+				  reject:(RCTPromiseRejectBlock)reject)
+{
+	dispatch_async(dispatch_get_main_queue(), ^{
+		[Purchasely setDefaultPresentationResultHandler:^(enum PLYProductViewControllerResult result, PLYPlan * _Nullable plan) {
+			resolve([self resultDictionaryForPresentationController:result plan:plan]);
+		}];
+	});
 }
 
 RCT_EXPORT_METHOD(presentPresentationWithIdentifier:(NSString * _Nullable)presentationVendorId
