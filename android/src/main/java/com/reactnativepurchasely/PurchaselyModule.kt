@@ -1,3 +1,4 @@
+
 package com.reactnativepurchasely
 
 import android.content.Intent
@@ -56,6 +57,10 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     constants["amplitudeSessionId"] = Attribute.AMPLITUDE_SESSION_ID.ordinal
     constants["firebaseAppInstanceId"] = Attribute.FIREBASE_APP_INSTANCE_ID.ordinal
     constants["airshipChannelId"] = Attribute.AIRSHIP_CHANNEL_ID.ordinal
+    constants["sourceAppStore"] = StoreType.APPSTORE.ordinal
+    constants["sourcePlayStore"] = StoreType.PLAYSTORE.ordinal
+    constants["sourceHuaweiAppGallery"] = StoreType.HUAWEI.ordinal
+    constants["sourceAmazonAppstore"] = StoreType.AMAZON.ordinal
     return constants
   }
 
@@ -287,7 +292,20 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
         val subscriptions = Purchasely.getUserSubscriptions()
         val result = ArrayList<ReadableMap?>()
         for (data in subscriptions) {
-          result.add(Arguments.makeNativeMap(data.toMap()))
+          val map = data.data.toMap().toMutableMap().apply {
+            this["subscriptionSource"] = when(data.data.storeType) {
+              StoreType.PLAYSTORE -> StoreType.PLAYSTORE.ordinal
+              StoreType.HUAWEI -> StoreType.HUAWEI.ordinal
+              StoreType.AMAZON -> StoreType.AMAZON.ordinal
+              StoreType.APPSTORE -> StoreType.APPSTORE.ordinal
+              else -> null
+            }
+            if(data.data.plan == null) {
+              this["plan"] = data.plan.toMap()
+            }
+            this["product"] = data.product.toMap()
+          }
+          result.add(Arguments.makeNativeMap(map))
         }
         promise.resolve(Arguments.makeNativeArray(result))
       } catch (e: Exception) {
@@ -326,9 +344,9 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
 
     fun sendPurchaseResult(result: PLYProductViewResult, plan: PLYPlan?) {
       val productViewResult = when(result) {
-        PLYProductViewResult.PURCHASED -> "productResultPurchased"
-        PLYProductViewResult.CANCELLED -> "productResultCancelled"
-        PLYProductViewResult.RESTORED -> "productResultRestored"
+        PLYProductViewResult.PURCHASED -> PLYProductViewResult.PURCHASED.ordinal
+        PLYProductViewResult.CANCELLED -> PLYProductViewResult.CANCELLED.ordinal
+        PLYProductViewResult.RESTORED -> PLYProductViewResult.RESTORED.ordinal
       }
 
       val map: MutableMap<String, Any?> = HashMap()

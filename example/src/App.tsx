@@ -6,7 +6,11 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
-import Purchasely, { LogLevels, Attributes } from 'react-native-purchasely';
+import Purchasely, {
+  LogLevels,
+  Attributes,
+  ProductResult
+} from 'react-native-purchasely';
 
 const App: React.FunctionComponent<{}> = () => {
   const [anonymousUserId, setAnonymousUserId] = React.useState<string>('');
@@ -65,7 +69,7 @@ const App: React.FunctionComponent<{}> = () => {
     try {
       const result = await Purchasely.presentPresentationWithIdentifier(null);
       console.log(result);
-      console.log('Presentation View Result : ' + result.result);
+      console.log('Presentation View Result : ' + ProductResult[result.result]);
 
       if (result.plan != null) {
         console.log('Plan Vendor ID : ' + result.plan.vendorId);
