@@ -14,23 +14,7 @@
 	NSMutableDictionary<NSString *, NSObject *> *dict = [NSMutableDictionary new];
 
 	[dict setObject:self.plan.asDictionary forKey:@"plan"];
-
-	switch (self.subscriptionSource) {
-		case PLYSubscriptionSourceAppleAppStore:
-			[dict setObject:@"sourceAppStore" forKey:@"subscriptionSource"];
-			break;
-		case PLYSubscriptionSourceGooglePlayStore:
-			[dict setObject:@"sourcePlayStore" forKey:@"subscriptionSource"];
-			break;
-		case PLYSubscriptionSourceAmazonAppstore:
-			[dict setObject:@"sourceAmazonAppstore" forKey:@"subscriptionSource"];
-			break;
-		case PLYSubscriptionSourceHuaweiAppGallery:
-			[dict setObject:@"sourceHuaweiAppGallery" forKey:@"subscriptionSource"];
-			break;
-		case PLYSubscriptionSourceNone:
-			break;
-	}
+	[dict setObject:[NSNumber numberWithInt:self.subscriptionSource] forKey:@"subscriptionSource"];
 
 	if (self.nextRenewalDate != nil) {
 		[dict setObject:@(self.nextRenewalDate.timeIntervalSince1970) forKey:@"nextRenewalDate"];

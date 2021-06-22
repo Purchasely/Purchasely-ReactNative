@@ -9,7 +9,7 @@ import {
 import Purchasely, {
   LogLevels,
   Attributes,
-  ProductResult
+  ProductResult,
 } from 'react-native-purchasely';
 
 const App: React.FunctionComponent<{}> = () => {

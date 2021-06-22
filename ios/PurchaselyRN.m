@@ -44,21 +44,21 @@ RCT_EXPORT_MODULE(Purchasely);
 
 - (NSDictionary<NSString *, NSObject *> *) resultDictionaryForPresentationController:(PLYProductViewControllerResult)result plan:(PLYPlan * _Nullable)plan {
 	NSMutableDictionary<NSString *, NSObject *> *productViewResult = [NSMutableDictionary new];
-	NSString *resultString;
+	int resultString;
 
 	switch (result) {
 		case PLYProductViewControllerResultPurchased:
-			resultString = @"productResultPurchased";
+			resultString = PLYProductViewControllerResultPurchased;
 			break;
 		case PLYProductViewControllerResultRestored:
-			resultString = @"productResultRestored";
+			resultString = PLYProductViewControllerResultRestored;
 			break;
 		case PLYProductViewControllerResultCancelled:
-			resultString = @"productResultCancelled";
+			resultString = PLYProductViewControllerResultCancelled;
 			break;
 	}
 
-	[productViewResult setObject:resultString forKey:@"result"];
+	[productViewResult setObject:[NSNumber numberWithInt:resultString] forKey:@"result"];
 
 	if (plan != nil) {
 		[productViewResult setObject:[plan asDictionary] forKey:@"plan"];
