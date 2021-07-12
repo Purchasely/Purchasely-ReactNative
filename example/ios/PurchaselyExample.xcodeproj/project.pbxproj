@@ -47,6 +47,7 @@
 		2B9FAD2941B9AA91958788EF /* libPods-PurchaselyExample.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-PurchaselyExample.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		2D02E47B1E0B4A5D006451C7 /* PurchaselyExample-tvOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "PurchaselyExample-tvOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		2D02E4901E0B4A5D006451C7 /* PurchaselyExample-tvOSTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "PurchaselyExample-tvOSTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		65827522269488D4009083B1 /* TraceTV.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; name = TraceTV.storekit; path = ../../../../../../../Desktop/TraceTV.storekit; sourceTree = "<group>"; };
 		65DDF2AF26153117000829C6 /* main.jsbundle */ = {isa = PBXFileReference; lastKnownFileType = text; path = main.jsbundle; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = PurchaselyExample/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		94B2D89B2ABC9F512B9EB2B4 /* Pods-PurchaselyExample.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PurchaselyExample.debug.xcconfig"; path = "Target Support Files/Pods-PurchaselyExample/Pods-PurchaselyExample.debug.xcconfig"; sourceTree = "<group>"; };
@@ -129,6 +130,7 @@
 		83CBB9F61A601CBA00E9B192 = {
 			isa = PBXGroup;
 			children = (
+				65827522269488D4009083B1 /* TraceTV.storekit */,
 				65DDF2AF26153117000829C6 /* main.jsbundle */,
 				13B07FAE1A68108700A75B9A /* PurchaselyExample */,
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
