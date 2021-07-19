@@ -32,6 +32,22 @@ const App: React.FunctionComponent<{}> = () => {
     console.log('Result is ' + result.result);
   });
 
+  Purchasely.setLoginTappedCallback(() => {
+    //Present your own screen for user to log in
+    console.log('Received callback from user tapped on sign in button');
+
+    //Call this method to update Purchasely Paywall
+    Purchasely.onUserLoggedIn(true);
+  });
+
+  Purchasely.setPurchaseCompletionCallback(() => {
+    //Present your own screen before purchase
+    console.log('Received callback from user tapped on purchase button');
+
+    //Call this method to process to payment
+    Purchasely.processToPayment(true);
+  });
+
   Purchasely.addEventListener((event) => {
     console.log(event);
   });
@@ -47,11 +63,13 @@ const App: React.FunctionComponent<{}> = () => {
   React.useEffect(() => {
     (async () => {
       setAnonymousUserId(await Purchasely.getAnonymousUserId());
-      Purchasely.userLogin('DEMO_USER').then((refresh) => {
+      /*Purchasely.userLogin('DEMO_USER').then((refresh) => {
         if (refresh) {
           // Call your backend to refresh user information
         }
-      });
+      });*/
+      Purchasely.userLogout();
+
       const product = await Purchasely.productWithIdentifier('PURCHASELY_PLUS');
       console.log('Product', product);
       const plan = await Purchasely.planWithIdentifier(

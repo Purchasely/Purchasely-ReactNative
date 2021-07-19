@@ -330,6 +330,34 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     promise.resolve(Purchasely.handle(uri))
   }
 
+  @ReactMethod
+  fun setLoginTappedHandler(promise: Promise) {
+    Purchasely.setLoginTappedHandler { _, refreshPresentation ->
+      loginCompletionHandler = refreshPresentation
+      promise.resolve(null)
+    }
+  }
+
+  @ReactMethod
+  fun onUserLoggedIn(userLoggedIn: Boolean) {
+    loginCompletionHandler?.invoke(userLoggedIn)
+  }
+
+  @ReactMethod
+  fun setConfirmPurchaseHandler(promise: Promise) {
+    Purchasely.setConfirmPurchaseHandler { activity, processToPayment ->
+      processToPaymentHandler = processToPayment
+      promise.resolve(null)
+    }
+  }
+
+  @ReactMethod
+  fun processToPayment(processToPayment: Boolean) {
+    reactApplicationContext.currentActivity?.runOnUiThread {
+      processToPaymentHandler?.invoke(processToPayment)
+    }
+  }
+
   private fun sendEvent(reactContext: ReactContext,
                         eventName: String,
                         params: WritableMap?) {
@@ -341,6 +369,8 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   companion object {
     var purchasePromise: Promise? = null
     var defaultPurchasePromise: Promise? = null
+    var loginCompletionHandler: PLYLoginCompletionHandler? = null
+    var processToPaymentHandler: PLYProcessToPaymentHandler? = null
 
     fun sendPurchaseResult(result: PLYProductViewResult, plan: PLYPlan?) {
       val productViewResult = when(result) {

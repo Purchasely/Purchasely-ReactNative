@@ -145,12 +145,15 @@ type PurchaselyType = {
   planWithIdentifier(vendorId: string): Promise<PurchaselyPlan>;
   purchaseWithPlanVendorId(planVendorId: string): Promise<PurchaselyPlan>;
   restoreAllProducts(): Promise<boolean>;
-  displaySubscriptionCancellationInstruction(): void;
   userSubscriptions(): Promise<PurchaselySubscription[]>;
   presentSubscriptions(): void;
   handle(deeplink: string | null): Promise<boolean>;
   synchronize(): void;
   setDefaultPresentationResultHandler(): Promise<PresentPresentationResult>;
+  setLoginTappedHandler(): Promise<void>;
+  onUserLoggedIn(userLoggedIn: boolean): void;
+  setConfirmPurchaseHandler(): Promise<void>;
+  processToPayment(processToPayment: boolean): void;
 };
 
 const RNPurchasely = NativeModules.Purchasely as PurchaselyType;
@@ -265,6 +268,40 @@ const setDefaultPresentationResultCallback = (
   });
 };
 
+type LoginTappedCallback = () => void;
+
+const setLoginTappedCallback = (callback: LoginTappedCallback) => {
+  Purchasely.setLoginTappedHandler().then(() => {
+    setLoginTappedCallback(callback);
+    try {
+      callback();
+    } catch (e) {
+      console.warn(
+        '[Purchasely] Error with callback for loggin tapped handler',
+        e
+      );
+    }
+  });
+};
+
+type PurchaseCompletionCallback = () => void;
+
+const setPurchaseCompletionCallback = (
+  callback: PurchaseCompletionCallback
+) => {
+  Purchasely.setConfirmPurchaseHandler().then(() => {
+    setPurchaseCompletionCallback(callback);
+    try {
+      callback();
+    } catch (e) {
+      console.warn(
+        '[Purchasely] Error with callback for confirm purchase handler',
+        e
+      );
+    }
+  });
+};
+
 const Purchasely = {
   ...RNPurchasely,
   addEventListener,
@@ -272,6 +309,8 @@ const Purchasely = {
   addPurchasedListener,
   removePurchasedListener,
   setDefaultPresentationResultCallback,
+  setLoginTappedCallback,
+  setPurchaseCompletionCallback,
 };
 
 export default Purchasely;
