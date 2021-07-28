@@ -245,6 +245,22 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   }
 
   @ReactMethod
+  fun allProducts(promise: Promise) {
+    GlobalScope.launch {
+      try {
+        val products = Purchasely.allProducts()
+        val result = ArrayList<ReadableMap?>()
+        for (product in products) {
+          result.add(Arguments.makeNativeMap(product.toMap()))
+        }
+        promise.resolve(Arguments.makeNativeArray(result))
+      } catch (e: Exception) {
+        promise.reject(e)
+      }
+    }
+  }
+
+  @ReactMethod
   fun purchaseWithPlanVendorId(planVendorId: String, promise: Promise) {
     GlobalScope.launch {
       try {

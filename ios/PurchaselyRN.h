@@ -10,4 +10,7 @@
 
 @interface PurchaselyRN: RCTEventEmitter <RCTBridgeModule, PLYEventDelegate>
 
+@property void (^loginClosedHandler)(BOOL loggedIn);
+@property void (^authorizePurchaseHandler)(BOOL authorizePurchase);
+
 @end

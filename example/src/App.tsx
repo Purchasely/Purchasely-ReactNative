@@ -76,8 +76,9 @@ const App: React.FunctionComponent<{}> = () => {
         'PURCHASELY_PLUS_YEARLY'
       );
       console.log('Plan', plan);
-      const subscriptions = await Purchasely.userSubscriptions();
-      console.log('Subscriptions', subscriptions);
+
+      const products = await Purchasely.allProducts();
+      console.log('Products', products);
     })();
 
     // return Purchasely.removeAllListeners();

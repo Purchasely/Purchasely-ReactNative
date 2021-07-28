@@ -113,6 +113,36 @@ RCT_EXPORT_METHOD(setDefaultPresentationResultHandler:(RCTPromiseResolveBlock)re
 	});
 }
 
+RCT_EXPORT_METHOD(setLoginTappedHandler:(RCTPromiseResolveBlock)resolve
+				  reject:(RCTPromiseRejectBlock)reject)
+{
+	dispatch_async(dispatch_get_main_queue(), ^{
+		[Purchasely setLoginTappedHandler:^(UIViewController * _Nonnull ctrl, void (^ _Nonnull closedHandler)(BOOL) ) {
+			self.loginClosedHandler = closedHandler;
+			resolve(nil);
+		}];
+	});
+}
+
+RCT_EXPORT_METHOD(onUserLoggedIn:(BOOL)userLoggedIn) {
+	self.loginClosedHandler(userLoggedIn);
+}
+
+RCT_EXPORT_METHOD(setConfirmPurchaseHandler:(RCTPromiseResolveBlock)resolve
+				  reject:(RCTPromiseRejectBlock)reject)
+{
+	dispatch_async(dispatch_get_main_queue(), ^{
+		[Purchasely setConfirmPurchaseHandler:^(UIViewController * _Nonnull ctrl, void (^ _Nonnull authorizePurchase)(BOOL)) {
+			self.authorizePurchaseHandler = authorizePurchase;
+			resolve(nil);
+		}];
+	});
+}
+
+RCT_EXPORT_METHOD(processToPayment:(BOOL)processToPayment) {
+	self.authorizePurchaseHandler(processToPayment);
+}
+
 RCT_EXPORT_METHOD(presentPresentationWithIdentifier:(NSString * _Nullable)presentationVendorId
 				  resolve:(RCTPromiseResolveBlock)resolve
 				  reject:(RCTPromiseRejectBlock)reject)
@@ -208,6 +238,26 @@ RCT_REMAP_METHOD(restoreAllProducts,
 	});
 }
 
+RCT_EXPORT_METHOD(allProducts:(RCTPromiseResolveBlock)resolve
+				  reject:(RCTPromiseRejectBlock)reject)
+{
+	dispatch_async(dispatch_get_main_queue(), ^{
+		[Purchasely allProductsWithSuccess:^(NSArray<PLYProduct *> * _Nonnull products) {
+			NSMutableArray *productsArray = [NSMutableArray new];
+
+			for (PLYProduct *product in products) {
+				if (product != nil) {
+					[productsArray addObject: product.asDictionary];
+				}
+			}
+
+			resolve(productsArray);
+		} failure:^(NSError * _Nullable error) {
+			[self reject: reject with: error];
+		}];
+	});
+}
+
 RCT_REMAP_METHOD(productWithIdentifier,
 				 productWithIdentifier:(NSString * _Nonnull)productVendorId
 				 resolve:(RCTPromiseResolveBlock)resolve
@@ -266,8 +316,7 @@ RCT_EXPORT_METHOD(userSubscriptions:(RCTPromiseResolveBlock)resolve
 	return @[@"PURCHASELY_EVENTS", @"PURCHASE_LISTENER"];
 }
 
-- (void)eventTriggered:(enum PLYEvent)event properties:(NSDictionary<NSString *,id> * _Nullable)properties {
-
+- (void)eventTriggered:(enum PLYEvent)event properties:(NSDictionary<NSString *, id> * _Nullable)properties {
 	if (properties != nil) {
 		NSDictionary<NSString *, id> *body = @{@"name": [NSString fromPLYEvent:event], @"properties": properties};
 		[self sendEventWithName: @"PURCHASELY_EVENTS" body: body];
