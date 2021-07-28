@@ -141,6 +141,7 @@ type PurchaselyType = {
     planVendorId: string,
     presentationVendorId: string | null
   ): Promise<PresentPresentationResult>;
+  allProducts(): Promise<PurchaselyProduct[]>;
   productWithIdentifier(vendorId: string): Promise<PurchaselyProduct>;
   planWithIdentifier(vendorId: string): Promise<PurchaselyPlan>;
   purchaseWithPlanVendorId(planVendorId: string): Promise<PurchaselyPlan>;
