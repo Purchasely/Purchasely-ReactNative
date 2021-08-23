@@ -1,7 +1,7 @@
 {
   "name": "react-native-purchasely",
   "title": "Purchasely React Native",
-  "version": "1.5.3",
+  "version": "2.6.0",
   "description": "Purchasely is a solution to ease the integration and boost your In-App Purchase & Subscriptions on the App Store, Google Play Store and Huawei App Gallery.",
   "main": "lib/commonjs/index",
   "module": "lib/module/index",
