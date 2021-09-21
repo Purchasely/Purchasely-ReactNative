@@ -45,7 +45,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     return "Purchasely"
   }
 
-  override fun getConstants(): Map<String, Any>? {
+  override fun getConstants(): Map<String, Any> {
     val constants: MutableMap<String, Any> = HashMap()
     constants["logLevelDebug"] = LogLevel.DEBUG.ordinal
     constants["logLevelWarn"] = LogLevel.WARN.ordinal
@@ -57,10 +57,10 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     constants["amplitudeSessionId"] = Attribute.AMPLITUDE_SESSION_ID.ordinal
     constants["firebaseAppInstanceId"] = Attribute.FIREBASE_APP_INSTANCE_ID.ordinal
     constants["airshipChannelId"] = Attribute.AIRSHIP_CHANNEL_ID.ordinal
-    constants["sourceAppStore"] = StoreType.APPSTORE.ordinal
-    constants["sourcePlayStore"] = StoreType.PLAYSTORE.ordinal
-    constants["sourceHuaweiAppGallery"] = StoreType.HUAWEI.ordinal
-    constants["sourceAmazonAppstore"] = StoreType.AMAZON.ordinal
+    constants["sourceAppStore"] = StoreType.APPLE_APP_STORE.ordinal
+    constants["sourcePlayStore"] = StoreType.GOOGLE_PLAY_STORE.ordinal
+    constants["sourceHuaweiAppGallery"] = StoreType.HUAWEI_APP_GALLERY.ordinal
+    constants["sourceAmazonAppstore"] = StoreType.AMAZON_APP_STORE.ordinal
     return constants
   }
 
@@ -98,7 +98,8 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
                       stores: ReadableArray,
                       userId: String?,
                       logLevel: Int,
-                      observerMode: Boolean) {
+                      observerMode: Boolean,
+                      promise: Promise) {
     val storesInstances = getStoresInstances(stores.toArrayList())
 
     Purchasely.Builder(reactApplicationContext.applicationContext)
@@ -112,7 +113,9 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
 
     Purchasely.appTechnology = PLYAppTechnology.REACT_NATIVE
 
-    Purchasely.start()
+    Purchasely.start {
+      promise.resolve(it)
+    }
 
     Purchasely.purchaseListener = purchaseListener
   }
@@ -169,32 +172,38 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
 
   @ReactMethod
   fun presentPresentationWithIdentifier(presentationVendorId: String?,
+                                        contentId: String?,
                                         promise: Promise) {
     purchasePromise = promise
     val intent = Intent(reactApplicationContext.applicationContext, PLYProductActivity::class.java)
     intent.putExtra("presentationId", presentationVendorId)
+    intent.putExtra("contentId", contentId)
     reactApplicationContext.currentActivity?.startActivity(intent)
   }
 
   @ReactMethod
   fun presentProductWithIdentifier(productVendorId: String,
-                                    presentationVendorId: String?,
-                                    promise: Promise) {
+                                   presentationVendorId: String?,
+                                   contentId: String?,
+                                   promise: Promise) {
     purchasePromise = promise
     val intent = Intent(reactApplicationContext.applicationContext, PLYProductActivity::class.java)
     intent.putExtra("presentationId", presentationVendorId)
     intent.putExtra("productId", productVendorId)
+    intent.putExtra("contentId", contentId)
     reactApplicationContext.currentActivity?.startActivity(intent)
   }
 
   @ReactMethod
   fun presentPlanWithIdentifier(planVendorId: String,
                                 presentationVendorId: String?,
+                                contentId: String?,
                                 promise: Promise) {
     purchasePromise = promise
     val intent = Intent(reactApplicationContext.applicationContext, PLYProductActivity::class.java)
     intent.putExtra("presentationId", presentationVendorId)
     intent.putExtra("planId", planVendorId)
+    intent.putExtra("contentId", contentId)
     reactApplicationContext.currentActivity?.startActivity(intent)
   }
 
@@ -261,13 +270,14 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   }
 
   @ReactMethod
-  fun purchaseWithPlanVendorId(planVendorId: String, promise: Promise) {
+  fun purchaseWithPlanVendorId(planVendorId: String, contentId: String?, promise: Promise) {
     GlobalScope.launch {
       try {
-        val plan = Purchasely.getPlan(planVendorId)
+        val plan = Purchasely.plan(planVendorId)
         if(plan != null) {
           Purchasely.purchase(reactApplicationContext.currentActivity!!,
             plan,
+            contentId = contentId,
             success = {
               promise.resolve(Arguments.makeNativeMap(it?.toMap() ?: emptyMap()))
             },
@@ -310,10 +320,10 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
         for (data in subscriptions) {
           val map = data.data.toMap().toMutableMap().apply {
             this["subscriptionSource"] = when(data.data.storeType) {
-              StoreType.PLAYSTORE -> StoreType.PLAYSTORE.ordinal
-              StoreType.HUAWEI -> StoreType.HUAWEI.ordinal
-              StoreType.AMAZON -> StoreType.AMAZON.ordinal
-              StoreType.APPSTORE -> StoreType.APPSTORE.ordinal
+              StoreType.GOOGLE_PLAY_STORE -> StoreType.GOOGLE_PLAY_STORE.ordinal
+              StoreType.HUAWEI_APP_GALLERY -> StoreType.HUAWEI_APP_GALLERY.ordinal
+              StoreType.AMAZON_APP_STORE -> StoreType.AMAZON_APP_STORE.ordinal
+              StoreType.APPLE_APP_STORE -> StoreType.APPLE_APP_STORE.ordinal
               else -> null
             }
             if(data.data.plan == null) {

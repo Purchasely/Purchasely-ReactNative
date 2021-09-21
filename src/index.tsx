@@ -122,7 +122,7 @@ type PurchaselyType = {
     userId: string | null,
     logLevel: number,
     observerMode: boolean | false
-  ): void;
+  ): Promise<boolean>;
   close(): void;
   getAnonymousUserId(): Promise<string>;
   userLogin(userId: string): Promise<boolean>;
@@ -131,20 +131,26 @@ type PurchaselyType = {
   isReadyToPurchase(isReadyToPurchase: boolean): void;
   setAttribute(attribute: Attributes, value: string): void;
   presentPresentationWithIdentifier(
-    presentationVendorId: string | null
+    presentationVendorId: string | null,
+    contentId: string | null
   ): Promise<PresentPresentationResult>;
   presentProductWithIdentifier(
     productVendorId: string,
-    presentationVendorId: string | null
+    presentationVendorId: string | null,
+    contentId: string | null
   ): Promise<PresentPresentationResult>;
   presentPlanWithIdentifier(
     planVendorId: string,
-    presentationVendorId: string | null
+    presentationVendorId: string | null,
+    contentId: string | null
   ): Promise<PresentPresentationResult>;
   allProducts(): Promise<PurchaselyProduct[]>;
   productWithIdentifier(vendorId: string): Promise<PurchaselyProduct>;
   planWithIdentifier(vendorId: string): Promise<PurchaselyPlan>;
-  purchaseWithPlanVendorId(planVendorId: string): Promise<PurchaselyPlan>;
+  purchaseWithPlanVendorId(
+    planVendorId: string,
+    contentId: string | null
+  ): Promise<PurchaselyPlan>;
   restoreAllProducts(): Promise<boolean>;
   userSubscriptions(): Promise<PurchaselySubscription[]>;
   presentSubscriptions(): void;

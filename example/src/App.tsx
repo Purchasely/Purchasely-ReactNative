@@ -22,43 +22,14 @@ const App: React.FunctionComponent<{}> = () => {
     null,
     LogLevels.WARNING,
     false
-  );
+  ).then((configured) => {
+    if (!configured) {
+      console.log('Purchasely SDK not properly initialized');
+      return;
+    }
 
-  Purchasely.userLogin('JEFF');
-  Purchasely.setLogLevel(LogLevels.DEBUG);
-  Purchasely.isReadyToPurchase(true);
-
-  Purchasely.setDefaultPresentationResultCallback((result) => {
-    console.log('Result is ' + result.result);
+    setupPurchasely();
   });
-
-  Purchasely.setLoginTappedCallback(() => {
-    //Present your own screen for user to log in
-    console.log('Received callback from user tapped on sign in button');
-
-    //Call this method to update Purchasely Paywall
-    Purchasely.onUserLoggedIn(true);
-  });
-
-  Purchasely.setPurchaseCompletionCallback(() => {
-    //Present your own screen before purchase
-    console.log('Received callback from user tapped on purchase button');
-
-    //Call this method to process to payment
-    Purchasely.processToPayment(true);
-  });
-
-  Purchasely.addEventListener((event) => {
-    console.log(event);
-  });
-  // Purchasely.removeAllListeners();
-
-  Purchasely.addPurchasedListener(() => {
-    // User has successfully purchased a product, reload content
-    console.log('User has purchased');
-  });
-
-  Purchasely.setAttribute(Attributes.FIREBASE_APP_INSTANCE_ID, 'test0');
 
   React.useEffect(() => {
     (async () => {
@@ -86,7 +57,10 @@ const App: React.FunctionComponent<{}> = () => {
 
   const onPressPresentation = async () => {
     try {
-      const result = await Purchasely.presentPresentationWithIdentifier(null);
+      const result = await Purchasely.presentPresentationWithIdentifier(
+        null,
+        'my_content_id'
+      );
       console.log(result);
       console.log('Presentation View Result : ' + ProductResult[result.result]);
 
@@ -103,7 +77,8 @@ const App: React.FunctionComponent<{}> = () => {
     try {
       const result = await Purchasely.presentProductWithIdentifier(
         'PURCHASELY_PLUS',
-        null
+        null,
+        'my_content_id'
       );
       console.log(result);
       console.log('Presentation View Result : ' + result.result);
@@ -121,7 +96,8 @@ const App: React.FunctionComponent<{}> = () => {
     try {
       const result = await Purchasely.presentPlanWithIdentifier(
         'PURCHASELY_PLUS_WEEKLY',
-        null
+        null,
+        'my_content_id'
       );
       console.log(result);
       console.log('Presentation View Result : ' + result.result);
@@ -139,7 +115,8 @@ const App: React.FunctionComponent<{}> = () => {
     setLoading(true);
     try {
       const plan = await Purchasely.purchaseWithPlanVendorId(
-        'PURCHASELY_PLUS_MONTHLY'
+        'PURCHASELY_PLUS_MONTHLY',
+        'my_content_id'
       );
       console.log('Purchased ' + plan);
     } catch (e) {
@@ -162,6 +139,44 @@ const App: React.FunctionComponent<{}> = () => {
     }
     setLoading(false);
   };
+
+  function setupPurchasely() {
+    Purchasely.userLogin('JEFF');
+    Purchasely.setLogLevel(LogLevels.DEBUG);
+    Purchasely.isReadyToPurchase(true);
+
+    Purchasely.setDefaultPresentationResultCallback((result) => {
+      console.log('Result is ' + result.result);
+    });
+
+    Purchasely.setLoginTappedCallback(() => {
+      //Present your own screen for user to log in
+      console.log('Received callback from user tapped on sign in button');
+
+      //Call this method to update Purchasely Paywall
+      Purchasely.onUserLoggedIn(true);
+    });
+
+    Purchasely.setPurchaseCompletionCallback(() => {
+      //Present your own screen before purchase
+      console.log('Received callback from user tapped on purchase button');
+
+      //Call this method to process to payment
+      Purchasely.processToPayment(true);
+    });
+
+    Purchasely.addEventListener((event) => {
+      console.log(event);
+    });
+    // Purchasely.removeAllListeners();
+
+    Purchasely.addPurchasedListener(() => {
+      // User has successfully purchased a product, reload content
+      console.log('User has purchased');
+    });
+
+    Purchasely.setAttribute(Attributes.FIREBASE_APP_INSTANCE_ID, 'test0');
+  }
 
   return (
     <View style={styles.container}>
