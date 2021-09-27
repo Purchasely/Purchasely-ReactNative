@@ -22,14 +22,19 @@ const App: React.FunctionComponent<{}> = () => {
     null,
     LogLevels.WARNING,
     false
-  ).then((configured) => {
-    if (!configured) {
-      console.log('Purchasely SDK not properly initialized');
-      return;
-    }
+  ).then(
+    (configured) => {
+      if (!configured) {
+        console.log('Purchasely SDK not properly initialized');
+        return;
+      }
 
-    setupPurchasely();
-  });
+      setupPurchasely();
+    },
+    (error) => {
+      console.log('Purchasely SDK initialization error', error);
+    }
+  );
 
   React.useEffect(() => {
     (async () => {
@@ -57,10 +62,7 @@ const App: React.FunctionComponent<{}> = () => {
 
   const onPressPresentation = async () => {
     try {
-      const result = await Purchasely.presentPresentationWithIdentifier(
-        null,
-        'my_content_id'
-      );
+      const result = await Purchasely.presentPresentationWithIdentifier(null);
       console.log(result);
       console.log('Presentation View Result : ' + ProductResult[result.result]);
 
@@ -76,9 +78,7 @@ const App: React.FunctionComponent<{}> = () => {
   const onPressProduct = async () => {
     try {
       const result = await Purchasely.presentProductWithIdentifier(
-        'PURCHASELY_PLUS',
-        null,
-        'my_content_id'
+        'PURCHASELY_PLUS'
       );
       console.log(result);
       console.log('Presentation View Result : ' + result.result);

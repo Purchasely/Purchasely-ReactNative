@@ -97,19 +97,19 @@ export enum PlanType {
 }
 
 export type PurchaselyPlan = {
-  vendorId: number;
-  name: number;
+  vendorId: string;
+  name: string;
   type: PlanType;
   amount: number;
-  priceCurrency: number;
-  price: number;
-  period: number;
-  hasIntroductoryPrice: number;
-  introPrice: number;
+  priceCurrency: string;
+  price: string;
+  period: string;
+  hasIntroductoryPrice: boolean;
+  introPrice: string;
   introAmount: number;
-  introDuration: number;
-  introPeriod: number;
-  hasFreeTrial: number;
+  introDuration: string;
+  introPeriod: string;
+  hasFreeTrial: boolean;
 };
 
 export type PurchaselyProduct = {
@@ -150,27 +150,9 @@ type PurchaselyType = {
   setLogLevel(logLevel: LogLevels): void;
   isReadyToPurchase(isReadyToPurchase: boolean): void;
   setAttribute(attribute: Attributes, value: string): void;
-  presentPresentationWithIdentifier(
-    presentationVendorId: string | null,
-    contentId: string | null
-  ): Promise<PresentPresentationResult>;
-  presentProductWithIdentifier(
-    productVendorId: string,
-    presentationVendorId: string | null,
-    contentId: string | null
-  ): Promise<PresentPresentationResult>;
-  presentPlanWithIdentifier(
-    planVendorId: string,
-    presentationVendorId: string | null,
-    contentId: string | null
-  ): Promise<PresentPresentationResult>;
   allProducts(): Promise<PurchaselyProduct[]>;
   productWithIdentifier(vendorId: string): Promise<PurchaselyProduct>;
   planWithIdentifier(vendorId: string): Promise<PurchaselyPlan>;
-  purchaseWithPlanVendorId(
-    planVendorId: string,
-    contentId: string | null
-  ): Promise<PurchaselyPlan>;
   restoreAllProducts(): Promise<boolean>;
   userSubscriptions(): Promise<PurchaselySubscription[]>;
   presentSubscriptions(): void;
@@ -329,6 +311,50 @@ const setPurchaseCompletionCallback = (
   });
 };
 
+const presentPresentationWithIdentifier = (
+  presentationVendorId: string | null = null,
+  contentId: string | null = null
+): Promise<PresentPresentationResult> => {
+  return NativeModules.Purchasely.presentPresentationWithIdentifier(
+    presentationVendorId,
+    contentId
+  );
+};
+
+const presentProductWithIdentifier = (
+  productVendorId: string,
+  presentationVendorId: string | null = null,
+  contentId: string | null = null
+): Promise<PresentPresentationResult> => {
+  return NativeModules.Purchasely.presentProductWithIdentifier(
+    productVendorId,
+    presentationVendorId,
+    contentId
+  );
+};
+
+const presentPlanWithIdentifier = (
+  planVendorId: string,
+  presentationVendorId: string | null = null,
+  contentId: string | null = null
+): Promise<PresentPresentationResult> => {
+  return NativeModules.Purchasely.presentPlanWithIdentifier(
+    planVendorId,
+    presentationVendorId,
+    contentId
+  );
+};
+
+const purchaseWithPlanVendorId = (
+  planVendorId: string,
+  contentId: string | null = null
+): Promise<PurchaselyPlan> => {
+  return NativeModules.Purchasely.purchaseWithPlanVendorId(
+    planVendorId,
+    contentId
+  );
+};
+
 const Purchasely = {
   ...RNPurchasely,
   addEventListener,
@@ -338,6 +364,10 @@ const Purchasely = {
   setDefaultPresentationResultCallback,
   setLoginTappedCallback,
   setPurchaseCompletionCallback,
+  presentPresentationWithIdentifier,
+  presentProductWithIdentifier,
+  presentPlanWithIdentifier,
+  purchaseWithPlanVendorId,
 };
 
 export default Purchasely;

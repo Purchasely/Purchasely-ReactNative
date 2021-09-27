@@ -9,6 +9,7 @@ import com.facebook.react.bridge.*
 import com.facebook.react.modules.core.DeviceEventManagerModule.RCTDeviceEventEmitter
 import io.purchasely.billing.Store
 import io.purchasely.ext.*
+import io.purchasely.models.PLYError
 import io.purchasely.models.PLYPlan
 import io.purchasely.models.PLYProduct
 import kotlinx.coroutines.GlobalScope
@@ -61,6 +62,13 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     constants["sourcePlayStore"] = StoreType.GOOGLE_PLAY_STORE.ordinal
     constants["sourceHuaweiAppGallery"] = StoreType.HUAWEI_APP_GALLERY.ordinal
     constants["sourceAmazonAppstore"] = StoreType.AMAZON_APP_STORE.ordinal
+    constants["sourceAmazonAppstore"] = StoreType.AMAZON_APP_STORE.ordinal
+    constants["sourceAmazonAppstore"] = StoreType.NONE.ordinal
+    constants["consumable"] = DistributionType.CONSUMABLE.ordinal
+    constants["nonConsumable"] = DistributionType.NON_CONSUMABLE.ordinal
+    constants["autoRenewingSubscription"] = DistributionType.RENEWING_SUBSCRIPTION.ordinal
+    constants["nonRenewingSubscription"] = DistributionType.NON_RENEWING_SUBSCRIPTION.ordinal
+    constants["unknown"] = DistributionType.UNKNOWN.ordinal
     return constants
   }
 
@@ -113,8 +121,9 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
 
     Purchasely.appTechnology = PLYAppTechnology.REACT_NATIVE
 
-    Purchasely.start {
-      promise.resolve(it)
+    Purchasely.start { isConfigured, error ->
+      if(isConfigured) promise.resolve(true)
+      else promise.reject(error)
     }
 
     Purchasely.purchaseListener = purchaseListener
@@ -246,7 +255,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     GlobalScope.launch {
       try {
         val plan = Purchasely.getPlan(vendorId)
-        promise.resolve(Arguments.makeNativeMap(plan?.toMap() ?: emptyMap()))
+        promise.resolve(Arguments.makeNativeMap(transformPlanToMap(plan)))
       } catch (e: Exception) {
         promise.reject(e)
       }
@@ -279,7 +288,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
             plan,
             contentId = contentId,
             success = {
-              promise.resolve(Arguments.makeNativeMap(it?.toMap() ?: emptyMap()))
+              promise.resolve(Arguments.makeNativeMap(transformPlanToMap(it)))
             },
             error = {
               promise.reject(it)
@@ -327,7 +336,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
               else -> null
             }
             if(data.data.plan == null) {
-              this["plan"] = data.plan.toMap()
+              this["plan"] = transformPlanToMap(data.plan)
             }
             this["product"] = data.product.toMap()
           }
@@ -407,8 +416,23 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
 
       val map: MutableMap<String, Any?> = HashMap()
       map["result"] = productViewResult
-      map["plan"] = plan?.toMap()
+      map["plan"] = transformPlanToMap(plan)
       purchasePromise?.resolve(Arguments.makeNativeMap(map)) ?: defaultPurchasePromise?.resolve(Arguments.makeNativeMap(map))
+    }
+
+    private fun transformPlanToMap(plan: PLYPlan?): Map<String, Any?> {
+      if(plan == null) return emptyMap()
+
+      return plan.toMap().toMutableMap().apply {
+        this["type"] = when(plan.type) {
+          DistributionType.RENEWING_SUBSCRIPTION -> DistributionType.RENEWING_SUBSCRIPTION.ordinal
+          DistributionType.NON_RENEWING_SUBSCRIPTION -> DistributionType.NON_RENEWING_SUBSCRIPTION.ordinal
+          DistributionType.CONSUMABLE -> DistributionType.CONSUMABLE.ordinal
+          DistributionType.NON_CONSUMABLE -> DistributionType.NON_CONSUMABLE.ordinal
+          DistributionType.UNKNOWN -> DistributionType.UNKNOWN.ordinal
+          else -> null
+        }
+      }
     }
   }
 }
