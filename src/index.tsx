@@ -12,9 +12,15 @@ interface ConstantsIOS {
   sourcePlayStore: number;
   sourceHuaweiAppGallery: number;
   sourceAmazonAppstore: number;
+  sourceNone: number;
   amplitudeSessionId: number;
   firebaseAppInstanceId: number;
   airshipChannelId: number;
+  consumable: number;
+  nonConsumable: number;
+  autoRenewingSubscription: number;
+  nonRenewingSubscription: number;
+  unknown: number;
 }
 interface ConstantsAndroid {
   logLevelDebug: number;
@@ -29,9 +35,15 @@ interface ConstantsAndroid {
   sourcePlayStore: number;
   sourceHuaweiAppGallery: number;
   sourceAmazonAppstore: number;
+  sourceNone: number;
   amplitudeSessionId: number;
   firebaseAppInstanceId: number;
   airshipChannelId: number;
+  consumable: number;
+  nonConsumable: number;
+  autoRenewingSubscription: number;
+  nonRenewingSubscription: number;
+  unknown: number;
 }
 
 const constants = NativeModules.Purchasely.getConstants() as
@@ -76,10 +88,18 @@ export enum Attributes {
   AIRSHIP_CHANNEL_ID = constants.airshipChannelId,
 }
 
+export enum PlanType {
+  PLAN_TYPE_CONSUMABLE = constants.consumable,
+  PLAN_TYPE_NON_CONSUMABLE = constants.nonConsumable,
+  PLAN_TYPE_AUTO_RENEWING_SUBSCRIPTION = constants.autoRenewingSubscription,
+  PLAN_TYPE_NON_RENEWING_SUBSCRIPTION = constants.nonRenewingSubscription,
+  PLAN_TYPE_UNKNOWN = constants.unknown,
+}
+
 export type PurchaselyPlan = {
   vendorId: number;
   name: number;
-  distributionType: number;
+  type: PlanType;
   amount: number;
   priceCurrency: number;
   price: number;

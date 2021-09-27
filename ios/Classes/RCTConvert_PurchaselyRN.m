@@ -28,8 +28,17 @@ RCT_ENUM_CONVERTER(PLYAttribute, (@{ @"amplitudeSessionId": @(PLYAttributeAmplit
 				   PLYAttributeAmplitudeSessionId, integerValue)
 
 RCT_ENUM_CONVERTER(PLYSubscriptionSource, (@{ @"sourceAppStore": @(PLYSubscriptionSourceAppleAppStore),
-								 @"sourcePlayStore": @(PLYSubscriptionSourceGooglePlayStore),
-								 @"sourceHuaweiAppGallery": @(PLYSubscriptionSourceHuaweiAppGallery),
-								 @"sourceAmazonAppstore": @(PLYSubscriptionSourceAmazonAppstore)}),
+											  @"sourcePlayStore": @(PLYSubscriptionSourceGooglePlayStore),
+											  @"sourceHuaweiAppGallery": @(PLYSubscriptionSourceHuaweiAppGallery),
+											  @"sourceAmazonAppstore": @(PLYSubscriptionSourceAmazonAppstore),
+											  @"sourceNone": @(PLYSubscriptionSourceNone)
+										   }),
+				   PLYSubscriptionSourceNone, integerValue)
+
+RCT_ENUM_CONVERTER(PLYPlanType, (@{ @"consumable": @(PLYPlanTypeConsumable),
+									@"nonConsumable": @(PLYPlanTypeNonConsumable),
+									@"autoRenewingSubscription": @(PLYPlanTypeAutoRenewingSubscription),
+									@"nonRenewingSubscription": @(PLYPlanTypeNonRenewingSubscription),
+									@"unknown": @(PLYPlanTypeUnknown)}),
 				   PLYSubscriptionSourceNone, integerValue)
 @end

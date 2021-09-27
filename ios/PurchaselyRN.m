@@ -38,7 +38,12 @@ RCT_EXPORT_MODULE(Purchasely);
 		@"sourceAmazonAppstore": @(PLYSubscriptionSourceAmazonAppstore),
 		@"amplitudeSessionId": @(PLYAttributeAmplitudeSessionId),
 		@"firebaseAppInstanceId": @(PLYAttributeFirebaseAppInstanceId),
-		@"airshipChannelId": @(PLYAttributeAirshipChannelId)
+		@"airshipChannelId": @(PLYAttributeAirshipChannelId),
+		@"consumable": @(PLYPlanTypeConsumable),
+		@"nonConsumable": @(PLYPlanTypeNonConsumable),
+		@"autoRenewingSubscription": @(PLYPlanTypeAutoRenewingSubscription),
+		@"nonRenewingSubscription": @(PLYPlanTypeNonRenewingSubscription),
+		@"unknown": @(PLYPlanTypeUnknown)
 	};
 }
 
@@ -66,8 +71,16 @@ RCT_EXPORT_MODULE(Purchasely);
 	return productViewResult;
 }
 
-RCT_EXPORT_METHOD(startWithAPIKey:(NSString * _Nonnull)apiKey stores:(NSArray * _Nullable)stores userId:(NSString * _Nullable)userId logLevel:(NSInteger)logLevel observerMode:(BOOL)observerMode) {
-	[Purchasely startWithAPIKey:apiKey appUserId:userId observerMode:observerMode eventDelegate:self uiDelegate:nil confirmPurchaseHandler:nil logLevel:logLevel];
+RCT_EXPORT_METHOD(startWithAPIKey:(NSString * _Nonnull)apiKey
+				  stores:(NSArray * _Nullable)stores
+				  userId:(NSString * _Nullable)userId
+				  logLevel:(NSInteger)logLevel observerMode:(BOOL)observerMode
+				  initialized:(RCTPromiseResolveBlock)resolve
+				  reject:(RCTPromiseRejectBlock)reject) {
+	[Purchasely startWithAPIKey:apiKey appUserId:userId observerMode:observerMode eventDelegate:self uiDelegate:nil confirmPurchaseHandler:nil logLevel:logLevel initialized:^(BOOL initialized, NSError * _Nullable error) {
+		resolve(@(initialized));
+	}];
+
 	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(purchasePerformed) name:@"ply_purchasedSubscription" object:nil];
 }
 
@@ -144,11 +157,14 @@ RCT_EXPORT_METHOD(processToPayment:(BOOL)processToPayment) {
 }
 
 RCT_EXPORT_METHOD(presentPresentationWithIdentifier:(NSString * _Nullable)presentationVendorId
+				  contentId:(NSString * _Nullable)contentId
 				  resolve:(RCTPromiseResolveBlock)resolve
 				  reject:(RCTPromiseRejectBlock)reject)
 {
 	dispatch_async(dispatch_get_main_queue(), ^{
-		UIViewController *ctrl = [Purchasely presentationControllerWith:presentationVendorId completion:^(enum PLYProductViewControllerResult result, PLYPlan * _Nullable plan) {
+		UIViewController *ctrl = [Purchasely presentationControllerWith:presentationVendorId
+															  contentId:contentId
+															 completion:^(enum PLYProductViewControllerResult result, PLYPlan * _Nullable plan) {
 			resolve([self resultDictionaryForPresentationController:result plan:plan]);
 		}];
 
@@ -164,11 +180,15 @@ RCT_EXPORT_METHOD(presentPresentationWithIdentifier:(NSString * _Nullable)presen
 
 RCT_EXPORT_METHOD(presentPlanWithIdentifier:(NSString * _Nonnull)planVendorId
 				  presentationVendorId:(NSString * _Nullable)presentationVendorId
+				  contentId:(NSString * _Nullable)contentId
 				  resolve:(RCTPromiseResolveBlock)resolve
 				  reject:(RCTPromiseRejectBlock)reject)
 {
 	dispatch_async(dispatch_get_main_queue(), ^{
-		UIViewController *ctrl = [Purchasely planControllerFor:planVendorId with:presentationVendorId completion:^(enum PLYProductViewControllerResult result, PLYPlan * _Nullable plan) {
+		UIViewController *ctrl = [Purchasely planControllerFor:planVendorId
+														  with:presentationVendorId
+													 contentId:contentId
+													completion:^(enum PLYProductViewControllerResult result, PLYPlan * _Nullable plan) {
 			resolve([self resultDictionaryForPresentationController:result plan:plan]);
 		}];
 		[Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
@@ -177,11 +197,15 @@ RCT_EXPORT_METHOD(presentPlanWithIdentifier:(NSString * _Nonnull)planVendorId
 
 RCT_EXPORT_METHOD(presentProductWithIdentifier:(NSString * _Nonnull)productVendorId
 				  presentationVendorId:(NSString * _Nullable)presentationVendorId
+				  contentId:(NSString * _Nullable)contentId
 				  resolve:(RCTPromiseResolveBlock)resolve
 				  reject:(RCTPromiseRejectBlock)reject)
 {
 	dispatch_async(dispatch_get_main_queue(), ^{
-		UIViewController *ctrl = [Purchasely productControllerFor:productVendorId with:presentationVendorId completion:^(enum PLYProductViewControllerResult result, PLYPlan * _Nullable plan) {
+		UIViewController *ctrl = [Purchasely productControllerFor:productVendorId
+															 with:presentationVendorId
+														contentId:contentId
+													   completion:^(enum PLYProductViewControllerResult result, PLYPlan * _Nullable plan) {
 			resolve([self resultDictionaryForPresentationController:result plan:plan]);
 		}];
 		[Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
@@ -204,6 +228,7 @@ RCT_EXPORT_METHOD(presentSubscriptions)
 }
 
 RCT_EXPORT_METHOD(purchaseWithPlanVendorId:(NSString * _Nonnull)planVendorId
+				  contentId:(NSString * _Nullable)contentId
 				  resolve:(RCTPromiseResolveBlock)resolve
 				  reject:(RCTPromiseRejectBlock)reject)
 {
@@ -211,6 +236,7 @@ RCT_EXPORT_METHOD(purchaseWithPlanVendorId:(NSString * _Nonnull)planVendorId
 		[Purchasely planWith:planVendorId
 					 success:^(PLYPlan * _Nonnull plan) {
 			[Purchasely purchaseWithPlan:plan
+							   contentId:contentId
 								 success:^{
 				resolve(plan.asDictionary);
 			}
