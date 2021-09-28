@@ -101,7 +101,8 @@ export type PurchaselyPlan = {
   name: string;
   type: PlanType;
   amount: number;
-  priceCurrency: string;
+  currencyCode: string;
+  currencySymbol: string;
   price: string;
   period: string;
   hasIntroductoryPrice: boolean;
