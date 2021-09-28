@@ -16,6 +16,11 @@
 	[dict setObject:@(self.hasIntroductoryPrice) forKey:@"hasIntroductoryPrice"];
 	[dict setObject:@([self type]) forKey:@"type"];
 
+	if (self.hasIntroductoryPrice && [[self introAmount] intValue] == 0) {
+		[dict setObject:@(YES) forKey:@"hasFreeTrial"];
+		[dict removeObjectForKey:@"hasIntroductoryPrice"];
+	}
+
 	if (self.name != nil) {
 		[dict setObject:self.name forKey:@"name"];
 	}
@@ -25,9 +30,24 @@
 		[dict setObject:price forKey:@"price"];
 	}
 
-	NSString *amount = [self localizedPriceWithLanguage:nil];
+	NSDecimalNumber *amount = [self amount];
 	if (amount != nil) {
 		[dict setObject:amount forKey:@"amount"];
+	}
+
+	NSDecimalNumber *introAmount = [self introAmount];
+	if (introAmount != nil) {
+		[dict setObject:introAmount forKey:@"introAmount"];
+	}
+
+	NSString *currencyCode = [self currencyCode];
+	if (currencyCode != nil) {
+		[dict setObject:currencyCode forKey:@"currencyCode"];
+	}
+
+	NSString *currencySymbol = [self currencySymbol];
+	if (currencySymbol != nil) {
+		[dict setObject:currencySymbol forKey:@"currencySymbol"];
 	}
 
 	NSString *period = [self localizedPeriodWithLanguage:nil];
@@ -40,14 +60,14 @@
 		[dict setObject:introPrice forKey:@"introPrice"];
 	}
 
-	NSString *introAmount = [self localizedIntroductoryPriceWithLanguage:nil];
-	if (introAmount != nil) {
-		[dict setObject:introAmount forKey:@"introAmount"];
-	}
-
 	NSString *introDuration = [self localizedIntroductoryDurationWithLanguage:nil];
 	if (introDuration != nil) {
 		[dict setObject:introDuration forKey:@"introDuration"];
+	}
+
+	NSString *introPeriod = [self localizedIntroductoryPeriodWithLanguage:nil];
+	if (introPeriod != nil) {
+		[dict setObject:introPeriod forKey:@"introPeriod"];
 	}
 
 	return dict;

@@ -39,11 +39,6 @@ const App: React.FunctionComponent<{}> = () => {
   React.useEffect(() => {
     (async () => {
       setAnonymousUserId(await Purchasely.getAnonymousUserId());
-      /*Purchasely.userLogin('DEMO_USER').then((refresh) => {
-        if (refresh) {
-          // Call your backend to refresh user information
-        }
-      });*/
       Purchasely.userLogout();
 
       const product = await Purchasely.productWithIdentifier('PURCHASELY_PLUS');
@@ -62,7 +57,7 @@ const App: React.FunctionComponent<{}> = () => {
 
   const onPressPresentation = async () => {
     try {
-      const result = await Purchasely.presentPresentationWithIdentifier(null);
+      const result = await Purchasely.presentPresentationWithIdentifier();
       console.log(result);
       console.log('Presentation View Result : ' + ProductResult[result.result]);
 
