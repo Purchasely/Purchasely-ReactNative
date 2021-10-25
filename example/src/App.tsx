@@ -73,24 +73,7 @@ const App: React.FunctionComponent<{}> = () => {
   const onPressProduct = async () => {
     try {
       const result = await Purchasely.presentProductWithIdentifier(
-        'PURCHASELY_PLUS'
-      );
-      console.log(result);
-      console.log('Presentation View Result : ' + result.result);
-
-      if (result.plan != null) {
-        console.log('Plan Vendor ID : ' + result.plan.vendorId);
-        console.log('Plan Name : ' + result.plan.name);
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const onPressPlan = async () => {
-    try {
-      const result = await Purchasely.presentPlanWithIdentifier(
-        'PURCHASELY_PLUS_WEEKLY',
+        'PURCHASELY_PLUS',
         null,
         'my_content_id'
       );
@@ -135,8 +118,12 @@ const App: React.FunctionComponent<{}> = () => {
     setLoading(false);
   };
 
+  const onPressContinuePayment = () => {
+    //Call this method to process to payment
+    Purchasely.processToPayment(true);
+  };
+
   function setupPurchasely() {
-    Purchasely.userLogin('JEFF');
     Purchasely.setLogLevel(LogLevels.DEBUG);
     Purchasely.isReadyToPurchase(true);
 
@@ -146,7 +133,7 @@ const App: React.FunctionComponent<{}> = () => {
 
     Purchasely.setLoginTappedCallback(() => {
       //Present your own screen for user to log in
-      console.log('Received callback from user tapped on sign in button');
+      Purchasely.userLogin('MY_USER_ID');
 
       //Call this method to update Purchasely Paywall
       Purchasely.onUserLoggedIn(true);
@@ -155,9 +142,6 @@ const App: React.FunctionComponent<{}> = () => {
     Purchasely.setPurchaseCompletionCallback(() => {
       //Present your own screen before purchase
       console.log('Received callback from user tapped on purchase button');
-
-      //Call this method to process to payment
-      Purchasely.processToPayment(true);
     });
 
     Purchasely.addEventListener((event) => {
@@ -201,18 +185,6 @@ const App: React.FunctionComponent<{}> = () => {
         </Text>
       </TouchableHighlight>
       <TouchableHighlight
-        onPress={onPressPlan}
-        disabled={loading}
-        style={loading ? styles.buttonDisabled : styles.button}
-      >
-        <Text style={styles.text}>
-          {loading && (
-            <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
-          )}{' '}
-          Display plan
-        </Text>
-      </TouchableHighlight>
-      <TouchableHighlight
         onPress={onPressPurchase}
         disabled={loading}
         style={loading ? styles.buttonDisabled : styles.button}
@@ -246,6 +218,19 @@ const App: React.FunctionComponent<{}> = () => {
             <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
           )}{' '}
           Restore purchases
+        </Text>
+      </TouchableHighlight>
+
+      <TouchableHighlight
+        onPress={onPressContinuePayment}
+        disabled={loading}
+        style={loading ? styles.buttonDisabled : styles.button}
+      >
+        <Text style={styles.text}>
+          {loading && (
+            <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
+          )}{' '}
+          Continue payment
         </Text>
       </TouchableHighlight>
     </View>
