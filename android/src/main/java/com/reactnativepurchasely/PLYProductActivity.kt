@@ -8,6 +8,7 @@ import io.purchasely.ext.PLYProductViewResult
 import io.purchasely.ext.ProductViewResultListener
 import io.purchasely.ext.Purchasely
 import io.purchasely.models.PLYPlan
+import java.lang.ref.WeakReference
 
 class PLYProductActivity : AppCompatActivity() {
 
@@ -48,7 +49,7 @@ class PLYProductActivity : AppCompatActivity() {
       planId = planId,
       contentId = contentId
     ).apply {
-      activity = this@PLYProductActivity
+      activity = WeakReference(this@PLYProductActivity)
     }
   }
 

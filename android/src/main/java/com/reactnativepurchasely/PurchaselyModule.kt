@@ -13,6 +13,7 @@ import io.purchasely.models.PLYError
 import io.purchasely.models.PLYPlan
 import io.purchasely.models.PLYProduct
 import kotlinx.coroutines.*
+import java.lang.ref.WeakReference
 
 class PurchaselyModule internal constructor(context: ReactApplicationContext) : ReactContextBaseJavaModule(context) {
 
@@ -368,7 +369,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   @ReactMethod
   fun setLoginTappedHandler(promise: Promise) {
     Purchasely.setLoginTappedHandler { _, refreshPresentation ->
-      productActivity?.activity?.finish()
+      productActivity?.activity?.get()?.finish()
       loginCompletionHandler = refreshPresentation
       promise.resolve(null)
     }
@@ -384,7 +385,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   fun setConfirmPurchaseHandler(promise: Promise) {
     Purchasely.setConfirmPurchaseHandler { activity, processToPayment ->
       processToPaymentHandler = processToPayment
-      productActivity?.activity?.finish()
+      productActivity?.activity?.get()?.finish()
       promise.resolve(null)
     }
   }
@@ -455,7 +456,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     val planId: String? = null,
     val contentId: String? = null) {
 
-    var activity: PLYProductActivity? = null
+    var activity: WeakReference<PLYProductActivity>? = null
 
     fun relaunch(reactApplicationContext: ReactApplicationContext) {
       val intent = Intent(reactApplicationContext.applicationContext, PLYProductActivity::class.java)
