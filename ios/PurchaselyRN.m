@@ -132,13 +132,19 @@ RCT_EXPORT_METHOD(setLoginTappedHandler:(RCTPromiseResolveBlock)resolve
 	dispatch_async(dispatch_get_main_queue(), ^{
 		[Purchasely setLoginTappedHandler:^(UIViewController * _Nonnull ctrl, void (^ _Nonnull closedHandler)(BOOL) ) {
 			self.loginClosedHandler = closedHandler;
-			resolve(nil);
+
+			[self.presentedPresentationViewController dismissViewControllerAnimated:true completion:^{
+				resolve(nil);
+			}];
 		}];
 	});
 }
 
 RCT_EXPORT_METHOD(onUserLoggedIn:(BOOL)userLoggedIn) {
-	self.loginClosedHandler(userLoggedIn);
+	dispatch_async(dispatch_get_main_queue(), ^{
+		[Purchasely showController:self.presentedPresentationViewController type: PLYUIControllerTypeProductPage];
+		self.loginClosedHandler(userLoggedIn);
+	});
 }
 
 RCT_EXPORT_METHOD(setConfirmPurchaseHandler:(RCTPromiseResolveBlock)resolve
@@ -147,13 +153,19 @@ RCT_EXPORT_METHOD(setConfirmPurchaseHandler:(RCTPromiseResolveBlock)resolve
 	dispatch_async(dispatch_get_main_queue(), ^{
 		[Purchasely setConfirmPurchaseHandler:^(UIViewController * _Nonnull ctrl, void (^ _Nonnull authorizePurchase)(BOOL)) {
 			self.authorizePurchaseHandler = authorizePurchase;
-			resolve(nil);
+
+			[self.presentedPresentationViewController dismissViewControllerAnimated:true completion:^{
+				resolve(nil);
+			}];
 		}];
 	});
 }
 
 RCT_EXPORT_METHOD(processToPayment:(BOOL)processToPayment) {
-	self.authorizePurchaseHandler(processToPayment);
+	dispatch_async(dispatch_get_main_queue(), ^{
+		[Purchasely showController:self.presentedPresentationViewController type: PLYUIControllerTypeProductPage];
+		self.authorizePurchaseHandler(processToPayment);
+	});
 }
 
 RCT_EXPORT_METHOD(presentPresentationWithIdentifier:(NSString * _Nullable)presentationVendorId
@@ -174,6 +186,8 @@ RCT_EXPORT_METHOD(presentPresentationWithIdentifier:(NSString * _Nullable)presen
 		[navCtrl.navigationBar setShadowImage: [UIImage new]];
 		[navCtrl.navigationBar setTintColor: [UIColor whiteColor]];
 
+		self.presentedPresentationViewController = navCtrl;
+
 		[Purchasely showController:navCtrl type: PLYUIControllerTypeProductPage];
 	});
 }
@@ -191,7 +205,16 @@ RCT_EXPORT_METHOD(presentPlanWithIdentifier:(NSString * _Nonnull)planVendorId
 													completion:^(enum PLYProductViewControllerResult result, PLYPlan * _Nullable plan) {
 			resolve([self resultDictionaryForPresentationController:result plan:plan]);
 		}];
-		[Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
+
+		UINavigationController *navCtrl = [[UINavigationController alloc] initWithRootViewController:ctrl];
+		[navCtrl.navigationBar setTranslucent:YES];
+		[navCtrl.navigationBar setBackgroundImage:[UIImage new] forBarMetrics:UIBarMetricsDefault];
+		[navCtrl.navigationBar setShadowImage: [UIImage new]];
+		[navCtrl.navigationBar setTintColor: [UIColor whiteColor]];
+
+		self.presentedPresentationViewController = navCtrl;
+
+		[Purchasely showController:navCtrl type: PLYUIControllerTypeProductPage];
 	});
 }
 
@@ -208,7 +231,16 @@ RCT_EXPORT_METHOD(presentProductWithIdentifier:(NSString * _Nonnull)productVendo
 													   completion:^(enum PLYProductViewControllerResult result, PLYPlan * _Nullable plan) {
 			resolve([self resultDictionaryForPresentationController:result plan:plan]);
 		}];
-		[Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
+
+		UINavigationController *navCtrl = [[UINavigationController alloc] initWithRootViewController:ctrl];
+		[navCtrl.navigationBar setTranslucent:YES];
+		[navCtrl.navigationBar setBackgroundImage:[UIImage new] forBarMetrics:UIBarMetricsDefault];
+		[navCtrl.navigationBar setShadowImage: [UIImage new]];
+		[navCtrl.navigationBar setTintColor: [UIColor whiteColor]];
+
+		self.presentedPresentationViewController = navCtrl;
+
+		[Purchasely showController:navCtrl type: PLYUIControllerTypeProductPage];
 	});
 }
 

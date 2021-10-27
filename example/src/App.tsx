@@ -136,7 +136,6 @@ const App: React.FunctionComponent<{}> = () => {
   };
 
   function setupPurchasely() {
-    Purchasely.userLogin('JEFF');
     Purchasely.setLogLevel(LogLevels.DEBUG);
     Purchasely.isReadyToPurchase(true);
 
@@ -149,6 +148,7 @@ const App: React.FunctionComponent<{}> = () => {
       console.log('Received callback from user tapped on sign in button');
 
       //Call this method to update Purchasely Paywall
+      Purchasely.userLogin('JEFF');
       Purchasely.onUserLoggedIn(true);
     });
 
