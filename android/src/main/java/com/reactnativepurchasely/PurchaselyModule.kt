@@ -9,9 +9,7 @@ import com.facebook.react.bridge.*
 import com.facebook.react.modules.core.DeviceEventManagerModule.RCTDeviceEventEmitter
 import io.purchasely.billing.Store
 import io.purchasely.ext.*
-import io.purchasely.models.PLYError
 import io.purchasely.models.PLYPlan
-import io.purchasely.models.PLYProduct
 import kotlinx.coroutines.*
 import java.lang.ref.WeakReference
 
@@ -19,8 +17,6 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
 
   private val eventListener: EventListener = object: EventListener {
     override fun onEvent(event: PLYEvent) {
-      //Log.d("Purchasely", "Event from Module : ${event::class.java.simpleName}")
-      //Log.d("Purchasely", "${event.name} : ${event.properties?.toMap()}")
       if (event.properties != null) {
         val map = mapOf(
           Pair("name", event.name),
@@ -185,10 +181,12 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
                                         contentId: String?,
                                         promise: Promise) {
     purchasePromise = promise
-    val intent = Intent(reactApplicationContext.applicationContext, PLYProductActivity::class.java)
-    intent.putExtra("presentationId", presentationVendorId)
-    intent.putExtra("contentId", contentId)
-    reactApplicationContext.currentActivity?.startActivity(intent)
+    reactApplicationContext.currentActivity?.let {
+      val intent = PLYProductActivity.newIntent(it)
+      intent.putExtra("presentationId", presentationVendorId)
+      intent.putExtra("contentId", contentId)
+      it.startActivity(intent)
+    }
   }
 
   @ReactMethod
@@ -197,11 +195,13 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
                                    contentId: String?,
                                    promise: Promise) {
     purchasePromise = promise
-    val intent = Intent(reactApplicationContext.applicationContext, PLYProductActivity::class.java)
-    intent.putExtra("presentationId", presentationVendorId)
-    intent.putExtra("productId", productVendorId)
-    intent.putExtra("contentId", contentId)
-    reactApplicationContext.currentActivity?.startActivity(intent)
+    reactApplicationContext.currentActivity?.let {
+      val intent = PLYProductActivity.newIntent(it)
+      intent.putExtra("presentationId", presentationVendorId)
+      intent.putExtra("productId", productVendorId)
+      intent.putExtra("contentId", contentId)
+      it.startActivity(intent)
+    }
   }
 
   @ReactMethod
@@ -210,34 +210,14 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
                                 contentId: String?,
                                 promise: Promise) {
     purchasePromise = promise
-    val intent = Intent(reactApplicationContext.applicationContext, PLYProductActivity::class.java)
-    intent.putExtra("presentationId", presentationVendorId)
-    intent.putExtra("planId", planVendorId)
-    intent.putExtra("contentId", contentId)
-    reactApplicationContext.currentActivity?.startActivity(intent)
+    reactApplicationContext.currentActivity?.let {
+      val intent = PLYProductActivity.newIntent(it)
+      intent.putExtra("presentationId", presentationVendorId)
+      intent.putExtra("planId", planVendorId)
+      intent.putExtra("contentId", contentId)
+      it.startActivity(intent)
+    }
   }
-
-  /*@ReactMethod
-    public void products(@NonNull Callback failureCallback, @NonNull Callback callback) {
-        Purchasely.getProducts(new ProductsListener() {
-            @Override
-            public void onSuccess(@NotNull List<PLYProduct> list) {
-                Log.d("PurchaselyModule", list.size() + " products found");
-                ArrayList<ReadableMap> result = new ArrayList<>();
-                for (PLYProduct product : list) {
-                    result.add(Arguments.makeNativeMap(mapProduct(product)));
-                    Log.d("PurchaselyModule", product.toString());
-                }
-                callback.invoke(Arguments.makeNativeArray(result));
-            }
-
-            @Override
-            public void onFailure(@NotNull Throwable throwable) {
-                Log.e("PurchaselyModule", "Failure", throwable);
-                failureCallback.invoke(throwable.getMessage());
-            }
-        });
-    }*/
 
   @ReactMethod
   fun productWithIdentifier(vendorId: String, promise: Promise) {
@@ -368,41 +348,55 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
 
   @ReactMethod
   fun setLoginTappedHandler(promise: Promise) {
-    Purchasely.setLoginTappedHandler { _, refreshPresentation ->
-      productActivity?.activity?.get()?.finish()
+    Purchasely.setLoginTappedHandler { activity, refreshPresentation ->
       loginCompletionHandler = refreshPresentation
+      val reactActivity = reactApplicationContext.currentActivity
+      reactActivity?.startActivity(
+        Intent(activity, reactActivity::class.java).apply {
+          flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+        }
+      )
       promise.resolve(null)
     }
   }
 
   @ReactMethod
   fun onUserLoggedIn(userLoggedIn: Boolean) {
-    productActivity?.relaunch(reactApplicationContext)
-    loginCompletionHandler?.invoke(userLoggedIn)
+    CoroutineScope(Dispatchers.Main).launch {
+      if(productActivity?.relaunch(reactApplicationContext) == false) {
+        //wait for activity to relaunch
+        withContext(Dispatchers.Default) { delay(500) }
+      }
+      productActivity?.activity?.get()?.runOnUiThread {
+        loginCompletionHandler?.invoke(userLoggedIn)
+      }
+    }
   }
 
   @ReactMethod
   fun setConfirmPurchaseHandler(promise: Promise) {
     Purchasely.setConfirmPurchaseHandler { activity, processToPayment ->
       processToPaymentHandler = processToPayment
-      productActivity?.activity?.get()?.finish()
+      val reactActivity = reactApplicationContext.currentActivity
+      reactActivity?.startActivity(
+        Intent(activity, reactActivity::class.java).apply {
+          flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+        }
+      )
       promise.resolve(null)
     }
   }
 
   @ReactMethod
   fun processToPayment(processToPayment: Boolean) {
-    productActivity?.relaunch(reactApplicationContext)
-    if(processToPayment) {
-      GlobalScope.launch(Dispatchers.Default) {
-        delay(500)
-        withContext(Dispatchers.Main) {
-          reactApplicationContext.currentActivity?.runOnUiThread {
-            processToPaymentHandler?.invoke(true)
-          }
-        }
+    CoroutineScope(Dispatchers.Main).launch {
+      if(productActivity?.relaunch(reactApplicationContext) == false) {
+        //wait for activity to relaunch
+        withContext(Dispatchers.Default) { delay(500) }
       }
-
+      productActivity?.activity?.get()?.runOnUiThread {
+        processToPaymentHandler?.invoke(processToPayment)
+      }
     }
   }
 
@@ -458,13 +452,30 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
 
     var activity: WeakReference<PLYProductActivity>? = null
 
-    fun relaunch(reactApplicationContext: ReactApplicationContext) {
-      val intent = Intent(reactApplicationContext.applicationContext, PLYProductActivity::class.java)
-      intent.putExtra("presentationId", presentationId)
-      intent.putExtra("productId", productId)
-      intent.putExtra("planId", planId)
-      intent.putExtra("contentId", contentId)
-      reactApplicationContext.currentActivity?.startActivity(intent)
+    fun relaunch(reactApplicationContext: ReactApplicationContext) : Boolean {
+      val backgroundActivity = activity?.get()
+      return if(backgroundActivity != null
+          && !backgroundActivity.isFinishing
+          && !backgroundActivity.isDestroyed) {
+        reactApplicationContext.currentActivity?.let {
+          it.startActivity(
+            Intent(it, backgroundActivity::class.java).apply {
+              flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+          )
+        }
+        true
+      } else {
+        reactApplicationContext.currentActivity?.let {
+          val intent = PLYProductActivity.newIntent(it)
+          intent.putExtra("presentationId", presentationId)
+          intent.putExtra("productId", productId)
+          intent.putExtra("planId", planId)
+          intent.putExtra("contentId", contentId)
+          it.startActivity(intent)
+        }
+        return false
+      }
     }
   }
 }
