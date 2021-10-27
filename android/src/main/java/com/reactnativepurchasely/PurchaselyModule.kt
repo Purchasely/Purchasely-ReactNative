@@ -12,8 +12,8 @@ import io.purchasely.ext.*
 import io.purchasely.models.PLYError
 import io.purchasely.models.PLYPlan
 import io.purchasely.models.PLYProduct
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
+import java.lang.ref.WeakReference
 
 class PurchaselyModule internal constructor(context: ReactApplicationContext) : ReactContextBaseJavaModule(context) {
 
@@ -131,6 +131,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
 
   @ReactMethod
   fun close() {
+    productActivity = null
     close()
   }
 
@@ -368,6 +369,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   @ReactMethod
   fun setLoginTappedHandler(promise: Promise) {
     Purchasely.setLoginTappedHandler { _, refreshPresentation ->
+      productActivity?.activity?.get()?.finish()
       loginCompletionHandler = refreshPresentation
       promise.resolve(null)
     }
@@ -375,6 +377,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
 
   @ReactMethod
   fun onUserLoggedIn(userLoggedIn: Boolean) {
+    productActivity?.relaunch(reactApplicationContext)
     loginCompletionHandler?.invoke(userLoggedIn)
   }
 
@@ -382,14 +385,24 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   fun setConfirmPurchaseHandler(promise: Promise) {
     Purchasely.setConfirmPurchaseHandler { activity, processToPayment ->
       processToPaymentHandler = processToPayment
+      productActivity?.activity?.get()?.finish()
       promise.resolve(null)
     }
   }
 
   @ReactMethod
   fun processToPayment(processToPayment: Boolean) {
-    reactApplicationContext.currentActivity?.runOnUiThread {
-      processToPaymentHandler?.invoke(processToPayment)
+    productActivity?.relaunch(reactApplicationContext)
+    if(processToPayment) {
+      GlobalScope.launch(Dispatchers.Default) {
+        delay(500)
+        withContext(Dispatchers.Main) {
+          reactApplicationContext.currentActivity?.runOnUiThread {
+            processToPaymentHandler?.invoke(true)
+          }
+        }
+      }
+
     }
   }
 
@@ -402,6 +415,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   }
 
   companion object {
+    var productActivity: ProductActivity? = null
     var purchasePromise: Promise? = null
     var defaultPurchasePromise: Promise? = null
     var loginCompletionHandler: PLYLoginCompletionHandler? = null
@@ -433,6 +447,24 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
           else -> null
         }
       }
+    }
+  }
+
+  class ProductActivity(
+    val presentationId: String? = null,
+    val productId: String? = null,
+    val planId: String? = null,
+    val contentId: String? = null) {
+
+    var activity: WeakReference<PLYProductActivity>? = null
+
+    fun relaunch(reactApplicationContext: ReactApplicationContext) {
+      val intent = Intent(reactApplicationContext.applicationContext, PLYProductActivity::class.java)
+      intent.putExtra("presentationId", presentationId)
+      intent.putExtra("productId", productId)
+      intent.putExtra("planId", planId)
+      intent.putExtra("contentId", contentId)
+      reactApplicationContext.currentActivity?.startActivity(intent)
     }
   }
 }

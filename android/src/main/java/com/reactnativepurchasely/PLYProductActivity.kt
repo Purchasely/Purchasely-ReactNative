@@ -8,6 +8,7 @@ import io.purchasely.ext.PLYProductViewResult
 import io.purchasely.ext.ProductViewResultListener
 import io.purchasely.ext.Purchasely
 import io.purchasely.models.PLYPlan
+import java.lang.ref.WeakReference
 
 class PLYProductActivity : AppCompatActivity() {
 
@@ -41,6 +42,20 @@ class PLYProductActivity : AppCompatActivity() {
       .beginTransaction()
       .replace(R.id.fragmentContainer, fragment)
       .commit()
+
+    PurchaselyModule.productActivity = PurchaselyModule.ProductActivity(
+      presentationId = presentationId,
+      productId = productId,
+      planId = planId,
+      contentId = contentId
+    ).apply {
+      activity = WeakReference(this@PLYProductActivity)
+    }
+  }
+
+  override fun onDestroy() {
+    PurchaselyModule.productActivity?.activity = null
+    super.onDestroy()
   }
 
   private val callback: (PLYProductViewResult, PLYPlan?) -> Unit = { result, plan ->
