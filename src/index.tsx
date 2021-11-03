@@ -116,7 +116,7 @@ export type PurchaselyPlan = {
 export type PurchaselyProduct = {
   id: number;
   name: string;
-  vendorId: number;
+  vendorId: string;
   plans: { [name: string]: PurchaselyPlan };
 };
 
