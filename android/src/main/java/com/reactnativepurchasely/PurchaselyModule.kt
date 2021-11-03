@@ -223,7 +223,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   fun productWithIdentifier(vendorId: String, promise: Promise) {
     GlobalScope.launch {
       try {
-        val product = Purchasely.getProduct(vendorId)
+        val product = Purchasely.product(vendorId)
         promise.resolve(Arguments.makeNativeMap(product?.toMap() ?: emptyMap()))
       } catch (e: Exception) {
         promise.reject(e)
@@ -235,7 +235,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   fun planWithIdentifier(vendorId: String, promise: Promise) {
     GlobalScope.launch {
       try {
-        val plan = Purchasely.getPlan(vendorId)
+        val plan = Purchasely.plan(vendorId)
         promise.resolve(Arguments.makeNativeMap(transformPlanToMap(plan)))
       } catch (e: Exception) {
         promise.reject(e)

@@ -114,18 +114,16 @@ export type PurchaselyPlan = {
 };
 
 export type PurchaselyProduct = {
-  id: number;
   name: string;
   vendorId: string;
   plans: { [name: string]: PurchaselyPlan };
 };
 
 export type PurchaselySubscription = {
-  id: number;
   purchaseToken: string;
   subscriptionSource: SubscriptionSource;
-  nextRenewalDate: number;
-  cancelledDate: number;
+  nextRenewalDate: string;
+  cancelledDate: string;
   plan: PurchaselyPlan;
   product: PurchaselyProduct;
 };
