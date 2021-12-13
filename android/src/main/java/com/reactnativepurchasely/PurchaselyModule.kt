@@ -9,9 +9,13 @@ import com.facebook.react.bridge.*
 import com.facebook.react.modules.core.DeviceEventManagerModule.RCTDeviceEventEmitter
 import io.purchasely.billing.Store
 import io.purchasely.ext.*
+import io.purchasely.ext.EventListener
 import io.purchasely.models.PLYPlan
 import kotlinx.coroutines.*
 import java.lang.ref.WeakReference
+import java.util.*
+import kotlin.collections.ArrayList
+import kotlin.collections.HashMap
 
 class PurchaselyModule internal constructor(context: ReactApplicationContext) : ReactContextBaseJavaModule(context) {
 
@@ -54,6 +58,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     constants["amplitudeSessionId"] = Attribute.AMPLITUDE_SESSION_ID.ordinal
     constants["firebaseAppInstanceId"] = Attribute.FIREBASE_APP_INSTANCE_ID.ordinal
     constants["airshipChannelId"] = Attribute.AIRSHIP_CHANNEL_ID.ordinal
+    constants["batchInstallationId"] = Attribute.BATCH_INSTALLATION_ID.ordinal
     constants["sourceAppStore"] = StoreType.APPLE_APP_STORE.ordinal
     constants["sourcePlayStore"] = StoreType.GOOGLE_PLAY_STORE.ordinal
     constants["sourceHuaweiAppGallery"] = StoreType.HUAWEI_APP_GALLERY.ordinal
@@ -151,6 +156,15 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   @ReactMethod
   fun setLogLevel(logLevel: Int) {
     Purchasely.logLevel = LogLevel.values()[logLevel]
+  }
+
+  @ReactMethod
+  fun setLanguage(language: String) {
+    Purchasely.language = try {
+      Locale(language)
+    } catch (e: Exception) {
+      Locale.getDefault()
+    }
   }
 
   @ReactMethod

@@ -16,6 +16,7 @@ interface ConstantsIOS {
   amplitudeSessionId: number;
   firebaseAppInstanceId: number;
   airshipChannelId: number;
+  batchInstallationId: number;
   consumable: number;
   nonConsumable: number;
   autoRenewingSubscription: number;
@@ -39,6 +40,7 @@ interface ConstantsAndroid {
   amplitudeSessionId: number;
   firebaseAppInstanceId: number;
   airshipChannelId: number;
+  batchInstallationId: number;
   consumable: number;
   nonConsumable: number;
   autoRenewingSubscription: number;
@@ -86,6 +88,7 @@ export enum Attributes {
   AMPLITUDE_SESSION_ID = constants.amplitudeSessionId,
   FIREBASE_APP_INSTANCE_ID = constants.firebaseAppInstanceId,
   AIRSHIP_CHANNEL_ID = constants.airshipChannelId,
+  BATCH_INSTALLATION_ID = constants.batchInstallationId,
 }
 
 export enum PlanType {
@@ -162,6 +165,7 @@ type PurchaselyType = {
   onUserLoggedIn(userLoggedIn: boolean): void;
   setConfirmPurchaseHandler(): Promise<void>;
   processToPayment(processToPayment: boolean): void;
+  setLanguage(language: string): void;
 };
 
 const RNPurchasely = NativeModules.Purchasely as PurchaselyType;
