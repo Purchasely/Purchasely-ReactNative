@@ -12,11 +12,13 @@ class PLYSubscriptionsActivity : AppCompatActivity() {
     super.onCreate(savedInstanceState)
     setContentView(R.layout.activity_ply_product_activity)
 
-    supportFragmentManager
-              .beginTransaction()
-              .addToBackStack(null)
-              .replace(R.id.fragmentContainer, Purchasely.subscriptionsFragment(), "SubscriptionsFragment")
-              .commitAllowingStateLoss()
+    Purchasely.subscriptionsFragment()?.let {
+      supportFragmentManager
+        .beginTransaction()
+        .addToBackStack(null)
+        .replace(R.id.fragmentContainer, it, "SubscriptionsFragment")
+        .commitAllowingStateLoss()
+    }
 
     supportFragmentManager.addOnBackStackChangedListener {
         if(supportFragmentManager.backStackEntryCount == 0) {

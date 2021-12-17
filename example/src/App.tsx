@@ -10,46 +10,37 @@ import Purchasely, {
   LogLevels,
   Attributes,
   ProductResult,
+  RunningMode,
+  PLYPaywallAction,
 } from 'react-native-purchasely';
 
 const App: React.FunctionComponent<{}> = () => {
   const [anonymousUserId, setAnonymousUserId] = React.useState<string>('');
   const [loading, setLoading] = React.useState<boolean>(false);
 
-  Purchasely.startWithAPIKey(
-    'afa96c76-1d8e-4e3c-a48f-204a3cd93a15',
-    ['Google'],
-    null,
-    LogLevels.WARNING,
-    false
-  ).then(
-    (configured) => {
-      if (!configured) {
-        console.log('Purchasely SDK not properly initialized');
-        return;
-      }
-
-      setupPurchasely();
-    },
-    (error) => {
-      console.log('Purchasely SDK initialization error', error);
-    }
-  );
-
   React.useEffect(() => {
     (async () => {
-      setAnonymousUserId(await Purchasely.getAnonymousUserId());
-      Purchasely.userLogout();
+      Purchasely.startWithAPIKey(
+        'afa96c76-1d8e-4e3c-a48f-204a3cd93a15',
+        ['Google'],
+        null,
+        LogLevels.WARNING,
+        RunningMode.FULL
+      ).then(
+        (configured) => {
+          if (!configured) {
+            console.log('Purchasely SDK not properly initialized');
+            return;
+          }
 
-      const product = await Purchasely.productWithIdentifier('PURCHASELY_PLUS');
-      console.log('Product', product);
-      const plan = await Purchasely.planWithIdentifier(
-        'PURCHASELY_PLUS_YEARLY'
+          console.log('Purchasely SDK is initialized');
+
+          setupPurchasely();
+        },
+        (error) => {
+          console.log('Purchasely SDK initialization error', error);
+        }
       );
-      console.log('Plan', plan);
-
-      const products = await Purchasely.allProducts();
-      console.log('Products', products);
     })();
 
     // return Purchasely.removeAllListeners();
@@ -131,10 +122,21 @@ const App: React.FunctionComponent<{}> = () => {
 
   const onPressContinuePayment = () => {
     //Call this method to process to payment
-    Purchasely.processToPayment(true);
+    Purchasely.onProcessAction(true);
   };
 
-  function setupPurchasely() {
+  const setupPurchasely = async () => {
+    setAnonymousUserId(await Purchasely.getAnonymousUserId());
+    Purchasely.userLogout();
+
+    const product = await Purchasely.productWithIdentifier('PURCHASELY_PLUS');
+    console.log('Product', product);
+    const plan = await Purchasely.planWithIdentifier('PURCHASELY_PLUS_YEARLY');
+    console.log('Plan', plan);
+
+    const products = await Purchasely.allProducts();
+    console.log('Products', products);
+
     Purchasely.setLogLevel(LogLevels.DEBUG);
     Purchasely.isReadyToPurchase(true);
 
@@ -143,18 +145,42 @@ const App: React.FunctionComponent<{}> = () => {
       console.log('Result is ' + result.result);
     });
 
-    Purchasely.setLoginTappedCallback(() => {
-      //Present your own screen for user to log in
-      Purchasely.userLogin('MY_USER_ID');
+    Purchasely.setPaywallActionInterceptorCallback((result) => {
+      console.log(result);
+      console.log('Received action from paywall');
 
-      //Call this method to update Purchasely Paywall
-      Purchasely.userLogin('JEFF');
-      Purchasely.onUserLoggedIn(true);
-    });
-
-    Purchasely.setPurchaseCompletionCallback(() => {
-      //Present your own screen before purchase
-      console.log('Received callback from user tapped on purchase button');
+      if (result.action === PLYPaywallAction.NAVIGATE) {
+        console.log(
+          'User wants to navigate to website ' +
+          result.parameters.title +
+          ' ' +
+          result.parameters.url
+        );
+        Purchasely.onProcessAction(true);
+      } else if (result.action === PLYPaywallAction.CLOSE) {
+        console.log('User wants to close paywall');
+        Purchasely.onProcessAction(true);
+      } else if (result.action === PLYPaywallAction.LOGIN) {
+        console.log('User wants to login');
+        //Present your own screen for user to log in
+        Purchasely.closePaywall();
+        Purchasely.userLogin('MY_USER_ID');
+        //Call this method to update Purchasely Paywall
+        Purchasely.onProcessAction(true);
+      } else if (result.action === PLYPaywallAction.OPEN_PRESENTATION) {
+        console.log('User wants to open a new paywall');
+        Purchasely.onProcessAction(true);
+      } else if (result.action === PLYPaywallAction.PURCHASE) {
+        console.log('User wants to purchase');
+        //If you want to intercept it, close paywall and display your screen
+        Purchasely.closePaywall();
+      } else if (result.action === PLYPaywallAction.RESTORE) {
+        console.log('User wants to restore his purchases');
+        Purchasely.onProcessAction(true);
+      } else {
+        console.log('Action unknown ' + result.action);
+        Purchasely.onProcessAction(true);
+      }
     });
 
     Purchasely.addEventListener((event) => {
@@ -168,8 +194,7 @@ const App: React.FunctionComponent<{}> = () => {
     });
 
     Purchasely.setAttribute(Attributes.FIREBASE_APP_INSTANCE_ID, 'test0');
-    Purchasely.setAttribute(Attributes.BATCH_INSTALLATION_ID, 'testBatch0');
-  }
+  };
 
   return (
     <View style={styles.container}>

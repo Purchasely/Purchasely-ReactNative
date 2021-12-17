@@ -25,16 +25,24 @@ class PLYProductActivity : AppCompatActivity() {
           planId,
           presentationId,
           contentId,
+          null,
           callback)
         productId.isNullOrEmpty().not() -> Purchasely.productFragment(
           productId,
           presentationId,
           contentId,
+          null,
           callback)
         else -> Purchasely.presentationFragment(
           presentationId,
           contentId,
+          null,
           callback)
+    }
+
+    if(fragment == null) {
+      finish()
+      return
     }
 
     supportFragmentManager

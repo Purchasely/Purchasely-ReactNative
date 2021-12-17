@@ -22,6 +22,11 @@ interface ConstantsIOS {
   autoRenewingSubscription: number;
   nonRenewingSubscription: number;
   unknown: number;
+  runningModeTransactionOnly: number;
+  runningModeObserver: number;
+  runningModePaywallOnly: number;
+  runningModePaywallObserver: number;
+  runningModeFull: number;
 }
 interface ConstantsAndroid {
   logLevelDebug: number;
@@ -46,6 +51,11 @@ interface ConstantsAndroid {
   autoRenewingSubscription: number;
   nonRenewingSubscription: number;
   unknown: number;
+  runningModeTransactionOnly: number;
+  runningModeObserver: number;
+  runningModePaywallOnly: number;
+  runningModePaywallObserver: number;
+  runningModeFull: number;
 }
 
 const constants = NativeModules.Purchasely.getConstants() as
@@ -99,6 +109,24 @@ export enum PlanType {
   PLAN_TYPE_UNKNOWN = constants.unknown,
 }
 
+export enum RunningMode {
+  TRANSACTION_ONLY = constants.runningModeTransactionOnly,
+  OBSERVER = constants.runningModeObserver,
+  PAYWALL_ONLY = constants.runningModePaywallOnly,
+  PAYWALL_OBSERVER = constants.runningModePaywallObserver,
+  FULL = constants.runningModeFull,
+}
+
+export enum PLYPaywallAction {
+  CLOSE = 'close',
+  LOGIN = 'login',
+  NAVIGATE = 'navigate',
+  PURCHASE = 'purchase',
+  RESTORE = 'restore',
+  OPEN_PRESENTATION = 'open_presentation',
+  PROMO_CODE = 'promo_code',
+}
+
 export type PurchaselyPlan = {
   vendorId: string;
   name: string;
@@ -136,6 +164,16 @@ export type PresentPresentationResult = {
   plan: PurchaselyPlan;
 };
 
+export type PaywallActionInterceptorResult = {
+  action: PLYPaywallAction;
+  parameters: {
+    url: String;
+    title: String;
+    plan: String;
+    presentation: String;
+  };
+};
+
 type PurchaselyType = {
   getConstants(): ConstantsIOS | ConstantsAndroid;
   startWithAPIKey(
@@ -143,7 +181,7 @@ type PurchaselyType = {
     stores: string[],
     userId: string | null,
     logLevel: number,
-    observerMode: boolean | false
+    runningMode: number
   ): Promise<boolean>;
   close(): void;
   getAnonymousUserId(): Promise<string>;
@@ -162,11 +200,10 @@ type PurchaselyType = {
   handle(deeplink: string | null): Promise<boolean>;
   synchronize(): void;
   setDefaultPresentationResultHandler(): Promise<PresentPresentationResult>;
-  setLoginTappedHandler(): Promise<void>;
-  onUserLoggedIn(userLoggedIn: boolean): void;
-  setConfirmPurchaseHandler(): Promise<void>;
-  processToPayment(processToPayment: boolean): void;
+  setPaywallActionInterceptor(): Promise<PaywallActionInterceptorResult>;
+  onProcessAction(processAction: boolean): void;
   setLanguage(language: string): void;
+  closePaywall(): void;
 };
 
 const RNPurchasely = NativeModules.Purchasely as PurchaselyType;
@@ -281,36 +318,19 @@ const setDefaultPresentationResultCallback = (
   });
 };
 
-type LoginTappedCallback = () => void;
+type PaywallActionInterceptorCallback = (
+  result: PaywallActionInterceptorResult
+) => void;
 
-const setLoginTappedCallback = (callback: LoginTappedCallback) => {
-  Purchasely.setLoginTappedHandler().then(() => {
-    setLoginTappedCallback(callback);
-    try {
-      callback();
-    } catch (e) {
-      console.warn(
-        '[Purchasely] Error with callback for loggin tapped handler',
-        e
-      );
-    }
-  });
-};
-
-type PurchaseCompletionCallback = () => void;
-
-const setPurchaseCompletionCallback = (
-  callback: PurchaseCompletionCallback
+const setPaywallActionInterceptorCallback = (
+  callback: PaywallActionInterceptorCallback
 ) => {
-  Purchasely.setConfirmPurchaseHandler().then(() => {
-    setPurchaseCompletionCallback(callback);
+  Purchasely.setPaywallActionInterceptor().then((result) => {
+    setPaywallActionInterceptorCallback(callback);
     try {
-      callback();
+      callback(result);
     } catch (e) {
-      console.warn(
-        '[Purchasely] Error with callback for confirm purchase handler',
-        e
-      );
+      console.warn('[Purchasely] Error with paywall interceptor callback', e);
     }
   });
 };
@@ -366,8 +386,7 @@ const Purchasely = {
   addPurchasedListener,
   removePurchasedListener,
   setDefaultPresentationResultCallback,
-  setLoginTappedCallback,
-  setPurchaseCompletionCallback,
+  setPaywallActionInterceptorCallback,
   presentPresentationWithIdentifier,
   presentProductWithIdentifier,
   presentPlanWithIdentifier,
