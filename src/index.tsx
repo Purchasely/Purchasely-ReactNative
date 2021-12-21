@@ -169,7 +169,7 @@ export type PaywallActionInterceptorResult = {
   parameters: {
     url: String;
     title: String;
-    plan: String;
+    plan: PurchaselyPlan;
     presentation: String;
   };
 };

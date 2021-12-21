@@ -152,9 +152,9 @@ const App: React.FunctionComponent<{}> = () => {
       if (result.action === PLYPaywallAction.NAVIGATE) {
         console.log(
           'User wants to navigate to website ' +
-          result.parameters.title +
-          ' ' +
-          result.parameters.url
+            result.parameters.title +
+            ' ' +
+            result.parameters.url
         );
         Purchasely.onProcessAction(true);
       } else if (result.action === PLYPaywallAction.CLOSE) {
