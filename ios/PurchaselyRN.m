@@ -108,7 +108,6 @@ RCT_EXPORT_METHOD(setAttribute:(NSInteger)attribute value:(NSString * _Nonnull)v
 
 RCT_EXPORT_METHOD(setLanguage:(NSString * _Nonnull) language) {
     NSLocale *locale = [NSLocale localeWithLocaleIdentifier:language];
-    NSLog(@"TEST PRINT");
     [Purchasely setLanguageFrom:locale];
 }
 
