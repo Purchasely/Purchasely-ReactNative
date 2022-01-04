@@ -169,8 +169,10 @@ RCT_EXPORT_METHOD(setConfirmPurchaseHandler:(RCTPromiseResolveBlock)resolve
 
 RCT_EXPORT_METHOD(processToPayment:(BOOL)processToPayment) {
 	dispatch_async(dispatch_get_main_queue(), ^{
-		[Purchasely showController:self.presentedPresentationViewController type: PLYUIControllerTypeProductPage];
-		self.authorizePurchaseHandler(processToPayment);
+		if (self.presentedPresentationViewController != nil) {
+			[Purchasely showController:self.presentedPresentationViewController type: PLYUIControllerTypeProductPage];
+			self.authorizePurchaseHandler(processToPayment);
+		}
 	});
 }
 
