@@ -39,6 +39,7 @@ RCT_EXPORT_MODULE(Purchasely);
 		@"amplitudeSessionId": @(PLYAttributeAmplitudeSessionId),
 		@"firebaseAppInstanceId": @(PLYAttributeFirebaseAppInstanceId),
 		@"airshipChannelId": @(PLYAttributeAirshipChannelId),
+        @"batchInstallationId": @(PLYAttributeBatchInstallationId),
 		@"consumable": @(PLYPlanTypeConsumable),
 		@"nonConsumable": @(PLYPlanTypeNonConsumable),
 		@"autoRenewingSubscription": @(PLYPlanTypeAutoRenewingSubscription),
@@ -103,6 +104,12 @@ RCT_EXPORT_METHOD(userLogout) {
 
 RCT_EXPORT_METHOD(setAttribute:(NSInteger)attribute value:(NSString * _Nonnull)value) {
 	[Purchasely setAttribute:attribute value:value];
+}
+
+RCT_EXPORT_METHOD(setLanguage:(NSString * _Nonnull) language) {
+    NSLocale *locale = [NSLocale localeWithLocaleIdentifier:language];
+    NSLog(@"TEST PRINT");
+    [Purchasely setLanguageFrom:locale];
 }
 
 RCT_REMAP_METHOD(getAnonymousUserId,
@@ -283,17 +290,31 @@ RCT_EXPORT_METHOD(purchaseWithPlanVendorId:(NSString * _Nonnull)planVendorId
 }
 
 RCT_REMAP_METHOD(restoreAllProducts,
-				 resolve:(RCTPromiseResolveBlock)resolve
-				 reject:(RCTPromiseRejectBlock)reject)
+                 resolve:(RCTPromiseResolveBlock)resolve
+                 reject:(RCTPromiseRejectBlock)reject)
 {
-	dispatch_async(dispatch_get_main_queue(), ^{
-		[Purchasely restoreAllProductsWithSuccess:^{
-			resolve([NSNumber numberWithBool:true]);
-		}
-										  failure:^(NSError * _Nonnull error) {
-			[self reject: reject with: error];
-		}];
-	});
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [Purchasely restoreAllProductsWithSuccess:^{
+            resolve([NSNumber numberWithBool:true]);
+        }
+                                          failure:^(NSError * _Nonnull error) {
+            [self reject: reject with: error];
+        }];
+    });
+}
+
+RCT_REMAP_METHOD(silentRestoreAllProducts,
+                 silentRestoreWithResolve:(RCTPromiseResolveBlock)resolve
+                 reject:(RCTPromiseRejectBlock)reject)
+{
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [Purchasely silentRestoreAllProductsWithSuccess:^{
+            resolve([NSNumber numberWithBool:true]);
+        }
+                                                failure:^(NSError * _Nonnull error) {
+            [self reject: reject with: error];
+        }];
+    });
 }
 
 RCT_EXPORT_METHOD(allProducts:(RCTPromiseResolveBlock)resolve

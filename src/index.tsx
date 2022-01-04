@@ -156,6 +156,7 @@ type PurchaselyType = {
   productWithIdentifier(vendorId: string): Promise<PurchaselyProduct>;
   planWithIdentifier(vendorId: string): Promise<PurchaselyPlan>;
   restoreAllProducts(): Promise<boolean>;
+  silentRestoreAllProducts(): Promise<boolean>;
   userSubscriptions(): Promise<PurchaselySubscription[]>;
   presentSubscriptions(): void;
   handle(deeplink: string | null): Promise<boolean>;
