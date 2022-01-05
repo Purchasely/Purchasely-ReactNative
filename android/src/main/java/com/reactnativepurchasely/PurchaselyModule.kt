@@ -311,6 +311,11 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   }
 
   @ReactMethod
+  fun silentRestoreAllProducts(promise: Promise) {
+    restoreAllProducts(promise)
+  }
+
+  @ReactMethod
   fun displaySubscriptionCancellationInstruction() {
     Purchasely.displaySubscriptionCancellationInstruction(reactApplicationContext.currentActivity as FragmentActivity, 0)
   }

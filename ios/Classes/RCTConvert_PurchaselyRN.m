@@ -24,7 +24,8 @@ RCT_ENUM_CONVERTER(PLYProductViewControllerResult, (@{ @"productResultPurchased"
 
 RCT_ENUM_CONVERTER(PLYAttribute, (@{ @"amplitudeSessionId": @(PLYAttributeAmplitudeSessionId),
 									 @"firebaseAppInstanceId": @(PLYAttributeFirebaseAppInstanceId),
-									 @"airshipChannelId": @(PLYAttributeAirshipChannelId)}),
+									 @"airshipChannelId": @(PLYAttributeAirshipChannelId),
+                                     @"batchInstallationId": @(PLYAttributeBatchInstallationId)}),
 				   PLYAttributeAmplitudeSessionId, integerValue)
 
 RCT_ENUM_CONVERTER(PLYSubscriptionSource, (@{ @"sourceAppStore": @(PLYSubscriptionSourceAppleAppStore),

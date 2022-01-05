@@ -118,6 +118,17 @@ const App: React.FunctionComponent<{}> = () => {
     setLoading(false);
   };
 
+  const onPressSilentRestore = async () => {
+    setLoading(true);
+    try {
+      const restored = await Purchasely.silentRestoreAllProducts();
+      console.log('Silent Restoration success ? ' + restored);
+    } catch (e) {
+      console.error(e);
+    }
+    setLoading(false);
+  };
+
   const onPressContinuePayment = () => {
     //Call this method to process to payment
     Purchasely.processToPayment(true);
@@ -127,6 +138,7 @@ const App: React.FunctionComponent<{}> = () => {
     Purchasely.setLogLevel(LogLevels.DEBUG);
     Purchasely.isReadyToPurchase(true);
 
+    Purchasely.setLanguage('en');
     Purchasely.setDefaultPresentationResultCallback((result) => {
       console.log('Result is ' + result.result);
     });
@@ -156,6 +168,7 @@ const App: React.FunctionComponent<{}> = () => {
     });
 
     Purchasely.setAttribute(Attributes.FIREBASE_APP_INSTANCE_ID, 'test0');
+    Purchasely.setAttribute(Attributes.BATCH_INSTALLATION_ID, 'testBatch0');
   }
 
   return (
@@ -219,6 +232,19 @@ const App: React.FunctionComponent<{}> = () => {
             <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
           )}{' '}
           Restore purchases
+        </Text>
+      </TouchableHighlight>
+
+      <TouchableHighlight
+        onPress={onPressSilentRestore}
+        disabled={loading}
+        style={loading ? styles.buttonDisabled : styles.button}
+      >
+        <Text style={styles.text}>
+          {loading && (
+            <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
+          )}{' '}
+          Silent Restore purchases
         </Text>
       </TouchableHighlight>
 
