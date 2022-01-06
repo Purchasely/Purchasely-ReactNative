@@ -381,21 +381,16 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     Purchasely.setPaywallActionsInterceptor { activity, action, parameters, processAction ->
       paywallActionHandler = processAction
 
-      val parametersForReact = parameters
-        .mapKeys { it.key.toString().toLowerCase(Locale.getDefault()) }
-        .mapValues {
-          val value = it.value
-          if(value is PLYPlan) {
-            transformPlanToMap(value)
-          } else {
-            value.toString()
-          }
-        }
+      val parametersForReact = hashMapOf<String, Any?>();
+      parametersForReact["title"] = parameters.title
+      parametersForReact["url"] = parameters.url
+      parametersForReact["plan"] = transformPlanToMap(parameters.plan)
+      parametersForReact["presentation"] = parameters.presentation
 
       promise.resolve(Arguments.makeNativeMap(
         mapOf(
           Pair("action", action.value),
-          Pair("parameters", parametersForReact)
+          Pair("parameters", parametersForReact.filterNot { it.value == null })
         )
       ))
     }
