@@ -21,16 +21,11 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
 
   private val eventListener: EventListener = object: EventListener {
     override fun onEvent(event: PLYEvent) {
-      if (event.properties != null) {
-        val map = mapOf(
-          Pair("name", event.name),
-          Pair("properties", event.properties!!.toMap())
-        )
-        sendEvent(reactApplicationContext, "PURCHASELY_EVENTS", Arguments.makeNativeMap(map))
-      } else {
-        val map = mapOf(Pair("name", event.name))
-        sendEvent(reactApplicationContext, "PURCHASELY_EVENTS", Arguments.makeNativeMap(map))
-      }
+      val map = mapOf(
+        Pair("name", event.name),
+        Pair("properties", event.properties.toMap())
+      )
+      sendEvent(reactApplicationContext, "PURCHASELY_EVENTS", Arguments.makeNativeMap(map))
     }
   }
 
@@ -378,7 +373,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
 
   @ReactMethod
   fun setPaywallActionInterceptor(promise: Promise) {
-    Purchasely.setPaywallActionsInterceptor { activity, action, parameters, processAction ->
+    Purchasely.setPaywallActionsInterceptor { info, action, parameters, processAction ->
       paywallActionHandler = processAction
 
       val parametersForReact = hashMapOf<String, Any?>();
@@ -389,6 +384,10 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
 
       promise.resolve(Arguments.makeNativeMap(
         mapOf(
+          Pair("info", mapOf(
+            Pair("contentId", info?.contentId),
+            Pair("presentationId", info?.presentationId)
+          )),
           Pair("action", action.value),
           Pair("parameters", parametersForReact.filterNot { it.value == null })
         )

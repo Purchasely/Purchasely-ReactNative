@@ -127,6 +127,11 @@ export enum PLYPaywallAction {
   PROMO_CODE = 'promo_code',
 }
 
+export type PLYPaywallInfo = {
+  presentationId?: string;
+  contentId?: string;
+};
+
 export type PurchaselyPlan = {
   vendorId: string;
   name: string;
@@ -165,6 +170,7 @@ export type PresentPresentationResult = {
 };
 
 export type PaywallActionInterceptorResult = {
+  info: PLYPaywallInfo;
   action: PLYPaywallAction;
   parameters: {
     url: String;
@@ -216,30 +222,31 @@ type PurchaselyEventsNames =
   | 'APP_UPDATED'
   | 'APP_STARTED'
   | 'CANCELLATION_REASON_PUBLISHED'
-  | 'DEEPLINK_OPENED'
   | 'IN_APP_PURCHASING'
   | 'IN_APP_PURCHASED'
-  | 'IN_APP_RENEWED'
   | 'IN_APP_RESTORED'
   | 'IN_APP_DEFERRED'
   | 'IN_APP_PURCHASE_FAILED'
+  | 'IN_APP_NOT_AVAILABLE'
+  | 'PURCHASE_CANCELLED_BY_APP'
+  | 'CAROUSEL_SLIDE_SWIPED'
+  | 'DEEPLINK_OPENED'
   | 'LINK_OPENED'
   | 'LOGIN_TAPPED'
   | 'PLAN_SELECTED'
+  | 'PRESENTATION_VIEWED'
   | 'PRESENTATION_OPENED'
   | 'PRESENTATION_SELECTED'
-  | 'PRESENTATION_VIEWED'
-  | 'PURCHASE_FROM_STORE_TAPPED'
-  | 'PURCHASE_TAPPED'
+  | 'PROMO_CODE_TAPPED'
   | 'PURCHASE_CANCELLED'
-  | 'PURCHASE_CANCELLED_BY_APP'
+  | 'PURCHASE_TAPPED'
+  | 'RESTORE_TAPPED'
   | 'RECEIPT_CREATED'
   | 'RECEIPT_VALIDATED'
   | 'RECEIPT_FAILED'
   | 'RESTORE_STARTED'
   | 'RESTORE_SUCCEEDED'
   | 'RESTORE_FAILED'
-  | 'STORE_PRODUCT_FETCH_FAILED'
   | 'SUBSCRIPTIONS_LIST_VIEWED'
   | 'SUBSCRIPTION_DETAILS_VIEWED'
   | 'SUBSCRIPTION_CANCEL_TAPPED'
@@ -248,37 +255,77 @@ type PurchaselyEventsNames =
   | 'USER_LOGGED_IN'
   | 'USER_LOGGED_OUT';
 
-type PurchaselyEventMap = {
-  name: PurchaselyEventsNames;
-  properties?: {
-    error?: { message?: string };
-    transaction?: {
-      transaction_identifier?: string;
-      original_transaction_identifier?: string;
-      payment?: { product_identifier?: string; quantity: number };
-    };
-    url?: { absolute_url?: string };
-    payment?: { product_identifier?: string; quantity: number };
-    product?: {
-      amount?: number;
-      currency?: string;
-      intro_amount?: number;
-      intro_period?: string;
-      intro_duration?: number;
-      intro_cycles?: number;
-      apple_product_id?: string;
-      android_product_id?: string;
-      vendor_id?: string;
-    };
-    displayed_presentation?: string;
-    plan?: { vendor_id?: string };
-    presentation?: { vendor_id?: string };
-    reason?: { code: string; current_locale: string };
-    deeplink?: { description?: string; url?: string };
-  };
+type PurchaselyEventPropertyPlan = {
+  type?: string;
+  purchasely_plan_id?: string;
+  store?: string;
+  store_country?: string;
+  store_product_id?: string;
+  price_in_customer_currency?: number;
+  customer_currency?: string;
+  period?: string;
+  duration?: number;
+  intro_price_in_customer_currency?: number;
+  intro_period?: string;
+  intro_duration?: string;
+  has_free_trial?: boolean;
+  free_trial_period?: string;
+  free_trial_duration?: number;
+  discount_referent?: string;
+  discount_percentage_comparison_to_referent?: string;
+  discount_price_comparison_to_referent?: number;
+  is_default: boolean;
 };
 
-type EventListenerCallback = (event: PurchaselyEventMap) => void;
+type PurchaselyEventPropertyCarousel = {
+  selected_slide?: number;
+  number_of_slides?: number;
+  is_carousel_auto_playing: boolean;
+  default_slide?: number;
+  previous_slide?: number;
+};
+
+type PurchaselyEventPropertySubscription = {
+  plan?: String;
+  product?: String;
+};
+
+type PurchaselyEvent = {
+  name: PurchaselyEventsNames;
+  properties: PurchaselyEventProperties;
+};
+
+type PurchaselyEventProperties = {
+  sdk_version: string;
+  event_name: PurchaselyEventsNames;
+  event_created_at_ms: number;
+  event_created_at: string;
+  displayed_presentation?: string;
+  user_id?: string;
+  anonymous_user_id?: string;
+  purchasable_plans?: [PurchaselyEventPropertyPlan];
+  deeplink_identifier?: string;
+  source_identifier?: string;
+  selected_plan?: string;
+  previous_selected_plan?: string;
+  selected_presentation?: string;
+  previous_selected_presentation?: string;
+  link_identifier?: string;
+  carousels?: [PurchaselyEventPropertyCarousel];
+  language?: string;
+  device?: string;
+  os_version?: string;
+  device_type?: string;
+  error_message?: string;
+  cancellation_reason_id?: string;
+  cancellation_reason?: string;
+  plan?: string;
+  selected_product?: string;
+  plan_change_type?: string;
+  running_subscriptions?: [PurchaselyEventPropertySubscription];
+};
+
+type EventListenerCallback = (event: PurchaselyEvent) => void;
 
 const addEventListener = (callback: EventListenerCallback) => {
   return PurchaselyEventEmitter.addListener('PURCHASELY_EVENTS', callback);

@@ -148,6 +148,7 @@ const App: React.FunctionComponent<{}> = () => {
     Purchasely.setPaywallActionInterceptorCallback((result) => {
       console.log(result);
       console.log('Received action from paywall');
+      console.log(result.info);
 
       if (result.action === PLYPaywallAction.NAVIGATE) {
         console.log(
@@ -184,7 +185,8 @@ const App: React.FunctionComponent<{}> = () => {
     });
 
     Purchasely.addEventListener((event) => {
-      console.log(event);
+      console.log(event.name);
+      console.log(event.properties);
     });
     // Purchasely.removeAllListeners();
 
