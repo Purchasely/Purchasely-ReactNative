@@ -134,6 +134,7 @@ export type PLYPaywallInfo = {
 
 export type PurchaselyPlan = {
   vendorId: string;
+  productId: string;
   name: string;
   type: PlanType;
   amount: number;
