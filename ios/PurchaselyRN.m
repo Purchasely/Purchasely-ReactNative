@@ -183,11 +183,13 @@ RCT_EXPORT_METHOD(setLanguage:(NSString * _Nonnull) language) {
 }
 
 RCT_EXPORT_METHOD(closePaywall) {
-//    if (self.presentedPresentationViewController != nil) {
-//        dispatch_async(dispatch_get_main_queue(), ^{
-//        [self.presentedPresentationViewController dismissViewControllerAnimated:true completion:nil];
-//        });
-//    }
+    if (self.presentedPresentationViewController != nil) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self.presentedPresentationViewController dismissViewControllerAnimated:true completion:^{
+                self.presentedPresentationViewController = nil;
+            }];
+        });
+    }
 }
 
 RCT_REMAP_METHOD(getAnonymousUserId,
@@ -248,7 +250,7 @@ RCT_EXPORT_METHOD(presentPresentationWithIdentifier:(NSString * _Nullable)presen
             [navCtrl.navigationBar setShadowImage: [UIImage new]];
             [navCtrl.navigationBar setTintColor: [UIColor whiteColor]];
 
-//            self.presentedPresentationViewController = navCtrl;
+            self.presentedPresentationViewController = navCtrl;
 
             [Purchasely showController:navCtrl type: PLYUIControllerTypeProductPage];
         }
@@ -277,7 +279,7 @@ RCT_EXPORT_METHOD(presentPlanWithIdentifier:(NSString * _Nonnull)planVendorId
             [navCtrl.navigationBar setShadowImage: [UIImage new]];
             [navCtrl.navigationBar setTintColor: [UIColor whiteColor]];
             
-//            self.presentedPresentationViewController = navCtrl;
+            self.presentedPresentationViewController = navCtrl;
             
             [Purchasely showController:navCtrl type: PLYUIControllerTypeProductPage];
         }
@@ -306,7 +308,7 @@ RCT_EXPORT_METHOD(presentProductWithIdentifier:(NSString * _Nonnull)productVendo
             [navCtrl.navigationBar setShadowImage: [UIImage new]];
             [navCtrl.navigationBar setTintColor: [UIColor whiteColor]];
 
-//            self.presentedPresentationViewController = navCtrl;
+            self.presentedPresentationViewController = navCtrl;
 
             [Purchasely showController:navCtrl type: PLYUIControllerTypeProductPage];
         }
