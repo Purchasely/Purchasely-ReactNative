@@ -13,24 +13,44 @@ npm install react-native-purchasely
 ```js
 import Purchasely from "react-native-purchasely";
 
-// ...
-
 Purchasely.startWithAPIKey(
   'afa96c76-1d8e-4e3c-a48f-204a3cd93a15',
-  ['Google'],
-  null,
-  LogLevels.WARNING
-);
+  ['Google'], // list of stores for Android, accepted values: Google, Huawei and Amazon
+  null, // your user id
+  LogLevels.DEBUG, // log level, should be warning or error in production
+  RunningMode.FULL // running mode
+).then(
+  (configured) => {
+    if (!configured) {
+      console.log('Purchasely SDK not properly initialized');
+      return;
+    }
 
-Purchasely.presentPresentationWithIdentifier(
-  null,
-  (msg) => {
-    console.error(msg);
+    console.log('Purchasely SDK is initialized');
+
+    setupPurchasely();
   },
-  (someData) => {
-    console.log(someData);
+  (error) => {
+    console.log('Purchasely SDK initialization error', error);
   }
 );
+
+try {
+  const result = await Purchasely.presentPresentationWithIdentifier(
+    'my_presentation_id', // may be null
+    'my_content_id', // may be null
+  );
+  console.log(result);
+  console.log('Presentation View Result : ' + ProductResult[result.result]);
+
+  if (result.plan != null) {
+    console.log('User purchased ' + result.plan.name);
+    console.log('Plan Vendor ID : ' + result.plan.vendorId);
+  }
+} catch (e) {
+  console.error(e);
+}
+
 ```
 
 ## 🏁 Documentation
