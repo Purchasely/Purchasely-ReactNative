@@ -21,16 +21,11 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
 
   private val eventListener: EventListener = object: EventListener {
     override fun onEvent(event: PLYEvent) {
-      if (event.properties != null) {
-        val map = mapOf(
-          Pair("name", event.name),
-          Pair("properties", event.properties!!.toMap())
-        )
-        sendEvent(reactApplicationContext, "PURCHASELY_EVENTS", Arguments.makeNativeMap(map))
-      } else {
-        val map = mapOf(Pair("name", event.name))
-        sendEvent(reactApplicationContext, "PURCHASELY_EVENTS", Arguments.makeNativeMap(map))
-      }
+      val map = mapOf(
+        Pair("name", event.name),
+        Pair("properties", event.properties.toMap())
+      )
+      sendEvent(reactApplicationContext, "PURCHASELY_EVENTS", Arguments.makeNativeMap(map))
     }
   }
 
@@ -46,8 +41,8 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     return "Purchasely"
   }
 
-  override fun getConstants(): Map<String, Any> {
-    val constants: MutableMap<String, Any> = HashMap()
+  override fun getConstants(): Map<String, Int> {
+    val constants: MutableMap<String, Int> = HashMap()
     constants["logLevelDebug"] = LogLevel.DEBUG.ordinal
     constants["logLevelWarn"] = LogLevel.WARN.ordinal
     constants["logLevelInfo"] = LogLevel.INFO.ordinal
@@ -70,6 +65,11 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     constants["autoRenewingSubscription"] = DistributionType.RENEWING_SUBSCRIPTION.ordinal
     constants["nonRenewingSubscription"] = DistributionType.NON_RENEWING_SUBSCRIPTION.ordinal
     constants["unknown"] = DistributionType.UNKNOWN.ordinal
+    constants["runningModeTransactionOnly"] = runningModeTransactionOnly
+    constants["runningModeObserver"] = runningModeObserver
+    constants["runningModePaywallOnly"] = runningModePaywallOnly
+    constants["runningModePaywallObserver"] = runningModePaywallObserver
+    constants["runningModeFull"] = runningModeFull
     return constants
   }
 
@@ -107,7 +107,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
                       stores: ReadableArray,
                       userId: String?,
                       logLevel: Int,
-                      observerMode: Boolean,
+                      runningMode: Int,
                       promise: Promise) {
     val storesInstances = getStoresInstances(stores.toArrayList())
 
@@ -117,7 +117,13 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
       .userId(userId)
       .eventListener(eventListener)
       .logLevel(LogLevel.values()[logLevel])
-      .observerMode(observerMode)
+      .runningMode(when(runningMode) {
+        runningModeTransactionOnly -> PLYRunningMode.TransactionOnly
+        runningModeObserver -> PLYRunningMode.Observer
+        runningModePaywallOnly -> PLYRunningMode.PaywallOnly
+        runningModePaywallObserver -> PLYRunningMode.PaywallObserver
+        else -> PLYRunningMode.Full
+      })
       .build()
 
     Purchasely.appTechnology = PLYAppTechnology.REACT_NATIVE
@@ -324,7 +330,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   fun userSubscriptions(promise: Promise) {
     GlobalScope.launch {
       try {
-        val subscriptions = Purchasely.getUserSubscriptions()
+        val subscriptions = Purchasely.userSubscriptions()
         val result = ArrayList<ReadableMap?>()
         for (data in subscriptions) {
           val map = data.data.toMap().toMutableMap().apply {
@@ -366,57 +372,51 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   }
 
   @ReactMethod
-  fun setLoginTappedHandler(promise: Promise) {
-    Purchasely.setLoginTappedHandler { activity, refreshPresentation ->
-      loginCompletionHandler = refreshPresentation
-      val reactActivity = reactApplicationContext.currentActivity
-      reactActivity?.startActivity(
-        Intent(activity, reactActivity::class.java).apply {
-          flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
-        }
-      )
-      promise.resolve(null)
+  fun setPaywallActionInterceptor(promise: Promise) {
+    Purchasely.setPaywallActionsInterceptor { info, action, parameters, processAction ->
+      paywallActionHandler = processAction
+
+      val parametersForReact = hashMapOf<String, Any?>();
+      parametersForReact["title"] = parameters.title
+      parametersForReact["url"] = parameters.url
+      parametersForReact["plan"] = transformPlanToMap(parameters.plan)
+      parametersForReact["presentation"] = parameters.presentation
+
+      promise.resolve(Arguments.makeNativeMap(
+        mapOf(
+          Pair("info", mapOf(
+            Pair("contentId", info?.contentId),
+            Pair("presentationId", info?.presentationId)
+          )),
+          Pair("action", action.value),
+          Pair("parameters", parametersForReact.filterNot { it.value == null })
+        )
+      ))
     }
   }
 
   @ReactMethod
-  fun onUserLoggedIn(userLoggedIn: Boolean) {
+  fun onProcessAction(processAction: Boolean) {
     CoroutineScope(Dispatchers.Main).launch {
       if(productActivity?.relaunch(reactApplicationContext) == false) {
         //wait for activity to relaunch
         withContext(Dispatchers.Default) { delay(500) }
       }
       productActivity?.activity?.get()?.runOnUiThread {
-        loginCompletionHandler?.invoke(userLoggedIn)
+        paywallActionHandler?.invoke(processAction)
       }
     }
   }
 
   @ReactMethod
-  fun setConfirmPurchaseHandler(promise: Promise) {
-    Purchasely.setConfirmPurchaseHandler { activity, processToPayment ->
-      processToPaymentHandler = processToPayment
-      val reactActivity = reactApplicationContext.currentActivity
-      reactActivity?.startActivity(
-        Intent(activity, reactActivity::class.java).apply {
-          flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
-        }
-      )
-      promise.resolve(null)
-    }
-  }
-
-  @ReactMethod
-  fun processToPayment(processToPayment: Boolean) {
-    CoroutineScope(Dispatchers.Main).launch {
-      if(productActivity?.relaunch(reactApplicationContext) == false) {
-        //wait for activity to relaunch
-        withContext(Dispatchers.Default) { delay(500) }
+  fun closePaywall() {
+    val reactActivity = reactApplicationContext.currentActivity
+    val activity = productActivity?.activity?.get() ?: reactActivity
+    reactActivity?.startActivity(
+      Intent(activity, reactActivity::class.java).apply {
+        flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
       }
-      productActivity?.activity?.get()?.runOnUiThread {
-        processToPaymentHandler?.invoke(processToPayment)
-      }
-    }
+    )
   }
 
   private fun sendEvent(reactContext: ReactContext,
@@ -428,11 +428,16 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   }
 
   companion object {
+    private const val runningModeTransactionOnly = 0
+    private const val runningModeObserver = 1
+    private const val runningModePaywallOnly = 2
+    private const val runningModePaywallObserver = 3
+    private const val runningModeFull = 4
+
     var productActivity: ProductActivity? = null
     var purchasePromise: Promise? = null
     var defaultPurchasePromise: Promise? = null
-    var loginCompletionHandler: PLYLoginCompletionHandler? = null
-    var processToPaymentHandler: PLYProcessToPaymentHandler? = null
+    var paywallActionHandler: PLYCompletionHandler? = null
 
     fun sendPurchaseResult(result: PLYProductViewResult, plan: PLYPlan?) {
       val productViewResult = when(result) {

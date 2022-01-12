@@ -10,9 +10,10 @@
 
 @interface PurchaselyRN: RCTEventEmitter <RCTBridgeModule, PLYEventDelegate>
 
-@property (nonatomic, retain) UIViewController* presentedPresentationViewController;
+@property (nonatomic, assign) UIViewController* presentedPresentationViewController;
 
 @property void (^loginClosedHandler)(BOOL loggedIn);
 @property void (^authorizePurchaseHandler)(BOOL authorizePurchase);
+@property void (^onProcessActionHandler)(BOOL proceed);
 
 @end
