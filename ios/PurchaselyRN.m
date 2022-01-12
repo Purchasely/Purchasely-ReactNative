@@ -44,43 +44,114 @@ RCT_EXPORT_MODULE(Purchasely);
 		@"nonConsumable": @(PLYPlanTypeNonConsumable),
 		@"autoRenewingSubscription": @(PLYPlanTypeAutoRenewingSubscription),
 		@"nonRenewingSubscription": @(PLYPlanTypeNonRenewingSubscription),
-		@"unknown": @(PLYPlanTypeUnknown)
+		@"unknown": @(PLYPlanTypeUnknown),
+        @"runningModeTransactionOnly": @(PLYRunningModeTransactionOnly),
+        @"runningModeObserver": @(PLYRunningModeObserver),
+        @"runningModePaywallOnly": @(PLYRunningModePaywallOnly),
+        @"runningModePaywallObserver": @(PLYRunningModePaywallObserver),
+        @"runningModeFull": @(PLYRunningModeFull)
 	};
 }
 
-- (NSDictionary<NSString *, NSObject *> *) resultDictionaryForPresentationController:(PLYProductViewControllerResult)result plan:(PLYPlan * _Nullable)plan {
-	NSMutableDictionary<NSString *, NSObject *> *productViewResult = [NSMutableDictionary new];
-	int resultString;
+- (NSDictionary<NSString *, NSObject *> *) resultDictionaryForActionInterceptor:(PLYPresentationAction) action
+                                                                     parameters: (PLYPresentationActionParameters * _Nullable) params
+                                                              presentationInfos: (PLYPresentationInfo * _Nullable) infos {
+	NSMutableDictionary<NSString *, NSObject *> *actionInterceptorResult = [NSMutableDictionary new];
 
-	switch (result) {
-		case PLYProductViewControllerResultPurchased:
-			resultString = PLYProductViewControllerResultPurchased;
-			break;
-		case PLYProductViewControllerResultRestored:
-			resultString = PLYProductViewControllerResultRestored;
-			break;
-		case PLYProductViewControllerResultCancelled:
-			resultString = PLYProductViewControllerResultCancelled;
-			break;
-	}
+    NSString* actionString;
 
-	[productViewResult setObject:[NSNumber numberWithInt:resultString] forKey:@"result"];
+    switch (action) {
+        case PLYPresentationActionLogin:
+            actionString = @"login";
+            break;
+        case PLYPresentationActionPurchase:
+            actionString = @"purchase";
+            break;
+        case PLYPresentationActionClose:
+            actionString = @"close";
+            break;
+        case PLYPresentationActionRestore:
+            actionString = @"restore";
+            break;
+        case PLYPresentationActionNavigate:
+            actionString = @"navigate";
+            break;
+        case PLYPresentationActionPromoCode:
+            actionString = @"promo_code";
+            break;
+        case PLYPresentationActionOpenPresentation:
+            actionString = @"open_presentation";
+            break;
+    }
 
-	if (plan != nil) {
-		[productViewResult setObject:[plan asDictionary] forKey:@"plan"];
-	}
-	return productViewResult;
+	[actionInterceptorResult setObject:actionString forKey:@"action"];
+
+    if (infos != nil) {
+        NSMutableDictionary<NSString *, NSObject *> *infosResult = [NSMutableDictionary new];
+        if (infos.contentId != nil) {
+            [infosResult setObject:infos.contentId forKey:@"contentId"];
+        }
+        if (infos.presentationId != nil) {
+            [infosResult setObject:infos.presentationId forKey:@"presentationId"];
+        }
+        [actionInterceptorResult setObject:infosResult forKey:@"info"];
+    }
+    if (params != nil) {
+        NSMutableDictionary<NSString *, NSObject *> *paramsResult = [NSMutableDictionary new];
+        if (params.url != nil) {
+            [paramsResult setObject:params.url.absoluteString forKey:@"url"];
+        }
+        if (params.plan != nil) {
+            [paramsResult setObject:[params.plan asDictionary] forKey:@"plan"];
+        }
+        if (params.title != nil) {
+            [paramsResult setObject:params.title forKey:@"title"];
+        }
+        if (params.presentation != nil) {
+            [paramsResult setObject:params.presentation forKey:@"presentation"];
+        }
+        [actionInterceptorResult setObject:paramsResult forKey:@"parameters"];
+    }
+    
+	return actionInterceptorResult;
 }
+
+- (NSDictionary<NSString *, NSObject *> *) resultDictionaryForPresentationController:(PLYProductViewControllerResult)result plan:(PLYPlan * _Nullable)plan {
+    NSMutableDictionary<NSString *, NSObject *> *productViewResult = [NSMutableDictionary new];
+    int resultString;
+
+    switch (result) {
+        case PLYProductViewControllerResultPurchased:
+            resultString = PLYProductViewControllerResultPurchased;
+            break;
+        case PLYProductViewControllerResultRestored:
+            resultString = PLYProductViewControllerResultRestored;
+            break;
+        case PLYProductViewControllerResultCancelled:
+            resultString = PLYProductViewControllerResultCancelled;
+            break;
+    }
+
+    [productViewResult setObject:[NSNumber numberWithInt:resultString] forKey:@"result"];
+
+    if (plan != nil) {
+        [productViewResult setObject:[plan asDictionary] forKey:@"plan"];
+    }
+    return productViewResult;
+}
+
 
 RCT_EXPORT_METHOD(startWithAPIKey:(NSString * _Nonnull)apiKey
 				  stores:(NSArray * _Nullable)stores
 				  userId:(NSString * _Nullable)userId
-				  logLevel:(NSInteger)logLevel observerMode:(BOOL)observerMode
+				  logLevel:(NSInteger)logLevel
+                  runningMode:(NSInteger)runningMode
 				  initialized:(RCTPromiseResolveBlock)resolve
 				  reject:(RCTPromiseRejectBlock)reject) {
-	[Purchasely startWithAPIKey:apiKey appUserId:userId observerMode:observerMode eventDelegate:self uiDelegate:nil confirmPurchaseHandler:nil logLevel:logLevel initialized:^(BOOL initialized, NSError * _Nullable error) {
-		resolve(@(initialized));
-	}];
+    
+    [Purchasely startWithAPIKey:apiKey appUserId:userId runningMode:runningMode eventDelegate:self uiDelegate:nil paywallActionsInterceptor:nil logLevel:logLevel initialized:^(BOOL initialized, NSError * _Nullable error) {
+        resolve(@(initialized));
+    }];
 
 	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(purchasePerformed) name:@"ply_purchasedSubscription" object:nil];
 }
@@ -111,6 +182,14 @@ RCT_EXPORT_METHOD(setLanguage:(NSString * _Nonnull) language) {
     [Purchasely setLanguageFrom:locale];
 }
 
+RCT_EXPORT_METHOD(closePaywall) {
+    if (self.presentedPresentationViewController != nil) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+        [self.presentedPresentationViewController dismissViewControllerAnimated:true completion:nil];
+        });
+    }
+}
+
 RCT_REMAP_METHOD(getAnonymousUserId,
 				 getAnonymousUserId:(RCTPromiseResolveBlock)resolve
 				 reject:(RCTPromiseRejectBlock)reject)
@@ -132,48 +211,21 @@ RCT_EXPORT_METHOD(setDefaultPresentationResultHandler:(RCTPromiseResolveBlock)re
 	});
 }
 
-RCT_EXPORT_METHOD(setLoginTappedHandler:(RCTPromiseResolveBlock)resolve
-				  reject:(RCTPromiseRejectBlock)reject)
+RCT_EXPORT_METHOD(setPaywallActionInterceptor:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
 {
-	dispatch_async(dispatch_get_main_queue(), ^{
-		[Purchasely setLoginTappedHandler:^(UIViewController * _Nonnull ctrl, void (^ _Nonnull closedHandler)(BOOL) ) {
-			self.loginClosedHandler = closedHandler;
-
-			[self.presentedPresentationViewController dismissViewControllerAnimated:true completion:^{
-				resolve(nil);
-			}];
-		}];
-	});
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [Purchasely setPaywallActionsInterceptor:^(enum PLYPresentationAction action, PLYPresentationActionParameters * _Nullable parameters, PLYPresentationInfo * _Nullable infos, void (^ _Nonnull onProcessActionHandler)(BOOL)) {
+            self.onProcessActionHandler = onProcessActionHandler;
+            resolve([self resultDictionaryForActionInterceptor:action parameters:parameters presentationInfos:infos]);
+        }];
+    });
 }
 
-RCT_EXPORT_METHOD(onUserLoggedIn:(BOOL)userLoggedIn) {
-	dispatch_async(dispatch_get_main_queue(), ^{
-		[Purchasely showController:self.presentedPresentationViewController type: PLYUIControllerTypeProductPage];
-		self.loginClosedHandler(userLoggedIn);
-	});
-}
-
-RCT_EXPORT_METHOD(setConfirmPurchaseHandler:(RCTPromiseResolveBlock)resolve
-				  reject:(RCTPromiseRejectBlock)reject)
-{
-	dispatch_async(dispatch_get_main_queue(), ^{
-		[Purchasely setConfirmPurchaseHandler:^(UIViewController * _Nonnull ctrl, void (^ _Nonnull authorizePurchase)(BOOL)) {
-			self.authorizePurchaseHandler = authorizePurchase;
-
-			[self.presentedPresentationViewController dismissViewControllerAnimated:true completion:^{
-				resolve(nil);
-			}];
-		}];
-	});
-}
-
-RCT_EXPORT_METHOD(processToPayment:(BOOL)processToPayment) {
-	dispatch_async(dispatch_get_main_queue(), ^{
-		if (self.presentedPresentationViewController != nil) {
-			[Purchasely showController:self.presentedPresentationViewController type: PLYUIControllerTypeProductPage];
-			self.authorizePurchaseHandler(processToPayment);
-		}
-	});
+RCT_EXPORT_METHOD(onProcessAction:(BOOL)processAction) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        self.onProcessActionHandler(processAction);
+    });
 }
 
 RCT_EXPORT_METHOD(presentPresentationWithIdentifier:(NSString * _Nullable)presentationVendorId
@@ -184,19 +236,22 @@ RCT_EXPORT_METHOD(presentPresentationWithIdentifier:(NSString * _Nullable)presen
 	dispatch_async(dispatch_get_main_queue(), ^{
 		UIViewController *ctrl = [Purchasely presentationControllerWith:presentationVendorId
 															  contentId:contentId
+                                                                 loaded:nil
 															 completion:^(enum PLYProductViewControllerResult result, PLYPlan * _Nullable plan) {
 			resolve([self resultDictionaryForPresentationController:result plan:plan]);
 		}];
 
-		UINavigationController *navCtrl = [[UINavigationController alloc] initWithRootViewController:ctrl];
-		[navCtrl.navigationBar setTranslucent:YES];
-		[navCtrl.navigationBar setBackgroundImage:[UIImage new] forBarMetrics:UIBarMetricsDefault];
-		[navCtrl.navigationBar setShadowImage: [UIImage new]];
-		[navCtrl.navigationBar setTintColor: [UIColor whiteColor]];
+        if (ctrl != nil) {
+            UINavigationController *navCtrl = [[UINavigationController alloc] initWithRootViewController:ctrl];
+            [navCtrl.navigationBar setTranslucent:YES];
+            [navCtrl.navigationBar setBackgroundImage:[UIImage new] forBarMetrics:UIBarMetricsDefault];
+            [navCtrl.navigationBar setShadowImage: [UIImage new]];
+            [navCtrl.navigationBar setTintColor: [UIColor whiteColor]];
 
-		self.presentedPresentationViewController = navCtrl;
+            self.presentedPresentationViewController = navCtrl;
 
-		[Purchasely showController:navCtrl type: PLYUIControllerTypeProductPage];
+            [Purchasely showController:navCtrl type: PLYUIControllerTypeProductPage];
+        }
 	});
 }
 
@@ -210,19 +265,22 @@ RCT_EXPORT_METHOD(presentPlanWithIdentifier:(NSString * _Nonnull)planVendorId
 		UIViewController *ctrl = [Purchasely planControllerFor:planVendorId
 														  with:presentationVendorId
 													 contentId:contentId
+                                                        loaded:nil
 													completion:^(enum PLYProductViewControllerResult result, PLYPlan * _Nullable plan) {
 			resolve([self resultDictionaryForPresentationController:result plan:plan]);
 		}];
 
-		UINavigationController *navCtrl = [[UINavigationController alloc] initWithRootViewController:ctrl];
-		[navCtrl.navigationBar setTranslucent:YES];
-		[navCtrl.navigationBar setBackgroundImage:[UIImage new] forBarMetrics:UIBarMetricsDefault];
-		[navCtrl.navigationBar setShadowImage: [UIImage new]];
-		[navCtrl.navigationBar setTintColor: [UIColor whiteColor]];
-
-		self.presentedPresentationViewController = navCtrl;
-
-		[Purchasely showController:navCtrl type: PLYUIControllerTypeProductPage];
+        if (ctrl != nil) {
+            UINavigationController *navCtrl = [[UINavigationController alloc] initWithRootViewController:ctrl];
+            [navCtrl.navigationBar setTranslucent:YES];
+            [navCtrl.navigationBar setBackgroundImage:[UIImage new] forBarMetrics:UIBarMetricsDefault];
+            [navCtrl.navigationBar setShadowImage: [UIImage new]];
+            [navCtrl.navigationBar setTintColor: [UIColor whiteColor]];
+            
+            self.presentedPresentationViewController = navCtrl;
+            
+            [Purchasely showController:navCtrl type: PLYUIControllerTypeProductPage];
+        }
 	});
 }
 
@@ -236,19 +294,22 @@ RCT_EXPORT_METHOD(presentProductWithIdentifier:(NSString * _Nonnull)productVendo
 		UIViewController *ctrl = [Purchasely productControllerFor:productVendorId
 															 with:presentationVendorId
 														contentId:contentId
+                                                           loaded:nil
 													   completion:^(enum PLYProductViewControllerResult result, PLYPlan * _Nullable plan) {
 			resolve([self resultDictionaryForPresentationController:result plan:plan]);
 		}];
 
-		UINavigationController *navCtrl = [[UINavigationController alloc] initWithRootViewController:ctrl];
-		[navCtrl.navigationBar setTranslucent:YES];
-		[navCtrl.navigationBar setBackgroundImage:[UIImage new] forBarMetrics:UIBarMetricsDefault];
-		[navCtrl.navigationBar setShadowImage: [UIImage new]];
-		[navCtrl.navigationBar setTintColor: [UIColor whiteColor]];
+        if (ctrl != nil) {
+            UINavigationController *navCtrl = [[UINavigationController alloc] initWithRootViewController:ctrl];
+            [navCtrl.navigationBar setTranslucent:YES];
+            [navCtrl.navigationBar setBackgroundImage:[UIImage new] forBarMetrics:UIBarMetricsDefault];
+            [navCtrl.navigationBar setShadowImage: [UIImage new]];
+            [navCtrl.navigationBar setTintColor: [UIColor whiteColor]];
 
-		self.presentedPresentationViewController = navCtrl;
+            self.presentedPresentationViewController = navCtrl;
 
-		[Purchasely showController:navCtrl type: PLYUIControllerTypeProductPage];
+            [Purchasely showController:navCtrl type: PLYUIControllerTypeProductPage];
+        }
 	});
 }
 

@@ -14,5 +14,6 @@
 
 @property void (^loginClosedHandler)(BOOL loggedIn);
 @property void (^authorizePurchaseHandler)(BOOL authorizePurchase);
+@property void (^onProcessActionHandler)(BOOL proceed);
 
 @end

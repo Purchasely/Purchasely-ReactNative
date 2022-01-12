@@ -157,7 +157,7 @@ const App: React.FunctionComponent<{}> = () => {
             ' ' +
             result.parameters.url
         );
-        Purchasely.onProcessAction(true);
+        Purchasely.onProcessAction(false);
       } else if (result.action === PLYPaywallAction.CLOSE) {
         console.log('User wants to close paywall');
         Purchasely.onProcessAction(true);

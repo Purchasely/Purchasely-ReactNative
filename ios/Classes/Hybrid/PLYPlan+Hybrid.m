@@ -25,6 +25,10 @@
 		[dict setObject:self.name forKey:@"name"];
 	}
 
+    if (self.appleProductId != nil) {
+        [dict setObject:self.appleProductId forKey:@"appleProductId"];
+    }
+    
 	NSString *price = [self localizedFullPriceWithLanguage:nil];
 	if (price != nil) {
 		[dict setObject:price forKey:@"price"];
