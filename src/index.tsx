@@ -385,35 +385,41 @@ const setPaywallActionInterceptorCallback = (
 
 const presentPresentationWithIdentifier = (
   presentationVendorId: string | null = null,
-  contentId: string | null = null
+  contentId: string | null = null,
+  isFullscreen: boolean = false
 ): Promise<PresentPresentationResult> => {
   return NativeModules.Purchasely.presentPresentationWithIdentifier(
     presentationVendorId,
-    contentId
+    contentId,
+    isFullscreen
   );
 };
 
 const presentProductWithIdentifier = (
   productVendorId: string,
   presentationVendorId: string | null = null,
-  contentId: string | null = null
+  contentId: string | null = null,
+  isFullscreen: boolean = false
 ): Promise<PresentPresentationResult> => {
   return NativeModules.Purchasely.presentProductWithIdentifier(
     productVendorId,
     presentationVendorId,
-    contentId
+    contentId,
+    isFullscreen
   );
 };
 
 const presentPlanWithIdentifier = (
   planVendorId: string,
   presentationVendorId: string | null = null,
-  contentId: string | null = null
+  contentId: string | null = null,
+  isFullscreen: boolean = false
 ): Promise<PresentPresentationResult> => {
   return NativeModules.Purchasely.presentPlanWithIdentifier(
     planVendorId,
     presentationVendorId,
-    contentId
+    contentId,
+    isFullscreen
   );
 };
 
