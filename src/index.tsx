@@ -383,11 +383,17 @@ const setPaywallActionInterceptorCallback = (
   });
 };
 
-const presentPresentationWithIdentifier = (
-  presentationVendorId: string | null = null,
-  contentId: string | null = null,
-  isFullscreen: boolean = false
-): Promise<PresentPresentationResult> => {
+interface PresentPresentationParameters {
+  presentationVendorId?: string | null;
+  contentId?: string | null;
+  isFullscreen?: boolean;
+}
+
+const presentPresentationWithIdentifier = ({
+  presentationVendorId = null,
+  contentId = null,
+  isFullscreen = false,
+}: PresentPresentationParameters): Promise<PresentPresentationResult> => {
   return NativeModules.Purchasely.presentPresentationWithIdentifier(
     presentationVendorId,
     contentId,
@@ -395,12 +401,19 @@ const presentPresentationWithIdentifier = (
   );
 };
 
-const presentProductWithIdentifier = (
-  productVendorId: string,
-  presentationVendorId: string | null = null,
-  contentId: string | null = null,
-  isFullscreen: boolean = false
-): Promise<PresentPresentationResult> => {
+interface PresentProductParameters {
+  productVendorId?: string | null;
+  presentationVendorId?: string | null;
+  contentId?: string | null;
+  isFullscreen?: boolean;
+}
+
+const presentProductWithIdentifier = ({
+  productVendorId = null,
+  presentationVendorId = null,
+  contentId = null,
+  isFullscreen = false,
+}: PresentProductParameters): Promise<PresentPresentationResult> => {
   return NativeModules.Purchasely.presentProductWithIdentifier(
     productVendorId,
     presentationVendorId,
@@ -408,13 +421,19 @@ const presentProductWithIdentifier = (
     isFullscreen
   );
 };
+interface PresentPlanParameters {
+  planVendorId?: string | null;
+  presentationVendorId?: string | null;
+  contentId?: string | null;
+  isFullscreen?: boolean;
+}
 
-const presentPlanWithIdentifier = (
-  planVendorId: string,
-  presentationVendorId: string | null = null,
-  contentId: string | null = null,
-  isFullscreen: boolean = false
-): Promise<PresentPresentationResult> => {
+const presentPlanWithIdentifier = ({
+  planVendorId = null,
+  presentationVendorId = null,
+  contentId = null,
+  isFullscreen = false,
+}: PresentPlanParameters): Promise<PresentPresentationResult> => {
   return NativeModules.Purchasely.presentPlanWithIdentifier(
     planVendorId,
     presentationVendorId,
