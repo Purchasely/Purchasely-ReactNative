@@ -24,7 +24,11 @@
       </activity>
       <activity android:name="com.facebook.react.devsupport.DevSettingsActivity" />
 
-      <activity tools:replace="android:theme" android:name="com.reactnativepurchasely.PLYProductActivity" android:theme="@style/AppTheme.Fullscreen" />
+      <activity
+        tools:replace="android:theme"
+        android:name="com.reactnativepurchasely.PLYProductActivity"
+        android:theme="@style/Theme.Purchasely.Fullscreen.Light"
+        />
     </application>
 
 </manifest>
