@@ -48,7 +48,9 @@ const App: React.FunctionComponent<{}> = () => {
 
   const onPressPresentation = async () => {
     try {
-      const result = await Purchasely.presentPresentationWithIdentifier();
+      const result = await Purchasely.presentPresentationWithIdentifier({
+        isFullscreen: true,
+      });
       console.log(result);
       console.log('Presentation View Result : ' + ProductResult[result.result]);
 
@@ -63,11 +65,10 @@ const App: React.FunctionComponent<{}> = () => {
 
   const onPressProduct = async () => {
     try {
-      const result = await Purchasely.presentProductWithIdentifier(
-        'PURCHASELY_PLUS',
-        null,
-        'my_content_id'
-      );
+      const result = await Purchasely.presentProductWithIdentifier({
+        productVendorId: 'PURCHASELY_PLUS',
+        contentId: 'my_content_id',
+      });
       console.log(result);
       console.log('Presentation View Result : ' + result.result);
 

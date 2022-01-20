@@ -2,8 +2,12 @@ package com.reactnativepurchasely
 
 import android.app.Activity
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
+import android.view.View
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import io.purchasely.ext.PLYProductViewResult
 import io.purchasely.ext.Purchasely
 import io.purchasely.models.PLYPlan
@@ -13,6 +17,11 @@ class PLYProductActivity : AppCompatActivity() {
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
+
+    if(intent.extras?.getBoolean("isFullScreen") == true) {
+      WindowCompat.setDecorFitsSystemWindows(window, false)
+    }
+
     setContentView(R.layout.activity_ply_product_activity)
 
     val presentationId = intent.extras?.getString("presentationId")
@@ -71,7 +80,7 @@ class PLYProductActivity : AppCompatActivity() {
 
   companion object {
     fun newIntent(activity: Activity?) = Intent(activity, PLYProductActivity::class.java).apply {
-      flags = Intent.FLAG_ACTIVITY_NEW_TASK xor Intent.FLAG_ACTIVITY_MULTIPLE_TASK
+      //flags = Intent.FLAG_ACTIVITY_NEW_TASK xor Intent.FLAG_ACTIVITY_MULTIPLE_TASK
     }
   }
 

@@ -232,6 +232,7 @@ RCT_EXPORT_METHOD(onProcessAction:(BOOL)processAction) {
 
 RCT_EXPORT_METHOD(presentPresentationWithIdentifier:(NSString * _Nullable)presentationVendorId
 				  contentId:(NSString * _Nullable)contentId
+				  isFullscreen: (BOOL) isFullscreen
 				  resolve:(RCTPromiseResolveBlock)resolve
 				  reject:(RCTPromiseRejectBlock)reject)
 {
@@ -252,6 +253,9 @@ RCT_EXPORT_METHOD(presentPresentationWithIdentifier:(NSString * _Nullable)presen
 
             self.presentedPresentationViewController = navCtrl;
 
+            if (isFullscreen) {
+                navCtrl.modalPresentationStyle = UIModalPresentationFullScreen;
+            }
             [Purchasely showController:navCtrl type: PLYUIControllerTypeProductPage];
         }
 	});
@@ -260,6 +264,7 @@ RCT_EXPORT_METHOD(presentPresentationWithIdentifier:(NSString * _Nullable)presen
 RCT_EXPORT_METHOD(presentPlanWithIdentifier:(NSString * _Nonnull)planVendorId
 				  presentationVendorId:(NSString * _Nullable)presentationVendorId
 				  contentId:(NSString * _Nullable)contentId
+				  isFullscreen: (BOOL) isFullscreen
 				  resolve:(RCTPromiseResolveBlock)resolve
 				  reject:(RCTPromiseRejectBlock)reject)
 {
@@ -281,6 +286,10 @@ RCT_EXPORT_METHOD(presentPlanWithIdentifier:(NSString * _Nonnull)planVendorId
             
             self.presentedPresentationViewController = navCtrl;
             
+            if (isFullscreen) {
+                navCtrl.modalPresentationStyle = UIModalPresentationFullScreen;
+            }
+            
             [Purchasely showController:navCtrl type: PLYUIControllerTypeProductPage];
         }
 	});
@@ -289,6 +298,7 @@ RCT_EXPORT_METHOD(presentPlanWithIdentifier:(NSString * _Nonnull)planVendorId
 RCT_EXPORT_METHOD(presentProductWithIdentifier:(NSString * _Nonnull)productVendorId
 				  presentationVendorId:(NSString * _Nullable)presentationVendorId
 				  contentId:(NSString * _Nullable)contentId
+				  isFullscreen: (BOOL) isFullscreen
 				  resolve:(RCTPromiseResolveBlock)resolve
 				  reject:(RCTPromiseRejectBlock)reject)
 {
@@ -309,6 +319,10 @@ RCT_EXPORT_METHOD(presentProductWithIdentifier:(NSString * _Nonnull)productVendo
             [navCtrl.navigationBar setTintColor: [UIColor whiteColor]];
 
             self.presentedPresentationViewController = navCtrl;
+
+            if (isFullscreen) {
+                navCtrl.modalPresentationStyle = UIModalPresentationFullScreen;
+            }
 
             [Purchasely showController:navCtrl type: PLYUIControllerTypeProductPage];
         }

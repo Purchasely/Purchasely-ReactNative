@@ -199,12 +199,14 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   @ReactMethod
   fun presentPresentationWithIdentifier(presentationVendorId: String?,
                                         contentId: String?,
+                                        isFullScreen: Boolean,
                                         promise: Promise) {
     purchasePromise = promise
     reactApplicationContext.currentActivity?.let {
       val intent = PLYProductActivity.newIntent(it)
       intent.putExtra("presentationId", presentationVendorId)
       intent.putExtra("contentId", contentId)
+      intent.putExtra("isFullScreen", isFullScreen)
       it.startActivity(intent)
     }
   }
@@ -213,6 +215,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   fun presentProductWithIdentifier(productVendorId: String,
                                    presentationVendorId: String?,
                                    contentId: String?,
+                                   isFullScreen: Boolean,
                                    promise: Promise) {
     purchasePromise = promise
     reactApplicationContext.currentActivity?.let {
@@ -220,6 +223,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
       intent.putExtra("presentationId", presentationVendorId)
       intent.putExtra("productId", productVendorId)
       intent.putExtra("contentId", contentId)
+      intent.putExtra("isFullScreen", isFullScreen)
       it.startActivity(intent)
     }
   }
@@ -228,6 +232,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   fun presentPlanWithIdentifier(planVendorId: String,
                                 presentationVendorId: String?,
                                 contentId: String?,
+                                isFullScreen: Boolean,
                                 promise: Promise) {
     purchasePromise = promise
     reactApplicationContext.currentActivity?.let {
@@ -235,6 +240,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
       intent.putExtra("presentationId", presentationVendorId)
       intent.putExtra("planId", planVendorId)
       intent.putExtra("contentId", contentId)
+      intent.putExtra("isFullScreen", isFullScreen)
       it.startActivity(intent)
     }
   }
@@ -484,7 +490,8 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
         reactApplicationContext.currentActivity?.let {
           it.startActivity(
             Intent(it, backgroundActivity::class.java).apply {
-              flags = Intent.FLAG_ACTIVITY_NEW_TASK
+              //flags = Intent.FLAG_ACTIVITY_NEW_TASK
+              flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
             }
           )
         }
