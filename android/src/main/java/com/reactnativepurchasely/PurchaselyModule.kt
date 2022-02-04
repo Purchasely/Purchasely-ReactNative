@@ -384,7 +384,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
 
       val parametersForReact = hashMapOf<String, Any?>();
       parametersForReact["title"] = parameters.title
-      parametersForReact["url"] = parameters.url
+      parametersForReact["url"] = parameters.url?.toString()
       parametersForReact["plan"] = transformPlanToMap(parameters.plan)
       parametersForReact["presentation"] = parameters.presentation
 

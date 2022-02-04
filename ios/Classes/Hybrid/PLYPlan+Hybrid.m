@@ -39,6 +39,11 @@
 		[dict setObject:amount forKey:@"amount"];
 	}
 
+    NSString *localizedAmount = [self localizedPriceWithLanguage:nil];
+    if (localizedAmount != nil) {
+        [dict setObject:localizedAmount forKey:@"localizedAmount"];
+    }
+    
 	NSDecimalNumber *introAmount = [self introAmount];
 	if (introAmount != nil) {
 		[dict setObject:introAmount forKey:@"introAmount"];

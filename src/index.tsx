@@ -138,6 +138,7 @@ export type PurchaselyPlan = {
   name: string;
   type: PlanType;
   amount: number;
+  localizedAmount: string;
   currencyCode: string;
   currencySymbol: string;
   price: string;
