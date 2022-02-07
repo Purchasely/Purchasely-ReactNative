@@ -33,3 +33,4 @@ This file provides the underlying native SDK versions that the React Native SDK 
 | 1.7.0   | 2.8.0       | 2.8.0           |
 | 2.0.0   | 3.0.0       | 3.0.1           |
 | 2.0.1   | 3.0.0       | 3.0.1           |
+| 2.1.0   | 3.1.0       | 3.1.0           |
