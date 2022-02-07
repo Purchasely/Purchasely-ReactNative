@@ -261,6 +261,37 @@ RCT_EXPORT_METHOD(presentPresentationWithIdentifier:(NSString * _Nullable)presen
 	});
 }
 
+RCT_EXPORT_METHOD(presentPresentationForPlacement:(NSString * _Nullable)placementVendorId
+                  contentId:(NSString * _Nullable)contentId
+                  isFullscreen: (BOOL) isFullscreen
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+{
+    dispatch_async(dispatch_get_main_queue(), ^{
+        UIViewController *ctrl = [Purchasely presentationControllerFor:placementVendorId
+                                                             contentId:contentId
+                                                                loaded:nil
+                                                            completion:^(enum PLYProductViewControllerResult result, PLYPlan * _Nullable plan) {
+            resolve([self resultDictionaryForPresentationController:result plan:plan]);
+        }];
+        
+        if (ctrl != nil) {
+            UINavigationController *navCtrl = [[UINavigationController alloc] initWithRootViewController:ctrl];
+            [navCtrl.navigationBar setTranslucent:YES];
+            [navCtrl.navigationBar setBackgroundImage:[UIImage new] forBarMetrics:UIBarMetricsDefault];
+            [navCtrl.navigationBar setShadowImage: [UIImage new]];
+            [navCtrl.navigationBar setTintColor: [UIColor whiteColor]];
+
+            self.presentedPresentationViewController = navCtrl;
+
+            if (isFullscreen) {
+                navCtrl.modalPresentationStyle = UIModalPresentationFullScreen;
+            }
+            [Purchasely showController:navCtrl type: PLYUIControllerTypeProductPage];
+        }
+    });
+}
+
 RCT_EXPORT_METHOD(presentPlanWithIdentifier:(NSString * _Nonnull)planVendorId
 				  presentationVendorId:(NSString * _Nullable)presentationVendorId
 				  contentId:(NSString * _Nullable)contentId
