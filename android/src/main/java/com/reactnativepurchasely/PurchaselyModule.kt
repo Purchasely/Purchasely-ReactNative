@@ -198,7 +198,6 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
 
   @ReactMethod
   fun presentPresentationWithIdentifier(presentationVendorId: String?,
-                                        placementVendorId: String?,
                                         contentId: String?,
                                         isFullScreen: Boolean,
                                         promise: Promise) {
@@ -206,6 +205,20 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     reactApplicationContext.currentActivity?.let {
       val intent = PLYProductActivity.newIntent(it)
       intent.putExtra("presentationId", presentationVendorId)
+      intent.putExtra("contentId", contentId)
+      intent.putExtra("isFullScreen", isFullScreen)
+      it.startActivity(intent)
+    }
+  }
+
+  @ReactMethod
+  fun presentPresentationForPlacement(placementVendorId: String?,
+                                      contentId: String?,
+                                      isFullScreen: Boolean,
+                                      promise: Promise) {
+    purchasePromise = promise
+    reactApplicationContext.currentActivity?.let {
+      val intent = PLYProductActivity.newIntent(it)
       intent.putExtra("placementId", placementVendorId)
       intent.putExtra("contentId", contentId)
       intent.putExtra("isFullScreen", isFullScreen)

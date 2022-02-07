@@ -387,19 +387,34 @@ const setPaywallActionInterceptorCallback = (
 
 interface PresentPresentationParameters {
   presentationVendorId?: string | null;
-  placementVendorId?: string | null;
   contentId?: string | null;
   isFullscreen?: boolean;
 }
 
 const presentPresentationWithIdentifier = ({
   presentationVendorId = null,
-  placementVendorId = null,
   contentId = null,
   isFullscreen = false,
 }: PresentPresentationParameters): Promise<PresentPresentationResult> => {
   return NativeModules.Purchasely.presentPresentationWithIdentifier(
     presentationVendorId,
+    contentId,
+    isFullscreen
+  );
+};
+
+interface PresentPresentationPlacementParameters {
+  placementVendorId?: string | null;
+  contentId?: string | null;
+  isFullscreen?: boolean;
+}
+
+const presentPresentationForPlacement = ({
+  placementVendorId = null,
+  contentId = null,
+  isFullscreen = false,
+}: PresentPresentationPlacementParameters): Promise<PresentPresentationResult> => {
+  return NativeModules.Purchasely.presentPresentationForPlacement(
     placementVendorId,
     contentId,
     isFullscreen
@@ -466,6 +481,7 @@ const Purchasely = {
   setDefaultPresentationResultCallback,
   setPaywallActionInterceptorCallback,
   presentPresentationWithIdentifier,
+  presentPresentationForPlacement,
   presentProductWithIdentifier,
   presentPlanWithIdentifier,
   purchaseWithPlanVendorId,
