@@ -25,11 +25,18 @@ class PLYProductActivity : AppCompatActivity() {
     setContentView(R.layout.activity_ply_product_activity)
 
     val presentationId = intent.extras?.getString("presentationId")
+    val placementId = intent.extras?.getString("placementId")
     val productId = intent.extras?.getString("productId")
     val planId = intent.extras?.getString("planId")
     val contentId = intent.extras?.getString("contentId")
 
     val fragment = when {
+        placementId?.isNotBlank() == true -> Purchasely.presentationFragmentForPlacement(
+          placementId,
+          contentId,
+          null,
+          callback
+        )
         planId.isNullOrEmpty().not() -> Purchasely.planFragment(
           planId,
           presentationId,

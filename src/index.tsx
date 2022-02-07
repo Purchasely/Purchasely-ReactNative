@@ -129,6 +129,7 @@ export enum PLYPaywallAction {
 
 export type PLYPaywallInfo = {
   presentationId?: string;
+  placementId?: string;
   contentId?: string;
 };
 
@@ -386,17 +387,20 @@ const setPaywallActionInterceptorCallback = (
 
 interface PresentPresentationParameters {
   presentationVendorId?: string | null;
+  placementVendorId?: string | null;
   contentId?: string | null;
   isFullscreen?: boolean;
 }
 
 const presentPresentationWithIdentifier = ({
   presentationVendorId = null,
+  placementVendorId = null,
   contentId = null,
   isFullscreen = false,
 }: PresentPresentationParameters): Promise<PresentPresentationResult> => {
   return NativeModules.Purchasely.presentPresentationWithIdentifier(
     presentationVendorId,
+    placementVendorId,
     contentId,
     isFullscreen
   );
