@@ -155,7 +155,7 @@ export type PurchaselyPlan = {
 export type PurchaselyProduct = {
   name: string;
   vendorId: string;
-  plans: [PurchaselyPlan];
+  plans: PurchaselyPlan[];
 };
 
 export type PurchaselySubscription = {
@@ -306,7 +306,7 @@ type PurchaselyEventProperties = {
   displayed_presentation?: string;
   user_id?: string;
   anonymous_user_id?: string;
-  purchasable_plans?: [PurchaselyEventPropertyPlan];
+  purchasable_plans?: PurchaselyEventPropertyPlan[];
   deeplink_identifier?: string;
   source_identifier?: string;
   selected_plan?: string;
@@ -314,7 +314,7 @@ type PurchaselyEventProperties = {
   selected_presentation?: string;
   previous_selected_presentation?: string;
   link_identifier?: string;
-  carousels?: [PurchaselyEventPropertyCarousel];
+  carousels?: PurchaselyEventPropertyCarousel[];
   language?: string;
   device?: string;
   os_version?: string;
@@ -325,7 +325,7 @@ type PurchaselyEventProperties = {
   plan?: string;
   selected_product?: string;
   plan_change_type?: string;
-  running_subscriptions?: [PurchaselyEventPropertySubscription];
+  running_subscriptions?: PurchaselyEventPropertySubscription[];
 };
 
 type EventListenerCallback = (event: PurchaselyEvent) => void;
