@@ -94,6 +94,10 @@ RCT_EXPORT_MODULE(Purchasely);
         if (infos.presentationId != nil) {
             [infosResult setObject:infos.presentationId forKey:@"presentationId"];
         }
+        
+        if (infos.placementId != nil) {
+            [infosResult setObject:infos.placementId forKey:@"placementId"];
+        }
         [actionInterceptorResult setObject:infosResult forKey:@"info"];
     }
     if (params != nil) {
