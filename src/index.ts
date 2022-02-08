@@ -1,6 +1,6 @@
 import { NativeModules, NativeEventEmitter } from 'react-native';
 
-interface ConstantsIOS {
+interface Constants {
   logLevelDebug: number;
   logLevelWarn: number;
   logLevelInfo: number;
@@ -28,51 +28,8 @@ interface ConstantsIOS {
   runningModePaywallObserver: number;
   runningModeFull: number;
 }
-interface ConstantsAndroid {
-  logLevelDebug: number;
-  logLevelWarn: number;
-  logLevelInfo: number;
-  logLevelError: number;
-  logLevelVerbose: number;
-  productResultPurchased: number;
-  productResultCancelled: number;
-  productResultRestored: number;
-  sourceAppStore: number;
-  sourcePlayStore: number;
-  sourceHuaweiAppGallery: number;
-  sourceAmazonAppstore: number;
-  sourceNone: number;
-  amplitudeSessionId: number;
-  firebaseAppInstanceId: number;
-  airshipChannelId: number;
-  batchInstallationId: number;
-  consumable: number;
-  nonConsumable: number;
-  autoRenewingSubscription: number;
-  nonRenewingSubscription: number;
-  unknown: number;
-  runningModeTransactionOnly: number;
-  runningModeObserver: number;
-  runningModePaywallOnly: number;
-  runningModePaywallObserver: number;
-  runningModeFull: number;
-}
 
-const constants = NativeModules.Purchasely.getConstants() as
-  | ConstantsIOS
-  | ConstantsAndroid;
-
-export function isConstantAndroid(
-  c: ConstantsIOS | ConstantsAndroid
-): c is ConstantsAndroid {
-  return (c as ConstantsAndroid).logLevelWarn !== undefined;
-}
-
-export function isConstantIOS(
-  c: ConstantsIOS | ConstantsAndroid
-): c is ConstantsIOS {
-  return (c as ConstantsIOS).logLevelWarn !== undefined;
-}
+const constants = NativeModules.Purchasely.getConstants() as Constants;
 
 export enum ProductResult {
   PRODUCT_RESULT_CANCELLED = constants.productResultCancelled,
@@ -184,7 +141,7 @@ export type PaywallActionInterceptorResult = {
 };
 
 type PurchaselyType = {
-  getConstants(): ConstantsIOS | ConstantsAndroid;
+  getConstants(): Constants;
   startWithAPIKey(
     apiKey: string,
     stores: string[],

@@ -14,7 +14,7 @@ import Purchasely, {
   PLYPaywallAction,
 } from 'react-native-purchasely';
 
-const App: React.FunctionComponent<{}> = () => {
+const App: React.FunctionComponent = () => {
   const [anonymousUserId, setAnonymousUserId] = React.useState<string>('');
   const [loading, setLoading] = React.useState<boolean>(false);
 
@@ -49,8 +49,11 @@ const App: React.FunctionComponent<{}> = () => {
         console.log('Products', products);
 
         Purchasely.setLogLevel(LogLevels.DEBUG);
+
+        //indicate to sdk it is safe to launch purchase flow
         Purchasely.isReadyToPurchase(true);
 
+        //force your language
         Purchasely.setLanguage('en');
 
         Purchasely.setPaywallActionInterceptorCallback((result) => {
@@ -89,7 +92,6 @@ const App: React.FunctionComponent<{}> = () => {
           console.log(event.name);
           console.log(event.properties);
         });
-        // Purchasely.removeAllListeners();
 
         Purchasely.addPurchasedListener(() => {
           // User has successfully purchased a product, reload content
@@ -107,7 +109,7 @@ const App: React.FunctionComponent<{}> = () => {
     return () => {
       Purchasely.removeEventListener();
     };
-  }, [setAnonymousUserId]);
+  }, []);
 
   const onPressPresentation = async () => {
     try {
