@@ -19,32 +19,95 @@ const App: React.FunctionComponent<{}> = () => {
   const [loading, setLoading] = React.useState<boolean>(false);
 
   React.useEffect(() => {
-    (async () => {
-      Purchasely.startWithAPIKey(
-        'afa96c76-1d8e-4e3c-a48f-204a3cd93a15',
-        ['Google'],
-        null,
-        LogLevels.DEBUG,
-        RunningMode.FULL
-      ).then(
-        (configured) => {
-          if (!configured) {
-            console.log('Purchasely SDK not properly initialized');
-            return;
-          }
+    async function setupPurchasely() {
+      try {
+        const configured = await Purchasely.startWithAPIKey(
+          'afa96c76-1d8e-4e3c-a48f-204a3cd93a15',
+          ['Google'],
+          null,
+          LogLevels.DEBUG,
+          RunningMode.FULL
+        );
 
-          console.log('Purchasely SDK is initialized');
-
-          setupPurchasely();
-        },
-        (error) => {
-          console.log('Purchasely SDK initialization error', error);
+        if (!configured) {
+          console.log('Purchasely SDK not properly initialized');
+          return;
         }
-      );
-    })();
 
-    // return Purchasely.removeAllListeners();
-  }, []);
+        setAnonymousUserId(await Purchasely.getAnonymousUserId());
+
+        const product = await Purchasely.productWithIdentifier(
+          'PURCHASELY_PLUS'
+        );
+        console.log('Product', product);
+        const plan = await Purchasely.planWithIdentifier(
+          'PURCHASELY_PLUS_YEARLY'
+        );
+        console.log('Plan', plan);
+
+        const products = await Purchasely.allProducts();
+        console.log('Products', products);
+
+        Purchasely.setLogLevel(LogLevels.DEBUG);
+        Purchasely.isReadyToPurchase(true);
+
+        Purchasely.setLanguage('en');
+
+        Purchasely.setPaywallActionInterceptorCallback((result) => {
+          console.log('Received action from paywall');
+          console.log(result.info);
+
+          switch (result.action) {
+            case PLYPaywallAction.NAVIGATE:
+              console.log(
+                'User wants to navigate to website ' +
+                  result.parameters.title +
+                  ' ' +
+                  result.parameters.url
+              );
+              Purchasely.onProcessAction(true);
+              break;
+            case PLYPaywallAction.LOGIN:
+              console.log('User wants to login');
+              //Present your own screen for user to log in
+              Purchasely.closePaywall();
+              Purchasely.userLogin('MY_USER_ID');
+              //Call this method to update Purchasely Paywall
+              break;
+            case PLYPaywallAction.PURCHASE:
+              console.log('User wants to purchase');
+              //If you want to intercept it, close paywall and display your screen
+              //then call onProcessAction() to continue or stop purchasely purchase action
+              Purchasely.closePaywall();
+              break;
+            default:
+              Purchasely.onProcessAction(true);
+          }
+        });
+
+        Purchasely.addEventListener((event) => {
+          console.log(event.name);
+          console.log(event.properties);
+        });
+        // Purchasely.removeAllListeners();
+
+        Purchasely.addPurchasedListener(() => {
+          // User has successfully purchased a product, reload content
+          console.log('User has purchased');
+        });
+
+        Purchasely.setAttribute(Attributes.FIREBASE_APP_INSTANCE_ID, 'test0');
+      } catch (e) {
+        console.log('Purchasely SDK initialization error', e);
+      }
+    }
+
+    setupPurchasely();
+
+    return () => {
+      Purchasely.removeEventListener();
+    };
+  }, [setAnonymousUserId]);
 
   const onPressPresentation = async () => {
     try {
@@ -124,79 +187,6 @@ const App: React.FunctionComponent<{}> = () => {
   const onPressContinuePayment = () => {
     //Call this method to process to payment
     Purchasely.onProcessAction(true);
-  };
-
-  const setupPurchasely = async () => {
-    setAnonymousUserId(await Purchasely.getAnonymousUserId());
-    Purchasely.userLogout();
-
-    const product = await Purchasely.productWithIdentifier('PURCHASELY_PLUS');
-    console.log('Product', product);
-    const plan = await Purchasely.planWithIdentifier('PURCHASELY_PLUS_YEARLY');
-    console.log('Plan', plan);
-
-    const products = await Purchasely.allProducts();
-    console.log('Products', products);
-
-    Purchasely.setLogLevel(LogLevels.DEBUG);
-    Purchasely.isReadyToPurchase(true);
-
-    Purchasely.setLanguage('en');
-    Purchasely.setDefaultPresentationResultCallback((result) => {
-      console.log('Result is ' + result.result);
-    });
-
-    Purchasely.setPaywallActionInterceptorCallback((result) => {
-      console.log(result);
-      console.log('Received action from paywall');
-      console.log(result.info);
-
-      if (result.action === PLYPaywallAction.NAVIGATE) {
-        console.log(
-          'User wants to navigate to website ' +
-            result.parameters.title +
-            ' ' +
-            result.parameters.url
-        );
-        Purchasely.onProcessAction(false);
-      } else if (result.action === PLYPaywallAction.CLOSE) {
-        console.log('User wants to close paywall');
-        Purchasely.onProcessAction(true);
-      } else if (result.action === PLYPaywallAction.LOGIN) {
-        console.log('User wants to login');
-        //Present your own screen for user to log in
-        Purchasely.closePaywall();
-        Purchasely.userLogin('MY_USER_ID');
-        //Call this method to update Purchasely Paywall
-        Purchasely.onProcessAction(true);
-      } else if (result.action === PLYPaywallAction.OPEN_PRESENTATION) {
-        console.log('User wants to open a new paywall');
-        Purchasely.onProcessAction(true);
-      } else if (result.action === PLYPaywallAction.PURCHASE) {
-        console.log('User wants to purchase');
-        //If you want to intercept it, close paywall and display your screen
-        Purchasely.closePaywall();
-      } else if (result.action === PLYPaywallAction.RESTORE) {
-        console.log('User wants to restore his purchases');
-        Purchasely.onProcessAction(true);
-      } else {
-        console.log('Action unknown ' + result.action);
-        Purchasely.onProcessAction(true);
-      }
-    });
-
-    Purchasely.addEventListener((event) => {
-      console.log(event.name);
-      console.log(event.properties);
-    });
-    // Purchasely.removeAllListeners();
-
-    Purchasely.addPurchasedListener(() => {
-      // User has successfully purchased a product, reload content
-      console.log('User has purchased');
-    });
-
-    Purchasely.setAttribute(Attributes.FIREBASE_APP_INSTANCE_ID, 'test0');
   };
 
   return (
