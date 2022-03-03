@@ -1,4 +1,5 @@
 import { NativeModules, NativeEventEmitter } from 'react-native';
+import { version as purchaselySdkVersion } from '../package.json';
 
 interface Constants {
   logLevelDebug: number;
@@ -142,13 +143,6 @@ export type PaywallActionInterceptorResult = {
 
 type PurchaselyType = {
   getConstants(): Constants;
-  startWithAPIKey(
-    apiKey: string,
-    stores: string[],
-    userId: string | null,
-    logLevel: number,
-    runningMode: number
-  ): Promise<boolean>;
   close(): void;
   getAnonymousUserId(): Promise<string>;
   userLogin(userId: string): Promise<boolean>;
@@ -284,6 +278,23 @@ type PurchaselyEventProperties = {
   plan_change_type?: string;
   running_subscriptions?: PurchaselyEventPropertySubscription[];
 };
+
+function startWithAPIKey(
+  apiKey: string,
+  stores: string[],
+  userId: string | null,
+  logLevel: number,
+  runningMode: number
+): Promise<boolean> {
+  return NativeModules.Purchasely.startWithAPIKey(
+    apiKey,
+    stores,
+    userId,
+    logLevel,
+    runningMode,
+    purchaselySdkVersion
+  );
+}
 
 type EventListenerCallback = (event: PurchaselyEvent) => void;
 
@@ -431,6 +442,7 @@ const purchaseWithPlanVendorId = (
 
 const Purchasely = {
   ...RNPurchasely,
+  startWithAPIKey,
   addEventListener,
   removeEventListener,
   addPurchasedListener,

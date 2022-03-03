@@ -108,6 +108,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
                       userId: String?,
                       logLevel: Int,
                       runningMode: Int,
+                      bridgeVersion: String,
                       promise: Promise) {
     val storesInstances = getStoresInstances(stores.toArrayList())
 
@@ -125,6 +126,8 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
         else -> PLYRunningMode.Full
       })
       .build()
+
+    Purchasely.sdkBridgeVersion = bridgeVersion
 
     Purchasely.appTechnology = PLYAppTechnology.REACT_NATIVE
 
