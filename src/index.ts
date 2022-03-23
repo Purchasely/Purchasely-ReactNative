@@ -95,6 +95,8 @@ export type PLYPaywallInfo = {
   presentationId?: string;
   placementId?: string;
   contentId?: string;
+  abTestId?: string;
+  abTestVariantId?: string;
 };
 
 export type PurchaselyPlan = {
