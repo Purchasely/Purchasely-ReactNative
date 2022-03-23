@@ -11,7 +11,13 @@ npm install react-native-purchasely
 ## Usage
 
 ```js
-import Purchasely from "react-native-purchasely";
+import Purchasely, {
+  LogLevels,
+  Attributes,
+  ProductResult,
+  RunningMode,
+  PLYPaywallAction,
+} from 'react-native-purchasely';
 
 Purchasely.startWithAPIKey(
   'afa96c76-1d8e-4e3c-a48f-204a3cd93a15',

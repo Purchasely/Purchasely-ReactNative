@@ -18,6 +18,9 @@ interface Constants {
   firebaseAppInstanceId: number;
   airshipChannelId: number;
   batchInstallationId: number;
+  adjustId: number;
+  appsflyerId: number;
+  onesignalPlayerId: number;
   consumable: number;
   nonConsumable: number;
   autoRenewingSubscription: number;
@@ -57,6 +60,9 @@ export enum Attributes {
   FIREBASE_APP_INSTANCE_ID = constants.firebaseAppInstanceId,
   AIRSHIP_CHANNEL_ID = constants.airshipChannelId,
   BATCH_INSTALLATION_ID = constants.batchInstallationId,
+  ADJUST_ID = constants.adjustId,
+  APPSFLYER_ID = constants.appsflyerId,
+  ONESIGNAL_PLAYER_ID = constants.onesignalPlayerId,
 }
 
 export enum PlanType {
