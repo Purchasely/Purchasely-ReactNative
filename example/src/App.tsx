@@ -40,6 +40,10 @@ const App: React.FunctionComponent = () => {
           'PURCHASELY_PLUS'
         );
         console.log('Product', product);
+
+        const subscriptions = await Purchasely.userSubscriptions();
+        console.log('Subscriptions', subscriptions)
+
         const plan = await Purchasely.planWithIdentifier(
           'PURCHASELY_PLUS_YEARLY'
         );

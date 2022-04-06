@@ -13,6 +13,7 @@
 		2D02E4BC1E0B4A80006451C7 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB01A68108700A75B9A /* AppDelegate.m */; };
 		2D02E4BD1E0B4A84006451C7 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		2D02E4BF1E0B4AB3006451C7 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB71A68108700A75B9A /* main.m */; };
+		4E616C0F27E3805000F0D598 /* Configuration_2.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 4E616C0E27E3805000F0D598 /* Configuration_2.storekit */; };
 		65C958A52701E97200359927 /* Configuration.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 65C958A42701E97200359927 /* Configuration.storekit */; };
 		65C958A62701E97200359927 /* Configuration.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 65C958A42701E97200359927 /* Configuration.storekit */; };
 		65DDF2B026153117000829C6 /* main.jsbundle in Resources */ = {isa = PBXBuildFile; fileRef = 65DDF2AF26153117000829C6 /* main.jsbundle */; };
@@ -47,6 +48,7 @@
 		13B07FB71A68108700A75B9A /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = main.m; path = PurchaselyExample/main.m; sourceTree = "<group>"; };
 		2D02E47B1E0B4A5D006451C7 /* PurchaselyExample-tvOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "PurchaselyExample-tvOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		2D02E4901E0B4A5D006451C7 /* PurchaselyExample-tvOSTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "PurchaselyExample-tvOSTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		4E616C0E27E3805000F0D598 /* Configuration_2.storekit */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = Configuration_2.storekit; sourceTree = "<group>"; };
 		65C958A42701E97200359927 /* Configuration.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = Configuration.storekit; sourceTree = "<group>"; };
 		65DDF2AF26153117000829C6 /* main.jsbundle */ = {isa = PBXFileReference; lastKnownFileType = text; path = main.jsbundle; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = PurchaselyExample/LaunchScreen.storyboard; sourceTree = "<group>"; };
@@ -132,6 +134,7 @@
 		83CBB9F61A601CBA00E9B192 = {
 			isa = PBXGroup;
 			children = (
+				4E616C0E27E3805000F0D598 /* Configuration_2.storekit */,
 				65C958A42701E97200359927 /* Configuration.storekit */,
 				65DDF2AF26153117000829C6 /* main.jsbundle */,
 				13B07FAE1A68108700A75B9A /* PurchaselyExample */,
@@ -249,7 +252,7 @@
 						TestTargetID = 13B07F861A680F5B00A75B9A;
 					};
 					13B07F861A680F5B00A75B9A = {
-						DevelopmentTeam = 9HMS3RF48K;
+						DevelopmentTeam = XL327LBYNK;
 						LastSwiftMigration = 1120;
 					};
 					2D02E47A1E0B4A5D006451C7 = {
@@ -296,6 +299,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4E616C0F27E3805000F0D598 /* Configuration_2.storekit in Resources */,
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
 				65C958A52701E97200359927 /* Configuration.storekit in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
@@ -547,7 +551,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 9HMS3RF48K;
+				DEVELOPMENT_TEAM = XL327LBYNK;
 				ENABLE_BITCODE = NO;
 				EXCLUDED_ARCHS = arm64;
 				INFOPLIST_FILE = PurchaselyExample/Info.plist;
@@ -558,7 +562,7 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.2appaz.purchasely.demo;
+				PRODUCT_BUNDLE_IDENTIFIER = com.purchasely.demo;
 				PRODUCT_NAME = PurchaselyExample;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -583,7 +587,7 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.2appaz.purchasely.demo;
+				PRODUCT_BUNDLE_IDENTIFIER = com.purchasely.demo;
 				PRODUCT_NAME = PurchaselyExample;
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
