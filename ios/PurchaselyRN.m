@@ -40,6 +40,9 @@ RCT_EXPORT_MODULE(Purchasely);
 		@"firebaseAppInstanceId": @(PLYAttributeFirebaseAppInstanceId),
 		@"airshipChannelId": @(PLYAttributeAirshipChannelId),
         @"batchInstallationId": @(PLYAttributeBatchInstallationId),
+        @"adjustId": @(PLYAttributeAdjustId),
+        @"appsflyerId": @(PLYAttributeAppsflyerId),
+        @"onesignalPlayerId": @(PLYAttributeOneSignalPlayerId),
 		@"consumable": @(PLYPlanTypeConsumable),
 		@"nonConsumable": @(PLYPlanTypeNonConsumable),
 		@"autoRenewingSubscription": @(PLYPlanTypeAutoRenewingSubscription),
@@ -98,6 +101,15 @@ RCT_EXPORT_MODULE(Purchasely);
         if (infos.placementId != nil) {
             [infosResult setObject:infos.placementId forKey:@"placementId"];
         }
+        
+        if (infos.abTestId != nil) {
+            [infosResult setObject:infos.abTestId forKey:@"abTestId"];
+        }
+        
+        if (infos.abTestVariantId != nil) {
+            [infosResult setObject:infos.abTestVariantId forKey:@"abTestVariantId"];
+        }
+        
         [actionInterceptorResult setObject:infosResult forKey:@"info"];
     }
     if (params != nil) {
@@ -114,6 +126,7 @@ RCT_EXPORT_MODULE(Purchasely);
         if (params.presentation != nil) {
             [paramsResult setObject:params.presentation forKey:@"presentation"];
         }
+        
         [actionInterceptorResult setObject:paramsResult forKey:@"parameters"];
     }
     
@@ -150,9 +163,9 @@ RCT_EXPORT_METHOD(startWithAPIKey:(NSString * _Nonnull)apiKey
 				  userId:(NSString * _Nullable)userId
 				  logLevel:(NSInteger)logLevel
                   runningMode:(NSInteger)runningMode
+                  purchaselySdkVersion:(NSString * _Nullable)purchaselySdkVersion
 				  initialized:(RCTPromiseResolveBlock)resolve
 				  reject:(RCTPromiseRejectBlock)reject) {
-    
     [Purchasely startWithAPIKey:apiKey appUserId:userId runningMode:runningMode eventDelegate:self uiDelegate:nil paywallActionsInterceptor:nil logLevel:logLevel initialized:^(BOOL initialized, NSError * _Nullable error) {
         resolve(@(initialized));
     }];

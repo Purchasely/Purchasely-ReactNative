@@ -54,6 +54,9 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     constants["firebaseAppInstanceId"] = Attribute.FIREBASE_APP_INSTANCE_ID.ordinal
     constants["airshipChannelId"] = Attribute.AIRSHIP_CHANNEL_ID.ordinal
     constants["batchInstallationId"] = Attribute.BATCH_INSTALLATION_ID.ordinal
+    constants["adjustId"] = Attribute.ADJUST_ID.ordinal
+    constants["appsflyerId"] = Attribute.APPSFLYER_ID.ordinal
+    constants["onesignalPlayerId"] = Attribute.ONESIGNAL_PLAYER_ID.ordinal
     constants["sourceAppStore"] = StoreType.APPLE_APP_STORE.ordinal
     constants["sourcePlayStore"] = StoreType.GOOGLE_PLAY_STORE.ordinal
     constants["sourceHuaweiAppGallery"] = StoreType.HUAWEI_APP_GALLERY.ordinal
@@ -108,6 +111,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
                       userId: String?,
                       logLevel: Int,
                       runningMode: Int,
+                      bridgeVersion: String,
                       promise: Promise) {
     val storesInstances = getStoresInstances(stores.toArrayList())
 
@@ -125,6 +129,8 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
         else -> PLYRunningMode.Full
       })
       .build()
+
+    Purchasely.sdkBridgeVersion = bridgeVersion
 
     Purchasely.appTechnology = PLYAppTechnology.REACT_NATIVE
 
@@ -408,7 +414,9 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
           Pair("info", mapOf(
             Pair("contentId", info?.contentId),
             Pair("presentationId", info?.presentationId),
-            Pair("placementId", info?.placementId)
+            Pair("placementId", info?.placementId),
+            Pair("abTestId", info?.abTestId),
+            Pair("abTestVariantId", info?.abTestVariantId)
           )),
           Pair("action", action.value),
           Pair("parameters", parametersForReact.filterNot { it.value == null })
