@@ -42,17 +42,21 @@ Purchasely.startWithAPIKey(
 );
 
 try {
-  const result = await Purchasely.presentPresentationWithIdentifier({
-    presentationVendorId: 'my_presentation_id', //may be null
-    contentId: 'my_content_id', //may be null
-    isFullscreen: false,
+  const result = await Purchasely.presentPresentationForPlacement({
+    placementVendorId: 'onboarding',
+    contentId: 'my_content_id',
+    isFullscreen: true,
   });
-  console.log(result);
-  console.log('Presentation View Result : ' + ProductResult[result.result]);
 
-  if (result.plan != null) {
-    console.log('User purchased ' + result.plan.name);
-    console.log('Plan Vendor ID : ' + result.plan.vendorId);
+  switch (result.result) {
+    case ProductResult.PRODUCT_RESULT_PURCHASED:
+    case ProductResult.PRODUCT_RESULT_RESTORED:
+      if (result.plan != null) {
+        console.log('User purchased ' + result.plan.name);
+      }
+      break;
+    case ProductResult.PRODUCT_RESULT_CANCELLED:
+      break;
   }
 } catch (e) {
   console.error(e);
