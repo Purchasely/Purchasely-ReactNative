@@ -40,6 +40,9 @@ RCT_EXPORT_MODULE(Purchasely);
 		@"firebaseAppInstanceId": @(PLYAttributeFirebaseAppInstanceId),
 		@"airshipChannelId": @(PLYAttributeAirshipChannelId),
         @"batchInstallationId": @(PLYAttributeBatchInstallationId),
+        @"adjustId": @(PLYAttributeAdjustId),
+        @"appsflyerId": @(PLYAttributeAppsflyerId),
+        @"onesignalPlayerId": @(PLYAttributeOneSignalPlayerId),
 		@"consumable": @(PLYPlanTypeConsumable),
 		@"nonConsumable": @(PLYPlanTypeNonConsumable),
 		@"autoRenewingSubscription": @(PLYPlanTypeAutoRenewingSubscription),
@@ -150,9 +153,9 @@ RCT_EXPORT_METHOD(startWithAPIKey:(NSString * _Nonnull)apiKey
 				  userId:(NSString * _Nullable)userId
 				  logLevel:(NSInteger)logLevel
                   runningMode:(NSInteger)runningMode
+                  purchaselySdkVersion:(NSString * _Nullable)purchaselySdkVersion
 				  initialized:(RCTPromiseResolveBlock)resolve
 				  reject:(RCTPromiseRejectBlock)reject) {
-    
     [Purchasely startWithAPIKey:apiKey appUserId:userId runningMode:runningMode eventDelegate:self uiDelegate:nil paywallActionsInterceptor:nil logLevel:logLevel initialized:^(BOOL initialized, NSError * _Nullable error) {
         resolve(@(initialized));
     }];
