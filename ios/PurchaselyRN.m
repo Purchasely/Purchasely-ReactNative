@@ -101,6 +101,15 @@ RCT_EXPORT_MODULE(Purchasely);
         if (infos.placementId != nil) {
             [infosResult setObject:infos.placementId forKey:@"placementId"];
         }
+        
+        if (infos.abTestId != nil) {
+            [infosResult setObject:infos.abTestId forKey:@"abTestId"];
+        }
+        
+        if (infos.abTestVariantId != nil) {
+            [infosResult setObject:infos.abTestVariantId forKey:@"abTestVariantId"];
+        }
+        
         [actionInterceptorResult setObject:infosResult forKey:@"info"];
     }
     if (params != nil) {
@@ -117,6 +126,7 @@ RCT_EXPORT_MODULE(Purchasely);
         if (params.presentation != nil) {
             [paramsResult setObject:params.presentation forKey:@"presentation"];
         }
+        
         [actionInterceptorResult setObject:paramsResult forKey:@"parameters"];
     }
     
