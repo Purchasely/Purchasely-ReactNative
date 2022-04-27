@@ -117,15 +117,20 @@ const App: React.FunctionComponent = () => {
 
   const onPressPresentation = async () => {
     try {
-      const result = await Purchasely.presentPresentationWithIdentifier({
+      const result = await Purchasely.presentPresentationForPlacement({
+        placementVendorId: 'onboarding',
         isFullscreen: true,
       });
-      console.log(result);
-      console.log('Presentation View Result : ' + ProductResult[result.result]);
 
-      if (result.plan != null) {
-        console.log('Plan Vendor ID : ' + result.plan.vendorId);
-        console.log('Plan Name : ' + result.plan.name);
+      switch (result.result) {
+        case ProductResult.PRODUCT_RESULT_PURCHASED:
+        case ProductResult.PRODUCT_RESULT_RESTORED:
+          if (result.plan != null) {
+            console.log('User purchased ' + result.plan.name);
+          }
+          break;
+        case ProductResult.PRODUCT_RESULT_CANCELLED:
+          break;
       }
     } catch (e) {
       console.error(e);
