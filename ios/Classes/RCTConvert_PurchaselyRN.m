@@ -28,7 +28,9 @@ RCT_ENUM_CONVERTER(PLYAttribute, (@{ @"amplitudeSessionId": @(PLYAttributeAmplit
                                      @"batchInstallationId": @(PLYAttributeBatchInstallationId),
                                      @"adjustId": @(PLYAttributeAdjustId),
                                      @"appsflyerId": @(PLYAttributeAppsflyerId),
-                                     @"onesignalPlayerId": @(PLYAttributeOneSignalPlayerId)}),
+                                     @"onesignalPlayerId": @(PLYAttributeOneSignalPlayerId),
+									 @"mixpanelDistinctId": @(PLYAttributeMixpanelDistinctId),
+        							 @"clevertapId": @(PLYAttributeClevertapId)}),
 				   PLYAttributeAmplitudeSessionId, integerValue)
 
 RCT_ENUM_CONVERTER(PLYSubscriptionSource, (@{ @"sourceAppStore": @(PLYSubscriptionSourceAppleAppStore),

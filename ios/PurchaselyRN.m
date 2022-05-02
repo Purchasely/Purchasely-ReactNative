@@ -43,6 +43,8 @@ RCT_EXPORT_MODULE(Purchasely);
         @"adjustId": @(PLYAttributeAdjustId),
         @"appsflyerId": @(PLYAttributeAppsflyerId),
         @"onesignalPlayerId": @(PLYAttributeOneSignalPlayerId),
+        @"mixpanelDistinctId": @(PLYAttributeMixpanelDistinctId),
+        @"clevertapId": @(PLYAttributeClevertapId),
 		@"consumable": @(PLYPlanTypeConsumable),
 		@"nonConsumable": @(PLYPlanTypeNonConsumable),
 		@"autoRenewingSubscription": @(PLYPlanTypeAutoRenewingSubscription),
@@ -166,6 +168,9 @@ RCT_EXPORT_METHOD(startWithAPIKey:(NSString * _Nonnull)apiKey
                   purchaselySdkVersion:(NSString * _Nullable)purchaselySdkVersion
 				  initialized:(RCTPromiseResolveBlock)resolve
 				  reject:(RCTPromiseRejectBlock)reject) {
+    
+    [Purchasely setSdkBridgeVersion:purchaselySdkVersion];
+    
     [Purchasely startWithAPIKey:apiKey appUserId:userId runningMode:runningMode eventDelegate:self uiDelegate:nil paywallActionsInterceptor:nil logLevel:logLevel initialized:^(BOOL initialized, NSError * _Nullable error) {
         resolve(@(initialized));
     }];
