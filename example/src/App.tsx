@@ -42,7 +42,7 @@ const App: React.FunctionComponent = () => {
         console.log('Product', product);
 
         const subscriptions = await Purchasely.userSubscriptions();
-        console.log('Subscriptions', subscriptions)
+        console.log('Subscriptions', subscriptions);
 
         const plan = await Purchasely.planWithIdentifier(
           'PURCHASELY_PLUS_YEARLY'

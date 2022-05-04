@@ -21,6 +21,8 @@ interface Constants {
   adjustId: number;
   appsflyerId: number;
   onesignalPlayerId: number;
+  mixpanelDistinctId: number;
+  clevertapId: number;
   consumable: number;
   nonConsumable: number;
   autoRenewingSubscription: number;
@@ -63,6 +65,8 @@ export enum Attributes {
   ADJUST_ID = constants.adjustId,
   APPSFLYER_ID = constants.appsflyerId,
   ONESIGNAL_PLAYER_ID = constants.onesignalPlayerId,
+  MIXPANEL_DISTINCT_ID = constants.mixpanelDistinctId,
+  CLEVER_TAP_ID = constants.clevertapId,
 }
 
 export enum PlanType {
