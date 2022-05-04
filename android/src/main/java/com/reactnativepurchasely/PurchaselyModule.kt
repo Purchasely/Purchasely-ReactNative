@@ -57,6 +57,8 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     constants["adjustId"] = Attribute.ADJUST_ID.ordinal
     constants["appsflyerId"] = Attribute.APPSFLYER_ID.ordinal
     constants["onesignalPlayerId"] = Attribute.ONESIGNAL_PLAYER_ID.ordinal
+    constants["mixpanelDistinctId"] = Attribute.MIXPANEL_DISTINCT_ID.ordinal
+    constants["clevertapId"] = Attribute.CLEVER_TAP_ID.ordinal
     constants["sourceAppStore"] = StoreType.APPLE_APP_STORE.ordinal
     constants["sourcePlayStore"] = StoreType.GOOGLE_PLAY_STORE.ordinal
     constants["sourceHuaweiAppGallery"] = StoreType.HUAWEI_APP_GALLERY.ordinal
