@@ -502,6 +502,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
 
   class ProductActivity(
     val presentationId: String? = null,
+    val placementId: String? = null,
     val productId: String? = null,
     val planId: String? = null,
     val contentId: String? = null) {
@@ -526,6 +527,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
         reactApplicationContext.currentActivity?.let {
           val intent = PLYProductActivity.newIntent(it)
           intent.putExtra("presentationId", presentationId)
+          intent.putExtra("placementId", placementId)
           intent.putExtra("productId", productId)
           intent.putExtra("planId", planId)
           intent.putExtra("contentId", contentId)

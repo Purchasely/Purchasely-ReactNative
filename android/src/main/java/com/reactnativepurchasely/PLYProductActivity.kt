@@ -68,6 +68,7 @@ class PLYProductActivity : AppCompatActivity() {
 
     PurchaselyModule.productActivity = PurchaselyModule.ProductActivity(
       presentationId = presentationId,
+      placementId = placementId,
       productId = productId,
       planId = planId,
       contentId = contentId

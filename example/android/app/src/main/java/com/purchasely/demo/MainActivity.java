@@ -1,4 +1,4 @@
-package io.purchasely.sample;
+package com.purchasely.demo;
 
 import com.facebook.react.ReactActivity;
 
