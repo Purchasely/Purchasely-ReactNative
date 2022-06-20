@@ -191,6 +191,22 @@ RCT_EXPORT_METHOD(userLogin:(NSString * _Nonnull)userId
 	}];
 }
 
+RCT_EXPORT_METHOD(handle:(NSString * _Nullable) deeplink
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+{
+    if (deeplink == nil) {
+        NSString *domain = @"";
+        NSString *desc = NSLocalizedString(@"Deeplink must not be null", @"");
+        NSDictionary *userInfo = @{ NSLocalizedDescriptionKey : desc };
+        NSError *error = [NSError errorWithDomain:domain code:-1 userInfo:userInfo];
+        
+        [self reject: reject with: error];
+        return;
+    }
+    resolve(@([Purchasely handleWithDeeplink:[NSURL URLWithString:deeplink]]));
+}
+
 RCT_EXPORT_METHOD(userLogout) {
 	[Purchasely userLogout];
 }
