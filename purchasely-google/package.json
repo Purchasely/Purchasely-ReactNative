@@ -1,6 +1,6 @@
 {
   "name": "@purchasely/react-native-purchasely-google",
-  "version": "2.2.4",
+  "version": "2.2.5",
   "description": "Purchasely Google Play Billing dependency",
   "main": "lib/commonjs/index",
   "module": "lib/module/index",
@@ -149,7 +149,7 @@
     "typescript": "^4.3.2"
   },
   "peerDependencies": {
-		"react-native-purchasely": "2.2.4",
+		"react-native-purchasely": "2.2.5",
     "react": "*",
     "react-native": "*"
   }

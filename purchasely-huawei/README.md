@@ -7,21 +7,6 @@ Purchasely Huawei Mobile Services dependencies
 ```sh
 npm install react-native-purchasely-huawei
 ```
-
-## Usage
-
-```js
-import { multiply } from "react-native-purchasely-huawei";
-
-// ...
-
-const result = await multiply(3, 7);
-```
-
-## Contributing
-
-See the [contributing guide](CONTRIBUTING.md) to learn how to contribute to the repository and the development workflow.
-
 ## License
 
-MIT
+Copyright (c) 2022 Purchasely SAS
