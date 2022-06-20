@@ -1,5 +1,6 @@
 import { NativeModules, NativeEventEmitter } from 'react-native';
-import { version as purchaselySdkVersion } from '../package.json';
+
+const purchaselyVersion = '2.2.4';
 
 interface Constants {
   logLevelDebug: number;
@@ -304,7 +305,7 @@ function startWithAPIKey(
     userId,
     logLevel,
     runningMode,
-    purchaselySdkVersion
+    purchaselyVersion
   );
 }
 
