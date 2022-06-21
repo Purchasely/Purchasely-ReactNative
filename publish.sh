@@ -25,8 +25,8 @@ then
     cd ../purchasely-huawei && npm publish --access public
     cd ../purchasely-amazon && npm publish --access public
 else
-    cd purchasely && yarn prepare
-    cd ../purchasely-google && yarn prepare
-    cd ../purchasely-huawei && yarn prepare
-    cd ../purchasely-amazon && yarn prepare
+    cd purchasely && yarn && yarn prepare
+    cd ../purchasely-google && yarn && yarn prepare
+    cd ../purchasely-huawei && yarn && yarn prepare
+    cd ../purchasely-amazon && yarn && yarn prepare
 fi
