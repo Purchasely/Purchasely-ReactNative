@@ -15,6 +15,12 @@ import java.lang.ref.WeakReference
 
 class PLYProductActivity : AppCompatActivity() {
 
+  private var presentationId: String? = null
+  private var placementId: String? = null
+  private var productId: String? = null
+  private var planId: String? = null
+  private var contentId: String? = null
+
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
 
@@ -24,14 +30,16 @@ class PLYProductActivity : AppCompatActivity() {
 
     setContentView(R.layout.activity_ply_product_activity)
 
-    val presentationId = intent.extras?.getString("presentationId")
-    val placementId = intent.extras?.getString("placementId")
-    val productId = intent.extras?.getString("productId")
-    val planId = intent.extras?.getString("planId")
-    val contentId = intent.extras?.getString("contentId")
+    presentationId = intent.extras?.getString("presentationId")
+    placementId = intent.extras?.getString("placementId")
+    productId = intent.extras?.getString("productId")
+    planId = intent.extras?.getString("planId")
+    contentId = intent.extras?.getString("contentId")
+
+    val placementId = placementId ?: ""
 
     val fragment = when {
-        placementId?.isNotBlank() == true -> Purchasely.presentationFragmentForPlacement(
+        placementId.isNotBlank() -> Purchasely.presentationFragmentForPlacement(
           placementId,
           contentId,
           null,
@@ -65,6 +73,10 @@ class PLYProductActivity : AppCompatActivity() {
       .beginTransaction()
       .replace(R.id.fragmentContainer, fragment)
       .commit()
+  }
+
+  override fun onStart() {
+    super.onStart()
 
     PurchaselyModule.productActivity = PurchaselyModule.ProductActivity(
       presentationId = presentationId,
@@ -78,7 +90,9 @@ class PLYProductActivity : AppCompatActivity() {
   }
 
   override fun onDestroy() {
-    PurchaselyModule.productActivity?.activity = null
+    if(PurchaselyModule.productActivity?.activity?.get() == this) {
+      PurchaselyModule.productActivity?.activity = null
+    }
     super.onDestroy()
   }
 

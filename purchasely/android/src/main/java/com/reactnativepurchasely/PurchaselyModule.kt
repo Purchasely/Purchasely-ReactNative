@@ -147,7 +147,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   @ReactMethod
   fun close() {
     productActivity = null
-    close()
+    Purchasely.close()
   }
 
   @ReactMethod
@@ -404,6 +404,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   fun setPaywallActionInterceptor(promise: Promise) {
     Purchasely.setPaywallActionsInterceptor { info, action, parameters, processAction ->
       paywallActionHandler = processAction
+      paywallAction = action
 
       val parametersForReact = hashMapOf<String, Any?>();
       parametersForReact["title"] = parameters.title
@@ -430,11 +431,24 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   @ReactMethod
   fun onProcessAction(processAction: Boolean) {
     CoroutineScope(Dispatchers.Main).launch {
-      if(productActivity?.relaunch(reactApplicationContext) == false) {
-        //wait for activity to relaunch
-        withContext(Dispatchers.Default) { delay(500) }
+
+      when(paywallAction) {
+        PLYPresentationAction.PROMO_CODE,
+        PLYPresentationAction.RESTORE,
+        PLYPresentationAction.PURCHASE,
+        PLYPresentationAction.LOGIN,
+        PLYPresentationAction.OPEN_PRESENTATION -> {
+          if(productActivity?.relaunch(reactApplicationContext) == false) {
+            //wait for activity to relaunch
+            withContext(Dispatchers.Default) { delay(500) }
+          }
+        }
+        //We should not open purchasely paywall for others actions
+        else -> {}
       }
-      productActivity?.activity?.get()?.runOnUiThread {
+
+      val activityHandler = productActivity?.activity?.get() ?: reactApplicationContext.currentActivity
+      activityHandler?.runOnUiThread {
         paywallActionHandler?.invoke(processAction)
       }
     }
@@ -470,6 +484,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     var purchasePromise: Promise? = null
     var defaultPurchasePromise: Promise? = null
     var paywallActionHandler: PLYCompletionHandler? = null
+    var paywallAction: PLYPresentationAction? = null
 
     fun sendPurchaseResult(result: PLYProductViewResult, plan: PLYPlan?) {
       val productViewResult = when(result) {

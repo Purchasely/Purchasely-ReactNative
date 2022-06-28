@@ -195,8 +195,8 @@ const App: React.FunctionComponent = () => {
     setLoading(false);
   };
 
-  const onPressContinuePayment = () => {
-    //Call this method to process to payment
+  const onPressContinueAction = () => {
+    //Call this method to continue Purchasely action
     Purchasely.onProcessAction(true);
   };
 
@@ -278,7 +278,7 @@ const App: React.FunctionComponent = () => {
       </TouchableHighlight>
 
       <TouchableHighlight
-        onPress={onPressContinuePayment}
+        onPress={onPressContinueAction}
         disabled={loading}
         style={loading ? styles.buttonDisabled : styles.button}
       >
@@ -286,7 +286,7 @@ const App: React.FunctionComponent = () => {
           {loading && (
             <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
           )}{' '}
-          Continue payment
+          Continue action
         </Text>
       </TouchableHighlight>
     </View>
