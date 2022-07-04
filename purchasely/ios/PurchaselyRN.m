@@ -204,7 +204,9 @@ RCT_EXPORT_METHOD(handle:(NSString * _Nullable) deeplink
         [self reject: reject with: error];
         return;
     }
-    resolve(@([Purchasely handleWithDeeplink:[NSURL URLWithString:deeplink]]));
+    dispatch_async(dispatch_get_main_queue(), ^{
+        resolve(@([Purchasely handleWithDeeplink:[NSURL URLWithString:deeplink]]));
+    });
 }
 
 RCT_EXPORT_METHOD(userLogout) {
