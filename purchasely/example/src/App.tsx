@@ -118,7 +118,7 @@ const App: React.FunctionComponent = () => {
   const onPressPresentation = async () => {
     try {
       const result = await Purchasely.presentPresentationForPlacement({
-        placementVendorId: 'onboarding',
+        placementVendorId: 'ACCOUNT',
         isFullscreen: true,
       });
 
