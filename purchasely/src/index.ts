@@ -24,6 +24,10 @@ interface Constants {
   onesignalPlayerId: number;
   mixpanelDistinctId: number;
   clevertapId: number;
+  sendinblueUserEmail: number;
+  iterableUserId: number;
+  iterableUserEmail: number;
+  atInternetIdClient: number;
   consumable: number;
   nonConsumable: number;
   autoRenewingSubscription: number;
@@ -68,6 +72,10 @@ export enum Attributes {
   ONESIGNAL_PLAYER_ID = constants.onesignalPlayerId,
   MIXPANEL_DISTINCT_ID = constants.mixpanelDistinctId,
   CLEVER_TAP_ID = constants.clevertapId,
+  SENDINBLUE_USER_EMAIL = constants.sendinblueUserEmail,
+  ITERABLE_USER_ID = constants.iterableUserId,
+  ITERABLE_USER_EMAIL = constants.iterableUserEmail,
+  AT_INTERNET_ID_CLIENT = constants.atInternetIdClient,
 }
 
 export enum PlanType {
