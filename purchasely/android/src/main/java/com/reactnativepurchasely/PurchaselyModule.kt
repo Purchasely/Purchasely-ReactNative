@@ -59,6 +59,10 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     constants["onesignalPlayerId"] = Attribute.ONESIGNAL_PLAYER_ID.ordinal
     constants["mixpanelDistinctId"] = Attribute.MIXPANEL_DISTINCT_ID.ordinal
     constants["clevertapId"] = Attribute.CLEVER_TAP_ID.ordinal
+    constants["sendinblueUserEmail"] = Attribute.SENDINBLUE_USER_EMAIL.ordinal
+    constants["iterableUserId"] = Attribute.ITERABLE_USER_ID.ordinal
+    constants["iterableUserEmail"] = Attribute.ITERABLE_USER_EMAIL.ordinal
+    constants["atInternetIdClient"] = Attribute.AT_INTERNET_ID_CLIENT.ordinal
     constants["sourceAppStore"] = StoreType.APPLE_APP_STORE.ordinal
     constants["sourcePlayStore"] = StoreType.GOOGLE_PLAY_STORE.ordinal
     constants["sourceHuaweiAppGallery"] = StoreType.HUAWEI_APP_GALLERY.ordinal
@@ -511,6 +515,8 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
           DistributionType.UNKNOWN -> DistributionType.UNKNOWN.ordinal
           else -> null
         }
+
+        this["isEligibleForIntroOffer"] = plan.isEligibleToIntroOffer()
       }
     }
   }

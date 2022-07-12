@@ -48,6 +48,9 @@ const App: React.FunctionComponent = () => {
           'PURCHASELY_PLUS_YEARLY'
         );
         console.log('Plan', plan);
+        console.log(
+          'User is eligible for intro offer:' + plan.isEligibleForIntroOffer
+        );
 
         const products = await Purchasely.allProducts();
         console.log('Products', products);
@@ -118,7 +121,7 @@ const App: React.FunctionComponent = () => {
   const onPressPresentation = async () => {
     try {
       const result = await Purchasely.presentPresentationForPlacement({
-        placementVendorId: 'onboarding',
+        placementVendorId: 'ACCOUNT',
         isFullscreen: true,
       });
 
