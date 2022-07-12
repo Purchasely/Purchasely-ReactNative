@@ -515,6 +515,8 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
           DistributionType.UNKNOWN -> DistributionType.UNKNOWN.ordinal
           else -> null
         }
+
+        this["isEligibleForIntroOffer"] = plan.isEligibleToIntroOffer()
       }
     }
   }
