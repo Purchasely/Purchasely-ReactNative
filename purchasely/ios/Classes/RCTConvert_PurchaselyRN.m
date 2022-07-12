@@ -22,15 +22,19 @@ RCT_ENUM_CONVERTER(PLYProductViewControllerResult, (@{ @"productResultPurchased"
                                                        @"productResultRestored": @(PLYProductViewControllerResultRestored)}),
                    PLYProductViewControllerResultPurchased, integerValue)
 
-RCT_ENUM_CONVERTER(PLYAttribute, (@{ @"amplitudeSessionId": @(PLYAttributeAmplitudeSessionId),
-									 @"firebaseAppInstanceId": @(PLYAttributeFirebaseAppInstanceId),
-									 @"airshipChannelId": @(PLYAttributeAirshipChannelId),
-                                     @"batchInstallationId": @(PLYAttributeBatchInstallationId),
-                                     @"adjustId": @(PLYAttributeAdjustId),
-                                     @"appsflyerId": @(PLYAttributeAppsflyerId),
-                                     @"onesignalPlayerId": @(PLYAttributeOneSignalPlayerId),
-									 @"mixpanelDistinctId": @(PLYAttributeMixpanelDistinctId),
-        							 @"clevertapId": @(PLYAttributeClevertapId)}),
+RCT_ENUM_CONVERTER(PLYAttribute, (@{@"amplitudeSessionId": @(PLYAttributeAmplitudeSessionId),
+									@"firebaseAppInstanceId": @(PLYAttributeFirebaseAppInstanceId),
+									@"airshipChannelId": @(PLYAttributeAirshipChannelId),
+                                    @"batchInstallationId": @(PLYAttributeBatchInstallationId),
+                                    @"adjustId": @(PLYAttributeAdjustId),
+                                    @"appsflyerId": @(PLYAttributeAppsflyerId),
+                                    @"onesignalPlayerId": @(PLYAttributeOneSignalPlayerId),
+									@"mixpanelDistinctId": @(PLYAttributeMixpanelDistinctId),
+        							@"clevertapId": @(PLYAttributeClevertapId),
+									@"sendinblueUserEmail": @(PLYAttributeSendinblueUserEmail),
+        							@"iterableUserId": @(PLYAttributeIterableUserId),
+        							@"iterableUserEmail": @(PLYAttributeIterableUserEmail),
+        							@"atInternetIdClient": @(PLYAttributeAtInternetIdClient)}),
 				   PLYAttributeAmplitudeSessionId, integerValue)
 
 RCT_ENUM_CONVERTER(PLYSubscriptionSource, (@{ @"sourceAppStore": @(PLYSubscriptionSourceAppleAppStore),

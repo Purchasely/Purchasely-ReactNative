@@ -48,6 +48,7 @@ const App: React.FunctionComponent = () => {
           'PURCHASELY_PLUS_YEARLY'
         );
         console.log('Plan', plan);
+        console.log('User is eligible for intro offer:' + plan.isEligibleForIntroOffer);
 
         const products = await Purchasely.allProducts();
         console.log('Products', products);
@@ -127,6 +128,7 @@ const App: React.FunctionComponent = () => {
         case ProductResult.PRODUCT_RESULT_RESTORED:
           if (result.plan != null) {
             console.log('User purchased ' + result.plan.name);
+            console.log('User is eligible for intro offer:' + result.plan.isEligibleForIntroOffer);
           }
           break;
         case ProductResult.PRODUCT_RESULT_CANCELLED:

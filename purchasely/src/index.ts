@@ -129,6 +129,7 @@ export type PurchaselyPlan = {
   introDuration: string;
   introPeriod: string;
   hasFreeTrial: boolean;
+  isEligibleForIntroOffer: boolean;
 };
 
 export type PurchaselyProduct = {
