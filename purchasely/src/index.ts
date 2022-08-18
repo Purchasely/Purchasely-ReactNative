@@ -186,6 +186,7 @@ type PurchaselyType = {
   onProcessAction(processAction: boolean): void;
   setLanguage(language: string): void;
   closePaywall(): void;
+  userDidConsumeSubscriptionContent(): void;
 };
 
 const RNPurchasely = NativeModules.Purchasely as PurchaselyType;
