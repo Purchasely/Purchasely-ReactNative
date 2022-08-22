@@ -230,7 +230,9 @@ type PurchaselyEventsNames =
   | 'SUBSCRIPTION_PLAN_TAPPED'
   | 'SUBSCRIPTIONS_TRANSFERRED'
   | 'USER_LOGGED_IN'
-  | 'USER_LOGGED_OUT';
+  | 'USER_LOGGED_OUT'
+    'PRESENTATION_CLOSED'
+    'SUBSCRIPTION_CONTENT_USED';
 
 type PurchaselyEventPropertyPlan = {
   type?: string;

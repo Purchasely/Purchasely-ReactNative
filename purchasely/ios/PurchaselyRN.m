@@ -236,6 +236,10 @@ RCT_EXPORT_METHOD(closePaywall) {
     }
 }
 
+RCT_EXPORT_METHOD(userDidConsumeSubscriptionContent) {
+    [Purchasely userDidConsumeSubscriptionContent];
+}
+
 RCT_REMAP_METHOD(getAnonymousUserId,
 				 getAnonymousUserId:(RCTPromiseResolveBlock)resolve
 				 reject:(RCTPromiseRejectBlock)reject)
