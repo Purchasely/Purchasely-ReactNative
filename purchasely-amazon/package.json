@@ -1,6 +1,6 @@
 {
   "name": "@purchasely/react-native-purchasely-amazon",
-  "version": "2.3.2",
+  "version": "2.3.3",
   "description": "Purchasely Amazon In-App Purchases dependency",
   "main": "lib/commonjs/index",
   "module": "lib/module/index",
@@ -68,7 +68,7 @@
     "typescript": "^4.1.3"
   },
   "peerDependencies": {
-		"react-native-purchasely": "2.3.2",
+		"react-native-purchasely": "2.3.3",
     "react": "*",
     "react-native": "*"
   },
