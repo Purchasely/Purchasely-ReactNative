@@ -186,6 +186,7 @@ type PurchaselyType = {
   onProcessAction(processAction: boolean): void;
   setLanguage(language: string): void;
   closePaywall(): void;
+  userDidConsumeSubscriptionContent(): void;
 };
 
 const RNPurchasely = NativeModules.Purchasely as PurchaselyType;
@@ -229,7 +230,9 @@ type PurchaselyEventsNames =
   | 'SUBSCRIPTION_PLAN_TAPPED'
   | 'SUBSCRIPTIONS_TRANSFERRED'
   | 'USER_LOGGED_IN'
-  | 'USER_LOGGED_OUT';
+  | 'USER_LOGGED_OUT'
+    'PRESENTATION_CLOSED'
+    'SUBSCRIPTION_CONTENT_USED';
 
 type PurchaselyEventPropertyPlan = {
   type?: string;

@@ -469,6 +469,11 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     )
   }
 
+  @ReactMethod
+  fun userDidConsumeSubscriptionContent() {
+    Purchasely.userDidConsumeSubscriptionContent()
+  }
+
   private fun sendEvent(reactContext: ReactContext,
                         eventName: String,
                         params: WritableMap?) {
