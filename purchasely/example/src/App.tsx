@@ -53,7 +53,7 @@ const App: React.FunctionComponent = () => {
         );
 
         Purchasely.userDidConsumeSubscriptionContent();
-        
+
         const products = await Purchasely.allProducts();
         console.log('Products', products);
 
@@ -122,7 +122,6 @@ const App: React.FunctionComponent = () => {
 
   const onPressPresentation = async () => {
     try {
-
       const result = await Purchasely.presentPresentationForPlacement({
         placementVendorId: 'ACCOUNT',
         isFullscreen: true,

@@ -1,6 +1,6 @@
 import { NativeModules, NativeEventEmitter } from 'react-native';
 
-const purchaselyVersion = '2.3.2';
+const purchaselyVersion = '2.3.3';
 
 interface Constants {
   logLevelDebug: number;
@@ -231,8 +231,8 @@ type PurchaselyEventsNames =
   | 'SUBSCRIPTIONS_TRANSFERRED'
   | 'USER_LOGGED_IN'
   | 'USER_LOGGED_OUT'
-    'PRESENTATION_CLOSED'
-    'SUBSCRIPTION_CONTENT_USED';
+  | 'PRESENTATION_CLOSED'
+  | 'SUBSCRIPTION_CONTENT_USED';
 
 type PurchaselyEventPropertyPlan = {
   type?: string;
