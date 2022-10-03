@@ -63,6 +63,12 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     constants["iterableUserId"] = Attribute.ITERABLE_USER_ID.ordinal
     constants["iterableUserEmail"] = Attribute.ITERABLE_USER_EMAIL.ordinal
     constants["atInternetIdClient"] = Attribute.AT_INTERNET_ID_CLIENT.ordinal
+    constants["amplitudeUserId"] = Attribute.AMPLITUDE_USER_ID.ordinal
+    constants["amplitudeDeviceId"] = Attribute.AMPLITUDE_DEVICE_ID.ordinal
+    constants["mparticleUserId"] = Attribute.MPARTICLE_USER_ID.ordinal
+    constants["customerIoUserId"] = Attribute.CUSTOMERIO_USER_ID.ordinal
+    constants["customerIoUserEmail"] = Attribute.CUSTOMERIO_USER_EMAIL.ordinal
+    constants["branchUserDeveloperIdentity"] = Attribute.BRANCH_USER_DEVELOPER_IDENTITY.ordinal
     constants["sourceAppStore"] = StoreType.APPLE_APP_STORE.ordinal
     constants["sourcePlayStore"] = StoreType.GOOGLE_PLAY_STORE.ordinal
     constants["sourceHuaweiAppGallery"] = StoreType.HUAWEI_APP_GALLERY.ordinal

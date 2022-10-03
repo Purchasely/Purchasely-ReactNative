@@ -28,6 +28,12 @@ interface Constants {
   iterableUserId: number;
   iterableUserEmail: number;
   atInternetIdClient: number;
+  amplitudeUserId: number;
+  amplitudeDeviceId: number;
+  mparticleUserId: number;
+  customerIoUserId: number;
+  customerIoUserEmail: number;
+  branchUserDeveloperIdentity: number;
   consumable: number;
   nonConsumable: number;
   autoRenewingSubscription: number;
@@ -76,6 +82,12 @@ export enum Attributes {
   ITERABLE_USER_ID = constants.iterableUserId,
   ITERABLE_USER_EMAIL = constants.iterableUserEmail,
   AT_INTERNET_ID_CLIENT = constants.atInternetIdClient,
+  AMPLITUDE_USER_ID = constants.amplitudeUserId,
+  AMPLITUDE_DEVICE_ID = constants.amplitudeDeviceId,
+  MPARTICLE_USER_ID = constants.mparticleUserId,
+  CUSTOMER_IO_USER_ID = constants.customerIoUserId,
+  CUSTOMER_IO_USER_EMAIL = constants.customerIoUserEmail,
+  BRANCH_DEVELOPER_IDENTITY = constants.branchUserDeveloperIdentity,
 }
 
 export enum PlanType {
