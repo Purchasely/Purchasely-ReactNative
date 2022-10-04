@@ -3,6 +3,7 @@ package com.reactnativepurchasely
 
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.util.Log
 import androidx.fragment.app.FragmentActivity
 import com.facebook.react.bridge.*
@@ -13,9 +14,12 @@ import io.purchasely.ext.EventListener
 import io.purchasely.models.PLYPlan
 import kotlinx.coroutines.*
 import java.lang.ref.WeakReference
+import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
+import kotlin.math.ceil
+import kotlin.math.floor
 
 class PurchaselyModule internal constructor(context: ReactApplicationContext) : ReactContextBaseJavaModule(context) {
 
@@ -363,6 +367,82 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   @ReactMethod
   fun displaySubscriptionCancellationInstruction() {
     Purchasely.displaySubscriptionCancellationInstruction(reactApplicationContext.currentActivity as FragmentActivity, 0)
+  }
+
+  @ReactMethod
+  fun setUserAttributeWithString(key: String, value: String) {
+    Purchasely.setUserAttribute(key, value)
+  }
+
+  @ReactMethod
+  fun setUserAttributeWithNumber(key: String, value: Double) {
+   if(value.compareTo(value.toInt()) == 0) {
+     Purchasely.setUserAttribute(key, value.toInt())
+   } else {
+     Purchasely.setUserAttribute(key, value.toFloat())
+   }
+  }
+
+  @ReactMethod
+  fun setUserAttributeWithBoolean(key: String, value: Boolean) {
+    Purchasely.setUserAttribute(key, value)
+  }
+
+  @ReactMethod
+  fun setUserAttributeWithDate(key: String, value: String) {
+    val format = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+      SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSX", Locale.getDefault())
+    } else {
+      SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+    }
+    format.timeZone = TimeZone.getTimeZone("GMT")
+    val calendar = Calendar.getInstance()
+    try {
+      format.parse(value)?.let {
+        calendar.time = it
+      }
+      Purchasely.setUserAttribute(key, calendar.time)
+    } catch (e: Exception) {
+      Log.e("Purchasely", "Cannot save date attribute $key", e)
+    }
+  }
+
+  @ReactMethod
+  fun userAttribute(key: String, promise: Promise) {
+    val result = getUserAttributeValueForRN(Purchasely.userAttribute(key))
+    promise.resolve(result)
+  }
+
+  @ReactMethod
+  fun userAttributes(promise: Promise) {
+    val map = Purchasely.userAttributes()
+    promise.resolve(Arguments.makeNativeMap(
+      map.mapValues {
+        getUserAttributeValueForRN(it.value)
+      }
+    ))
+  }
+
+  private fun getUserAttributeValueForRN(value: Any?): Any? {
+    return when (value) {
+      is Date -> {
+        val format = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+          SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSX", Locale.getDefault())
+        } else {
+          SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+        }
+        format.timeZone = TimeZone.getTimeZone("GMT")
+        try {
+          format.format(value)
+        } catch (e: Exception) {
+          ""
+        }
+      }
+      is Int -> value.toDouble()
+      //awful but to keep same precision so 1.2f = 1.2 double and not 1.20000056
+      is Float -> value.toString().toDouble()
+      else -> value
+    }
   }
 
   @ReactMethod
