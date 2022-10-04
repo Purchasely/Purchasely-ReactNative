@@ -80,6 +80,11 @@ const App: React.FunctionComponent = () => {
         const dateAttribute = await Purchasely.userAttribute("dateKey");
         console.log(new Date(dateAttribute).getFullYear());
 
+        Purchasely.clearUserAttribute("dateKey");
+        console.log(await Purchasely.userAttribute("dateKey"));
+
+        Purchasely.clearUserAttributes();
+
         Purchasely.setPaywallActionInterceptorCallback((result) => {
           console.log('Received action from paywall');
           console.log(result.info);

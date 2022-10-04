@@ -446,6 +446,16 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   }
 
   @ReactMethod
+  fun clearUserAttribute(key: String) {
+    Purchasely.clearUserAttribute(key)
+  }
+
+  @ReactMethod
+  fun clearUserAttributes() {
+    Purchasely.clearUserAttributes()
+  }
+
+  @ReactMethod
   fun userSubscriptions(promise: Promise) {
     GlobalScope.launch {
       try {

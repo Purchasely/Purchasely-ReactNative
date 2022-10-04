@@ -210,6 +210,8 @@ type PurchaselyType = {
   setUserAttributeWithBoolean(key: string, value: boolean): void;
   userAttributes(): Promise<PurchaselyUserAttribute>;
   userAttribute(key: string): Promise<any>;
+  clearUserAttribute(key: string): void;
+  clearUserAttributes(): void;
 };
 
 const RNPurchasely = NativeModules.Purchasely as PurchaselyType;
