@@ -1,7 +1,6 @@
-import type { VideoHTMLAttributes } from 'react';
 import { NativeModules, NativeEventEmitter } from 'react-native';
 
-const purchaselyVersion = '2.3.4';
+const purchaselyVersion = '2.4.0';
 
 interface Constants {
   logLevelDebug: number;
