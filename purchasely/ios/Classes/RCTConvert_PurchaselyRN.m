@@ -23,6 +23,8 @@ RCT_ENUM_CONVERTER(PLYProductViewControllerResult, (@{ @"productResultPurchased"
                    PLYProductViewControllerResultPurchased, integerValue)
 
 RCT_ENUM_CONVERTER(PLYAttribute, (@{@"amplitudeSessionId": @(PLYAttributeAmplitudeSessionId),
+                                    @"amplitudeUserId": @(PLYAttributeAmplitudeUserId),
+                                    @"amplitudeDeviceId": @(PLYAttributeAmplitudeDeviceId),
 									@"firebaseAppInstanceId": @(PLYAttributeFirebaseAppInstanceId),
 									@"airshipChannelId": @(PLYAttributeAirshipChannelId),
                                     @"batchInstallationId": @(PLYAttributeBatchInstallationId),
@@ -32,9 +34,13 @@ RCT_ENUM_CONVERTER(PLYAttribute, (@{@"amplitudeSessionId": @(PLYAttributeAmplitu
 									@"mixpanelDistinctId": @(PLYAttributeMixpanelDistinctId),
         							@"clevertapId": @(PLYAttributeClevertapId),
 									@"sendinblueUserEmail": @(PLYAttributeSendinblueUserEmail),
+                                    @"iterableUserEmail": @(PLYAttributeIterableUserEmail),
         							@"iterableUserId": @(PLYAttributeIterableUserId),
-        							@"iterableUserEmail": @(PLYAttributeIterableUserEmail),
-        							@"atInternetIdClient": @(PLYAttributeAtInternetIdClient)}),
+        							@"atInternetIdClient": @(PLYAttributeAtInternetIdClient),
+                                    @"mparticleUserId": @(PLYAttributeMParticleUserId),
+                                    @"branchUserDeveloperIdentity": @(PLYAttributeBranchUserDeveloperIdentity),
+                                    @"customerIoUserEmail": @(PLYAttributeCustomerioUserEmail),
+                                    @"customerIoUserId": @(PLYAttributeCustomerioUserId)}),
 				   PLYAttributeAmplitudeSessionId, integerValue)
 
 RCT_ENUM_CONVERTER(PLYSubscriptionSource, (@{ @"sourceAppStore": @(PLYSubscriptionSourceAppleAppStore),

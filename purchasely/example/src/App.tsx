@@ -65,6 +65,29 @@ const App: React.FunctionComponent = () => {
         //force your language
         Purchasely.setLanguage('en');
 
+
+        //Set an attribute for each type
+        Purchasely.setUserAttributeWithString("stringKey", "StringValue");
+        Purchasely.setUserAttributeWithNumber("intKey", 3);
+        Purchasely.setUserAttributeWithNumber("floatKey", 1.2);
+        Purchasely.setUserAttributeWithBoolean("booleanKey", true);
+        Purchasely.setUserAttributeWithDate("dateKey", new Date());
+
+        //get all attributes
+        const attributes = await Purchasely.userAttributes();
+        console.log(attributes);
+
+        //retrive a date attribute
+        const dateAttribute = await Purchasely.userAttribute("dateKey");
+        console.log(new Date(dateAttribute).getFullYear());
+
+        //remove an attribute
+        Purchasely.clearUserAttribute("dateKey");
+        console.log(await Purchasely.userAttribute("dateKey"));
+
+        //remove all attributes
+        Purchasely.clearUserAttributes();
+
         Purchasely.setPaywallActionInterceptorCallback((result) => {
           console.log('Received action from paywall');
           console.log(result.info);
