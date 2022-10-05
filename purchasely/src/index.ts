@@ -1,3 +1,4 @@
+import type { VideoHTMLAttributes } from 'react';
 import { NativeModules, NativeEventEmitter } from 'react-native';
 
 const purchaselyVersion = '2.3.4';
@@ -150,6 +151,11 @@ export type PurchaselyProduct = {
   plans: PurchaselyPlan[];
 };
 
+export type PurchaselyUserAttribute = {
+  key: string;
+  value: any;
+};
+
 export type PurchaselySubscription = {
   purchaseToken: string;
   subscriptionSource: SubscriptionSource;
@@ -199,6 +205,13 @@ type PurchaselyType = {
   setLanguage(language: string): void;
   closePaywall(): void;
   userDidConsumeSubscriptionContent(): void;
+  setUserAttributeWithString(key: string, value: string): void;
+  setUserAttributeWithNumber(key: string, value: number): void;
+  setUserAttributeWithBoolean(key: string, value: boolean): void;
+  userAttributes(): Promise<PurchaselyUserAttribute>;
+  userAttribute(key: string): Promise<any>;
+  clearUserAttribute(key: string): void;
+  clearUserAttributes(): void;
 };
 
 const RNPurchasely = NativeModules.Purchasely as PurchaselyType;
@@ -331,6 +344,11 @@ function startWithAPIKey(
     runningMode,
     purchaselyVersion
   );
+}
+
+function setUserAttributeWithDate(key: string, value: Date): void {
+  const dateAsString = value.toISOString();
+  return NativeModules.Purchasely.setUserAttributeWithDate(key, dateAsString);
 }
 
 type EventListenerCallback = (event: PurchaselyEvent) => void;
@@ -491,6 +509,7 @@ const Purchasely = {
   presentProductWithIdentifier,
   presentPlanWithIdentifier,
   purchaseWithPlanVendorId,
+  setUserAttributeWithDate,
 };
 
 export default Purchasely;
