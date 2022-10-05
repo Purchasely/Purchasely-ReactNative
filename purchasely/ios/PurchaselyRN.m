@@ -49,6 +49,12 @@ RCT_EXPORT_MODULE(Purchasely);
         @"iterableUserId": @(PLYAttributeIterableUserId),
         @"iterableUserEmail": @(PLYAttributeIterableUserEmail),
         @"atInternetIdClient": @(PLYAttributeAtInternetIdClient),
+        @"amplitudeUserId": @(PLYAttributeAmplitudeUserId),
+        @"amplitudeDeviceId": @(PLYAttributeAmplitudeDeviceId),
+        @"mparticleUserId": @(PLYAttributeMParticleUserId),
+        @"customerIoUserId": @(PLYAttributeCustomerioUserId),
+        @"customerIoUserEmail": @(PLYAttributeCustomerioUserEmail),
+        @"branchUserDeveloperIdentity": @(PLYAttributeBranchUserDeveloperIdentity),
 		@"consumable": @(PLYPlanTypeConsumable),
 		@"nonConsumable": @(PLYPlanTypeNonConsumable),
 		@"autoRenewingSubscription": @(PLYPlanTypeAutoRenewingSubscription),
@@ -220,6 +226,81 @@ RCT_EXPORT_METHOD(userLogout) {
 RCT_EXPORT_METHOD(setAttribute:(NSInteger)attribute value:(NSString * _Nonnull)value) {
 	[Purchasely setAttribute:attribute value:value];
 }
+
+RCT_EXPORT_METHOD(setUserAttributeWithString:(NSString * _Nonnull)key value:(NSString * _Nonnull)value) {
+    [Purchasely setUserAttributeWithStringValue:value forKey:key];
+}
+
+RCT_EXPORT_METHOD(setUserAttributeWithBoolean:(NSString * _Nonnull)key value:(BOOL)value) {
+    [Purchasely setUserAttributeWithBoolValue:value forKey:key];
+}
+
+RCT_EXPORT_METHOD(setUserAttributeWithNumber:(NSString * _Nonnull)key value:(double)value) {
+    if (!fmod(value, 1.0)) {
+        [Purchasely setUserAttributeWithIntValue:value forKey:key];
+    } else {
+        [Purchasely setUserAttributeWithDoubleValue:value forKey:key];
+    }
+}
+
+RCT_EXPORT_METHOD(setUserAttributeWithDate:(NSString * _Nonnull)key value:(NSString * _Nonnull)value) {
+    NSDateFormatter * dateFormatter = [NSDateFormatter new];
+    dateFormatter.timeZone = [NSTimeZone timeZoneWithName:@"GMT"];
+    [dateFormatter setDateFormat:@"yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"];
+    NSDate *date = [dateFormatter dateFromString:value];
+    if (date != nil) {
+        [Purchasely setUserAttributeWithDateValue:date forKey:key];
+    } else {
+        NSLog(@"[Purchasely] Cannot save date attribute %@", key);
+    }
+}
+
+RCT_REMAP_METHOD(userAttribute,
+                 userAttribute:(NSString * _Nonnull)key
+                 resolve:(RCTPromiseResolveBlock)resolve
+                 reject:(RCTPromiseRejectBlock)reject){
+    dispatch_async(dispatch_get_main_queue(), ^{
+        
+        id _Nullable result = [self getUserAttributeValueForRN:[Purchasely getUserAttributeFor:key]];
+        resolve(result);
+    });
+}
+
+RCT_EXPORT_METHOD(userAttributes:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+{
+    dispatch_async(dispatch_get_main_queue(), ^{
+
+        NSDictionary<NSString *, id> * _Nonnull attributes = [Purchasely userAttributes];
+        NSMutableDictionary *attributesDict = [NSMutableDictionary new];
+        for (NSString *key in attributes) {
+            id value = attributes[key];
+            [attributesDict setValue:[self getUserAttributeValueForRN:value] forKey:key];
+        }
+        resolve(attributesDict);
+    });
+}
+
+- (id _Nullable) getUserAttributeValueForRN:(id _Nullable) value {
+    if ([value isKindOfClass:[NSDate class]]) {
+        NSDateFormatter * dateFormatter = [NSDateFormatter new];
+        dateFormatter.timeZone = [NSTimeZone timeZoneWithName:@"GMT"];
+        [dateFormatter setDateFormat:@"yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"];
+        NSString *dateStr = [dateFormatter stringFromDate:value];
+        return dateStr;
+    }
+
+    return value;
+}
+
+RCT_EXPORT_METHOD(clearUserAttribute:(NSString * _Nonnull)key) {
+    [Purchasely clearUserAttributeForKey:key];
+}
+
+RCT_EXPORT_METHOD(clearUserAttributes) {
+    [Purchasely clearUserAttributes];
+}
+
 
 RCT_EXPORT_METHOD(setLanguage:(NSString * _Nonnull) language) {
     NSLocale *locale = [NSLocale localeWithLocaleIdentifier:language];
