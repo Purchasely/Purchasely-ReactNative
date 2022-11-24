@@ -11,6 +11,7 @@ import com.facebook.react.modules.core.DeviceEventManagerModule.RCTDeviceEventEm
 import io.purchasely.billing.Store
 import io.purchasely.ext.*
 import io.purchasely.ext.EventListener
+import io.purchasely.managers.PLYManager
 import io.purchasely.models.PLYPlan
 import kotlinx.coroutines.*
 import java.lang.ref.WeakReference
@@ -129,10 +130,14 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
                       runningMode: Int,
                       bridgeVersion: String,
                       promise: Promise) {
+
+    val builder = Purchasely.Builder(reactApplicationContext.applicationContext)
+
+    PLYManager.context = reactApplicationContext.applicationContext
+
     val storesInstances = getStoresInstances(stores.toArrayList())
 
-    Purchasely.Builder(reactApplicationContext.applicationContext)
-      .apiKey(apiKey)
+    builder.apiKey(apiKey)
       .stores(storesInstances)
       .userId(userId)
       .eventListener(eventListener)
