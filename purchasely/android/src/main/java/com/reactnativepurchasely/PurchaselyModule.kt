@@ -131,14 +131,9 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
                       bridgeVersion: String,
                       promise: Promise) {
 
-    val builder = Purchasely.Builder(reactApplicationContext.applicationContext)
-
-    PLYManager.context = reactApplicationContext.applicationContext
-
-    val storesInstances = getStoresInstances(stores.toArrayList())
-
-    builder.apiKey(apiKey)
-      .stores(storesInstances)
+    Purchasely.Builder(reactApplicationContext.applicationContext)
+      .apiKey(apiKey)
+      .stores(getStoresInstances(stores.toArrayList()))
       .userId(userId)
       .eventListener(eventListener)
       .logLevel(LogLevel.values()[logLevel])
@@ -206,7 +201,8 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   }
 
   @ReactMethod
-  fun setAttribute(attribute: Int, value: String) {
+  fun setAttribute(attribute: Int, value: String?) {
+    if(value == null) return
     Purchasely.setAttribute(Attribute.values()[attribute], value)
   }
 
