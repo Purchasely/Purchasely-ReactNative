@@ -102,6 +102,11 @@ class PLYProductActivity : AppCompatActivity() {
 
   companion object {
     fun newIntent(activity: Activity?) = Intent(activity, PLYProductActivity::class.java).apply {
+      //remove old activity if still referenced to avoid issues
+      val oldActivity = PurchaselyModule.productActivity?.activity?.get()
+      oldActivity?.finish()
+      PurchaselyModule.productActivity?.activity = null
+      PurchaselyModule.productActivity = null
       //flags = Intent.FLAG_ACTIVITY_NEW_TASK xor Intent.FLAG_ACTIVITY_MULTIPLE_TASK
     }
   }

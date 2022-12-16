@@ -1,6 +1,6 @@
 import { NativeModules, NativeEventEmitter } from 'react-native';
 
-const purchaselyVersion = '2.4.2';
+const purchaselyVersion = '2.4.3';
 
 interface Constants {
   logLevelDebug: number;
