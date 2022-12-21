@@ -145,9 +145,10 @@ const App: React.FunctionComponent = () => {
 
   const onPressPresentation = async () => {
     try {
-      const result = await Purchasely.presentPresentationForPlacement({
-        placementVendorId: 'ACCOUNT',
+      const result = await Purchasely.presentPresentationWithIdentifier({
+        presentationVendorId: 'NGL8',
         isFullscreen: true,
+        loadingBackgroundColor: '#00F43D3D'
       });
 
       switch (result.result) {

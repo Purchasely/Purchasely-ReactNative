@@ -109,19 +109,19 @@ RCT_EXPORT_MODULE(Purchasely);
         if (infos.presentationId != nil) {
             [infosResult setObject:infos.presentationId forKey:@"presentationId"];
         }
-        
+
         if (infos.placementId != nil) {
             [infosResult setObject:infos.placementId forKey:@"placementId"];
         }
-        
+
         if (infos.abTestId != nil) {
             [infosResult setObject:infos.abTestId forKey:@"abTestId"];
         }
-        
+
         if (infos.abTestVariantId != nil) {
             [infosResult setObject:infos.abTestVariantId forKey:@"abTestVariantId"];
         }
-        
+
         [actionInterceptorResult setObject:infosResult forKey:@"info"];
     }
     if (params != nil) {
@@ -138,10 +138,10 @@ RCT_EXPORT_MODULE(Purchasely);
         if (params.presentation != nil) {
             [paramsResult setObject:params.presentation forKey:@"presentation"];
         }
-        
+
         [actionInterceptorResult setObject:paramsResult forKey:@"parameters"];
     }
-    
+
 	return actionInterceptorResult;
 }
 
@@ -178,9 +178,9 @@ RCT_EXPORT_METHOD(startWithAPIKey:(NSString * _Nonnull)apiKey
                   purchaselySdkVersion:(NSString * _Nullable)purchaselySdkVersion
 				  initialized:(RCTPromiseResolveBlock)resolve
 				  reject:(RCTPromiseRejectBlock)reject) {
-    
+
     [Purchasely setSdkBridgeVersion:purchaselySdkVersion];
-    
+
     [Purchasely startWithAPIKey:apiKey appUserId:userId runningMode:runningMode eventDelegate:self uiDelegate:nil paywallActionsInterceptor:nil logLevel:logLevel initialized:^(BOOL initialized, NSError * _Nullable error) {
         resolve(@(initialized));
     }];
@@ -210,7 +210,7 @@ RCT_EXPORT_METHOD(handle:(NSString * _Nullable) deeplink
         NSString *desc = NSLocalizedString(@"Deeplink must not be null", @"");
         NSDictionary *userInfo = @{ NSLocalizedDescriptionKey : desc };
         NSError *error = [NSError errorWithDomain:domain code:-1 userInfo:userInfo];
-        
+
         [self reject: reject with: error];
         return;
     }
@@ -260,7 +260,7 @@ RCT_REMAP_METHOD(userAttribute,
                  resolve:(RCTPromiseResolveBlock)resolve
                  reject:(RCTPromiseRejectBlock)reject){
     dispatch_async(dispatch_get_main_queue(), ^{
-        
+
         id _Nullable result = [self getUserAttributeValueForRN:[Purchasely getUserAttributeFor:key]];
         resolve(result);
     });
@@ -403,7 +403,7 @@ RCT_EXPORT_METHOD(presentPresentationForPlacement:(NSString * _Nullable)placemen
                                                             completion:^(enum PLYProductViewControllerResult result, PLYPlan * _Nullable plan) {
             resolve([self resultDictionaryForPresentationController:result plan:plan]);
         }];
-        
+
         if (ctrl != nil) {
             UINavigationController *navCtrl = [[UINavigationController alloc] initWithRootViewController:ctrl];
             [navCtrl.navigationBar setTranslucent:YES];
@@ -443,13 +443,13 @@ RCT_EXPORT_METHOD(presentPlanWithIdentifier:(NSString * _Nonnull)planVendorId
             [navCtrl.navigationBar setBackgroundImage:[UIImage new] forBarMetrics:UIBarMetricsDefault];
             [navCtrl.navigationBar setShadowImage: [UIImage new]];
             [navCtrl.navigationBar setTintColor: [UIColor whiteColor]];
-            
+
             self.presentedPresentationViewController = navCtrl;
-            
+
             if (isFullscreen) {
                 navCtrl.modalPresentationStyle = UIModalPresentationFullScreen;
             }
-            
+
             [Purchasely showController:navCtrl type: PLYUIControllerTypeProductPage];
         }
 	});
@@ -458,7 +458,8 @@ RCT_EXPORT_METHOD(presentPlanWithIdentifier:(NSString * _Nonnull)planVendorId
 RCT_EXPORT_METHOD(presentProductWithIdentifier:(NSString * _Nonnull)productVendorId
 				  presentationVendorId:(NSString * _Nullable)presentationVendorId
 				  contentId:(NSString * _Nullable)contentId
-				  isFullscreen: (BOOL) isFullscreen
+				  isFullscreen: (BOOL)isFullscreen
+                  loadingBackgroundColor: (NSString * _Nullable)color
 				  resolve:(RCTPromiseResolveBlock)resolve
 				  reject:(RCTPromiseRejectBlock)reject)
 {
@@ -472,6 +473,8 @@ RCT_EXPORT_METHOD(presentProductWithIdentifier:(NSString * _Nonnull)productVendo
 		}];
 
         if (ctrl != nil) {
+            //[ctrl.view setBackgroundColor:];
+            
             UINavigationController *navCtrl = [[UINavigationController alloc] initWithRootViewController:ctrl];
             [navCtrl.navigationBar setTranslucent:YES];
             [navCtrl.navigationBar setBackgroundImage:[UIImage new] forBarMetrics:UIBarMetricsDefault];

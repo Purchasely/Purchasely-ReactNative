@@ -223,13 +223,15 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   fun presentPresentationWithIdentifier(presentationVendorId: String?,
                                         contentId: String?,
                                         isFullScreen: Boolean,
+                                        loadingBackgroundColor: String?,
                                         promise: Promise) {
     purchasePromise = promise
     reactApplicationContext.currentActivity?.let {
-      val intent = PLYProductActivity.newIntent(it)
-      intent.putExtra("presentationId", presentationVendorId)
-      intent.putExtra("contentId", contentId)
-      intent.putExtra("isFullScreen", isFullScreen)
+      val properties = PLYPresentationViewProperties(
+        presentationId = presentationVendorId,
+        contentId = contentId
+      )
+      val intent = PLYProductActivity.newIntent(it, properties, isFullScreen, loadingBackgroundColor)
       it.startActivity(intent)
     }
   }
@@ -238,13 +240,15 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   fun presentPresentationForPlacement(placementVendorId: String?,
                                       contentId: String?,
                                       isFullScreen: Boolean,
+                                      loadingBackgroundColor: String?,
                                       promise: Promise) {
     purchasePromise = promise
     reactApplicationContext.currentActivity?.let {
-      val intent = PLYProductActivity.newIntent(it)
-      intent.putExtra("placementId", placementVendorId)
-      intent.putExtra("contentId", contentId)
-      intent.putExtra("isFullScreen", isFullScreen)
+      val properties = PLYPresentationViewProperties(
+        placementId = placementVendorId,
+        contentId = contentId
+      )
+      val intent = PLYProductActivity.newIntent(it, properties, isFullScreen, loadingBackgroundColor)
       it.startActivity(intent)
     }
   }
@@ -254,14 +258,16 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
                                    presentationVendorId: String?,
                                    contentId: String?,
                                    isFullScreen: Boolean,
+                                   loadingBackgroundColor: String?,
                                    promise: Promise) {
     purchasePromise = promise
     reactApplicationContext.currentActivity?.let {
-      val intent = PLYProductActivity.newIntent(it)
-      intent.putExtra("presentationId", presentationVendorId)
-      intent.putExtra("productId", productVendorId)
-      intent.putExtra("contentId", contentId)
-      intent.putExtra("isFullScreen", isFullScreen)
+      val properties = PLYPresentationViewProperties(
+        presentationId = presentationVendorId,
+        productId = productVendorId,
+        contentId = contentId
+      )
+      val intent = PLYProductActivity.newIntent(it, properties, isFullScreen, loadingBackgroundColor)
       it.startActivity(intent)
     }
   }
@@ -271,14 +277,16 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
                                 presentationVendorId: String?,
                                 contentId: String?,
                                 isFullScreen: Boolean,
+                                loadingBackgroundColor: String?,
                                 promise: Promise) {
     purchasePromise = promise
     reactApplicationContext.currentActivity?.let {
-      val intent = PLYProductActivity.newIntent(it)
-      intent.putExtra("presentationId", presentationVendorId)
-      intent.putExtra("planId", planVendorId)
-      intent.putExtra("contentId", contentId)
-      intent.putExtra("isFullScreen", isFullScreen)
+      val properties = PLYPresentationViewProperties(
+        presentationId = presentationVendorId,
+        planId = planVendorId,
+        contentId = contentId
+      )
+      val intent = PLYProductActivity.newIntent(it, properties, isFullScreen, loadingBackgroundColor)
       it.startActivity(intent)
     }
   }
@@ -628,7 +636,9 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     val placementId: String? = null,
     val productId: String? = null,
     val planId: String? = null,
-    val contentId: String? = null) {
+    val contentId: String? = null,
+    val isFullScreen: Boolean = false,
+    val loadingBackgroundColor: String? = null) {
 
     var activity: WeakReference<PLYProductActivity>? = null
 
@@ -648,12 +658,14 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
         true
       } else {
         reactApplicationContext.currentActivity?.let {
-          val intent = PLYProductActivity.newIntent(it)
-          intent.putExtra("presentationId", presentationId)
-          intent.putExtra("placementId", placementId)
-          intent.putExtra("productId", productId)
-          intent.putExtra("planId", planId)
-          intent.putExtra("contentId", contentId)
+          val properties = PLYPresentationViewProperties(
+            presentationId = presentationId,
+            placementId = placementId,
+            productId = productId,
+            planId = planId,
+            contentId = contentId
+          )
+          val intent = PLYProductActivity.newIntent(it, properties, isFullScreen, loadingBackgroundColor)
           it.startActivity(intent)
         }
         return false

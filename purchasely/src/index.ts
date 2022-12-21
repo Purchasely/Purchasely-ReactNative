@@ -411,17 +411,20 @@ interface PresentPresentationParameters {
   presentationVendorId?: string | null;
   contentId?: string | null;
   isFullscreen?: boolean;
+  loadingBackgroundColor?: string | null;
 }
 
 const presentPresentationWithIdentifier = ({
   presentationVendorId = null,
   contentId = null,
   isFullscreen = false,
+  loadingBackgroundColor = null,
 }: PresentPresentationParameters): Promise<PresentPresentationResult> => {
   return NativeModules.Purchasely.presentPresentationWithIdentifier(
     presentationVendorId,
     contentId,
-    isFullscreen
+    isFullscreen,
+    loadingBackgroundColor
   );
 };
 
@@ -429,17 +432,20 @@ interface PresentPresentationPlacementParameters {
   placementVendorId?: string | null;
   contentId?: string | null;
   isFullscreen?: boolean;
+  loadingBackgroundColor?: string | null;
 }
 
 const presentPresentationForPlacement = ({
   placementVendorId = null,
   contentId = null,
   isFullscreen = false,
+  loadingBackgroundColor = null,
 }: PresentPresentationPlacementParameters): Promise<PresentPresentationResult> => {
   return NativeModules.Purchasely.presentPresentationForPlacement(
     placementVendorId,
     contentId,
-    isFullscreen
+    isFullscreen,
+    loadingBackgroundColor
   );
 };
 
@@ -448,6 +454,7 @@ interface PresentProductParameters {
   presentationVendorId?: string | null;
   contentId?: string | null;
   isFullscreen?: boolean;
+  loadingBackgroundColor?: string | null;
 }
 
 const presentProductWithIdentifier = ({
@@ -455,12 +462,14 @@ const presentProductWithIdentifier = ({
   presentationVendorId = null,
   contentId = null,
   isFullscreen = false,
+  loadingBackgroundColor = null,
 }: PresentProductParameters): Promise<PresentPresentationResult> => {
   return NativeModules.Purchasely.presentProductWithIdentifier(
     productVendorId,
     presentationVendorId,
     contentId,
-    isFullscreen
+    isFullscreen,
+    loadingBackgroundColor
   );
 };
 interface PresentPlanParameters {
@@ -468,6 +477,7 @@ interface PresentPlanParameters {
   presentationVendorId?: string | null;
   contentId?: string | null;
   isFullscreen?: boolean;
+  loadingBackgroundColor?: string | null;
 }
 
 const presentPlanWithIdentifier = ({
@@ -475,12 +485,14 @@ const presentPlanWithIdentifier = ({
   presentationVendorId = null,
   contentId = null,
   isFullscreen = false,
+  loadingBackgroundColor = null,
 }: PresentPlanParameters): Promise<PresentPresentationResult> => {
   return NativeModules.Purchasely.presentPlanWithIdentifier(
     planVendorId,
     presentationVendorId,
     contentId,
-    isFullscreen
+    isFullscreen,
+    loadingBackgroundColor
   );
 };
 
