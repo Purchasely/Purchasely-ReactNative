@@ -15,6 +15,7 @@ import io.purchasely.ext.PLYPresentationViewProperties
 import io.purchasely.ext.PLYProductViewResult
 import io.purchasely.ext.Purchasely
 import io.purchasely.models.PLYPlan
+import io.purchasely.views.parseColor
 import java.lang.ref.WeakReference
 
 class PLYProductActivity : AppCompatActivity() {
@@ -42,7 +43,7 @@ class PLYProductActivity : AppCompatActivity() {
     setContentView(R.layout.activity_ply_product_activity)
 
     try {
-      val loadingBackgroundColor = Color.parseColor(backgroundColor)
+      val loadingBackgroundColor = backgroundColor.parseColor(Color.WHITE)
       findViewById<View>(R.id.container).setBackgroundColor(loadingBackgroundColor)
     } catch (e: Exception) {
       //do nothing

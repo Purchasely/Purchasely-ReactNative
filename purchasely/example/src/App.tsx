@@ -146,8 +146,8 @@ const App: React.FunctionComponent = () => {
     try {
       const result = await Purchasely.presentPresentationWithIdentifier({
         presentationVendorId: 'NGL8',
-        isFullscreen: true,
-        loadingBackgroundColor: '#FF000055',
+        isFullscreen: false,
+        loadingBackgroundColor: '#FF000000',
       });
 
       switch (result.result) {
