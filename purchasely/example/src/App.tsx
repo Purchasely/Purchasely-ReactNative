@@ -65,25 +65,24 @@ const App: React.FunctionComponent = () => {
         //force your language
         Purchasely.setLanguage('en');
 
-
         //Set an attribute for each type
-        Purchasely.setUserAttributeWithString("stringKey", "StringValue");
-        Purchasely.setUserAttributeWithNumber("intKey", 3);
-        Purchasely.setUserAttributeWithNumber("floatKey", 1.2);
-        Purchasely.setUserAttributeWithBoolean("booleanKey", true);
-        Purchasely.setUserAttributeWithDate("dateKey", new Date());
+        Purchasely.setUserAttributeWithString('stringKey', 'StringValue');
+        Purchasely.setUserAttributeWithNumber('intKey', 3);
+        Purchasely.setUserAttributeWithNumber('floatKey', 1.2);
+        Purchasely.setUserAttributeWithBoolean('booleanKey', true);
+        Purchasely.setUserAttributeWithDate('dateKey', new Date());
 
         //get all attributes
         const attributes = await Purchasely.userAttributes();
         console.log(attributes);
 
         //retrive a date attribute
-        const dateAttribute = await Purchasely.userAttribute("dateKey");
+        const dateAttribute = await Purchasely.userAttribute('dateKey');
         console.log(new Date(dateAttribute).getFullYear());
 
         //remove an attribute
-        Purchasely.clearUserAttribute("dateKey");
-        console.log(await Purchasely.userAttribute("dateKey"));
+        Purchasely.clearUserAttribute('dateKey');
+        console.log(await Purchasely.userAttribute('dateKey'));
 
         //remove all attributes
         Purchasely.clearUserAttributes();
@@ -148,7 +147,7 @@ const App: React.FunctionComponent = () => {
       const result = await Purchasely.presentPresentationWithIdentifier({
         presentationVendorId: 'NGL8',
         isFullscreen: true,
-        loadingBackgroundColor: '#00F43D3D'
+        loadingBackgroundColor: '#FF000055',
       });
 
       switch (result.result) {
@@ -157,6 +156,7 @@ const App: React.FunctionComponent = () => {
           if (result.plan != null) {
             console.log('User purchased ' + result.plan.name);
           }
+
           break;
         case ProductResult.PRODUCT_RESULT_CANCELLED:
           break;

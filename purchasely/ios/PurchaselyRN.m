@@ -11,6 +11,7 @@
 #import <Purchasely/Purchasely-Swift.h>
 #import "PurchaselyRN.h"
 #import "Purchasely_Hybrid.h"
+#import "UIColor+PLYHelper.h"
 
 @implementation PurchaselyRN
 
@@ -362,6 +363,7 @@ RCT_EXPORT_METHOD(onProcessAction:(BOOL)processAction) {
 RCT_EXPORT_METHOD(presentPresentationWithIdentifier:(NSString * _Nullable)presentationVendorId
 				  contentId:(NSString * _Nullable)contentId
 				  isFullscreen: (BOOL) isFullscreen
+				  loadingBackgroundColor: (NSString * _Nullable)backgroundColorCode
 				  resolve:(RCTPromiseResolveBlock)resolve
 				  reject:(RCTPromiseRejectBlock)reject)
 {
@@ -374,6 +376,13 @@ RCT_EXPORT_METHOD(presentPresentationWithIdentifier:(NSString * _Nullable)presen
 		}];
 
         if (ctrl != nil) {
+			if (backgroundColorCode != nil) {
+				UIColor *backColor = [UIColor ply_fromHex:backgroundColorCode];
+				if (backColor != nil) {
+					[ctrl.view setBackgroundColor:backColor];
+				}
+			}
+
             UINavigationController *navCtrl = [[UINavigationController alloc] initWithRootViewController:ctrl];
             [navCtrl.navigationBar setTranslucent:YES];
             [navCtrl.navigationBar setBackgroundImage:[UIImage new] forBarMetrics:UIBarMetricsDefault];
@@ -393,6 +402,7 @@ RCT_EXPORT_METHOD(presentPresentationWithIdentifier:(NSString * _Nullable)presen
 RCT_EXPORT_METHOD(presentPresentationForPlacement:(NSString * _Nullable)placementVendorId
                   contentId:(NSString * _Nullable)contentId
                   isFullscreen: (BOOL) isFullscreen
+				  loadingBackgroundColor: (NSString * _Nullable)backgroundColorCode
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 {
@@ -405,6 +415,13 @@ RCT_EXPORT_METHOD(presentPresentationForPlacement:(NSString * _Nullable)placemen
         }];
 
         if (ctrl != nil) {
+			if (backgroundColorCode != nil) {
+				UIColor *backColor = [UIColor ply_fromHex:backgroundColorCode];
+				if (backColor != nil) {
+					[ctrl.view setBackgroundColor:backColor];
+				}
+			}
+
             UINavigationController *navCtrl = [[UINavigationController alloc] initWithRootViewController:ctrl];
             [navCtrl.navigationBar setTranslucent:YES];
             [navCtrl.navigationBar setBackgroundImage:[UIImage new] forBarMetrics:UIBarMetricsDefault];
@@ -425,6 +442,7 @@ RCT_EXPORT_METHOD(presentPlanWithIdentifier:(NSString * _Nonnull)planVendorId
 				  presentationVendorId:(NSString * _Nullable)presentationVendorId
 				  contentId:(NSString * _Nullable)contentId
 				  isFullscreen: (BOOL) isFullscreen
+				  loadingBackgroundColor: (NSString * _Nullable)backgroundColorCode
 				  resolve:(RCTPromiseResolveBlock)resolve
 				  reject:(RCTPromiseRejectBlock)reject)
 {
@@ -438,6 +456,13 @@ RCT_EXPORT_METHOD(presentPlanWithIdentifier:(NSString * _Nonnull)planVendorId
 		}];
 
         if (ctrl != nil) {
+			if (backgroundColorCode != nil) {
+				UIColor *backColor = [UIColor ply_fromHex:backgroundColorCode];
+				if (backColor != nil) {
+					[ctrl.view setBackgroundColor:backColor];
+				}
+			}
+
             UINavigationController *navCtrl = [[UINavigationController alloc] initWithRootViewController:ctrl];
             [navCtrl.navigationBar setTranslucent:YES];
             [navCtrl.navigationBar setBackgroundImage:[UIImage new] forBarMetrics:UIBarMetricsDefault];
@@ -459,7 +484,7 @@ RCT_EXPORT_METHOD(presentProductWithIdentifier:(NSString * _Nonnull)productVendo
 				  presentationVendorId:(NSString * _Nullable)presentationVendorId
 				  contentId:(NSString * _Nullable)contentId
 				  isFullscreen: (BOOL)isFullscreen
-                  loadingBackgroundColor: (NSString * _Nullable)color
+                  loadingBackgroundColor: (NSString * _Nullable)backgroundColorCode
 				  resolve:(RCTPromiseResolveBlock)resolve
 				  reject:(RCTPromiseRejectBlock)reject)
 {
@@ -473,8 +498,13 @@ RCT_EXPORT_METHOD(presentProductWithIdentifier:(NSString * _Nonnull)productVendo
 		}];
 
         if (ctrl != nil) {
-            //[ctrl.view setBackgroundColor:];
-            
+			if (backgroundColorCode != nil) {
+				UIColor *backColor = [UIColor ply_fromHex:backgroundColorCode];
+				if (backColor != nil) {
+					[ctrl.view setBackgroundColor:backColor];
+				}
+			}
+
             UINavigationController *navCtrl = [[UINavigationController alloc] initWithRootViewController:ctrl];
             [navCtrl.navigationBar setTranslucent:YES];
             [navCtrl.navigationBar setBackgroundImage:[UIImage new] forBarMetrics:UIBarMetricsDefault];

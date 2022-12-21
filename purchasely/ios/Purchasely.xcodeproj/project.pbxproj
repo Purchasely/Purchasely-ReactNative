@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		65BA5EAA2953131B008B32AB /* UIColor+PLYHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = 65BA5EA92953131B008B32AB /* UIColor+PLYHelper.m */; };
 		65C8307E25A8B9BB00A7414F /* RCTConvert_PurchaselyRN.m in Sources */ = {isa = PBXBuildFile; fileRef = 65C8307525A8B9BB00A7414F /* RCTConvert_PurchaselyRN.m */; };
 		65C8307F25A8B9BB00A7414F /* PLYPlan+Hybrid.m in Sources */ = {isa = PBXBuildFile; fileRef = 65C8307B25A8B9BB00A7414F /* PLYPlan+Hybrid.m */; };
 		65C8308025A8B9BB00A7414F /* PLYProduct+Hybrid.m in Sources */ = {isa = PBXBuildFile; fileRef = 65C8307C25A8B9BB00A7414F /* PLYProduct+Hybrid.m */; };
@@ -28,6 +29,8 @@
 
 /* Begin PBXFileReference section */
 		134814201AA4EA6300B7C361 /* libPurchasely.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libPurchasely.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		65BA5EA829531299008B32AB /* UIColor+PLYHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UIColor+PLYHelper.h"; sourceTree = "<group>"; };
+		65BA5EA92953131B008B32AB /* UIColor+PLYHelper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIColor+PLYHelper.m"; sourceTree = "<group>"; };
 		65C8307125A8B99700A7414F /* PurchaselyRN.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PurchaselyRN.h; sourceTree = "<group>"; };
 		65C8307225A8B99700A7414F /* PurchaselyRN.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PurchaselyRN.m; sourceTree = "<group>"; };
 		65C8307525A8B9BB00A7414F /* RCTConvert_PurchaselyRN.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = RCTConvert_PurchaselyRN.m; sourceTree = "<group>"; };
@@ -88,6 +91,8 @@
 				65C8307B25A8B9BB00A7414F /* PLYPlan+Hybrid.m */,
 				65C8307C25A8B9BB00A7414F /* PLYProduct+Hybrid.m */,
 				65C8307D25A8B9BB00A7414F /* PLYSubscription+Hybrid.m */,
+				65BA5EA829531299008B32AB /* UIColor+PLYHelper.h */,
+				65BA5EA92953131B008B32AB /* UIColor+PLYHelper.m */,
 			);
 			path = Hybrid;
 			sourceTree = "<group>";
@@ -153,6 +158,7 @@
 				65C8308325A8B9C200A7414F /* PurchaselyRN.m in Sources */,
 				65C8307E25A8B9BB00A7414F /* RCTConvert_PurchaselyRN.m in Sources */,
 				65C8308125A8B9BB00A7414F /* PLYSubscription+Hybrid.m in Sources */,
+				65BA5EAA2953131B008B32AB /* UIColor+PLYHelper.m in Sources */,
 				65C8308025A8B9BB00A7414F /* PLYProduct+Hybrid.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
