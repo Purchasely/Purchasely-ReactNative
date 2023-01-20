@@ -3,14 +3,12 @@ package com.reactnativepurchasely
 import android.app.Activity
 import android.content.Intent
 import android.graphics.Color
-import android.graphics.drawable.ColorDrawable
-import android.os.Build
 import android.os.Bundle
 import android.view.View
 import android.widget.FrameLayout
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsControllerCompat
+import io.purchasely.ext.PLYPresentation
 import io.purchasely.ext.PLYPresentationViewProperties
 import io.purchasely.ext.PLYProductViewResult
 import io.purchasely.ext.Purchasely
@@ -55,26 +53,39 @@ class PLYProductActivity : AppCompatActivity() {
     planId = intent.extras?.getString("planId")
     contentId = intent.extras?.getString("contentId")
 
-    paywallView = Purchasely.presentationView(
-      this@PLYProductActivity,
-      PLYPresentationViewProperties(
-        placementId = placementId,
-        contentId = contentId,
-        presentationId = presentationId,
-        planId = planId,
-        productId = productId,
-        onLoaded = { onLoaded ->
-          val backgroundPaywall = paywallView?.findViewById<FrameLayout>(io.purchasely.R.id.content)?.background
-          if(backgroundPaywall != null) {
-            findViewById<View>(R.id.container).background = backgroundPaywall
+    var presentation = intent.extras?.getParcelable<PLYPresentation>("presentation")
+    if(presentation != null) {
+      presentation = PurchaselyModule.presentationsLoaded.firstOrNull { it.placementId == presentation?.placementId || it.id == presentation?.id }
+
+      presentationId = presentation?.id
+      placementId = presentation?.placementId
+      PurchaselyModule.presentationsLoaded.remove(presentation)
+    }
+
+    if(presentation?.view != null) {
+      paywallView = presentation.view
+    } else {
+      paywallView = Purchasely.presentationView(
+        this@PLYProductActivity,
+        PLYPresentationViewProperties(
+          placementId = placementId,
+          contentId = contentId,
+          presentationId = presentationId,
+          planId = planId,
+          productId = productId,
+          onLoaded = { onLoaded ->
+            val backgroundPaywall = paywallView?.findViewById<FrameLayout>(io.purchasely.R.id.content)?.background
+            if(backgroundPaywall != null) {
+              findViewById<View>(R.id.container).background = backgroundPaywall
+            }
+          },
+          onClose = {
+            findViewById<FrameLayout>(R.id.container).removeAllViews()
           }
-        },
-        onClose = {
-          findViewById<FrameLayout>(R.id.container).removeAllViews()
-        }
-      ),
-      callback
-    )
+        ),
+        callback
+      )
+    }
 
     if(paywallView == null) {
       finish()
@@ -133,6 +144,23 @@ class PLYProductActivity : AppCompatActivity() {
       putExtra("placementId", properties.placementId)
       putExtra("productId", properties.productId)
       putExtra("planId", properties.planId)
+    }
+
+    fun newIntent(activity: Activity?,
+                  presentation: PLYPresentation,
+                  isFullScreen: Boolean = false,
+                  backgroundColor: String?) = Intent(activity, PLYProductActivity::class.java).apply {
+      //remove old activity if still referenced to avoid issues
+      val oldActivity = PurchaselyModule.productActivity?.activity?.get()
+      oldActivity?.finish()
+      PurchaselyModule.productActivity?.activity = null
+      PurchaselyModule.productActivity = null
+      //flags = Intent.FLAG_ACTIVITY_NEW_TASK xor Intent.FLAG_ACTIVITY_MULTIPLE_TASK
+
+      putExtra("background_color", backgroundColor)
+      putExtra("isFullScreen", isFullScreen)
+
+      putExtra("presentation", presentation)
     }
   }
 

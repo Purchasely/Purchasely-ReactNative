@@ -12,6 +12,8 @@ import Purchasely, {
   ProductResult,
   RunningMode,
   PLYPaywallAction,
+  PurchaselyPresentation,
+  PLYPresentationType,
 } from 'react-native-purchasely';
 
 const App: React.FunctionComponent = () => {
@@ -87,7 +89,7 @@ const App: React.FunctionComponent = () => {
         //remove all attributes
         Purchasely.clearUserAttributes();
 
-        Purchasely.setPaywallActionInterceptorCallback((result) => {
+        /*Purchasely.setPaywallActionInterceptorCallback((result) => {
           console.log('Received action from paywall');
           console.log(result.info);
 
@@ -117,7 +119,7 @@ const App: React.FunctionComponent = () => {
             default:
               Purchasely.onProcessAction(true);
           }
-        });
+        });*/
 
         Purchasely.addEventListener((event) => {
           console.log(event.name);
@@ -144,11 +146,22 @@ const App: React.FunctionComponent = () => {
 
   const onPressPresentation = async () => {
     try {
-      const result = await Purchasely.presentPresentationForPlacement({
-        placementVendorId: 'onboarding',
-        isFullscreen: false,
-        loadingBackgroundColor: '#FF000000',
+      const presentation = await Purchasely.fetchPresentation({
+        presentationId: 'JAN_ST',
       });
+
+      console.log(presentation);
+      console.log('Type is ' + presentation.type);
+
+      const result = await Purchasely.presentPresentation({
+        presentation: presentation,
+      })
+
+      /*const result = await Purchasely.presentPresentationWithIdentifier({
+        presentationVendorId: 'JAN_ST',
+      });*/
+
+      console.log('Result is ' + result.result);
 
       switch (result.result) {
         case ProductResult.PRODUCT_RESULT_PURCHASED:
