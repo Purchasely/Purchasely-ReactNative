@@ -421,21 +421,25 @@ RCT_EXPORT_METHOD(presentPresentationForPlacement:(NSString * _Nullable)placemen
 					[ctrl.view setBackgroundColor:backColor];
 				}
 			}
-
-            UINavigationController *navCtrl = [[UINavigationController alloc] initWithRootViewController:ctrl];
-            [navCtrl.navigationBar setTranslucent:YES];
-            [navCtrl.navigationBar setBackgroundImage:[UIImage new] forBarMetrics:UIBarMetricsDefault];
-            [navCtrl.navigationBar setShadowImage: [UIImage new]];
-            [navCtrl.navigationBar setTintColor: [UIColor whiteColor]];
-
-            self.presentedPresentationViewController = navCtrl;
-
+            
             if (isFullscreen) {
-                navCtrl.modalPresentationStyle = UIModalPresentationFullScreen;
+                ctrl.modalPresentationStyle = UIModalPresentationFullScreen;
             }
-            [Purchasely showController:navCtrl type: PLYUIControllerTypeProductPage];
+              
+            [[PurchaselyRN topMostController] presentViewController:ctrl animated:YES completion:nil];
         }
     });
+}
+
++ (UIViewController*) topMostController
+{
+    UIViewController *topController = [UIApplication sharedApplication].keyWindow.rootViewController;
+
+    while (topController.presentedViewController) {
+        topController = topController.presentedViewController;
+    }
+
+    return topController;
 }
 
 RCT_EXPORT_METHOD(presentPlanWithIdentifier:(NSString * _Nonnull)planVendorId
@@ -581,8 +585,7 @@ RCT_REMAP_METHOD(silentRestoreAllProducts,
     dispatch_async(dispatch_get_main_queue(), ^{
         [Purchasely silentRestoreAllProductsWithSuccess:^{
             resolve([NSNumber numberWithBool:true]);
-        }
-                                                failure:^(NSError * _Nonnull error) {
+        } failure:^(NSError * _Nonnull error) {
             [self reject: reject with: error];
         }];
     });

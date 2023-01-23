@@ -23,6 +23,7 @@ const App: React.FunctionComponent = () => {
       try {
         const configured = await Purchasely.startWithAPIKey(
           'fcb39be4-2ba4-4db7-bde3-2a5a1e20745d',
+          // '366e6743-03d2-47ec-9730-c24802c7d630',
           ['Google'],
           null,
           LogLevels.DEBUG,
@@ -145,9 +146,9 @@ const App: React.FunctionComponent = () => {
   const onPressPresentation = async () => {
     try {
       const result = await Purchasely.presentPresentationForPlacement({
-        placementVendorId: 'onboarding',
+        placementVendorId: 'steps',
         isFullscreen: false,
-        loadingBackgroundColor: '#FF000000',
+        loadingBackgroundColor: '#FFFFFFFF',
       });
 
       switch (result.result) {
