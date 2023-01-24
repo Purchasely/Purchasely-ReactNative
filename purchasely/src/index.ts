@@ -41,7 +41,6 @@ interface Constants {
   unknown: number;
   runningModeTransactionOnly: number;
   runningModeObserver: number;
-  runningModePaywallOnly: number;
   runningModePaywallObserver: number;
   runningModeFull: number;
   presentationTypeNormal: number;
@@ -105,7 +104,6 @@ export enum PlanType {
 export enum RunningMode {
   TRANSACTION_ONLY = constants.runningModeTransactionOnly,
   OBSERVER = constants.runningModeObserver,
-  PAYWALL_ONLY = constants.runningModePaywallOnly,
   PAYWALL_OBSERVER = constants.runningModePaywallObserver,
   FULL = constants.runningModeFull,
 }
