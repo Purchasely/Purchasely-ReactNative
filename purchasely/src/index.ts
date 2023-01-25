@@ -41,7 +41,6 @@ interface Constants {
   unknown: number;
   runningModeTransactionOnly: number;
   runningModeObserver: number;
-  runningModePaywallOnly: number;
   runningModePaywallObserver: number;
   runningModeFull: number;
   presentationTypeNormal: number;
@@ -105,7 +104,6 @@ export enum PlanType {
 export enum RunningMode {
   TRANSACTION_ONLY = constants.runningModeTransactionOnly,
   OBSERVER = constants.runningModeObserver,
-  PAYWALL_ONLY = constants.runningModePaywallOnly,
   PAYWALL_OBSERVER = constants.runningModePaywallObserver,
   FULL = constants.runningModeFull,
 }
@@ -255,6 +253,8 @@ type PurchaselyEventsNames =
   | 'PRESENTATION_VIEWED'
   | 'PRESENTATION_OPENED'
   | 'PRESENTATION_SELECTED'
+  | 'PRESENTATION_LOADED'
+  | 'PRESENTATION_CLOSED'
   | 'PROMO_CODE_TAPPED'
   | 'PURCHASE_CANCELLED'
   | 'PURCHASE_TAPPED'
@@ -272,7 +272,6 @@ type PurchaselyEventsNames =
   | 'SUBSCRIPTIONS_TRANSFERRED'
   | 'USER_LOGGED_IN'
   | 'USER_LOGGED_OUT'
-  | 'PRESENTATION_CLOSED'
   | 'SUBSCRIPTION_CONTENT_USED';
 
 type PurchaselyEventPropertyPlan = {

@@ -88,7 +88,6 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     constants["unknown"] = DistributionType.UNKNOWN.ordinal
     constants["runningModeTransactionOnly"] = runningModeTransactionOnly
     constants["runningModeObserver"] = runningModeObserver
-    constants["runningModePaywallOnly"] = runningModePaywallOnly
     constants["runningModePaywallObserver"] = runningModePaywallObserver
     constants["runningModeFull"] = runningModeFull
     constants["presentationTypeNormal"] = PLYPresentationType.NORMAL.ordinal
@@ -145,7 +144,6 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
       .runningMode(when(runningMode) {
         runningModeTransactionOnly -> PLYRunningMode.TransactionOnly
         runningModeObserver -> PLYRunningMode.Observer
-        runningModePaywallOnly -> PLYRunningMode.PaywallObserver
         runningModePaywallObserver -> PLYRunningMode.PaywallObserver
         else -> PLYRunningMode.Full
       })
@@ -710,7 +708,6 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   companion object {
     private const val runningModeTransactionOnly = 0
     private const val runningModeObserver = 1
-    private const val runningModePaywallOnly = 2
     private const val runningModePaywallObserver = 3
     private const val runningModeFull = 4
 
