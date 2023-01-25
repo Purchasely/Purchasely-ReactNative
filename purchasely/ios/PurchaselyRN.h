@@ -12,7 +12,7 @@
 
 @property (nonatomic, assign) UIViewController* presentedPresentationViewController;
 
-@property (nonatomic, assign) RCTPromiseResolveBlock purchaseResolve;
+@property (nonatomic) RCTPromiseResolveBlock purchaseResolve;
 
 @property (nonatomic) NSMutableArray<PLYPresentation *> *presentationsLoaded;
 

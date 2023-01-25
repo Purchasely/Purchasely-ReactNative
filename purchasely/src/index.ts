@@ -454,7 +454,6 @@ const fetchPresentation = ({
 
 interface PresentPresentationParameters {
   presentation?: PurchaselyPresentation | null;
-  contentId?: string | null;
   isFullscreen?: boolean;
   loadingBackgroundColor?: string | null;
 }
