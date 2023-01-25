@@ -461,7 +461,9 @@ RCT_EXPORT_METHOD(fetchPresentation:(NSString * _Nullable)placementId
                     resolve([self resultDictionaryForFetchPresentation:presentation]);
                 }
             } completion:^(enum PLYProductViewControllerResult result, PLYPlan * _Nullable plan) {
-                self.purchaseResolve([self resultDictionaryForPresentationController:result plan:plan]);
+                if (self.purchaseResolve != nil) {
+                    self.purchaseResolve([self resultDictionaryForPresentationController:result plan:plan]);
+                }
             }];
         }
     });
