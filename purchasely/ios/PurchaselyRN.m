@@ -520,18 +520,13 @@ RCT_EXPORT_METHOD(presentPresentation:(NSDictionary<NSString *, id> * _Nullable)
                 }
             }
 
-            UINavigationController *navCtrl = [[UINavigationController alloc] initWithRootViewController:presentationLoaded.controller];
-            [navCtrl.navigationBar setTranslucent:YES];
-            [navCtrl.navigationBar setBackgroundImage:[UIImage new] forBarMetrics:UIBarMetricsDefault];
-            [navCtrl.navigationBar setShadowImage: [UIImage new]];
-            [navCtrl.navigationBar setTintColor: [UIColor whiteColor]];
-
-            self.presentedPresentationViewController = navCtrl;
-
             if (isFullscreen) {
-                navCtrl.modalPresentationStyle = UIModalPresentationFullScreen;
+                presentationLoaded.controller.modalPresentationStyle = UIModalPresentationFullScreen;
             }
-            [Purchasely showController:navCtrl type: PLYUIControllerTypeProductPage];
+              
+            self.presentedPresentationViewController = presentationLoaded.controller;
+
+            [Purchasely showController:presentationLoaded.controller type: PLYUIControllerTypeProductPage];
         }
     });
     
@@ -582,18 +577,12 @@ RCT_EXPORT_METHOD(presentPresentationWithIdentifier:(NSString * _Nullable)presen
 				}
 			}
 
-            UINavigationController *navCtrl = [[UINavigationController alloc] initWithRootViewController:ctrl];
-            [navCtrl.navigationBar setTranslucent:YES];
-            [navCtrl.navigationBar setBackgroundImage:[UIImage new] forBarMetrics:UIBarMetricsDefault];
-            [navCtrl.navigationBar setShadowImage: [UIImage new]];
-            [navCtrl.navigationBar setTintColor: [UIColor whiteColor]];
-
-            self.presentedPresentationViewController = navCtrl;
+            self.presentedPresentationViewController = ctrl;
 
             if (isFullscreen) {
-                navCtrl.modalPresentationStyle = UIModalPresentationFullScreen;
+                ctrl.modalPresentationStyle = UIModalPresentationFullScreen;
             }
-            [Purchasely showController:navCtrl type: PLYUIControllerTypeProductPage];
+            [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
         }
 	});
 }
@@ -621,18 +610,12 @@ RCT_EXPORT_METHOD(presentPresentationForPlacement:(NSString * _Nullable)placemen
 				}
 			}
 
-            UINavigationController *navCtrl = [[UINavigationController alloc] initWithRootViewController:ctrl];
-            [navCtrl.navigationBar setTranslucent:YES];
-            [navCtrl.navigationBar setBackgroundImage:[UIImage new] forBarMetrics:UIBarMetricsDefault];
-            [navCtrl.navigationBar setShadowImage: [UIImage new]];
-            [navCtrl.navigationBar setTintColor: [UIColor whiteColor]];
-
-            self.presentedPresentationViewController = navCtrl;
+            self.presentedPresentationViewController = ctrl;
 
             if (isFullscreen) {
-                navCtrl.modalPresentationStyle = UIModalPresentationFullScreen;
+                ctrl.modalPresentationStyle = UIModalPresentationFullScreen;
             }
-            [Purchasely showController:navCtrl type: PLYUIControllerTypeProductPage];
+            [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
         }
     });
 }
@@ -662,19 +645,13 @@ RCT_EXPORT_METHOD(presentPlanWithIdentifier:(NSString * _Nonnull)planVendorId
 				}
 			}
 
-            UINavigationController *navCtrl = [[UINavigationController alloc] initWithRootViewController:ctrl];
-            [navCtrl.navigationBar setTranslucent:YES];
-            [navCtrl.navigationBar setBackgroundImage:[UIImage new] forBarMetrics:UIBarMetricsDefault];
-            [navCtrl.navigationBar setShadowImage: [UIImage new]];
-            [navCtrl.navigationBar setTintColor: [UIColor whiteColor]];
-
-            self.presentedPresentationViewController = navCtrl;
+            self.presentedPresentationViewController = ctrl;
 
             if (isFullscreen) {
-                navCtrl.modalPresentationStyle = UIModalPresentationFullScreen;
+                ctrl.modalPresentationStyle = UIModalPresentationFullScreen;
             }
 
-            [Purchasely showController:navCtrl type: PLYUIControllerTypeProductPage];
+            [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
         }
 	});
 }
@@ -704,19 +681,13 @@ RCT_EXPORT_METHOD(presentProductWithIdentifier:(NSString * _Nonnull)productVendo
 				}
 			}
 
-            UINavigationController *navCtrl = [[UINavigationController alloc] initWithRootViewController:ctrl];
-            [navCtrl.navigationBar setTranslucent:YES];
-            [navCtrl.navigationBar setBackgroundImage:[UIImage new] forBarMetrics:UIBarMetricsDefault];
-            [navCtrl.navigationBar setShadowImage: [UIImage new]];
-            [navCtrl.navigationBar setTintColor: [UIColor whiteColor]];
-
-            self.presentedPresentationViewController = navCtrl;
+            self.presentedPresentationViewController = ctrl;
 
             if (isFullscreen) {
-                navCtrl.modalPresentationStyle = UIModalPresentationFullScreen;
+                ctrl.modalPresentationStyle = UIModalPresentationFullScreen;
             }
 
-            [Purchasely showController:navCtrl type: PLYUIControllerTypeProductPage];
+            [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
         }
 	});
 }
