@@ -1,6 +1,7 @@
 
 package com.reactnativepurchasely
 
+import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -11,8 +12,6 @@ import com.facebook.react.modules.core.DeviceEventManagerModule.RCTDeviceEventEm
 import io.purchasely.billing.Store
 import io.purchasely.ext.*
 import io.purchasely.ext.EventListener
-import io.purchasely.managers.PLYManager
-import io.purchasely.models.PLYError
 import io.purchasely.models.PLYPlan
 import kotlinx.coroutines.*
 import java.lang.ref.WeakReference
@@ -20,8 +19,6 @@ import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
-import kotlin.math.ceil
-import kotlin.math.floor
 
 class PurchaselyModule internal constructor(context: ReactApplicationContext) : ReactContextBaseJavaModule(context) {
 
@@ -227,27 +224,30 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
                         presentationId: String?,
                         contentId: String?,
                         promise: Promise) {
+
+    fetchPromise = promise
+
     val properties = PLYPresentationViewProperties(
       placementId = placementId,
       presentationId = presentationId,
       contentId = contentId)
-    Purchasely.fetchPresentation(
+
+    reactApplicationContext.currentActivity?.let {
+      val intent = PLYPaywallActivity.newIntent(it, properties).apply {
+        flags = Intent.FLAG_ACTIVITY_NEW_TASK xor Intent.FLAG_ACTIVITY_MULTIPLE_TASK
+      }
+      it.startActivity(intent)
+    }
+
+    /*Purchasely.fetchPresentation(
       reactApplicationContext.currentActivity ?: reactApplicationContext,
       properties,
       { result, plan ->
         sendPurchaseResult(result, plan)
         productActivity?.activity?.get()?.supportFinishAfterTransition()
       }) { presentation: PLYPresentation?, error: PLYError? ->
-        if(presentation != null) {
-          presentationsLoaded.add(presentation)
-          promise.resolve(Arguments.makeNativeMap(presentation.toMap().mapValues {
-            val value = it.value
-            if(value is PLYPresentationType) value.ordinal
-            else value
-          }))
-        }
-        if(error != null) promise.resolve(error)
-    }
+
+    }*/
   }
 
   @ReactMethod
@@ -260,27 +260,28 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
       return
     }
 
-    val type = try {
-      presentationMap.getInt("type")
-    } catch (e: Exception) {
-      0
+    if(presentationsLoaded.lastOrNull()?.id != presentationMap.getString("id")) {
+      promise.reject(IllegalStateException("presentation was not fetched"))
+      return
     }
 
-    val presentation = PLYPresentation(
-      id = presentationMap.getString("id"),
-      placementId = presentationMap.getString("placementId"),
-      audienceId = presentationMap.getString("audienceId"),
-      abTestVariantId = presentationMap.getString("abTestVariantId"),
-      abTestId = presentationMap.getString("abTestId"),
-      language = presentationMap.getString("language"),
-      type = PLYPresentationType.values()[type],
-      plans = presentationMap.getArray("plans")?.toArrayList()?.mapNotNull { it.toString() }?.toList() ?: listOf()
-    )
     purchasePromise = promise
-    reactApplicationContext.currentActivity?.let {
-      val intent = PLYProductActivity.newIntent(it, presentation, isFullScreen, loadingBackgroundColor)
-      it.startActivity(intent)
+
+    val activity = productActivity?.activity?.get()
+    if(activity is PLYPaywallActivity) {
+      activity.runOnUiThread {
+        activity.updateDisplay(isFullScreen, loadingBackgroundColor)
+      }
     }
+
+    reactApplicationContext.currentActivity?.let {
+      it.startActivity(
+        Intent(it, PLYPaywallActivity::class.java).apply {
+          flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+        }
+      )
+    }
+
   }
 
   @ReactMethod
@@ -715,9 +716,22 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
 
     var productActivity: ProductActivity? = null
     var purchasePromise: Promise? = null
+    var fetchPromise: Promise? = null
     var defaultPurchasePromise: Promise? = null
     var paywallActionHandler: PLYCompletionHandler? = null
     var paywallAction: PLYPresentationAction? = null
+
+    fun sendFetchResult(presentation: PLYPresentation?, error: Exception?) {
+      if(presentation != null) {
+        presentationsLoaded.add(presentation)
+        fetchPromise?.resolve(Arguments.makeNativeMap(presentation.toMap().mapValues {
+          val value = it.value
+          if(value is PLYPresentationType) value.ordinal
+          else value
+        }))
+      }
+      if(error != null) fetchPromise?.resolve(error)
+    }
 
     fun sendPurchaseResult(result: PLYProductViewResult, plan: PLYPlan?) {
       val productViewResult = when(result) {
@@ -759,7 +773,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     val isFullScreen: Boolean = false,
     val loadingBackgroundColor: String? = null) {
 
-    var activity: WeakReference<PLYProductActivity>? = null
+    var activity: WeakReference<Activity>? = null
 
     fun relaunch(reactApplicationContext: ReactApplicationContext) : Boolean {
       val backgroundActivity = activity?.get()

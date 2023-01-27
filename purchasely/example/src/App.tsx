@@ -89,7 +89,7 @@ const App: React.FunctionComponent = () => {
         //remove all attributes
         Purchasely.clearUserAttributes();
 
-        /*Purchasely.setPaywallActionInterceptorCallback((result) => {
+        Purchasely.setPaywallActionInterceptorCallback((result) => {
           console.log('Received action from paywall');
           console.log(result.info);
 
@@ -119,7 +119,7 @@ const App: React.FunctionComponent = () => {
             default:
               Purchasely.onProcessAction(true);
           }
-        });*/
+        });
 
         Purchasely.addEventListener((event) => {
           console.log(event.name);
@@ -146,20 +146,10 @@ const App: React.FunctionComponent = () => {
 
   const onPressPresentation = async () => {
     try {
-      const presentation = await Purchasely.fetchPresentation({
-        presentationId: 'JAN_ST',
+      const result = await Purchasely.presentPresentationForPlacement({
+        placementVendorId: 'app_launch',
+        isFullscreen: true,
       });
-
-      console.log(presentation);
-      console.log('Type is ' + presentation.type);
-
-      const result = await Purchasely.presentPresentation({
-        presentation: presentation,
-      })
-
-      /*const result = await Purchasely.presentPresentationWithIdentifier({
-        presentationVendorId: 'JAN_ST',
-      });*/
 
       console.log('Result is ' + result.result);
 
@@ -179,18 +169,34 @@ const App: React.FunctionComponent = () => {
     }
   };
 
-  const onPressProduct = async () => {
+  const onPressFetch = async () => {
     try {
-      const result = await Purchasely.presentProductWithIdentifier({
-        productVendorId: 'PURCHASELY_PLUS',
-        contentId: 'my_content_id',
-      });
-      console.log(result);
-      console.log('Presentation View Result : ' + result.result);
+      const presentation = await Purchasely.fetchPresentation({
+          placementId: 'RELANCEDM',
+          contentId: 'content_id_from_reactnative',
+      })
 
-      if (result.plan != null) {
-        console.log('Plan Vendor ID : ' + result.plan.vendorId);
-        console.log('Plan Name : ' + result.plan.name);
+      console.log(presentation);
+      console.log('Presentation Type is ' + presentation?.type);
+
+      const result = await Purchasely.presentPresentation({
+        presentation: presentation,
+        isFullscreen: true
+      })
+
+      console.log('Result is ' + result.result);
+
+      switch (result.result) {
+        case ProductResult.PRODUCT_RESULT_PURCHASED:
+        case ProductResult.PRODUCT_RESULT_RESTORED:
+          if (result.plan != null) {
+            console.log('User purchased ' + result.plan.name);
+          }
+
+          break;
+        case ProductResult.PRODUCT_RESULT_CANCELLED:
+          console.log('User cancelled');
+          break;
       }
     } catch (e) {
       console.error(e);
@@ -258,7 +264,7 @@ const App: React.FunctionComponent = () => {
         </Text>
       </TouchableHighlight>
       <TouchableHighlight
-        onPress={onPressProduct}
+        onPress={onPressFetch}
         disabled={loading}
         style={loading ? styles.buttonDisabled : styles.button}
       >
@@ -266,7 +272,7 @@ const App: React.FunctionComponent = () => {
           {loading && (
             <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
           )}{' '}
-          Display product
+          Fetch presentation
         </Text>
       </TouchableHighlight>
       <TouchableHighlight
