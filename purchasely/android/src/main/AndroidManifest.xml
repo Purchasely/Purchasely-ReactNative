@@ -3,6 +3,7 @@
 
   <application>
     <activity android:name=".PLYProductActivity" android:theme="@style/Theme.Purchasely" />
+    <activity android:name=".PLYPaywallActivity" android:theme="@style/Theme.Purchasely" android:launchMode="singleTask" />
     <activity android:name=".PLYSubscriptionsActivity" android:theme="@style/Theme.Purchasely" />
   </application>
 

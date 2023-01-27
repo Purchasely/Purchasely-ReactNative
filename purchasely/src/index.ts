@@ -1,6 +1,6 @@
 import { NativeModules, NativeEventEmitter } from 'react-native';
 
-const purchaselyVersion = '2.4.4';
+const purchaselyVersion = '2.5.0';
 
 interface Constants {
   logLevelDebug: number;
@@ -41,9 +41,12 @@ interface Constants {
   unknown: number;
   runningModeTransactionOnly: number;
   runningModeObserver: number;
-  runningModePaywallOnly: number;
   runningModePaywallObserver: number;
   runningModeFull: number;
+  presentationTypeNormal: number;
+  presentationTypeFallback: number;
+  presentationTypeDeactivated: number;
+  presentationTypeClient: number;
 }
 
 const constants = NativeModules.Purchasely.getConstants() as Constants;
@@ -101,7 +104,6 @@ export enum PlanType {
 export enum RunningMode {
   TRANSACTION_ONLY = constants.runningModeTransactionOnly,
   OBSERVER = constants.runningModeObserver,
-  PAYWALL_ONLY = constants.runningModePaywallOnly,
   PAYWALL_OBSERVER = constants.runningModePaywallObserver,
   FULL = constants.runningModeFull,
 }
@@ -114,6 +116,13 @@ export enum PLYPaywallAction {
   RESTORE = 'restore',
   OPEN_PRESENTATION = 'open_presentation',
   PROMO_CODE = 'promo_code',
+}
+
+export enum PLYPresentationType {
+  NORMAL = constants.presentationTypeNormal,
+  FALLBACK = constants.presentationTypeFallback,
+  DEACTIVATED = constants.presentationTypeDeactivated,
+  CLIENT = constants.presentationTypeClient,
 }
 
 export type PLYPaywallInfo = {
@@ -169,6 +178,10 @@ export type PresentPresentationResult = {
   plan: PurchaselyPlan;
 };
 
+export type FetchPresentationResult = {
+  presentation: PurchaselyPresentation;
+};
+
 export type PaywallActionInterceptorResult = {
   info: PLYPaywallInfo;
   action: PLYPaywallAction;
@@ -211,6 +224,8 @@ type PurchaselyType = {
   userAttribute(key: string): Promise<any>;
   clearUserAttribute(key: string): void;
   clearUserAttributes(): void;
+  clientPresentationDisplayed(presentation: PurchaselyPresentation): void;
+  clientPresentationClosed(presentation: PurchaselyPresentation): void;
 };
 
 const RNPurchasely = NativeModules.Purchasely as PurchaselyType;
@@ -238,6 +253,8 @@ type PurchaselyEventsNames =
   | 'PRESENTATION_VIEWED'
   | 'PRESENTATION_OPENED'
   | 'PRESENTATION_SELECTED'
+  | 'PRESENTATION_LOADED'
+  | 'PRESENTATION_CLOSED'
   | 'PROMO_CODE_TAPPED'
   | 'PURCHASE_CANCELLED'
   | 'PURCHASE_TAPPED'
@@ -255,7 +272,6 @@ type PurchaselyEventsNames =
   | 'SUBSCRIPTIONS_TRANSFERRED'
   | 'USER_LOGGED_IN'
   | 'USER_LOGGED_OUT'
-  | 'PRESENTATION_CLOSED'
   | 'SUBSCRIPTION_CONTENT_USED';
 
 type PurchaselyEventPropertyPlan = {
@@ -326,6 +342,17 @@ type PurchaselyEventProperties = {
   selected_product?: string;
   plan_change_type?: string;
   running_subscriptions?: PurchaselyEventPropertySubscription[];
+};
+
+export type PurchaselyPresentation = {
+  id: string;
+  placementId?: string | null;
+  audienceId?: string | null;
+  abTestId?: string | null;
+  abTestVariantId?: string | null;
+  language?: string | null;
+  type?: PLYPresentationType | null;
+  plans?: string[] | null;
 };
 
 function startWithAPIKey(
@@ -407,7 +434,43 @@ const setPaywallActionInterceptorCallback = (
   });
 };
 
+interface FetchPresentationParameters {
+  placementId?: string | null;
+  presentationId?: string | null;
+  contentId?: string | null;
+}
+
+const fetchPresentation = ({
+  placementId = null,
+  presentationId = null,
+  contentId = null,
+}: FetchPresentationParameters): Promise<PurchaselyPresentation> => {
+  return NativeModules.Purchasely.fetchPresentation(
+    placementId,
+    presentationId,
+    contentId
+  );
+};
+
 interface PresentPresentationParameters {
+  presentation?: PurchaselyPresentation | null;
+  isFullscreen?: boolean;
+  loadingBackgroundColor?: string | null;
+}
+
+const presentPresentation = ({
+  presentation = null,
+  isFullscreen = false,
+  loadingBackgroundColor = null,
+}: PresentPresentationParameters): Promise<PresentPresentationResult> => {
+  return NativeModules.Purchasely.presentPresentation(
+    presentation,
+    isFullscreen,
+    loadingBackgroundColor
+  );
+};
+
+interface PresentPresentationWithIdentifierParameters {
   presentationVendorId?: string | null;
   contentId?: string | null;
   isFullscreen?: boolean;
@@ -419,7 +482,7 @@ const presentPresentationWithIdentifier = ({
   contentId = null,
   isFullscreen = false,
   loadingBackgroundColor = null,
-}: PresentPresentationParameters): Promise<PresentPresentationResult> => {
+}: PresentPresentationWithIdentifierParameters): Promise<PresentPresentationResult> => {
   return NativeModules.Purchasely.presentPresentationWithIdentifier(
     presentationVendorId,
     contentId,
@@ -515,6 +578,8 @@ const Purchasely = {
   removePurchasedListener,
   setDefaultPresentationResultCallback,
   setPaywallActionInterceptorCallback,
+  fetchPresentation,
+  presentPresentation,
   presentPresentationWithIdentifier,
   presentPresentationForPlacement,
   presentProductWithIdentifier,

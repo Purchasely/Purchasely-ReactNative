@@ -20,6 +20,8 @@ RCT_EXPORT_MODULE(Purchasely);
 - (instancetype)init {
 	self = [super init];
 
+    self.presentationsLoaded = [NSMutableArray new];
+    
 	[Purchasely setAppTechnology:PLYAppTechnologyReactNative];
 	return self;
 }
@@ -56,6 +58,7 @@ RCT_EXPORT_MODULE(Purchasely);
         @"customerIoUserId": @(PLYAttributeCustomerioUserId),
         @"customerIoUserEmail": @(PLYAttributeCustomerioUserEmail),
         @"branchUserDeveloperIdentity": @(PLYAttributeBranchUserDeveloperIdentity),
+        @"moengageUniqueId": @(PLYAttributeMoengageUniqueId),
 		@"consumable": @(PLYPlanTypeConsumable),
 		@"nonConsumable": @(PLYPlanTypeNonConsumable),
 		@"autoRenewingSubscription": @(PLYPlanTypeAutoRenewingSubscription),
@@ -63,9 +66,12 @@ RCT_EXPORT_MODULE(Purchasely);
 		@"unknown": @(PLYPlanTypeUnknown),
         @"runningModeTransactionOnly": @(PLYRunningModeTransactionOnly),
         @"runningModeObserver": @(PLYRunningModeObserver),
-        @"runningModePaywallOnly": @(PLYRunningModePaywallOnly),
         @"runningModePaywallObserver": @(PLYRunningModePaywallObserver),
-        @"runningModeFull": @(PLYRunningModeFull)
+        @"runningModeFull": @(PLYRunningModeFull),
+        @"presentationTypeNormal": @(PLYPresentationTypeNormal),
+        @"presentationTypeFallback": @(PLYPresentationTypeFallback),
+        @"presentationTypeDeactivated": @(PLYPresentationTypeDeactivated),
+        @"presentationTypeClient": @(PLYPresentationTypeClient)
 	};
 }
 
@@ -170,6 +176,64 @@ RCT_EXPORT_MODULE(Purchasely);
     return productViewResult;
 }
 
+- (NSDictionary<NSString *, NSObject *> *) resultDictionaryForFetchPresentation:(PLYPresentation * _Nullable) presentation {
+    NSMutableDictionary<NSString *, NSObject *> *presentationResult = [NSMutableDictionary new];
+
+    // TODO: fill all parameters.
+    if (presentation != nil) {
+        
+        if (presentation.id != nil) {
+            [presentationResult setObject:presentation.id forKey:@"id"];
+        }
+        
+        if (presentation.placementId != nil) {
+            [presentationResult setObject:presentation.placementId forKey:@"placementId"];
+        }
+        
+        if (presentation.audienceId != nil) {
+            [presentationResult setObject:presentation.audienceId forKey:@"audienceId"];
+        }
+        
+        if (presentation.abTestId != nil) {
+            [presentationResult setObject:presentation.abTestId forKey:@"abTestId"];
+        }
+        
+        if (presentation.abTestVariantId != nil) {
+            [presentationResult setObject:presentation.abTestVariantId forKey:@"abTestVariantId"];
+        }
+        
+        if (presentation.language != nil) {
+            [presentationResult setObject:presentation.language forKey:@"language"];
+        }
+        
+        if (presentation.plans != nil) {
+            [presentationResult setObject:presentation.plans forKey:@"plans"];
+        }
+        
+        int resultString;
+        
+        switch (presentation.type) {
+            case PLYPresentationTypeNormal:
+                resultString = PLYPresentationTypeNormal;
+                break;
+            case PLYPresentationTypeClient:
+                resultString = PLYPresentationTypeClient;
+                break;
+            case PLYPresentationTypeFallback:
+                resultString = PLYPresentationTypeFallback;
+                break;
+            case PLYPresentationTypeDeactivated:
+                resultString = PLYPresentationTypeDeactivated;
+                break;
+        }
+        
+        [presentationResult setObject:[NSNumber numberWithInt:resultString] forKey:@"type"];
+        
+    }
+    
+    return presentationResult;
+}
+
 
 RCT_EXPORT_METHOD(startWithAPIKey:(NSString * _Nonnull)apiKey
 				  stores:(NSArray * _Nullable)stores
@@ -181,8 +245,16 @@ RCT_EXPORT_METHOD(startWithAPIKey:(NSString * _Nonnull)apiKey
 				  reject:(RCTPromiseRejectBlock)reject) {
 
     [Purchasely setSdkBridgeVersion:purchaselySdkVersion];
-
-    [Purchasely startWithAPIKey:apiKey appUserId:userId runningMode:runningMode eventDelegate:self uiDelegate:nil paywallActionsInterceptor:nil logLevel:logLevel initialized:^(BOOL initialized, NSError * _Nullable error) {
+    
+    [Purchasely startWithAPIKey:apiKey
+                      appUserId:userId
+                    runningMode:runningMode
+                  eventDelegate:self
+                     uiDelegate:nil
+      paywallActionsInterceptor:nil
+               storekitSettings:[StorekitSettings default]
+                       logLevel:logLevel
+                    initialized:^(BOOL initialized, NSError * _Nullable error) {
         resolve(@(initialized));
     }];
 
@@ -360,6 +432,128 @@ RCT_EXPORT_METHOD(onProcessAction:(BOOL)processAction) {
     });
 }
 
+RCT_EXPORT_METHOD(fetchPresentation:(NSString * _Nullable)placementId
+                  presentationId: (NSString * _Nullable) presentationId
+                  contentId:(NSString * _Nullable)contentId
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+{
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (placementId != nil) {
+            [Purchasely fetchPresentationFor:placementId contentId: contentId fetchCompletion:^(PLYPresentation * _Nullable presentation, NSError * _Nullable error) {
+                if (error != nil) {
+                    [self reject: reject with: error];
+                } else if (presentation != nil) {
+                    [self.presentationsLoaded addObject:presentation];
+                    resolve([self resultDictionaryForFetchPresentation:presentation]);
+                }
+            } completion:^(enum PLYProductViewControllerResult result, PLYPlan * _Nullable plan) {
+                if (self.purchaseResolve != nil){
+                    self.purchaseResolve([self resultDictionaryForPresentationController:result plan:plan]);
+                }
+            }];
+        } else {
+            [Purchasely fetchPresentationWith:presentationId contentId: contentId fetchCompletion:^(PLYPresentation * _Nullable presentation, NSError * _Nullable error) {
+                if (error != nil) {
+                    [self reject: reject with: error];
+                } else if (presentation != nil) {
+                    [self.presentationsLoaded addObject:presentation];
+                    resolve([self resultDictionaryForFetchPresentation:presentation]);
+                }
+            } completion:^(enum PLYProductViewControllerResult result, PLYPlan * _Nullable plan) {
+                if (self.purchaseResolve != nil) {
+                    self.purchaseResolve([self resultDictionaryForPresentationController:result plan:plan]);
+                }
+            }];
+        }
+    });
+}
+
+- (PLYPresentation *) findPresentationLoadedFor:(NSString * _Nullable) presentationId {
+    for (PLYPresentation *presentationLoaded in self.presentationsLoaded) {
+        if (presentationLoaded.id == presentationId) {
+            return presentationLoaded;
+        }
+    }
+    return nil;
+}
+
+- (NSInteger) findIndexPresentationLoadedFor:(NSString * _Nullable) presentationId {
+    NSInteger index = 0;
+    for (PLYPresentation *presentationLoaded in self.presentationsLoaded) {
+        if (presentationLoaded.id == presentationId) {
+            return index;
+        }
+        index++;
+    }
+    return -1;
+}
+
+RCT_EXPORT_METHOD(presentPresentation:(NSDictionary<NSString *, id> * _Nullable) presentationDictionary
+                  isFullscreen: (BOOL) isFullscreen
+                  loadingBackgroundColor: (NSString * _Nullable)backgroundColorCode
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+{
+    if (presentationDictionary == nil) {
+        [self reject:reject with:[NSError errorWithDomain:@"io.purchasely" code:1 userInfo:@{@"Error reason": @"Presentation cannot be null"}]];
+        return;
+    }
+    
+    self.purchaseResolve = resolve;
+    
+    dispatch_async(dispatch_get_main_queue(), ^{
+        
+        PLYPresentation *presentationLoaded = [self findPresentationLoadedFor:(NSString *)[presentationDictionary objectForKey:@"id"]];
+        if (presentationLoaded == nil || presentationLoaded.controller == nil) {
+            [self reject:reject with:[NSError errorWithDomain:@"io.purchasely" code:2 userInfo:@{@"Error reason": @"Presentation not loaded"}]];
+            return;
+        }
+        
+        [self.presentationsLoaded removeObjectAtIndex:[self findIndexPresentationLoadedFor:(NSString *)[presentationDictionary objectForKey:@"id"]]];
+        
+        if (presentationLoaded.controller != nil) {
+            if (backgroundColorCode != nil) {
+                UIColor *backColor = [UIColor ply_fromHex:backgroundColorCode];
+                if (backColor != nil) {
+                    [presentationLoaded.controller.view setBackgroundColor:backColor];
+                }
+            }
+
+            if (isFullscreen) {
+                presentationLoaded.controller.modalPresentationStyle = UIModalPresentationFullScreen;
+            }
+              
+            self.presentedPresentationViewController = presentationLoaded.controller;
+
+            [Purchasely showController:presentationLoaded.controller type: PLYUIControllerTypeProductPage];
+        }
+    });
+    
+}
+
+
+RCT_EXPORT_METHOD(clientPresentationDisplayed:(NSDictionary<NSString *, id> * _Nullable) presentationDictionary)
+{
+    if (presentationDictionary == nil) {
+        NSLog(@"Presentation cannot be null");
+        return;
+    }
+
+    PLYPresentation *presentationLoaded = [self findPresentationLoadedFor:(NSString *)[presentationDictionary objectForKey:@"id"]];
+    [Purchasely clientPresentationOpenedWith:presentationLoaded];
+}
+
+RCT_EXPORT_METHOD(clientPresentationClosed:(NSDictionary<NSString *, id> * _Nullable) presentationDictionary)
+{
+    if (presentationDictionary == nil) {
+        NSLog(@"Presentation cannot be null");
+        return;
+    }
+    PLYPresentation *presentationLoaded = [self findPresentationLoadedFor:(NSString *)[presentationDictionary objectForKey:@"id"]];
+    [Purchasely clientPresentationClosedWith:presentationLoaded];
+}
+
 RCT_EXPORT_METHOD(presentPresentationWithIdentifier:(NSString * _Nullable)presentationVendorId
 				  contentId:(NSString * _Nullable)contentId
 				  isFullscreen: (BOOL) isFullscreen
@@ -383,18 +577,12 @@ RCT_EXPORT_METHOD(presentPresentationWithIdentifier:(NSString * _Nullable)presen
 				}
 			}
 
-            UINavigationController *navCtrl = [[UINavigationController alloc] initWithRootViewController:ctrl];
-            [navCtrl.navigationBar setTranslucent:YES];
-            [navCtrl.navigationBar setBackgroundImage:[UIImage new] forBarMetrics:UIBarMetricsDefault];
-            [navCtrl.navigationBar setShadowImage: [UIImage new]];
-            [navCtrl.navigationBar setTintColor: [UIColor whiteColor]];
-
-            self.presentedPresentationViewController = navCtrl;
+            self.presentedPresentationViewController = ctrl;
 
             if (isFullscreen) {
-                navCtrl.modalPresentationStyle = UIModalPresentationFullScreen;
+                ctrl.modalPresentationStyle = UIModalPresentationFullScreen;
             }
-            [Purchasely showController:navCtrl type: PLYUIControllerTypeProductPage];
+            [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
         }
 	});
 }
@@ -422,18 +610,12 @@ RCT_EXPORT_METHOD(presentPresentationForPlacement:(NSString * _Nullable)placemen
 				}
 			}
 
-            UINavigationController *navCtrl = [[UINavigationController alloc] initWithRootViewController:ctrl];
-            [navCtrl.navigationBar setTranslucent:YES];
-            [navCtrl.navigationBar setBackgroundImage:[UIImage new] forBarMetrics:UIBarMetricsDefault];
-            [navCtrl.navigationBar setShadowImage: [UIImage new]];
-            [navCtrl.navigationBar setTintColor: [UIColor whiteColor]];
-
-            self.presentedPresentationViewController = navCtrl;
+            self.presentedPresentationViewController = ctrl;
 
             if (isFullscreen) {
-                navCtrl.modalPresentationStyle = UIModalPresentationFullScreen;
+                ctrl.modalPresentationStyle = UIModalPresentationFullScreen;
             }
-            [Purchasely showController:navCtrl type: PLYUIControllerTypeProductPage];
+            [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
         }
     });
 }
@@ -463,19 +645,13 @@ RCT_EXPORT_METHOD(presentPlanWithIdentifier:(NSString * _Nonnull)planVendorId
 				}
 			}
 
-            UINavigationController *navCtrl = [[UINavigationController alloc] initWithRootViewController:ctrl];
-            [navCtrl.navigationBar setTranslucent:YES];
-            [navCtrl.navigationBar setBackgroundImage:[UIImage new] forBarMetrics:UIBarMetricsDefault];
-            [navCtrl.navigationBar setShadowImage: [UIImage new]];
-            [navCtrl.navigationBar setTintColor: [UIColor whiteColor]];
-
-            self.presentedPresentationViewController = navCtrl;
+            self.presentedPresentationViewController = ctrl;
 
             if (isFullscreen) {
-                navCtrl.modalPresentationStyle = UIModalPresentationFullScreen;
+                ctrl.modalPresentationStyle = UIModalPresentationFullScreen;
             }
 
-            [Purchasely showController:navCtrl type: PLYUIControllerTypeProductPage];
+            [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
         }
 	});
 }
@@ -505,19 +681,13 @@ RCT_EXPORT_METHOD(presentProductWithIdentifier:(NSString * _Nonnull)productVendo
 				}
 			}
 
-            UINavigationController *navCtrl = [[UINavigationController alloc] initWithRootViewController:ctrl];
-            [navCtrl.navigationBar setTranslucent:YES];
-            [navCtrl.navigationBar setBackgroundImage:[UIImage new] forBarMetrics:UIBarMetricsDefault];
-            [navCtrl.navigationBar setShadowImage: [UIImage new]];
-            [navCtrl.navigationBar setTintColor: [UIColor whiteColor]];
-
-            self.presentedPresentationViewController = navCtrl;
+            self.presentedPresentationViewController = ctrl;
 
             if (isFullscreen) {
-                navCtrl.modalPresentationStyle = UIModalPresentationFullScreen;
+                ctrl.modalPresentationStyle = UIModalPresentationFullScreen;
             }
 
-            [Purchasely showController:navCtrl type: PLYUIControllerTypeProductPage];
+            [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
         }
 	});
 }

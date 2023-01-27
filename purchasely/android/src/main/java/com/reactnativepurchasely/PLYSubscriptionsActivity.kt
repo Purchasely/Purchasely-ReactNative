@@ -10,7 +10,7 @@ class PLYSubscriptionsActivity : AppCompatActivity() {
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
-    setContentView(R.layout.activity_ply_product_activity)
+    setContentView(R.layout.activity_ply_subscriptions_activity)
 
     Purchasely.subscriptionsFragment()?.let {
       supportFragmentManager

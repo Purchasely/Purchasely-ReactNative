@@ -1,6 +1,7 @@
 
 package com.reactnativepurchasely
 
+import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -11,7 +12,6 @@ import com.facebook.react.modules.core.DeviceEventManagerModule.RCTDeviceEventEm
 import io.purchasely.billing.Store
 import io.purchasely.ext.*
 import io.purchasely.ext.EventListener
-import io.purchasely.managers.PLYManager
 import io.purchasely.models.PLYPlan
 import kotlinx.coroutines.*
 import java.lang.ref.WeakReference
@@ -19,8 +19,6 @@ import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
-import kotlin.math.ceil
-import kotlin.math.floor
 
 class PurchaselyModule internal constructor(context: ReactApplicationContext) : ReactContextBaseJavaModule(context) {
 
@@ -87,9 +85,12 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     constants["unknown"] = DistributionType.UNKNOWN.ordinal
     constants["runningModeTransactionOnly"] = runningModeTransactionOnly
     constants["runningModeObserver"] = runningModeObserver
-    constants["runningModePaywallOnly"] = runningModePaywallOnly
     constants["runningModePaywallObserver"] = runningModePaywallObserver
     constants["runningModeFull"] = runningModeFull
+    constants["presentationTypeNormal"] = PLYPresentationType.NORMAL.ordinal
+    constants["presentationTypeFallback"] = PLYPresentationType.FALLBACK.ordinal
+    constants["presentationTypeDeactivated"] = PLYPresentationType.DEACTIVATED.ordinal
+    constants["presentationTypeClient"] = PLYPresentationType.CLIENT.ordinal
     return constants
   }
 
@@ -140,7 +141,6 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
       .runningMode(when(runningMode) {
         runningModeTransactionOnly -> PLYRunningMode.TransactionOnly
         runningModeObserver -> PLYRunningMode.Observer
-        runningModePaywallOnly -> PLYRunningMode.PaywallOnly
         runningModePaywallObserver -> PLYRunningMode.PaywallObserver
         else -> PLYRunningMode.Full
       })
@@ -217,6 +217,71 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   @ReactMethod
   fun synchronize() {
     Purchasely.synchronize()
+  }
+
+  @ReactMethod
+  fun fetchPresentation(placementId: String?,
+                        presentationId: String?,
+                        contentId: String?,
+                        promise: Promise) {
+
+    fetchPromise = promise
+
+    val properties = PLYPresentationViewProperties(
+      placementId = placementId,
+      presentationId = presentationId,
+      contentId = contentId)
+
+    reactApplicationContext.currentActivity?.let {
+      val intent = PLYPaywallActivity.newIntent(it, properties).apply {
+        flags = Intent.FLAG_ACTIVITY_NEW_TASK xor Intent.FLAG_ACTIVITY_MULTIPLE_TASK
+      }
+      it.startActivity(intent)
+    }
+
+    /*Purchasely.fetchPresentation(
+      reactApplicationContext.currentActivity ?: reactApplicationContext,
+      properties,
+      { result, plan ->
+        sendPurchaseResult(result, plan)
+        productActivity?.activity?.get()?.supportFinishAfterTransition()
+      }) { presentation: PLYPresentation?, error: PLYError? ->
+
+    }*/
+  }
+
+  @ReactMethod
+  fun presentPresentation(presentationMap: ReadableMap?,
+                          isFullScreen: Boolean,
+                          loadingBackgroundColor: String?,
+                          promise: Promise) {
+    if (presentationMap == null) {
+      promise.reject(NullPointerException("presentation cannot be null"))
+      return
+    }
+
+    if(presentationsLoaded.lastOrNull()?.id != presentationMap.getString("id")) {
+      promise.reject(IllegalStateException("presentation was not fetched"))
+      return
+    }
+
+    purchasePromise = promise
+
+    val activity = productActivity?.activity?.get()
+    if(activity is PLYPaywallActivity) {
+      activity.runOnUiThread {
+        activity.updateDisplay(isFullScreen, loadingBackgroundColor)
+      }
+    }
+
+    reactApplicationContext.currentActivity?.let {
+      it.startActivity(
+        Intent(it, PLYPaywallActivity::class.java).apply {
+          flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+        }
+      )
+    }
+
   }
 
   @ReactMethod
@@ -465,6 +530,60 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   }
 
   @ReactMethod
+  fun clientPresentationDisplayed(presentationMap: ReadableMap?) {
+      if(presentationMap == null) {
+        PLYLogger.e("presentation cannot be null")
+        return
+      }
+
+      val type = try {
+        presentationMap.getInt("type")
+      } catch (e: Exception) {
+        0
+      }
+
+      val presentation = PLYPresentation(
+        id = presentationMap.getString("id"),
+        placementId = presentationMap.getString("placementId"),
+        audienceId = presentationMap.getString("audienceId"),
+        abTestVariantId = presentationMap.getString("abTestVariantId"),
+        abTestId = presentationMap.getString("abTestId"),
+        language = presentationMap.getString("language"),
+        type = PLYPresentationType.values()[type],
+        plans = presentationMap.getArray("plans")?.toArrayList()?.mapNotNull { it.toString() }?.toList() ?: listOf()
+      )
+
+      Purchasely.clientPresentationDisplayed(presentation)
+  }
+
+  @ReactMethod
+  fun clientPresentationClosed(presentationMap: ReadableMap?) {
+    if(presentationMap == null) {
+      PLYLogger.e("presentation cannot be null")
+      return
+    }
+
+    val type = try {
+      presentationMap.getInt("type")
+    } catch (e: Exception) {
+      0
+    }
+
+    val presentation = PLYPresentation(
+      id = presentationMap.getString("id"),
+      placementId = presentationMap.getString("placementId"),
+      audienceId = presentationMap.getString("audienceId"),
+      abTestVariantId = presentationMap.getString("abTestVariantId"),
+      abTestId = presentationMap.getString("abTestId"),
+      language = presentationMap.getString("language"),
+      type = PLYPresentationType.values()[type],
+      plans = presentationMap.getArray("plans")?.toArrayList()?.mapNotNull { it.toString() }?.toList() ?: listOf()
+    )
+
+    Purchasely.clientPresentationClosed(presentation)
+  }
+
+  @ReactMethod
   fun userSubscriptions(promise: Promise) {
     GlobalScope.launch {
       try {
@@ -590,15 +709,29 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   companion object {
     private const val runningModeTransactionOnly = 0
     private const val runningModeObserver = 1
-    private const val runningModePaywallOnly = 2
     private const val runningModePaywallObserver = 3
     private const val runningModeFull = 4
 
+    val presentationsLoaded = mutableListOf<PLYPresentation>()
+
     var productActivity: ProductActivity? = null
     var purchasePromise: Promise? = null
+    var fetchPromise: Promise? = null
     var defaultPurchasePromise: Promise? = null
     var paywallActionHandler: PLYCompletionHandler? = null
     var paywallAction: PLYPresentationAction? = null
+
+    fun sendFetchResult(presentation: PLYPresentation?, error: Exception?) {
+      if(presentation != null) {
+        presentationsLoaded.add(presentation)
+        fetchPromise?.resolve(Arguments.makeNativeMap(presentation.toMap().mapValues {
+          val value = it.value
+          if(value is PLYPresentationType) value.ordinal
+          else value
+        }))
+      }
+      if(error != null) fetchPromise?.resolve(error)
+    }
 
     fun sendPurchaseResult(result: PLYProductViewResult, plan: PLYPlan?) {
       val productViewResult = when(result) {
@@ -640,7 +773,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     val isFullScreen: Boolean = false,
     val loadingBackgroundColor: String? = null) {
 
-    var activity: WeakReference<PLYProductActivity>? = null
+    var activity: WeakReference<Activity>? = null
 
     fun relaunch(reactApplicationContext: ReactApplicationContext) : Boolean {
       val backgroundActivity = activity?.get()
@@ -671,5 +804,18 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
         return false
       }
     }
+  }
+
+  private fun PLYPresentation.toMap(): Map<String, Any?> {
+    val map: MutableMap<String, Any?> = java.util.HashMap()
+    map["id"] = this.id
+    map["placementId"] = this.placementId
+    map["audienceId"] = this.audienceId
+    map["abTestId"] = this.abTestId
+    map["abTestVariantId"] = this.abTestVariantId
+    map["language"] = this.language
+    map["type"] = this.type
+    map["plans"] = this.plans
+    return map
   }
 }
