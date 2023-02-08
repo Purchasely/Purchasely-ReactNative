@@ -176,12 +176,20 @@ const App: React.FunctionComponent = () => {
           contentId: 'content_id_from_reactnative',
       })
 
-      console.log(presentation);
-      console.log('Presentation Type is ' + presentation?.type);
+      if(presentation.type == PLYPresentationType.DEACTIVATED) {
+        // No paywall to display
+        return
+      }
+
+      if(presentation.type == PLYPresentationType.CLIENT) {
+        // Display my own paywall
+        return
+      }
+
+      //Display Purchasely paywall
 
       const result = await Purchasely.presentPresentation({
-        presentation: presentation,
-        isFullscreen: true
+        presentation: presentation
       })
 
       console.log('Result is ' + result.result);

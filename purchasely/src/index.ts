@@ -1,6 +1,6 @@
 import { NativeModules, NativeEventEmitter } from 'react-native';
 
-const purchaselyVersion = '2.5.0';
+const purchaselyVersion = '2.5.1';
 
 interface Constants {
   logLevelDebug: number;
@@ -215,7 +215,6 @@ type PurchaselyType = {
   setPaywallActionInterceptor(): Promise<PaywallActionInterceptorResult>;
   onProcessAction(processAction: boolean): void;
   setLanguage(language: string): void;
-  closePaywall(): void;
   userDidConsumeSubscriptionContent(): void;
   setUserAttributeWithString(key: string, value: string): void;
   setUserAttributeWithNumber(key: string, value: number): void;
@@ -569,6 +568,12 @@ const purchaseWithPlanVendorId = (
   );
 };
 
+const closePaywall = (
+  definitively: boolean = false
+): Promise<PurchaselyPlan> => {
+  return NativeModules.Purchasely.closePaywall(definitively);
+};
+
 const Purchasely = {
   ...RNPurchasely,
   startWithAPIKey,
@@ -586,6 +591,7 @@ const Purchasely = {
   presentPlanWithIdentifier,
   purchaseWithPlanVendorId,
   setUserAttributeWithDate,
+  closePaywall
 };
 
 export default Purchasely;

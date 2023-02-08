@@ -21,7 +21,7 @@ RCT_EXPORT_MODULE(Purchasely);
 	self = [super init];
 
     self.presentationsLoaded = [NSMutableArray new];
-    
+
 	[Purchasely setAppTechnology:PLYAppTechnologyReactNative];
 	return self;
 }
@@ -181,37 +181,37 @@ RCT_EXPORT_MODULE(Purchasely);
 
     // TODO: fill all parameters.
     if (presentation != nil) {
-        
+
         if (presentation.id != nil) {
             [presentationResult setObject:presentation.id forKey:@"id"];
         }
-        
+
         if (presentation.placementId != nil) {
             [presentationResult setObject:presentation.placementId forKey:@"placementId"];
         }
-        
+
         if (presentation.audienceId != nil) {
             [presentationResult setObject:presentation.audienceId forKey:@"audienceId"];
         }
-        
+
         if (presentation.abTestId != nil) {
             [presentationResult setObject:presentation.abTestId forKey:@"abTestId"];
         }
-        
+
         if (presentation.abTestVariantId != nil) {
             [presentationResult setObject:presentation.abTestVariantId forKey:@"abTestVariantId"];
         }
-        
+
         if (presentation.language != nil) {
             [presentationResult setObject:presentation.language forKey:@"language"];
         }
-        
+
         if (presentation.plans != nil) {
             [presentationResult setObject:presentation.plans forKey:@"plans"];
         }
-        
+
         int resultString;
-        
+
         switch (presentation.type) {
             case PLYPresentationTypeNormal:
                 resultString = PLYPresentationTypeNormal;
@@ -226,11 +226,11 @@ RCT_EXPORT_MODULE(Purchasely);
                 resultString = PLYPresentationTypeDeactivated;
                 break;
         }
-        
+
         [presentationResult setObject:[NSNumber numberWithInt:resultString] forKey:@"type"];
-        
+
     }
-    
+
     return presentationResult;
 }
 
@@ -245,7 +245,7 @@ RCT_EXPORT_METHOD(startWithAPIKey:(NSString * _Nonnull)apiKey
 				  reject:(RCTPromiseRejectBlock)reject) {
 
     [Purchasely setSdkBridgeVersion:purchaselySdkVersion];
-    
+
     [Purchasely startWithAPIKey:apiKey
                       appUserId:userId
                     runningMode:runningMode
@@ -380,7 +380,7 @@ RCT_EXPORT_METHOD(setLanguage:(NSString * _Nonnull) language) {
     [Purchasely setLanguageFrom:locale];
 }
 
-RCT_EXPORT_METHOD(closePaywall) {
+RCT_EXPORT_METHOD(closePaywall:(BOOL)definitively) {
     if (self.presentedPresentationViewController != nil) {
         dispatch_async(dispatch_get_main_queue(), ^{
             [self.presentedPresentationViewController dismissViewControllerAnimated:true completion:^{
@@ -499,19 +499,19 @@ RCT_EXPORT_METHOD(presentPresentation:(NSDictionary<NSString *, id> * _Nullable)
         [self reject:reject with:[NSError errorWithDomain:@"io.purchasely" code:1 userInfo:@{@"Error reason": @"Presentation cannot be null"}]];
         return;
     }
-    
+
     self.purchaseResolve = resolve;
-    
+
     dispatch_async(dispatch_get_main_queue(), ^{
-        
+
         PLYPresentation *presentationLoaded = [self findPresentationLoadedFor:(NSString *)[presentationDictionary objectForKey:@"id"]];
         if (presentationLoaded == nil || presentationLoaded.controller == nil) {
             [self reject:reject with:[NSError errorWithDomain:@"io.purchasely" code:2 userInfo:@{@"Error reason": @"Presentation not loaded"}]];
             return;
         }
-        
+
         [self.presentationsLoaded removeObjectAtIndex:[self findIndexPresentationLoadedFor:(NSString *)[presentationDictionary objectForKey:@"id"]]];
-        
+
         if (presentationLoaded.controller != nil) {
             if (backgroundColorCode != nil) {
                 UIColor *backColor = [UIColor ply_fromHex:backgroundColorCode];
@@ -523,13 +523,13 @@ RCT_EXPORT_METHOD(presentPresentation:(NSDictionary<NSString *, id> * _Nullable)
             if (isFullscreen) {
                 presentationLoaded.controller.modalPresentationStyle = UIModalPresentationFullScreen;
             }
-              
+
             self.presentedPresentationViewController = presentationLoaded.controller;
 
             [Purchasely showController:presentationLoaded.controller type: PLYUIControllerTypeProductPage];
         }
     });
-    
+
 }
 
 

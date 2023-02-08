@@ -234,20 +234,15 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
 
     reactApplicationContext.currentActivity?.let {
       val intent = PLYPaywallActivity.newIntent(it, properties).apply {
-        flags = Intent.FLAG_ACTIVITY_NEW_TASK xor Intent.FLAG_ACTIVITY_MULTIPLE_TASK
+        flags = Intent.FLAG_ACTIVITY_NEW_TASK xor Intent.FLAG_ACTIVITY_MULTIPLE_TASK xor Intent.FLAG_ACTIVITY_NO_ANIMATION
       }
       it.startActivity(intent)
+
+      /*Handler(Looper.getMainLooper()).postDelayed({
+        closePaywall(false)
+      }, 100)*/
+
     }
-
-    /*Purchasely.fetchPresentation(
-      reactApplicationContext.currentActivity ?: reactApplicationContext,
-      properties,
-      { result, plan ->
-        sendPurchaseResult(result, plan)
-        productActivity?.activity?.get()?.supportFinishAfterTransition()
-      }) { presentation: PLYPresentation?, error: PLYError? ->
-
-    }*/
   }
 
   @ReactMethod
@@ -267,19 +262,19 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
 
     purchasePromise = promise
 
-    val activity = productActivity?.activity?.get()
-    if(activity is PLYPaywallActivity) {
-      activity.runOnUiThread {
-        activity.updateDisplay(isFullScreen, loadingBackgroundColor)
-      }
-    }
-
     reactApplicationContext.currentActivity?.let {
       it.startActivity(
         Intent(it, PLYPaywallActivity::class.java).apply {
           flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
         }
       )
+    }
+
+    val activity = productActivity?.activity?.get()
+    if(activity is PLYPaywallActivity) {
+      activity.runOnUiThread {
+        activity.updateDisplay(isFullScreen, loadingBackgroundColor)
+      }
     }
 
   }
@@ -536,24 +531,11 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
         return
       }
 
-      val type = try {
-        presentationMap.getInt("type")
-      } catch (e: Exception) {
-        0
-      }
+    val presentation = presentationsLoaded.firstOrNull { it.id ==  presentationMap.getString("id")}
 
-      val presentation = PLYPresentation(
-        id = presentationMap.getString("id"),
-        placementId = presentationMap.getString("placementId"),
-        audienceId = presentationMap.getString("audienceId"),
-        abTestVariantId = presentationMap.getString("abTestVariantId"),
-        abTestId = presentationMap.getString("abTestId"),
-        language = presentationMap.getString("language"),
-        type = PLYPresentationType.values()[type],
-        plans = presentationMap.getArray("plans")?.toArrayList()?.mapNotNull { it.toString() }?.toList() ?: listOf()
-      )
-
+    if(presentation != null) {
       Purchasely.clientPresentationDisplayed(presentation)
+    }
   }
 
   @ReactMethod
@@ -563,24 +545,13 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
       return
     }
 
-    val type = try {
-      presentationMap.getInt("type")
-    } catch (e: Exception) {
-      0
+    val presentation = presentationsLoaded.firstOrNull { it.id ==  presentationMap.getString("id")}
+
+    if(presentation != null) {
+      Purchasely.clientPresentationClosed(presentation)
+      presentationsLoaded.removeAll { it.id == presentation.id }
     }
 
-    val presentation = PLYPresentation(
-      id = presentationMap.getString("id"),
-      placementId = presentationMap.getString("placementId"),
-      audienceId = presentationMap.getString("audienceId"),
-      abTestVariantId = presentationMap.getString("abTestVariantId"),
-      abTestId = presentationMap.getString("abTestId"),
-      language = presentationMap.getString("language"),
-      type = PLYPresentationType.values()[type],
-      plans = presentationMap.getArray("plans")?.toArrayList()?.mapNotNull { it.toString() }?.toList() ?: listOf()
-    )
-
-    Purchasely.clientPresentationClosed(presentation)
   }
 
   @ReactMethod
@@ -602,6 +573,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
               this["plan"] = transformPlanToMap(data.plan)
             }
             this["product"] = data.product.toMap()
+            remove("subscription_status") //Add in a next version
           }
           result.add(Arguments.makeNativeMap(map))
         }
@@ -683,7 +655,20 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   }
 
   @ReactMethod
-  fun closePaywall() {
+  fun closePaywall(definitively: Boolean) {
+    if(definitively) {
+      val openedPaywall = productActivity?.activity?.get()
+      if(openedPaywall is PLYPaywallActivity) {
+        openedPaywall.finishAffinity()
+        productActivity = null
+        return
+      } else if(openedPaywall is PLYProductActivity) {
+        openedPaywall.finish()
+        productActivity = null
+        return
+      }
+    }
+
     val reactActivity = reactApplicationContext.currentActivity
     val activity = productActivity?.activity?.get() ?: reactActivity
     reactActivity?.startActivity(
@@ -806,16 +791,4 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     }
   }
 
-  private fun PLYPresentation.toMap(): Map<String, Any?> {
-    val map: MutableMap<String, Any?> = java.util.HashMap()
-    map["id"] = this.id
-    map["placementId"] = this.placementId
-    map["audienceId"] = this.audienceId
-    map["abTestId"] = this.abTestId
-    map["abTestVariantId"] = this.abTestVariantId
-    map["language"] = this.language
-    map["type"] = this.type
-    map["plans"] = this.plans
-    return map
-  }
 }

@@ -32,11 +32,14 @@ class PLYPaywallActivity : AppCompatActivity() {
   private var paywallView: View? = null
 
   override fun onCreate(savedInstanceState: Bundle?) {
+    moveTaskToBack(true)
+    PurchaselyModule.productActivity = PurchaselyModule.ProductActivity().apply {
+      activity = WeakReference(this@PLYPaywallActivity)
+    }
+
     super.onCreate(savedInstanceState)
 
     setContentView(R.layout.activity_ply_product_activity)
-
-    moveTaskToBack(false)
 
     presentationId = intent.extras?.getString("presentationId")
     placementId = intent.extras?.getString("placementId")
@@ -57,13 +60,11 @@ class PLYPaywallActivity : AppCompatActivity() {
       }
     ) { presentation: PLYPresentation?, error: PLYError? ->
       PurchaselyModule.sendFetchResult(presentation, error)
-
       if(presentation?.view != null) {
         presentationId = presentation.id
         placementId = presentation.placementId
 
         paywallView = presentation.view
-        findViewById<FrameLayout>(R.id.container).addView(paywallView)
       } else {
         finish()
       }
@@ -84,6 +85,8 @@ class PLYPaywallActivity : AppCompatActivity() {
         //do nothing
       }
     }
+
+    findViewById<FrameLayout>(R.id.container).addView(paywallView)
   }
 
   override fun onStart() {
@@ -106,6 +109,7 @@ class PLYPaywallActivity : AppCompatActivity() {
     if(PurchaselyModule.productActivity?.activity?.get() == this) {
       PurchaselyModule.productActivity?.activity = null
     }
+    PurchaselyModule.presentationsLoaded.removeAll { it.id == presentationId }
     super.onDestroy()
   }
 

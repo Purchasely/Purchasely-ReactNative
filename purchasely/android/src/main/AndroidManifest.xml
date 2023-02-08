@@ -2,8 +2,8 @@
           package="com.reactnativepurchasely">
 
   <application>
-    <activity android:name=".PLYProductActivity" android:theme="@style/Theme.Purchasely" />
-    <activity android:name=".PLYPaywallActivity" android:theme="@style/Theme.Purchasely" android:launchMode="singleTask" />
+    <activity android:name=".PLYProductActivity" android:autoRemoveFromRecents="true" android:theme="@style/Theme.Purchasely" />
+    <activity android:name=".PLYPaywallActivity" android:theme="@style/Theme.Purchasely" android:autoRemoveFromRecents="true" android:launchMode="singleInstance" />
     <activity android:name=".PLYSubscriptionsActivity" android:theme="@style/Theme.Purchasely" />
   </application>
 

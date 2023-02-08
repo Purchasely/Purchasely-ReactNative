@@ -34,7 +34,7 @@ class PLYProductActivity : AppCompatActivity() {
     isFullScreen = intent.extras?.getBoolean("isFullScreen") ?: false
     backgroundColor = intent.extras?.getString("background_color")
 
-    if(intent.extras?.getBoolean("isFullScreen") == true) {
+    if(isFullScreen) {
       WindowCompat.setDecorFitsSystemWindows(window, false)
     }
 
