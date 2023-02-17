@@ -234,7 +234,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
 
     reactApplicationContext.currentActivity?.let {
       val intent = PLYPaywallActivity.newIntent(it, properties).apply {
-        flags = Intent.FLAG_ACTIVITY_NEW_TASK xor Intent.FLAG_ACTIVITY_MULTIPLE_TASK xor Intent.FLAG_ACTIVITY_NO_ANIMATION
+        flags = Intent.FLAG_ACTIVITY_MULTIPLE_TASK xor Intent.FLAG_ACTIVITY_NEW_TASK
       }
       it.startActivity(intent)
 
@@ -262,19 +262,19 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
 
     purchasePromise = promise
 
+    val activity = productActivity?.activity?.get()
+    if(activity is PLYPaywallActivity) {
+      activity.runOnUiThread {
+        activity.updateDisplay(isFullScreen, loadingBackgroundColor)
+      }
+    }
+
     reactApplicationContext.currentActivity?.let {
       it.startActivity(
         Intent(it, PLYPaywallActivity::class.java).apply {
           flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
         }
       )
-    }
-
-    val activity = productActivity?.activity?.get()
-    if(activity is PLYPaywallActivity) {
-      activity.runOnUiThread {
-        activity.updateDisplay(isFullScreen, loadingBackgroundColor)
-      }
     }
 
   }
