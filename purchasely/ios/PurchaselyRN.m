@@ -749,7 +749,7 @@ RCT_REMAP_METHOD(silentRestoreAllProducts,
                  reject:(RCTPromiseRejectBlock)reject)
 {
     dispatch_async(dispatch_get_main_queue(), ^{
-        [Purchasely silentRestoreAllProductsWithSuccess:^{
+        [Purchasely synchronizeWithSuccess:^{
             resolve([NSNumber numberWithBool:true]);
         }
                                                 failure:^(NSError * _Nonnull error) {
