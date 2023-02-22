@@ -471,7 +471,7 @@ RCT_EXPORT_METHOD(fetchPresentation:(NSString * _Nullable)placementId
 
 - (PLYPresentation *) findPresentationLoadedFor:(NSString * _Nullable) presentationId {
     for (PLYPresentation *presentationLoaded in self.presentationsLoaded) {
-        if (presentationLoaded.id == presentationId) {
+        if ([presentationLoaded.id isEqualToString: presentationId]) {
             return presentationLoaded;
         }
     }
@@ -481,7 +481,7 @@ RCT_EXPORT_METHOD(fetchPresentation:(NSString * _Nullable)placementId
 - (NSInteger) findIndexPresentationLoadedFor:(NSString * _Nullable) presentationId {
     NSInteger index = 0;
     for (PLYPresentation *presentationLoaded in self.presentationsLoaded) {
-        if (presentationLoaded.id == presentationId) {
+        if ([presentationLoaded.id isEqualToString: presentationId]) {
             return index;
         }
         index++;
