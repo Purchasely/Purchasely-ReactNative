@@ -237,7 +237,7 @@ PODS:
     - React-cxxreact (= 0.63.5)
     - React-jsi (= 0.63.5)
   - React-jsinspector (0.63.5)
-  - react-native-purchasely-google (2.6.2):
+  - react-native-purchasely-google (2.6.3):
     - React-Core
   - React-RCTActionSheet (0.63.5):
     - React-Core/RCTActionSheetHeaders (= 0.63.5)
@@ -455,7 +455,7 @@ SPEC CHECKSUMS:
   React-jsi: 7d908b17758178b076a05a254523f1a4227b53d2
   React-jsiexecutor: e06a32e42affb2bd89e4c8369349b5fcf787710c
   React-jsinspector: fdbc08866b34ae8e1b788ea1cbd9f9d1ca2aa3d6
-  react-native-purchasely-google: a538d68fd6c99d6104321607d4df7694d2ba87d3
+  react-native-purchasely-google: 5217a2df4bf67a8c9a7f3448e28cf4a1cb937755
   React-RCTActionSheet: e911b99f0d6fa7711ffc2f62d236b12a32771835
   React-RCTAnimation: ad8b853170a059faf31d6add34f67d22391bbe01
   React-RCTBlob: 134c7270b6672c9c05383b2e0f7f044ba39d7dda

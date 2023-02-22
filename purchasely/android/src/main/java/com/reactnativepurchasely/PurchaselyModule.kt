@@ -263,11 +263,6 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     purchasePromise = promise
 
     val activity = productActivity?.activity?.get()
-    if(activity is PLYPaywallActivity) {
-      activity.runOnUiThread {
-        activity.updateDisplay(isFullScreen, loadingBackgroundColor)
-      }
-    }
 
     reactApplicationContext.currentActivity?.let {
       it.startActivity(
@@ -275,6 +270,12 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
           flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
         }
       )
+    }
+
+    if(activity is PLYPaywallActivity) {
+      activity.runOnUiThread {
+        activity.updateDisplay(isFullScreen, loadingBackgroundColor)
+      }
     }
 
   }
