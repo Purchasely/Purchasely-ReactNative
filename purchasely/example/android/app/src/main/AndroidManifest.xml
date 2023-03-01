@@ -24,11 +24,19 @@
       </activity>
       <activity android:name="com.facebook.react.devsupport.DevSettingsActivity" />
 
-      <!--<activity
+      <!-- <activity
         tools:replace="android:theme"
         android:name="com.reactnativepurchasely.PLYProductActivity"
         android:theme="@style/Theme.Purchasely.Fullscreen.Light"
         /> -->
+
+      <activity tools:replace="android:screenOrientation" android:name="com.reactnativepurchasely.PLYProductActivity" android:screenOrientation="portrait" />
+
+       <!-- <activity
+        tools:replace="android:theme"
+        android:name="com.reactnativepurchasely.PLYPaywallActivity"
+        android:theme="@style/Theme.Purchasely.Fullscreen.Light"
+        />-->
     </application>
 
 </manifest>

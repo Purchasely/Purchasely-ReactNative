@@ -128,5 +128,5 @@ dependencies {
   api 'com.facebook.react:react-native:+'
   implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
 
-  implementation 'io.purchasely:amazon:3.4.4'
+  implementation 'io.purchasely:amazon:3.6.1'
 }

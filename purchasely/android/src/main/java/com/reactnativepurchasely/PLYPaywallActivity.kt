@@ -1,22 +1,25 @@
 package com.reactnativepurchasely
 
 import android.app.Activity
+import android.app.ActivityManager
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import android.view.View
 import android.widget.FrameLayout
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityManagerCompat
 import androidx.core.view.WindowCompat
 import io.purchasely.ext.PLYPresentation
 import io.purchasely.ext.PLYPresentationViewProperties
 import io.purchasely.ext.PLYProductViewResult
 import io.purchasely.ext.Purchasely
+import io.purchasely.models.PLYError
 import io.purchasely.models.PLYPlan
 import io.purchasely.views.parseColor
 import java.lang.ref.WeakReference
 
-class PLYProductActivity : AppCompatActivity() {
+class PLYPaywallActivity : AppCompatActivity() {
 
   private var presentationId: String? = null
   private var placementId: String? = null
@@ -29,23 +32,14 @@ class PLYProductActivity : AppCompatActivity() {
   private var paywallView: View? = null
 
   override fun onCreate(savedInstanceState: Bundle?) {
+    moveTaskToBack(true)
+    PurchaselyModule.productActivity = PurchaselyModule.ProductActivity().apply {
+      activity = WeakReference(this@PLYPaywallActivity)
+    }
+
     super.onCreate(savedInstanceState)
 
-    isFullScreen = intent.extras?.getBoolean("isFullScreen") ?: false
-    backgroundColor = intent.extras?.getString("background_color")
-
-    if(isFullScreen) {
-      WindowCompat.setDecorFitsSystemWindows(window, false)
-    }
-
     setContentView(R.layout.activity_ply_product_activity)
-
-    try {
-      val loadingBackgroundColor = backgroundColor.parseColor(Color.WHITE)
-      findViewById<View>(R.id.container).setBackgroundColor(loadingBackgroundColor)
-    } catch (e: Exception) {
-      //do nothing
-    }
 
     presentationId = intent.extras?.getString("presentationId")
     placementId = intent.extras?.getString("placementId")
@@ -53,32 +47,44 @@ class PLYProductActivity : AppCompatActivity() {
     planId = intent.extras?.getString("planId")
     contentId = intent.extras?.getString("contentId")
 
-    paywallView = Purchasely.presentationView(
-      this@PLYProductActivity,
+    Purchasely.fetchPresentation(
+      this,
       PLYPresentationViewProperties(
-        placementId = placementId,
-        contentId = contentId,
         presentationId = presentationId,
-        planId = planId,
-        productId = productId,
-        onLoaded = { onLoaded ->
-          val backgroundPaywall = paywallView?.findViewById<FrameLayout>(io.purchasely.R.id.content)?.background
-          if(backgroundPaywall != null) {
-            findViewById<View>(R.id.container).background = backgroundPaywall
-          }
-        },
-        onClose = {
-          findViewById<FrameLayout>(R.id.container).removeAllViews()
-        }
+        placementId = placementId,
+        contentId = contentId
       ),
-      callback
-    )
+      { result: PLYProductViewResult, plan: PLYPlan? ->
+        PurchaselyModule.sendPurchaseResult(result, plan)
+        supportFinishAfterTransition()
+      }
+    ) { presentation: PLYPresentation?, error: PLYError? ->
+      PurchaselyModule.sendFetchResult(presentation, error)
+      if(presentation?.view != null) {
+        presentationId = presentation.id
+        placementId = presentation.placementId
 
-    if(paywallView == null) {
-      finish()
-      return
+        paywallView = presentation.view
+      } else {
+        finish()
+      }
     }
 
+  }
+
+  fun updateDisplay(isFullScreen: Boolean, backgroundColor: String? = null) {
+    this.isFullScreen = isFullScreen
+    this.backgroundColor = backgroundColor
+    if(isFullScreen) WindowCompat.setDecorFitsSystemWindows(window, false)
+
+    if(backgroundColor != null) {
+      try {
+        val loadingBackgroundColor = backgroundColor.parseColor(Color.WHITE)
+        findViewById<View>(R.id.container).setBackgroundColor(loadingBackgroundColor)
+      } catch (e: Exception) {
+        //do nothing
+      }
+    }
 
     findViewById<FrameLayout>(R.id.container).addView(paywallView)
   }
@@ -95,7 +101,7 @@ class PLYProductActivity : AppCompatActivity() {
       isFullScreen = isFullScreen,
       loadingBackgroundColor = backgroundColor
     ).apply {
-      activity = WeakReference(this@PLYProductActivity)
+      activity = WeakReference(this@PLYPaywallActivity)
     }
   }
 
@@ -103,28 +109,19 @@ class PLYProductActivity : AppCompatActivity() {
     if(PurchaselyModule.productActivity?.activity?.get() == this) {
       PurchaselyModule.productActivity?.activity = null
     }
+    PurchaselyModule.presentationsLoaded.removeAll { it.id == presentationId }
     super.onDestroy()
-  }
-
-  private val callback: (PLYProductViewResult, PLYPlan?) -> Unit = { result, plan ->
-    PurchaselyModule.sendPurchaseResult(result, plan)
-    supportFinishAfterTransition()
   }
 
   companion object {
     fun newIntent(activity: Activity?,
-                  properties: PLYPresentationViewProperties,
-                  isFullScreen: Boolean = false,
-                  backgroundColor: String?) = Intent(activity, PLYProductActivity::class.java).apply {
+                  properties: PLYPresentationViewProperties) = Intent(activity, PLYPaywallActivity::class.java).apply {
       //remove old activity if still referenced to avoid issues
       val oldActivity = PurchaselyModule.productActivity?.activity?.get()
       oldActivity?.finish()
       PurchaselyModule.productActivity?.activity = null
       PurchaselyModule.productActivity = null
       //flags = Intent.FLAG_ACTIVITY_NEW_TASK xor Intent.FLAG_ACTIVITY_MULTIPLE_TASK
-
-      putExtra("background_color", backgroundColor)
-      putExtra("isFullScreen", isFullScreen)
 
       putExtra("presentationId", properties.presentationId)
       putExtra("contentId", properties.contentId)

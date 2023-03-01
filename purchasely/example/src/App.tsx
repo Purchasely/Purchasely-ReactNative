@@ -12,6 +12,8 @@ import Purchasely, {
   ProductResult,
   RunningMode,
   PLYPaywallAction,
+  PurchaselyPresentation,
+  PLYPresentationType,
 } from 'react-native-purchasely';
 
 const App: React.FunctionComponent = () => {
@@ -20,8 +22,9 @@ const App: React.FunctionComponent = () => {
 
   React.useEffect(() => {
     async function setupPurchasely() {
+      var configured = false;
       try {
-        const configured = await Purchasely.startWithAPIKey(
+        configured = await Purchasely.startWithAPIKey(
           'fcb39be4-2ba4-4db7-bde3-2a5a1e20745d',
           // '366e6743-03d2-47ec-9730-c24802c7d630',
           ['Google'],
@@ -29,111 +32,111 @@ const App: React.FunctionComponent = () => {
           LogLevels.DEBUG,
           RunningMode.FULL
         );
-
-        if (!configured) {
-          console.log('Purchasely SDK not properly initialized');
-          return;
-        }
-
-        setAnonymousUserId(await Purchasely.getAnonymousUserId());
-
-        const product = await Purchasely.productWithIdentifier(
-          'PURCHASELY_PLUS'
-        );
-        console.log('Product', product);
-
-        const subscriptions = await Purchasely.userSubscriptions();
-        console.log('Subscriptions', subscriptions);
-
-        const plan = await Purchasely.planWithIdentifier(
-          'PURCHASELY_PLUS_YEARLY'
-        );
-        console.log('Plan', plan);
-        console.log(
-          'User is eligible for intro offer:' + plan.isEligibleForIntroOffer
-        );
-
-        Purchasely.userDidConsumeSubscriptionContent();
-
-        const products = await Purchasely.allProducts();
-        console.log('Products', products);
-
-        Purchasely.setLogLevel(LogLevels.DEBUG);
-
-        //indicate to sdk it is safe to launch purchase flow
-        Purchasely.isReadyToPurchase(true);
-
-        //force your language
-        Purchasely.setLanguage('en');
-
-        //Set an attribute for each type
-        Purchasely.setUserAttributeWithString('stringKey', 'StringValue');
-        Purchasely.setUserAttributeWithNumber('intKey', 3);
-        Purchasely.setUserAttributeWithNumber('floatKey', 1.2);
-        Purchasely.setUserAttributeWithBoolean('booleanKey', true);
-        Purchasely.setUserAttributeWithDate('dateKey', new Date());
-
-        //get all attributes
-        const attributes = await Purchasely.userAttributes();
-        console.log(attributes);
-
-        //retrive a date attribute
-        const dateAttribute = await Purchasely.userAttribute('dateKey');
-        console.log(new Date(dateAttribute).getFullYear());
-
-        //remove an attribute
-        Purchasely.clearUserAttribute('dateKey');
-        console.log(await Purchasely.userAttribute('dateKey'));
-
-        //remove all attributes
-        Purchasely.clearUserAttributes();
-
-        Purchasely.setPaywallActionInterceptorCallback((result) => {
-          console.log('Received action from paywall');
-          console.log(result.info);
-
-          switch (result.action) {
-            case PLYPaywallAction.NAVIGATE:
-              console.log(
-                'User wants to navigate to website ' +
-                  result.parameters.title +
-                  ' ' +
-                  result.parameters.url
-              );
-              Purchasely.onProcessAction(true);
-              break;
-            case PLYPaywallAction.LOGIN:
-              console.log('User wants to login');
-              //Present your own screen for user to log in
-              Purchasely.closePaywall();
-              Purchasely.userLogin('MY_USER_ID');
-              //Call this method to update Purchasely Paywall
-              break;
-            case PLYPaywallAction.PURCHASE:
-              console.log('User wants to purchase');
-              //If you want to intercept it, close paywall and display your screen
-              //then call onProcessAction() to continue or stop purchasely purchase action
-              Purchasely.closePaywall();
-              break;
-            default:
-              Purchasely.onProcessAction(true);
-          }
-        });
-
-        Purchasely.addEventListener((event) => {
-          console.log(event.name);
-          console.log(event.properties);
-        });
-
-        Purchasely.addPurchasedListener(() => {
-          // User has successfully purchased a product, reload content
-          console.log('User has purchased');
-        });
-
-        Purchasely.setAttribute(Attributes.FIREBASE_APP_INSTANCE_ID, 'test0');
       } catch (e) {
-        console.log('Purchasely SDK initialization error', e);
+        console.log('Purchasely SDK configuration errror', e);
       }
+
+      if (!configured) {
+        console.log('Purchasely SDK not properly initialized');
+      }
+
+      setAnonymousUserId(await Purchasely.getAnonymousUserId());
+
+      const product = await Purchasely.productWithIdentifier(
+        'PURCHASELY_PLUS'
+      );
+      console.log('Product', product);
+
+      const subscriptions = await Purchasely.userSubscriptions();
+      console.log('Subscriptions', subscriptions);
+
+      const plan = await Purchasely.planWithIdentifier(
+        'PURCHASELY_PLUS_YEARLY'
+      );
+      console.log('Plan', plan);
+      console.log(
+        'User is eligible for intro offer:' + plan.isEligibleForIntroOffer
+      );
+
+      Purchasely.userDidConsumeSubscriptionContent();
+
+      const products = await Purchasely.allProducts();
+      console.log('Products', products);
+
+      Purchasely.setLogLevel(LogLevels.DEBUG);
+
+      //indicate to sdk it is safe to launch purchase flow
+      Purchasely.isReadyToPurchase(true);
+
+      //force your language
+      Purchasely.setLanguage('en');
+
+      //Set an attribute for each type
+      Purchasely.setUserAttributeWithString('stringKey', 'StringValue');
+      Purchasely.setUserAttributeWithNumber('intKey', 3);
+      Purchasely.setUserAttributeWithNumber('floatKey', 1.2);
+      Purchasely.setUserAttributeWithBoolean('booleanKey', true);
+      Purchasely.setUserAttributeWithDate('dateKey', new Date());
+
+      //get all attributes
+      const attributes = await Purchasely.userAttributes();
+      console.log(attributes);
+
+      //retrive a date attribute
+      const dateAttribute = await Purchasely.userAttribute('dateKey');
+      console.log(new Date(dateAttribute).getFullYear());
+
+      //remove an attribute
+      Purchasely.clearUserAttribute('dateKey');
+      console.log(await Purchasely.userAttribute('dateKey'));
+
+      //remove all attributes
+      Purchasely.clearUserAttributes();
+
+      Purchasely.setPaywallActionInterceptorCallback((result) => {
+        console.log('Received action from paywall');
+        console.log(result.info);
+
+        switch (result.action) {
+          case PLYPaywallAction.NAVIGATE:
+            console.log(
+              'User wants to navigate to website ' +
+                result.parameters.title +
+                ' ' +
+                result.parameters.url
+            );
+            Purchasely.onProcessAction(true);
+            break;
+          case PLYPaywallAction.LOGIN:
+            console.log('User wants to login');
+            //Present your own screen for user to log in
+            //Purchasely.closePaywall();
+            Purchasely.userLogin('MY_USER_ID');
+            Purchasely.onProcessAction(true);
+            //Call this method to update Purchasely Paywall
+            break;
+          case PLYPaywallAction.PURCHASE:
+            console.log('User wants to purchase');
+            //If you want to intercept it, close paywall and display your screen
+            //then call onProcessAction() to continue or stop purchasely purchase action
+            Purchasely.closePaywall();
+            break;
+          default:
+            Purchasely.onProcessAction(true);
+        }
+      });
+
+      Purchasely.addEventListener((event) => {
+        console.log(event.name);
+        console.log(event.properties);
+      });
+
+      Purchasely.addPurchasedListener(() => {
+        // User has successfully purchased a product, reload content
+        console.log('User has purchased');
+      });
+
+      Purchasely.setAttribute(Attributes.FIREBASE_APP_INSTANCE_ID, 'test0');
     }
 
     setupPurchasely();
@@ -148,8 +151,10 @@ const App: React.FunctionComponent = () => {
       const result = await Purchasely.presentPresentationForPlacement({
         placementVendorId: 'steps',
         isFullscreen: false,
-        loadingBackgroundColor: '#FFFFFFFF',
+        loadingBackgroundColor: '#FFFFFFFF'
       });
+
+      console.log('Result is ' + result.result);
 
       switch (result.result) {
         case ProductResult.PRODUCT_RESULT_PURCHASED:
@@ -167,18 +172,42 @@ const App: React.FunctionComponent = () => {
     }
   };
 
-  const onPressProduct = async () => {
+  const onPressFetch = async () => {
     try {
-      const result = await Purchasely.presentProductWithIdentifier({
-        productVendorId: 'PURCHASELY_PLUS',
-        contentId: 'my_content_id',
-      });
-      console.log(result);
-      console.log('Presentation View Result : ' + result.result);
+      const presentation = await Purchasely.fetchPresentation({
+          placementId: 'test',
+          contentId: 'content_id_from_reactnative',
+      })
 
-      if (result.plan != null) {
-        console.log('Plan Vendor ID : ' + result.plan.vendorId);
-        console.log('Plan Name : ' + result.plan.name);
+      if(presentation.type == PLYPresentationType.DEACTIVATED) {
+        // No paywall to display
+        return
+      }
+
+      if(presentation.type == PLYPresentationType.CLIENT) {
+        // Display my own paywall
+        return
+      }
+
+      //Display Purchasely paywall
+
+      const result = await Purchasely.presentPresentation({
+        presentation: presentation
+      })
+
+      console.log('Result is ' + result.result);
+
+      switch (result.result) {
+        case ProductResult.PRODUCT_RESULT_PURCHASED:
+        case ProductResult.PRODUCT_RESULT_RESTORED:
+          if (result.plan != null) {
+            console.log('User purchased ' + result.plan.name);
+          }
+
+          break;
+        case ProductResult.PRODUCT_RESULT_CANCELLED:
+          console.log('User cancelled');
+          break;
       }
     } catch (e) {
       console.error(e);
@@ -246,7 +275,7 @@ const App: React.FunctionComponent = () => {
         </Text>
       </TouchableHighlight>
       <TouchableHighlight
-        onPress={onPressProduct}
+        onPress={onPressFetch}
         disabled={loading}
         style={loading ? styles.buttonDisabled : styles.button}
       >
@@ -254,7 +283,7 @@ const App: React.FunctionComponent = () => {
           {loading && (
             <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
           )}{' '}
-          Display product
+          Fetch presentation
         </Text>
       </TouchableHighlight>
       <TouchableHighlight
