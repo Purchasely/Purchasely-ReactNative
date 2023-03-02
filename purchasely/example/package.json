@@ -14,7 +14,8 @@
   },
   "dependencies": {
     "react": "16.13.1",
-    "react-native": "0.68.5"
+    "react-native": "0.68.5",
+    "@purchasely/react-native-purchasely-google": "file:../../purchasely-google"
   },
   "devDependencies": {
     "@babel/core": "7.12.3",
