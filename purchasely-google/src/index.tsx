@@ -1,4 +1,4 @@
-import { NativeModules, Platform } from 'react-native';
+import { NativeModules } from 'react-native';
 
 const LINKING_ERROR =
   `The package 'react-native-purchasely-google' doesn't seem to be linked. Make sure: \n\n` +
