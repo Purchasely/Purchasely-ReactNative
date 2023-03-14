@@ -119,7 +119,8 @@ const App: React.FunctionComponent = () => {
             console.log('User wants to purchase');
             //If you want to intercept it, close paywall and display your screen
             //then call onProcessAction() to continue or stop purchasely purchase action
-            Purchasely.closePaywall();
+            // Purchasely.closePaywall();
+            Purchasely.onProcessAction(true);
             break;
           default:
             Purchasely.onProcessAction(true);

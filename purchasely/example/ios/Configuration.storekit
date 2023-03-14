@@ -21,14 +21,16 @@
           "adHocOffers" : [
 
           ],
-          "displayPrice" : "5.99",
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "74.99",
           "familyShareable" : false,
           "groupNumber" : 1,
           "internalID" : "7EACC57C",
           "introductoryOffer" : {
-            "displayPrice" : "0.99",
             "internalID" : "331D0308",
-            "paymentMode" : "payUpFront",
+            "paymentMode" : "free",
             "subscriptionPeriod" : "P1M"
           },
           "localizations" : [
@@ -38,7 +40,36 @@
               "locale" : "en_US"
             }
           ],
-          "productID" : "com.2appaz.purchasely.demo.product1.plan2",
+          "productID" : "com.purchasely.plus.6months",
+          "recurringSubscriptionPeriod" : "P6M",
+          "referenceName" : null,
+          "subscriptionGroupID" : "63B6D17F",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "69.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "AF045BFA",
+          "introductoryOffer" : {
+            "internalID" : "4ACDA97C",
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P2W"
+          },
+          "localizations" : [
+            {
+              "description" : "",
+              "displayName" : "",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.purchasely.plus.monthly",
           "recurringSubscriptionPeriod" : "P1M",
           "referenceName" : null,
           "subscriptionGroupID" : "63B6D17F",
@@ -48,12 +79,15 @@
           "adHocOffers" : [
 
           ],
-          "displayPrice" : "4.99",
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "3.9899999",
           "familyShareable" : false,
           "groupNumber" : 1,
-          "internalID" : "AF045BFA",
+          "internalID" : "6A2F987A",
           "introductoryOffer" : {
-            "internalID" : "4ACDA97C",
+            "internalID" : "94E75978",
             "paymentMode" : "free",
             "subscriptionPeriod" : "P1W"
           },
@@ -64,30 +98,8 @@
               "locale" : "en_US"
             }
           ],
-          "productID" : "com.2appaz.purchasely.demo.product1.plan1",
-          "recurringSubscriptionPeriod" : "P1M",
-          "referenceName" : null,
-          "subscriptionGroupID" : "63B6D17F",
-          "type" : "RecurringSubscription"
-        },
-        {
-          "adHocOffers" : [
-
-          ],
-          "displayPrice" : "6.99",
-          "familyShareable" : false,
-          "groupNumber" : 1,
-          "internalID" : "6A2F987A",
-          "introductoryOffer" : null,
-          "localizations" : [
-            {
-              "description" : "",
-              "displayName" : "",
-              "locale" : "en_US"
-            }
-          ],
-          "productID" : "com.2appaz.purchasely.demo.product1.plan4",
-          "recurringSubscriptionPeriod" : "P1M",
+          "productID" : "com.purchasely.plus.yearly",
+          "recurringSubscriptionPeriod" : "P1Y",
           "referenceName" : null,
           "subscriptionGroupID" : "63B6D17F",
           "type" : "RecurringSubscription"
@@ -96,7 +108,7 @@
     }
   ],
   "version" : {
-    "major" : 1,
-    "minor" : 1
+    "major" : 2,
+    "minor" : 0
   }
 }

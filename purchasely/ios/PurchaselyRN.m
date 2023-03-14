@@ -614,20 +614,9 @@ RCT_EXPORT_METHOD(presentPresentationForPlacement:(NSString * _Nullable)placemen
                 ctrl.modalPresentationStyle = UIModalPresentationFullScreen;
             }
               
-            [[PurchaselyRN topMostController] presentViewController:ctrl animated:YES completion:nil];
+            [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
         }
     });
-}
-
-+ (UIViewController*) topMostController
-{
-    UIViewController *topController = [UIApplication sharedApplication].keyWindow.rootViewController;
-
-    while (topController.presentedViewController) {
-        topController = topController.presentedViewController;
-    }
-
-    return topController;
 }
 
 RCT_EXPORT_METHOD(presentPlanWithIdentifier:(NSString * _Nonnull)planVendorId
