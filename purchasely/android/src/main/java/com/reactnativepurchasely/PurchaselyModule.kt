@@ -716,7 +716,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
           else value
         }))
       }
-      if(error != null) fetchPromise?.resolve(error)
+      if(error != null) fetchPromise?.reject(IllegalStateException(error.message ?: "Unable to fetch presentation"))
     }
 
     fun sendPurchaseResult(result: PLYProductViewResult, plan: PLYPlan?) {
