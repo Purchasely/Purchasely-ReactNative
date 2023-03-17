@@ -612,6 +612,8 @@ RCT_EXPORT_METHOD(presentPresentationForPlacement:(NSString * _Nullable)placemen
 				}
 			}
             
+            self.presentedPresentationViewController = ctrl;
+            
             if (isFullscreen) {
                 ctrl.modalPresentationStyle = UIModalPresentationFullScreen;
             }
