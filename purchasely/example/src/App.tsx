@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  Linking,
   View,
   TouchableHighlight,
   Text,
@@ -15,6 +16,8 @@ import Purchasely, {
   PurchaselyPresentation,
   PLYPresentationType,
 } from 'react-native-purchasely';
+
+import { NavigationContainer } from '@react-navigation/native';
 
 const App: React.FunctionComponent = () => {
   const [anonymousUserId, setAnonymousUserId] = React.useState<string>('');
@@ -118,7 +121,8 @@ const App: React.FunctionComponent = () => {
             console.log('User wants to purchase');
             //If you want to intercept it, close paywall and display your screen
             //then call onProcessAction() to continue or stop purchasely purchase action
-            Purchasely.closePaywall();
+            // Purchasely.closePaywall();
+            Purchasely.onProcessAction(true);
             break;
           default:
             Purchasely.onProcessAction(true);
@@ -148,8 +152,9 @@ const App: React.FunctionComponent = () => {
   const onPressPresentation = async () => {
     try {
       const result = await Purchasely.presentPresentationForPlacement({
-        placementVendorId: 'app_launch',
-        isFullscreen: true,
+        placementVendorId: 'steps',
+        isFullscreen: false,
+        loadingBackgroundColor: '#FFFFFFFF'
       });
 
       console.log('Result is ' + result.result);
@@ -258,6 +263,7 @@ const App: React.FunctionComponent = () => {
   };
 
   return (
+    <NavigationContainer linking={linkingConfiguration}>
     <View style={styles.container}>
       <Text>Anonymous User Id {anonymousUserId}</Text>
       <TouchableHighlight
@@ -347,7 +353,35 @@ const App: React.FunctionComponent = () => {
         </Text>
       </TouchableHighlight>
     </View>
+    </NavigationContainer>
   );
+};
+
+// purchaselyrn://ply/placements/test
+const linkingConfiguration = {
+  prefixes: ['purchaselyrn://'],
+
+  // Custom function to get the URL which was used to open the app
+  async getInitialURL(): Promise<string | null> {
+    const url = await Linking.getInitialURL();
+    if (url != null) {
+      Purchasely.handle(url);
+    }
+    return url;
+  },
+
+   // Custom function to subscribe to incoming links
+   subscribe(listener) {
+
+    // Listen to incoming links from deep linking
+    const linkingSubscription = Linking.addEventListener('url', ({ url }) => {
+      Purchasely.handle(url);
+    });
+
+    return () => {
+      linkingSubscription.remove();
+    };
+  }
 };
 
 const styles = StyleSheet.create({

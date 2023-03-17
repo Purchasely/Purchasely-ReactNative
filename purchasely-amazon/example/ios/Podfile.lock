@@ -237,7 +237,7 @@ PODS:
     - React-cxxreact (= 0.63.4)
     - React-jsi (= 0.63.4)
   - React-jsinspector (0.63.4)
-  - react-native-purchasely-amazon (2.6.5):
+  - react-native-purchasely-amazon (2.6.6):
     - React-Core
   - React-RCTActionSheet (0.63.4):
     - React-Core/RCTActionSheetHeaders (= 0.63.4)
@@ -455,7 +455,7 @@ SPEC CHECKSUMS:
   React-jsi: a0418934cf48f25b485631deb27c64dc40fb4c31
   React-jsiexecutor: 93bd528844ad21dc07aab1c67cb10abae6df6949
   React-jsinspector: 58aef7155bc9a9683f5b60b35eccea8722a4f53a
-  react-native-purchasely-amazon: 110d13e57706e9fea124463f10a73eb0068ca0d4
+  react-native-purchasely-amazon: e59b663bba2746b8b5b7520cdebb51b7351ef994
   React-RCTActionSheet: 89a0ca9f4a06c1f93c26067af074ccdce0f40336
   React-RCTAnimation: 1bde3ecc0c104c55df246eda516e0deb03c4e49b
   React-RCTBlob: a97d378b527740cc667e03ebfa183a75231ab0f0
@@ -471,4 +471,4 @@ SPEC CHECKSUMS:
 
 PODFILE CHECKSUM: f2050c9f5f6d15a545f557322123f062fa0adbc6
 
-COCOAPODS: 1.11.3
+COCOAPODS: 1.12.0

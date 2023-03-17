@@ -381,13 +381,15 @@ RCT_EXPORT_METHOD(setLanguage:(NSString * _Nonnull) language) {
 }
 
 RCT_EXPORT_METHOD(closePaywall:(BOOL)definitively) {
-    if (self.presentedPresentationViewController != nil) {
-        dispatch_async(dispatch_get_main_queue(), ^{
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (self.presentedPresentationViewController != nil) {
             [self.presentedPresentationViewController dismissViewControllerAnimated:true completion:^{
                 self.presentedPresentationViewController = nil;
             }];
-        });
-    }
+        } else {
+            [Purchasely closeDisplayedPresentation];
+        }
+    });
 }
 
 RCT_EXPORT_METHOD(userDidConsumeSubscriptionContent) {
@@ -609,12 +611,13 @@ RCT_EXPORT_METHOD(presentPresentationForPlacement:(NSString * _Nullable)placemen
 					[ctrl.view setBackgroundColor:backColor];
 				}
 			}
-
+            
             self.presentedPresentationViewController = ctrl;
-
+            
             if (isFullscreen) {
                 ctrl.modalPresentationStyle = UIModalPresentationFullScreen;
             }
+              
             [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
         }
     });
@@ -751,8 +754,7 @@ RCT_REMAP_METHOD(silentRestoreAllProducts,
     dispatch_async(dispatch_get_main_queue(), ^{
         [Purchasely synchronizeWithSuccess:^{
             resolve([NSNumber numberWithBool:true]);
-        }
-                                                failure:^(NSError * _Nonnull error) {
+        } failure:^(NSError * _Nonnull error) {
             [self reject: reject with: error];
         }];
     });
