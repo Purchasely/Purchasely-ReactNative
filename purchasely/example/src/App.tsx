@@ -29,7 +29,6 @@ const App: React.FunctionComponent = () => {
       try {
         configured = await Purchasely.startWithAPIKey(
           'fcb39be4-2ba4-4db7-bde3-2a5a1e20745d',
-          // '366e6743-03d2-47ec-9730-c24802c7d630',
           ['Google'],
           null,
           LogLevels.DEBUG,
