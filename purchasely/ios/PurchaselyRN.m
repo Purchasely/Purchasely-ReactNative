@@ -8,7 +8,8 @@
 #import <React/RCTBridgeModule.h>
 
 #import <React/RCTLog.h>
-#import <Purchasely/Purchasely-Swift.h>
+//#import <Purchasely/Purchasely-Swift.h>
+@import Purchasely;
 #import "PurchaselyRN.h"
 #import "Purchasely_Hybrid.h"
 #import "UIColor+PLYHelper.h"
@@ -383,9 +384,7 @@ RCT_EXPORT_METHOD(setLanguage:(NSString * _Nonnull) language) {
 RCT_EXPORT_METHOD(closePaywall:(BOOL)definitively) {
     dispatch_async(dispatch_get_main_queue(), ^{
         if (self.presentedPresentationViewController != nil) {
-            [self.presentedPresentationViewController dismissViewControllerAnimated:true completion:^{
-                self.presentedPresentationViewController = nil;
-            }];
+            [self.presentedPresentationViewController dismissViewControllerAnimated:true completion:nil];
         } else {
             [Purchasely closeDisplayedPresentation];
         }

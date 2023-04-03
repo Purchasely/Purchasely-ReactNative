@@ -112,9 +112,10 @@ const App: React.FunctionComponent = () => {
           case PLYPaywallAction.LOGIN:
             console.log('User wants to login');
             //Present your own screen for user to log in
-            //Purchasely.closePaywall();
-            Purchasely.userLogin('MY_USER_ID');
-            Purchasely.onProcessAction(true);
+            Purchasely.onProcessAction(false);
+            Purchasely.closePaywall();
+            // Purchasely.userLogin('MY_USER_ID');
+            // Purchasely.onProcessAction(true);
             //Call this method to update Purchasely Paywall
             break;
           case PLYPaywallAction.PURCHASE:
