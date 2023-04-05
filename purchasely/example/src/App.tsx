@@ -152,7 +152,7 @@ const App: React.FunctionComponent = () => {
   const onPressPresentation = async () => {
     try {
       const result = await Purchasely.presentPresentationForPlacement({
-        placementVendorId: 'steps',
+        placementVendorId: 'ONBOARDING',
         isFullscreen: false,
         loadingBackgroundColor: '#FFFFFFFF'
       });
@@ -178,7 +178,7 @@ const App: React.FunctionComponent = () => {
   const onPressFetch = async () => {
     try {
       const presentation = await Purchasely.fetchPresentation({
-          placementId: 'test',
+          placementId: 'RELANCEDM',
           contentId: 'content_id_from_reactnative',
       })
 
@@ -371,7 +371,7 @@ const linkingConfiguration = {
   },
 
    // Custom function to subscribe to incoming links
-   subscribe(listener) {
+   /*subscribe(listener) {
 
     // Listen to incoming links from deep linking
     const linkingSubscription = Linking.addEventListener('url', ({ url }) => {
@@ -381,7 +381,7 @@ const linkingConfiguration = {
     return () => {
       linkingSubscription.remove();
     };
-  }
+  }*/
 };
 
 const styles = StyleSheet.create({
