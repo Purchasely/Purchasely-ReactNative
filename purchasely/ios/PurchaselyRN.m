@@ -288,6 +288,7 @@ RCT_EXPORT_METHOD(handle:(NSString * _Nullable) deeplink
         [self reject: reject with: error];
         return;
     }
+    
     dispatch_async(dispatch_get_main_queue(), ^{
         resolve(@([Purchasely handleWithDeeplink:[NSURL URLWithString:deeplink]]));
     });
@@ -296,6 +297,7 @@ RCT_EXPORT_METHOD(handle:(NSString * _Nullable) deeplink
 RCT_EXPORT_METHOD(userLogout) {
 	[Purchasely userLogout];
 }
+
 
 RCT_EXPORT_METHOD(setAttribute:(NSInteger)attribute value:(NSString * _Nonnull)value) {
 	[Purchasely setAttribute:attribute value:value];
@@ -403,7 +405,9 @@ RCT_REMAP_METHOD(getAnonymousUserId,
 }
 
 RCT_EXPORT_METHOD(isReadyToPurchase:(BOOL)ready) {
-	[Purchasely isReadyToPurchase: ready];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [Purchasely isReadyToPurchase: ready];
+    });
 }
 
 RCT_EXPORT_METHOD(setDefaultPresentationResultHandler:(RCTPromiseResolveBlock)resolve
@@ -422,6 +426,7 @@ RCT_EXPORT_METHOD(setPaywallActionInterceptor:(RCTPromiseResolveBlock)resolve
     dispatch_async(dispatch_get_main_queue(), ^{
         [Purchasely setPaywallActionsInterceptor:^(enum PLYPresentationAction action, PLYPresentationActionParameters * _Nullable parameters, PLYPresentationInfo * _Nullable infos, void (^ _Nonnull onProcessActionHandler)(BOOL)) {
             self.onProcessActionHandler = onProcessActionHandler;
+            self.paywallAction = action;
             resolve([self resultDictionaryForActionInterceptor:action parameters:parameters presentationInfos:infos]);
         }];
     });

@@ -1,8 +1,9 @@
-import React from 'react';
+import React, {useState} from 'react';
 import {
   Linking,
   View,
   TouchableHighlight,
+  Button,
   Text,
   StyleSheet,
   ActivityIndicator,
@@ -19,11 +20,16 @@ import Purchasely, {
 
 import { NavigationContainer } from '@react-navigation/native';
 
+import Modal from 'react-native-modal';
+
 const App: React.FunctionComponent = () => {
   const [anonymousUserId, setAnonymousUserId] = React.useState<string>('');
   const [loading, setLoading] = React.useState<boolean>(false);
 
   React.useEffect(() => {
+
+    Purchasely.userLogout();
+
     async function setupPurchasely() {
       var configured = false;
       try {
@@ -112,9 +118,10 @@ const App: React.FunctionComponent = () => {
           case PLYPaywallAction.LOGIN:
             console.log('User wants to login');
             //Present your own screen for user to log in
-            Purchasely.onProcessAction(false);
+            // Purchasely.onProcessAction(false);
             Purchasely.closePaywall();
-            // Purchasely.userLogin('MY_USER_ID');
+            setIsLoginModalVisible(true);
+
             // Purchasely.onProcessAction(true);
             //Call this method to update Purchasely Paywall
             break;
@@ -263,6 +270,14 @@ const App: React.FunctionComponent = () => {
     Purchasely.onProcessAction(true);
   };
 
+  const [isLoginModalVisible, setIsLoginModalVisible] = useState(false);
+
+  const handleLoginModal = () => {
+    Purchasely.userLogin("test-user");
+    setIsLoginModalVisible(() => !isLoginModalVisible);
+    Purchasely.onProcessAction(true);
+  };
+
   return (
     <NavigationContainer linking={linkingConfiguration}>
     <View style={styles.container}>
@@ -354,6 +369,12 @@ const App: React.FunctionComponent = () => {
         </Text>
       </TouchableHighlight>
     </View>
+    <Modal isVisible={isLoginModalVisible}>
+        <View style={{ flex: 1, backgroundColor: '#FF00FF'}}>
+          <Text>Login Modal!</Text>
+          <Button title="Hide modal" onPress={handleLoginModal} />
+        </View>
+      </Modal>
     </NavigationContainer>
   );
 };
