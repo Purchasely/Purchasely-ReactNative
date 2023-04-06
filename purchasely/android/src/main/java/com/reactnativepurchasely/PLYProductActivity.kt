@@ -23,6 +23,9 @@ class PLYProductActivity : AppCompatActivity() {
   private var productId: String? = null
   private var planId: String? = null
   private var contentId: String? = null
+
+  private var presentation: PLYPresentation? = null
+
   private var isFullScreen: Boolean = false
   private var backgroundColor: String? = null
 
@@ -53,26 +56,31 @@ class PLYProductActivity : AppCompatActivity() {
     planId = intent.extras?.getString("planId")
     contentId = intent.extras?.getString("contentId")
 
-    paywallView = Purchasely.presentationView(
-      this@PLYProductActivity,
-      PLYPresentationViewProperties(
-        placementId = placementId,
-        contentId = contentId,
-        presentationId = presentationId,
-        planId = planId,
-        productId = productId,
-        onLoaded = { onLoaded ->
-          val backgroundPaywall = paywallView?.findViewById<FrameLayout>(io.purchasely.R.id.content)?.background
-          if(backgroundPaywall != null) {
-            findViewById<View>(R.id.container).background = backgroundPaywall
+    presentation = intent.extras?.getParcelable("presentation")
+
+    paywallView = if(presentation != null) {
+      presentation?.buildView(this, null, callback)
+    } else {
+      Purchasely.presentationView(
+        this@PLYProductActivity,
+        PLYPresentationViewProperties(
+          placementId = placementId,
+          contentId = contentId,
+          presentationId = presentationId,
+          planId = planId,
+          productId = productId,
+          onLoaded = { isLoaded ->
+            if(!isLoaded) return@PLYPresentationViewProperties
+
+            val backgroundPaywall = paywallView?.findViewById<FrameLayout>(io.purchasely.R.id.content)?.background
+            if(backgroundPaywall != null) {
+              findViewById<View>(R.id.container).background = backgroundPaywall
+            }
           }
-        },
-        onClose = {
-          findViewById<FrameLayout>(R.id.container).removeAllViews()
-        }
-      ),
-      callback
-    )
+        ),
+        callback
+      )
+    }
 
     if(paywallView == null) {
       finish()
@@ -87,6 +95,7 @@ class PLYProductActivity : AppCompatActivity() {
     super.onStart()
 
     PurchaselyModule.productActivity = PurchaselyModule.ProductActivity(
+      presentation = presentation,
       presentationId = presentationId,
       placementId = placementId,
       productId = productId,

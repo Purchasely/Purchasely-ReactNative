@@ -12,6 +12,7 @@ import com.facebook.react.modules.core.DeviceEventManagerModule.RCTDeviceEventEm
 import io.purchasely.billing.Store
 import io.purchasely.ext.*
 import io.purchasely.ext.EventListener
+import io.purchasely.models.PLYError
 import io.purchasely.models.PLYPlan
 import kotlinx.coroutines.*
 import java.lang.ref.WeakReference
@@ -225,23 +226,25 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
                         contentId: String?,
                         promise: Promise) {
 
-    fetchPromise = promise
 
     val properties = PLYPresentationViewProperties(
       placementId = placementId,
       presentationId = presentationId,
       contentId = contentId)
 
-    reactApplicationContext.currentActivity?.let {
-      val intent = PLYPaywallActivity.newIntent(it, properties).apply {
-        flags = Intent.FLAG_ACTIVITY_MULTIPLE_TASK xor Intent.FLAG_ACTIVITY_NEW_TASK
+    Purchasely.fetchPresentation(
+      properties = properties,
+      resultCallback = null) { presentation: PLYPresentation?, error: PLYError? ->
+      if(presentation != null) {
+        presentationsLoaded.removeAll { it.id == presentation.id && it.placementId == presentation.placementId }
+        presentationsLoaded.add(presentation)
+        promise.resolve(Arguments.makeNativeMap(presentation.toMap().mapValues {
+          val value = it.value
+          if(value is PLYPresentationType) value.ordinal
+          else value
+        }))
       }
-      it.startActivity(intent)
-
-      /*Handler(Looper.getMainLooper()).postDelayed({
-        closePaywall(false)
-      }, 100)*/
-
+      if(error != null) promise.reject(IllegalStateException(error.message ?: "Unable to fetch presentation"))
     }
   }
 
@@ -255,27 +258,22 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
       return
     }
 
-    if(presentationsLoaded.lastOrNull()?.id != presentationMap.getString("id")) {
-      promise.reject(IllegalStateException("presentation was not fetched"))
+    val presentation = presentationsLoaded.lastOrNull {
+      it.id == presentationMap.getString("id")
+      && it.placementId == presentationMap.getString("placementId")
+    }
+    if(presentation == null) {
+      promise.reject(NullPointerException("presentation not fond"))
       return
     }
 
     purchasePromise = promise
 
-    val activity = productActivity?.activity?.get()
-
-    reactApplicationContext.currentActivity?.let {
-      it.startActivity(
-        Intent(it, PLYPaywallActivity::class.java).apply {
-          flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
-        }
-      )
-    }
-
-    if(activity is PLYPaywallActivity) {
-      activity.runOnUiThread {
-        activity.updateDisplay(isFullScreen, loadingBackgroundColor)
+    reactApplicationContext.currentActivity?.let { activity ->
+      val intent = PLYProductActivity.newIntent(activity, PLYPresentationViewProperties(), isFullScreen, loadingBackgroundColor).apply {
+        putExtra("presentation", presentation)
       }
+      activity.startActivity(intent)
     }
 
   }
@@ -431,7 +429,14 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
 
   @ReactMethod
   fun silentRestoreAllProducts(promise: Promise) {
-    restoreAllProducts(promise)
+    Purchasely.silentRestoreAllProducts(
+      success = {
+        promise.resolve(true)
+      },
+      error = {
+        promise.reject(it)
+      }
+    )
   }
 
   @ReactMethod
@@ -607,6 +612,8 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
       paywallActionHandler = processAction
       paywallAction = action
 
+      interceptorActivity = WeakReference(info?.activity)
+
       val parametersForReact = hashMapOf<String, Any?>();
       parametersForReact["title"] = parameters.title
       parametersForReact["url"] = parameters.url?.toString()
@@ -639,7 +646,20 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
         PLYPresentationAction.PURCHASE,
         PLYPresentationAction.LOGIN,
         PLYPresentationAction.OPEN_PRESENTATION -> {
-          if(productActivity?.relaunch(reactApplicationContext) == false) {
+          val currentActivity = interceptorActivity?.get()
+          if(currentActivity != null
+            && !currentActivity.isFinishing
+            && !currentActivity.isDestroyed) {
+            reactApplicationContext.currentActivity?.let {
+              it.startActivity(
+                Intent(it, currentActivity::class.java).apply {
+                  //flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                  flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+                }
+              )
+            }
+          }
+          else if(productActivity?.relaunch(reactApplicationContext) == false) {
             //wait for activity to relaunch
             withContext(Dispatchers.Default) { delay(500) }
           }
@@ -648,10 +668,13 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
         else -> {}
       }
 
-      val activityHandler = productActivity?.activity?.get() ?: reactApplicationContext.currentActivity
+      val activityHandler = interceptorActivity?.get() ?: productActivity?.activity?.get() ?: reactApplicationContext.currentActivity
       activityHandler?.runOnUiThread {
         paywallActionHandler?.invoke(processAction)
       }
+
+      interceptorActivity?.clear()
+      interceptorActivity = null
     }
   }
 
@@ -659,15 +682,9 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   fun closePaywall(definitively: Boolean) {
     if(definitively) {
       val openedPaywall = productActivity?.activity?.get()
-      if(openedPaywall is PLYPaywallActivity) {
-        openedPaywall.finishAffinity()
-        productActivity = null
-        return
-      } else if(openedPaywall is PLYProductActivity) {
-        openedPaywall.finish()
-        productActivity = null
-        return
-      }
+      openedPaywall?.finish()
+      productActivity = null
+      return
     }
 
     val reactActivity = reactApplicationContext.currentActivity
@@ -702,22 +719,11 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
 
     var productActivity: ProductActivity? = null
     var purchasePromise: Promise? = null
-    var fetchPromise: Promise? = null
     var defaultPurchasePromise: Promise? = null
     var paywallActionHandler: PLYCompletionHandler? = null
     var paywallAction: PLYPresentationAction? = null
 
-    fun sendFetchResult(presentation: PLYPresentation?, error: Exception?) {
-      if(presentation != null) {
-        presentationsLoaded.add(presentation)
-        fetchPromise?.resolve(Arguments.makeNativeMap(presentation.toMap().mapValues {
-          val value = it.value
-          if(value is PLYPresentationType) value.ordinal
-          else value
-        }))
-      }
-      if(error != null) fetchPromise?.reject(IllegalStateException(error.message ?: "Unable to fetch presentation"))
-    }
+    var interceptorActivity: WeakReference<Activity>? = null
 
     fun sendPurchaseResult(result: PLYProductViewResult, plan: PLYPlan?) {
       val productViewResult = when(result) {
@@ -751,6 +757,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   }
 
   class ProductActivity(
+    val presentation: PLYPresentation? = null,
     val presentationId: String? = null,
     val placementId: String? = null,
     val productId: String? = null,
@@ -760,6 +767,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     val loadingBackgroundColor: String? = null) {
 
     var activity: WeakReference<Activity>? = null
+
 
     fun relaunch(reactApplicationContext: ReactApplicationContext) : Boolean {
       val backgroundActivity = activity?.get()
@@ -784,7 +792,9 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
             planId = planId,
             contentId = contentId
           )
-          val intent = PLYProductActivity.newIntent(it, properties, isFullScreen, loadingBackgroundColor)
+          val intent = PLYProductActivity.newIntent(it, properties, isFullScreen, loadingBackgroundColor).apply {
+            putExtra("presentation", presentation)
+          }
           it.startActivity(intent)
         }
         return false
