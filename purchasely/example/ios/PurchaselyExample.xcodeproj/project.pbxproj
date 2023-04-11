@@ -187,6 +187,7 @@
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				37B60A485BED1902890D2067 /* [CP] Copy Pods Resources */,
+				699DE9B05FCF5A5140FC9E94 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -354,79 +355,33 @@
 			);
 			inputPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-PurchaselyExample/Pods-PurchaselyExample-resources.sh",
-				"${PODS_ROOT}/../../../../../Sources/Purchasely-iOS-Sources/Purchasely/Assets/common/ar.lproj",
-				"${PODS_ROOT}/../../../../../Sources/Purchasely-iOS-Sources/Purchasely/Assets/common/cs.lproj",
-				"${PODS_ROOT}/../../../../../Sources/Purchasely-iOS-Sources/Purchasely/Assets/common/de.lproj",
-				"${PODS_ROOT}/../../../../../Sources/Purchasely-iOS-Sources/Purchasely/Assets/common/el.lproj",
-				"${PODS_ROOT}/../../../../../Sources/Purchasely-iOS-Sources/Purchasely/Assets/common/en.lproj",
-				"${PODS_ROOT}/../../../../../Sources/Purchasely-iOS-Sources/Purchasely/Assets/common/es.lproj",
-				"${PODS_ROOT}/../../../../../Sources/Purchasely-iOS-Sources/Purchasely/Assets/common/fr.lproj",
-				"${PODS_ROOT}/../../../../../Sources/Purchasely-iOS-Sources/Purchasely/Assets/common/he.lproj",
-				"${PODS_ROOT}/../../../../../Sources/Purchasely-iOS-Sources/Purchasely/Assets/common/id.lproj",
-				"${PODS_ROOT}/../../../../../Sources/Purchasely-iOS-Sources/Purchasely/Assets/common/it.lproj",
-				"${PODS_ROOT}/../../../../../Sources/Purchasely-iOS-Sources/Purchasely/Assets/common/ja.lproj",
-				"${PODS_ROOT}/../../../../../Sources/Purchasely-iOS-Sources/Purchasely/Assets/common/ko.lproj",
-				"${PODS_ROOT}/../../../../../Sources/Purchasely-iOS-Sources/Purchasely/Assets/common/pl.lproj",
-				"${PODS_ROOT}/../../../../../Sources/Purchasely-iOS-Sources/Purchasely/Assets/common/pt-PT.lproj",
-				"${PODS_ROOT}/../../../../../Sources/Purchasely-iOS-Sources/Purchasely/Assets/common/ru.lproj",
-				"${PODS_ROOT}/../../../../../Sources/Purchasely-iOS-Sources/Purchasely/Assets/common/sv-SE.lproj",
-				"${PODS_ROOT}/../../../../../Sources/Purchasely-iOS-Sources/Purchasely/Assets/common/tr.lproj",
-				"${PODS_ROOT}/../../../../../Sources/Purchasely-iOS-Sources/Purchasely/Assets/common/uk.lproj",
-				"${PODS_ROOT}/../../../../../Sources/Purchasely-iOS-Sources/Purchasely/Assets/common/zh-Hans.lproj",
-				"${PODS_ROOT}/../../../../../Sources/Purchasely-iOS-Sources/Purchasely/Assets/common/zh-Hant.lproj",
-				"${PODS_ROOT}/../../../../../Sources/Purchasely-iOS-Sources/Purchasely/Assets/specific/ios/PLYCancellationSurveyViewController.xib",
-				"${PODS_ROOT}/../../../../../Sources/Purchasely-iOS-Sources/Purchasely/Assets/specific/ios/PLYCancelSubscriptionTableViewCell.xib",
-				"${PODS_ROOT}/../../../../../Sources/Purchasely-iOS-Sources/Purchasely/Assets/specific/ios/PLYEmptyTableViewCell.xib",
-				"${PODS_ROOT}/../../../../../Sources/Purchasely-iOS-Sources/Purchasely/Assets/specific/ios/PLYLoadingTableViewCell.xib",
-				"${PODS_ROOT}/../../../../../Sources/Purchasely-iOS-Sources/Purchasely/Assets/specific/ios/PLYNoSubscriptionTableViewCell.xib",
-				"${PODS_ROOT}/../../../../../Sources/Purchasely-iOS-Sources/Purchasely/Assets/specific/ios/PLYPlanTableViewCell.xib",
-				"${PODS_ROOT}/../../../../../Sources/Purchasely-iOS-Sources/Purchasely/Assets/specific/ios/PLYProductViewController.xib",
-				"${PODS_ROOT}/../../../../../Sources/Purchasely-iOS-Sources/Purchasely/Assets/specific/ios/PLYSubscriptionsViewController.xib",
-				"${PODS_ROOT}/../../../../../Sources/Purchasely-iOS-Sources/Purchasely/Assets/specific/ios/PLYSubscriptionTableViewCell.xib",
-				"${PODS_ROOT}/../../../../../Sources/Purchasely-iOS-Sources/Purchasely/Assets/specific/ios/PLYSubscriptionViewController.xib",
-				"${PODS_ROOT}/../../../../../Sources/Purchasely-iOS-Sources/Purchasely/Assets/specific/ios/PLYWebViewViewController.xib",
-				"${PODS_ROOT}/../../../../../Sources/Purchasely-iOS-Sources/Purchasely/Assets/specific/ios/Assets.xcassets",
 				"${PODS_CONFIGURATION_BUILD_DIR}/React-Core/AccessibilityResources.bundle",
 			);
 			name = "[CP] Copy Pods Resources";
 			outputPaths = (
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ar.lproj",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/cs.lproj",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/de.lproj",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/el.lproj",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/en.lproj",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/es.lproj",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/fr.lproj",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/he.lproj",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/id.lproj",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/it.lproj",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ja.lproj",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ko.lproj",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/pl.lproj",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/pt-PT.lproj",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ru.lproj",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/sv-SE.lproj",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/tr.lproj",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/uk.lproj",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/zh-Hans.lproj",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/zh-Hant.lproj",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/PLYCancellationSurveyViewController.nib",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/PLYCancelSubscriptionTableViewCell.nib",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/PLYEmptyTableViewCell.nib",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/PLYLoadingTableViewCell.nib",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/PLYNoSubscriptionTableViewCell.nib",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/PLYPlanTableViewCell.nib",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/PLYProductViewController.nib",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/PLYSubscriptionsViewController.nib",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/PLYSubscriptionTableViewCell.nib",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/PLYSubscriptionViewController.nib",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/PLYWebViewViewController.nib",
-				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/Assets.car",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/AccessibilityResources.bundle",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-PurchaselyExample/Pods-PurchaselyExample-resources.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		699DE9B05FCF5A5140FC9E94 /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-PurchaselyExample/Pods-PurchaselyExample-frameworks.sh",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/Purchasely/Purchasely.framework/Purchasely",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputPaths = (
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/Purchasely.framework",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-PurchaselyExample/Pods-PurchaselyExample-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 		D2089583586BBED6ECC66994 /* [CP] Check Pods Manifest.lock */ = {
