@@ -16,6 +16,8 @@
 
 @property (nonatomic) NSMutableArray<PLYPresentation *> *presentationsLoaded;
 
+@property (nonatomic, assign) Boolean shouldReopenPaywall;
+
 @property void (^loginClosedHandler)(BOOL loggedIn);
 @property void (^authorizePurchaseHandler)(BOOL authorizePurchase);
 @property void (^onProcessActionHandler)(BOOL proceed);

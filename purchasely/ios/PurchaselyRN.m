@@ -22,6 +22,8 @@ RCT_EXPORT_MODULE(Purchasely);
 	self = [super init];
 
     self.presentationsLoaded = [NSMutableArray new];
+    
+    self.shouldReopenPaywall = NO;
 
 	[Purchasely setAppTechnology:PLYAppTechnologyReactNative];
 	return self;
@@ -385,6 +387,7 @@ RCT_EXPORT_METHOD(setLanguage:(NSString * _Nonnull) language) {
 
 RCT_EXPORT_METHOD(closePaywall:(BOOL)definitively) {
     dispatch_async(dispatch_get_main_queue(), ^{
+        self.shouldReopenPaywall = YES;
         if (self.presentedPresentationViewController != nil) {
             [self.presentedPresentationViewController dismissViewControllerAnimated:true completion:nil];
         } else {
@@ -434,6 +437,20 @@ RCT_EXPORT_METHOD(setPaywallActionInterceptor:(RCTPromiseResolveBlock)resolve
 
 RCT_EXPORT_METHOD(onProcessAction:(BOOL)processAction) {
     dispatch_async(dispatch_get_main_queue(), ^{
+        if (processAction && self.shouldReopenPaywall) {
+            if (self.paywallAction == PLYPresentationActionPromoCode ||
+                self.paywallAction == PLYPresentationActionRestore ||
+                self.paywallAction == PLYPresentationActionPurchase ||
+                self.paywallAction == PLYPresentationActionLogin ||
+                self.paywallAction == PLYPresentationActionOpenPresentation) {
+                if (self.presentedPresentationViewController) {
+                    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.5 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+                        [Purchasely showController:self.presentedPresentationViewController type:PLYUIControllerTypeProductPage];
+                    });
+                }
+            }
+        }
+        self.shouldReopenPaywall = NO;
         self.onProcessActionHandler(processAction);
     });
 }
