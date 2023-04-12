@@ -1,6 +1,6 @@
 import { NativeModules, NativeEventEmitter } from 'react-native';
 
-const purchaselyVersion = '2.6.7';
+const purchaselyVersion = '2.6.8';
 
 interface Constants {
   logLevelDebug: number;
@@ -591,7 +591,7 @@ const Purchasely = {
   presentPlanWithIdentifier,
   purchaseWithPlanVendorId,
   setUserAttributeWithDate,
-  closePaywall
+  closePaywall,
 };
 
 export default Purchasely;
