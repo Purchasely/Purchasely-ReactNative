@@ -8,6 +8,7 @@
 #import <React/RCTBridgeModule.h>
 #import <React/RCTConvert.h>
 #import <Purchasely/Purchasely-Swift.h>
+//@import Purchasely;
 
 @implementation RCTConvert (PurchaselyRN)
 

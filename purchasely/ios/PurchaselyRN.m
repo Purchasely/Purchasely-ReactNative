@@ -9,6 +9,7 @@
 
 #import <React/RCTLog.h>
 #import <Purchasely/Purchasely-Swift.h>
+//@import Purchasely;
 #import "PurchaselyRN.h"
 #import "Purchasely_Hybrid.h"
 #import "UIColor+PLYHelper.h"
@@ -21,6 +22,8 @@ RCT_EXPORT_MODULE(Purchasely);
 	self = [super init];
 
     self.presentationsLoaded = [NSMutableArray new];
+    
+    self.shouldReopenPaywall = NO;
 
 	[Purchasely setAppTechnology:PLYAppTechnologyReactNative];
 	return self;
@@ -287,6 +290,7 @@ RCT_EXPORT_METHOD(handle:(NSString * _Nullable) deeplink
         [self reject: reject with: error];
         return;
     }
+    
     dispatch_async(dispatch_get_main_queue(), ^{
         resolve(@([Purchasely handleWithDeeplink:[NSURL URLWithString:deeplink]]));
     });
@@ -295,6 +299,7 @@ RCT_EXPORT_METHOD(handle:(NSString * _Nullable) deeplink
 RCT_EXPORT_METHOD(userLogout) {
 	[Purchasely userLogout];
 }
+
 
 RCT_EXPORT_METHOD(setAttribute:(NSInteger)attribute value:(NSString * _Nonnull)value) {
 	[Purchasely setAttribute:attribute value:value];
@@ -382,10 +387,9 @@ RCT_EXPORT_METHOD(setLanguage:(NSString * _Nonnull) language) {
 
 RCT_EXPORT_METHOD(closePaywall:(BOOL)definitively) {
     dispatch_async(dispatch_get_main_queue(), ^{
+        self.shouldReopenPaywall = YES;
         if (self.presentedPresentationViewController != nil) {
-            [self.presentedPresentationViewController dismissViewControllerAnimated:true completion:^{
-                self.presentedPresentationViewController = nil;
-            }];
+            [self.presentedPresentationViewController dismissViewControllerAnimated:true completion:nil];
         } else {
             [Purchasely closeDisplayedPresentation];
         }
@@ -404,7 +408,9 @@ RCT_REMAP_METHOD(getAnonymousUserId,
 }
 
 RCT_EXPORT_METHOD(isReadyToPurchase:(BOOL)ready) {
-	[Purchasely isReadyToPurchase: ready];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [Purchasely isReadyToPurchase: ready];
+    });
 }
 
 RCT_EXPORT_METHOD(setDefaultPresentationResultHandler:(RCTPromiseResolveBlock)resolve
@@ -423,6 +429,7 @@ RCT_EXPORT_METHOD(setPaywallActionInterceptor:(RCTPromiseResolveBlock)resolve
     dispatch_async(dispatch_get_main_queue(), ^{
         [Purchasely setPaywallActionsInterceptor:^(enum PLYPresentationAction action, PLYPresentationActionParameters * _Nullable parameters, PLYPresentationInfo * _Nullable infos, void (^ _Nonnull onProcessActionHandler)(BOOL)) {
             self.onProcessActionHandler = onProcessActionHandler;
+            self.paywallAction = action;
             resolve([self resultDictionaryForActionInterceptor:action parameters:parameters presentationInfos:infos]);
         }];
     });
@@ -430,6 +437,20 @@ RCT_EXPORT_METHOD(setPaywallActionInterceptor:(RCTPromiseResolveBlock)resolve
 
 RCT_EXPORT_METHOD(onProcessAction:(BOOL)processAction) {
     dispatch_async(dispatch_get_main_queue(), ^{
+        if (processAction && self.shouldReopenPaywall) {
+            if (self.paywallAction == PLYPresentationActionPromoCode ||
+                self.paywallAction == PLYPresentationActionRestore ||
+                self.paywallAction == PLYPresentationActionPurchase ||
+                self.paywallAction == PLYPresentationActionLogin ||
+                self.paywallAction == PLYPresentationActionOpenPresentation) {
+                if (self.presentedPresentationViewController) {
+                    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.5 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+                        [Purchasely showController:self.presentedPresentationViewController type:PLYUIControllerTypeProductPage];
+                    });
+                }
+            }
+        }
+        self.shouldReopenPaywall = NO;
         self.onProcessActionHandler(processAction);
     });
 }

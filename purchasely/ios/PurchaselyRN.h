@@ -10,14 +10,17 @@
 
 @interface PurchaselyRN: RCTEventEmitter <RCTBridgeModule, PLYEventDelegate>
 
-@property (nonatomic, assign) UIViewController* presentedPresentationViewController;
+@property (nonatomic, retain) UIViewController* presentedPresentationViewController;
 
 @property (nonatomic) RCTPromiseResolveBlock purchaseResolve;
 
 @property (nonatomic) NSMutableArray<PLYPresentation *> *presentationsLoaded;
 
+@property (nonatomic, assign) Boolean shouldReopenPaywall;
+
 @property void (^loginClosedHandler)(BOOL loggedIn);
 @property void (^authorizePurchaseHandler)(BOOL authorizePurchase);
 @property void (^onProcessActionHandler)(BOOL proceed);
+@property enum PLYPresentationAction paywallAction;
 
 @end

@@ -7,6 +7,7 @@
 
 #import <Foundation/Foundation.h>
 #import <Purchasely/Purchasely-Swift.h>
+//@import Purchasely;
 
 NS_ASSUME_NONNULL_BEGIN
 

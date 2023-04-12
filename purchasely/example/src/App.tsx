@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Linking,
   View,
   TouchableHighlight,
+  Button,
   Text,
   StyleSheet,
   ActivityIndicator,
@@ -13,17 +14,20 @@ import Purchasely, {
   ProductResult,
   RunningMode,
   PLYPaywallAction,
-  PurchaselyPresentation,
   PLYPresentationType,
 } from 'react-native-purchasely';
 
 import { NavigationContainer } from '@react-navigation/native';
+
+import Modal from 'react-native-modal';
 
 const App: React.FunctionComponent = () => {
   const [anonymousUserId, setAnonymousUserId] = React.useState<string>('');
   const [loading, setLoading] = React.useState<boolean>(false);
 
   React.useEffect(() => {
+    Purchasely.userLogout();
+
     async function setupPurchasely() {
       var configured = false;
       try {
@@ -44,9 +48,7 @@ const App: React.FunctionComponent = () => {
 
       setAnonymousUserId(await Purchasely.getAnonymousUserId());
 
-      const product = await Purchasely.productWithIdentifier(
-        'PURCHASELY_PLUS'
-      );
+      const product = await Purchasely.productWithIdentifier('PURCHASELY_PLUS');
       console.log('Product', product);
 
       const subscriptions = await Purchasely.userSubscriptions();
@@ -112,9 +114,11 @@ const App: React.FunctionComponent = () => {
           case PLYPaywallAction.LOGIN:
             console.log('User wants to login');
             //Present your own screen for user to log in
-            //Purchasely.closePaywall();
-            Purchasely.userLogin('MY_USER_ID');
-            Purchasely.onProcessAction(true);
+            // Purchasely.onProcessAction(false);
+            Purchasely.closePaywall();
+            setIsLoginModalVisible(true);
+
+            // Purchasely.onProcessAction(true);
             //Call this method to update Purchasely Paywall
             break;
           case PLYPaywallAction.PURCHASE:
@@ -154,7 +158,7 @@ const App: React.FunctionComponent = () => {
       const result = await Purchasely.presentPresentationForPlacement({
         placementVendorId: 'ONBOARDING',
         isFullscreen: false,
-        loadingBackgroundColor: '#FFFFFFFF'
+        loadingBackgroundColor: '#FFFFFFFF',
       });
 
       console.log('Result is ' + result.result);
@@ -178,25 +182,25 @@ const App: React.FunctionComponent = () => {
   const onPressFetch = async () => {
     try {
       const presentation = await Purchasely.fetchPresentation({
-          placementId: 'RELANCEDM',
-          contentId: 'content_id_from_reactnative',
-      })
+        placementId: 'RELANCEDM',
+        contentId: 'content_id_from_reactnative',
+      });
 
-      if(presentation.type == PLYPresentationType.DEACTIVATED) {
+      if (presentation.type === PLYPresentationType.DEACTIVATED) {
         // No paywall to display
-        return
+        return;
       }
 
-      if(presentation.type == PLYPresentationType.CLIENT) {
+      if (presentation.type === PLYPresentationType.CLIENT) {
         // Display my own paywall
-        return
+        return;
       }
 
       //Display Purchasely paywall
 
       const result = await Purchasely.presentPresentation({
-        presentation: presentation
-      })
+        presentation: presentation,
+      });
 
       console.log('Result is ' + result.result);
 
@@ -262,97 +266,111 @@ const App: React.FunctionComponent = () => {
     Purchasely.onProcessAction(true);
   };
 
+  const [isLoginModalVisible, setIsLoginModalVisible] = useState(false);
+
+  const handleLoginModal = () => {
+    Purchasely.userLogin('test-user');
+    setIsLoginModalVisible(() => !isLoginModalVisible);
+    Purchasely.onProcessAction(true);
+  };
+
   return (
     <NavigationContainer linking={linkingConfiguration}>
-    <View style={styles.container}>
-      <Text>Anonymous User Id {anonymousUserId}</Text>
-      <TouchableHighlight
-        onPress={onPressPresentation}
-        disabled={loading}
-        style={loading ? styles.buttonDisabled : styles.button}
-      >
-        <Text style={styles.text}>
-          {loading && (
-            <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
-          )}{' '}
-          Display presentation
-        </Text>
-      </TouchableHighlight>
-      <TouchableHighlight
-        onPress={onPressFetch}
-        disabled={loading}
-        style={loading ? styles.buttonDisabled : styles.button}
-      >
-        <Text style={styles.text}>
-          {loading && (
-            <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
-          )}{' '}
-          Fetch presentation
-        </Text>
-      </TouchableHighlight>
-      <TouchableHighlight
-        onPress={onPressPurchase}
-        disabled={loading}
-        style={loading ? styles.buttonDisabled : styles.button}
-      >
-        <Text style={styles.text}>
-          {loading && (
-            <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
-          )}{' '}
-          Tap to purchase
-        </Text>
-      </TouchableHighlight>
-      <TouchableHighlight
-        onPress={onPressSubscriptions}
-        disabled={loading}
-        style={loading ? styles.buttonDisabled : styles.button}
-      >
-        <Text style={styles.text}>
-          {loading && (
-            <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
-          )}{' '}
-          My subscriptions
-        </Text>
-      </TouchableHighlight>
-      <TouchableHighlight
-        onPress={onPressRestore}
-        disabled={loading}
-        style={loading ? styles.buttonDisabled : styles.button}
-      >
-        <Text style={styles.text}>
-          {loading && (
-            <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
-          )}{' '}
-          Restore purchases
-        </Text>
-      </TouchableHighlight>
+      <View style={styles.container}>
+        <Text>Anonymous User Id {anonymousUserId}</Text>
+        <TouchableHighlight
+          onPress={onPressPresentation}
+          disabled={loading}
+          style={loading ? styles.buttonDisabled : styles.button}
+        >
+          <Text style={styles.text}>
+            {loading && (
+              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
+            )}{' '}
+            Display presentation
+          </Text>
+        </TouchableHighlight>
+        <TouchableHighlight
+          onPress={onPressFetch}
+          disabled={loading}
+          style={loading ? styles.buttonDisabled : styles.button}
+        >
+          <Text style={styles.text}>
+            {loading && (
+              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
+            )}{' '}
+            Fetch presentation
+          </Text>
+        </TouchableHighlight>
+        <TouchableHighlight
+          onPress={onPressPurchase}
+          disabled={loading}
+          style={loading ? styles.buttonDisabled : styles.button}
+        >
+          <Text style={styles.text}>
+            {loading && (
+              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
+            )}{' '}
+            Tap to purchase
+          </Text>
+        </TouchableHighlight>
+        <TouchableHighlight
+          onPress={onPressSubscriptions}
+          disabled={loading}
+          style={loading ? styles.buttonDisabled : styles.button}
+        >
+          <Text style={styles.text}>
+            {loading && (
+              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
+            )}{' '}
+            My subscriptions
+          </Text>
+        </TouchableHighlight>
+        <TouchableHighlight
+          onPress={onPressRestore}
+          disabled={loading}
+          style={loading ? styles.buttonDisabled : styles.button}
+        >
+          <Text style={styles.text}>
+            {loading && (
+              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
+            )}{' '}
+            Restore purchases
+          </Text>
+        </TouchableHighlight>
 
-      <TouchableHighlight
-        onPress={onPressSilentRestore}
-        disabled={loading}
-        style={loading ? styles.buttonDisabled : styles.button}
-      >
-        <Text style={styles.text}>
-          {loading && (
-            <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
-          )}{' '}
-          Silent Restore purchases
-        </Text>
-      </TouchableHighlight>
+        <TouchableHighlight
+          onPress={onPressSilentRestore}
+          disabled={loading}
+          style={loading ? styles.buttonDisabled : styles.button}
+        >
+          <Text style={styles.text}>
+            {loading && (
+              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
+            )}{' '}
+            Silent Restore purchases
+          </Text>
+        </TouchableHighlight>
 
-      <TouchableHighlight
-        onPress={onPressContinueAction}
-        disabled={loading}
-        style={loading ? styles.buttonDisabled : styles.button}
-      >
-        <Text style={styles.text}>
-          {loading && (
-            <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
-          )}{' '}
-          Continue action
-        </Text>
-      </TouchableHighlight>
-    </View>
+        <TouchableHighlight
+          onPress={onPressContinueAction}
+          disabled={loading}
+          style={loading ? styles.buttonDisabled : styles.button}
+        >
+          <Text style={styles.text}>
+            {loading && (
+              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
+            )}{' '}
+            Continue action
+          </Text>
+        </TouchableHighlight>
+      </View>
+      <Modal isVisible={isLoginModalVisible}>
+        <View style={{ flex: 1, backgroundColor: '#FF00FF' }}>
+          <Text>Login Modal!</Text>
+          <Button title="Hide modal" onPress={handleLoginModal} />
+        </View>
+      </Modal>
     </NavigationContainer>
   );
 };
@@ -370,18 +388,18 @@ const linkingConfiguration = {
     return url;
   },
 
-   // Custom function to subscribe to incoming links
-   /*subscribe(listener) {
+  // Custom function to subscribe to incoming links
+  /*subscribe(listener) {
 
-    // Listen to incoming links from deep linking
-    const linkingSubscription = Linking.addEventListener('url', ({ url }) => {
-      Purchasely.handle(url);
-    });
+  // Listen to incoming links from deep linking
+  const linkingSubscription = Linking.addEventListener('url', ({ url }) => {
+    Purchasely.handle(url);
+  });
 
-    return () => {
-      linkingSubscription.remove();
-    };
-  }*/
+  return () => {
+    linkingSubscription.remove();
+  };
+}*/
 };
 
 const styles = StyleSheet.create({
