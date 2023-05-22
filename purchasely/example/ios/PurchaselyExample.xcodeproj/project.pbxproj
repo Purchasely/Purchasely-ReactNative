@@ -374,10 +374,12 @@
 			inputPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-PurchaselyExample/Pods-PurchaselyExample-frameworks.sh",
 				"${PODS_XCFRAMEWORKS_BUILD_DIR}/Purchasely/Purchasely.framework/Purchasely",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
 			);
 			name = "[CP] Embed Pods Frameworks";
 			outputPaths = (
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/Purchasely.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -557,8 +559,12 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.purchasely.demo;
 				PRODUCT_NAME = PurchaselyExample;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
 			};
 			name = Debug;
@@ -583,7 +589,11 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.purchasely.demo;
 				PRODUCT_NAME = PurchaselyExample;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
 			};
 			name = Release;

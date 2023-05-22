@@ -6,7 +6,7 @@ platform :ios, '13.0'
 target 'PurchaselyExample' do
   config = use_native_modules!
 
-  use_react_native!(:path => config["reactNativePath"])
+  use_react_native!(:path => config[:reactNativePath])
 
  #pod 'Purchasely', :git => 'https://github.com/Purchasely/Purchasely-iOS.git'
  #pod 'Purchasely', :path => '../../../../Sources/Purchasely-iOS-Sources'

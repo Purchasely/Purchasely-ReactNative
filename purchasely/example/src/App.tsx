@@ -8,6 +8,7 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
+
 import Purchasely, {
   LogLevels,
   Attributes,
@@ -19,7 +20,11 @@ import Purchasely, {
 
 import { NavigationContainer } from '@react-navigation/native';
 
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+
 import Modal from 'react-native-modal';
+
+
 
 const App: React.FunctionComponent = () => {
   const [anonymousUserId, setAnonymousUserId] = React.useState<string>('');
@@ -32,7 +37,7 @@ const App: React.FunctionComponent = () => {
       var configured = false;
       try {
         configured = await Purchasely.startWithAPIKey(
-          'fcb39be4-2ba4-4db7-bde3-2a5a1e20745d',
+          '31572cdd-96f3-4d94-b17f-9f2668c07800',//'fcb39be4-2ba4-4db7-bde3-2a5a1e20745d',
           ['Google'],
           null,
           LogLevels.DEBUG,
@@ -156,8 +161,8 @@ const App: React.FunctionComponent = () => {
   const onPressPresentation = async () => {
     try {
       const result = await Purchasely.presentPresentationForPlacement({
-        placementVendorId: 'ONBOARDING',
-        isFullscreen: false,
+        placementVendorId: 'paywall_carousel',
+        isFullscreen: true,
         loadingBackgroundColor: '#FFFFFFFF',
       });
 
@@ -274,8 +279,10 @@ const App: React.FunctionComponent = () => {
     Purchasely.onProcessAction(true);
   };
 
-  return (
-    <NavigationContainer linking={linkingConfiguration}>
+  const Stack = createNativeStackNavigator()
+
+  function HomeScreen() {
+    return (
       <View style={styles.container}>
         <Text>Anonymous User Id {anonymousUserId}</Text>
         <TouchableHighlight
@@ -365,12 +372,20 @@ const App: React.FunctionComponent = () => {
           </Text>
         </TouchableHighlight>
       </View>
-      <Modal isVisible={isLoginModalVisible}>
-        <View style={{ flex: 1, backgroundColor: '#FF00FF' }}>
-          <Text>Login Modal!</Text>
-          <Button title="Hide modal" onPress={handleLoginModal} />
-        </View>
-      </Modal>
+      // <Modal isVisible={isLoginModalVisible}>
+      //   <View style={{ flex: 1, backgroundColor: '#FF00FF' }}>
+      //     <Text>Login Modal!</Text>
+      //     <Button title="Hide modal" onPress={handleLoginModal} />
+      //   </View>
+      // </Modal>
+    );
+  }
+
+  return (
+    <NavigationContainer linking={linkingConfiguration}>
+      <Stack.Navigator>
+        <Stack.Screen name="Home" component={HomeScreen} />
+      </Stack.Navigator>
     </NavigationContainer>
   );
 };
