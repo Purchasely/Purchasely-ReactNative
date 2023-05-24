@@ -176,6 +176,11 @@ RCT_EXPORT_MODULE(Purchasely);
     if (plan != nil) {
         [productViewResult setObject:[plan asDictionary] forKey:@"plan"];
     }
+    
+    if (result == PLYProductViewControllerResultPurchased || PLYProductViewControllerResultRestored) {
+        [self closePaywall:NO];
+        self.shouldReopenPaywall = NO;
+    }
     return productViewResult;
 }
 
@@ -248,7 +253,7 @@ RCT_EXPORT_METHOD(startWithAPIKey:(NSString * _Nonnull)apiKey
 				  reject:(RCTPromiseRejectBlock)reject) {
 
     [Purchasely setSdkBridgeVersion:purchaselySdkVersion];
-
+    
     [Purchasely startWithAPIKey:apiKey
                       appUserId:userId
                     runningMode:runningMode
@@ -389,7 +394,11 @@ RCT_EXPORT_METHOD(closePaywall:(BOOL)definitively) {
     dispatch_async(dispatch_get_main_queue(), ^{
         self.shouldReopenPaywall = YES;
         if (self.presentedPresentationViewController != nil) {
-            [self.presentedPresentationViewController dismissViewControllerAnimated:true completion:nil];
+            UIViewController *presentingViewController = self.presentedPresentationViewController;
+            while (presentingViewController.presentingViewController) {
+                presentingViewController = presentingViewController.presentingViewController;
+            }
+            [presentingViewController dismissViewControllerAnimated:true completion:nil];
         } else {
             [Purchasely closeDisplayedPresentation];
         }
@@ -547,6 +556,8 @@ RCT_EXPORT_METHOD(presentPresentation:(NSDictionary<NSString *, id> * _Nullable)
                 presentationLoaded.controller.modalPresentationStyle = UIModalPresentationFullScreen;
             }
 
+            self.shouldReopenPaywall = NO;
+            
             self.presentedPresentationViewController = presentationLoaded.controller;
 
             [Purchasely showController:presentationLoaded.controller type: PLYUIControllerTypeProductPage];
@@ -600,6 +611,8 @@ RCT_EXPORT_METHOD(presentPresentationWithIdentifier:(NSString * _Nullable)presen
 				}
 			}
 
+            self.shouldReopenPaywall = NO;
+            
             self.presentedPresentationViewController = ctrl;
 
             if (isFullscreen) {
@@ -632,6 +645,9 @@ RCT_EXPORT_METHOD(presentPresentationForPlacement:(NSString * _Nullable)placemen
 					[ctrl.view setBackgroundColor:backColor];
 				}
 			}
+            
+            
+            self.shouldReopenPaywall = NO;
             
             self.presentedPresentationViewController = ctrl;
             

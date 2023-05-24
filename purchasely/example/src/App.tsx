@@ -37,7 +37,7 @@ const App: React.FunctionComponent = () => {
       var configured = false;
       try {
         configured = await Purchasely.startWithAPIKey(
-          '31572cdd-96f3-4d94-b17f-9f2668c07800',//'fcb39be4-2ba4-4db7-bde3-2a5a1e20745d',
+          'fcb39be4-2ba4-4db7-bde3-2a5a1e20745d',
           ['Google'],
           null,
           LogLevels.DEBUG,
@@ -121,9 +121,9 @@ const App: React.FunctionComponent = () => {
             //Present your own screen for user to log in
             // Purchasely.onProcessAction(false);
             Purchasely.closePaywall();
-            setIsLoginModalVisible(true);
+            // setIsLoginModalVisible(true);
 
-            // Purchasely.onProcessAction(true);
+            Purchasely.onProcessAction(true);
             //Call this method to update Purchasely Paywall
             break;
           case PLYPaywallAction.PURCHASE:
@@ -160,8 +160,8 @@ const App: React.FunctionComponent = () => {
 
   const onPressPresentation = async () => {
     try {
-      const result = await Purchasely.presentPresentationForPlacement({
-        placementVendorId: 'paywall_carousel',
+      const result = await Purchasely.presentPresentationWithIdentifier({
+        presentationVendorId: 'BLINKIST',
         isFullscreen: true,
         loadingBackgroundColor: '#FFFFFFFF',
       });
