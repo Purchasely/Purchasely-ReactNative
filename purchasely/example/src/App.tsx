@@ -161,7 +161,7 @@ const App: React.FunctionComponent = () => {
   const onPressPresentation = async () => {
     try {
       const result = await Purchasely.presentPresentationWithIdentifier({
-        presentationVendorId: 'BLINKIST',
+        presentationVendorId: 'FLOW_2',
         isFullscreen: true,
         loadingBackgroundColor: '#FFFFFFFF',
       });
