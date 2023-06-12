@@ -45,6 +45,7 @@ RCT_EXPORT_MODULE(Purchasely);
 		@"amplitudeSessionId": @(PLYAttributeAmplitudeSessionId),
 		@"firebaseAppInstanceId": @(PLYAttributeFirebaseAppInstanceId),
 		@"airshipChannelId": @(PLYAttributeAirshipChannelId),
+        @"airshipUserId": @(PLYAttributeAirshipUserId),
         @"batchInstallationId": @(PLYAttributeBatchInstallationId),
         @"adjustId": @(PLYAttributeAdjustId),
         @"appsflyerId": @(PLYAttributeAppsflyerId),
