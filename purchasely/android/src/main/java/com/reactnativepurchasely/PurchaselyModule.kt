@@ -57,6 +57,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     constants["amplitudeSessionId"] = Attribute.AMPLITUDE_SESSION_ID.ordinal
     constants["firebaseAppInstanceId"] = Attribute.FIREBASE_APP_INSTANCE_ID.ordinal
     constants["airshipChannelId"] = Attribute.AIRSHIP_CHANNEL_ID.ordinal
+    constants["airshipUserId"] = Attribute.AIRSHIP_USER_ID.ordinal
     constants["batchInstallationId"] = Attribute.BATCH_INSTALLATION_ID.ordinal
     constants["adjustId"] = Attribute.ADJUST_ID.ordinal
     constants["appsflyerId"] = Attribute.APPSFLYER_ID.ordinal
@@ -73,6 +74,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     constants["customerIoUserId"] = Attribute.CUSTOMERIO_USER_ID.ordinal
     constants["customerIoUserEmail"] = Attribute.CUSTOMERIO_USER_EMAIL.ordinal
     constants["branchUserDeveloperIdentity"] = Attribute.BRANCH_USER_DEVELOPER_IDENTITY.ordinal
+    constants["moEngageUniqueId"] = Attribute.MOENGAGE_UNIQUE_ID.ordinal
     constants["sourceAppStore"] = StoreType.APPLE_APP_STORE.ordinal
     constants["sourcePlayStore"] = StoreType.GOOGLE_PLAY_STORE.ordinal
     constants["sourceHuaweiAppGallery"] = StoreType.HUAWEI_APP_GALLERY.ordinal
