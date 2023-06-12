@@ -1,6 +1,6 @@
 import { NativeModules, NativeEventEmitter } from 'react-native';
 
-const purchaselyVersion = '2.6.8';
+const purchaselyVersion = '2.7.0';
 
 interface Constants {
   logLevelDebug: number;
@@ -18,6 +18,7 @@ interface Constants {
   amplitudeSessionId: number;
   firebaseAppInstanceId: number;
   airshipChannelId: number;
+  airshipUserId: number;
   batchInstallationId: number;
   adjustId: number;
   appsflyerId: number;
@@ -34,6 +35,7 @@ interface Constants {
   customerIoUserId: number;
   customerIoUserEmail: number;
   branchUserDeveloperIdentity: number;
+  moEngageUniqueId: number;
   consumable: number;
   nonConsumable: number;
   autoRenewingSubscription: number;
@@ -75,6 +77,7 @@ export enum Attributes {
   AMPLITUDE_SESSION_ID = constants.amplitudeSessionId,
   FIREBASE_APP_INSTANCE_ID = constants.firebaseAppInstanceId,
   AIRSHIP_CHANNEL_ID = constants.airshipChannelId,
+  AIRSHIP_USER_ID = constants.airshipUserId,
   BATCH_INSTALLATION_ID = constants.batchInstallationId,
   ADJUST_ID = constants.adjustId,
   APPSFLYER_ID = constants.appsflyerId,
@@ -91,6 +94,7 @@ export enum Attributes {
   CUSTOMER_IO_USER_ID = constants.customerIoUserId,
   CUSTOMER_IO_USER_EMAIL = constants.customerIoUserEmail,
   BRANCH_DEVELOPER_IDENTITY = constants.branchUserDeveloperIdentity,
+  MOENGAGE_UNIQUE_ID = constants.moEngageUniqueId,
 }
 
 export enum PlanType {
