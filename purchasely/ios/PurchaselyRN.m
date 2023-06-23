@@ -16,11 +16,13 @@
 
 @implementation PurchaselyRN
 
+extern BOOL presenting;
+
 RCT_EXPORT_MODULE(Purchasely);
 
 - (instancetype)init {
 	self = [super init];
-
+    self.presenting = false;
     self.presentationsLoaded = [NSMutableArray new];
     
     self.shouldReopenPaywall = NO;
@@ -471,6 +473,8 @@ RCT_EXPORT_METHOD(fetchPresentation:(NSString * _Nullable)placementId
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 {
+    if (self.presenting == true) { return; }
+    self.presenting = true;
     dispatch_async(dispatch_get_main_queue(), ^{
         if (placementId != nil) {
             [Purchasely fetchPresentationFor:placementId contentId: contentId fetchCompletion:^(PLYPresentation * _Nullable presentation, NSError * _Nullable error) {
@@ -562,6 +566,7 @@ RCT_EXPORT_METHOD(presentPresentation:(NSDictionary<NSString *, id> * _Nullable)
             self.presentedPresentationViewController = presentationLoaded.controller;
 
             [Purchasely showController:presentationLoaded.controller type: PLYUIControllerTypeProductPage];
+            self.presenting = false;
         }
     });
 
