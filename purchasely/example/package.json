@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@purchasely/react-native-purchasely-google": "file:../../purchasely-google",
+    "@purchasely/react-native-purchasely-android-player": "file:../../purchasely-android-player",
     "@react-navigation/core": "^6.4.8",
     "@react-navigation/native": "^6.1.6",
     "react": "17.0.2",
