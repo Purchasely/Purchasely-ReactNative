@@ -31,8 +31,6 @@
         android:theme="@style/Theme.Purchasely.Fullscreen.Light"
         /> -->
 
-      <activity tools:replace="android:screenOrientation" android:name="com.reactnativepurchasely.PLYProductActivity" android:screenOrientation="portrait" />
-
        <!-- <activity
         tools:replace="android:theme"
         android:name="com.reactnativepurchasely.PLYPaywallActivity"

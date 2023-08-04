@@ -59,7 +59,10 @@ class PLYProductActivity : AppCompatActivity() {
     presentation = intent.extras?.getParcelable("presentation")
 
     paywallView = if(presentation != null) {
-      presentation?.buildView(this, null, callback)
+      presentation?.buildView(this, viewProperties = PLYPresentationViewProperties(onClose = {
+        findViewById<FrameLayout>(R.id.container).removeAllViews()
+        supportFinishAfterTransition()
+      }), callback)
     } else {
       Purchasely.presentationView(
         this@PLYProductActivity,
@@ -76,6 +79,10 @@ class PLYProductActivity : AppCompatActivity() {
             if(backgroundPaywall != null) {
               findViewById<View>(R.id.container).background = backgroundPaywall
             }
+          },
+          onClose = {
+            findViewById<FrameLayout>(R.id.container).removeAllViews()
+            supportFinishAfterTransition()
           }
         ),
         callback
@@ -117,7 +124,7 @@ class PLYProductActivity : AppCompatActivity() {
 
   private val callback: (PLYProductViewResult, PLYPlan?) -> Unit = { result, plan ->
     PurchaselyModule.sendPurchaseResult(result, plan)
-    supportFinishAfterTransition()
+    //supportFinishAfterTransition()
   }
 
   companion object {

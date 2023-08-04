@@ -134,8 +134,8 @@ const App: React.FunctionComponent = () => {
       });
 
       Purchasely.addEventListener((event) => {
-        console.log(event.name);
-        console.log(event.properties);
+        //console.log(event.name);
+        //console.log(event.properties);
       });
 
       Purchasely.addPurchasedListener(() => {
@@ -182,7 +182,7 @@ const App: React.FunctionComponent = () => {
   const onPressFetch = async () => {
     try {
       const presentation = await Purchasely.fetchPresentation({
-        placementId: 'RELANCEDM',
+        placementId: 'app_launch_demo',
         contentId: 'content_id_from_reactnative',
       });
 
@@ -202,6 +202,7 @@ const App: React.FunctionComponent = () => {
         presentation: presentation,
       });
 
+      console.log('---- Paywall Closed ----');
       console.log('Result is ' + result.result);
 
       switch (result.result) {
