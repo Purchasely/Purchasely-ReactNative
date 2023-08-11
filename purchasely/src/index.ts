@@ -15,7 +15,6 @@ interface Constants {
   sourceHuaweiAppGallery: number;
   sourceAmazonAppstore: number;
   sourceNone: number;
-  amplitudeSessionId: number;
   firebaseAppInstanceId: number;
   airshipChannelId: number;
   airshipUserId: number;
@@ -74,7 +73,6 @@ export enum SubscriptionSource {
 }
 
 export enum Attributes {
-  AMPLITUDE_SESSION_ID = constants.amplitudeSessionId,
   FIREBASE_APP_INSTANCE_ID = constants.firebaseAppInstanceId,
   AIRSHIP_CHANNEL_ID = constants.airshipChannelId,
   AIRSHIP_USER_ID = constants.airshipUserId,
@@ -204,7 +202,7 @@ type PurchaselyType = {
   userLogin(userId: string): Promise<boolean>;
   userLogout(): void;
   setLogLevel(logLevel: LogLevels): void;
-  isReadyToPurchase(isReadyToPurchase: boolean): void;
+  readyToOpenDeeplink(ready: boolean): void;
   setAttribute(attribute: Attributes, value: string): void;
   allProducts(): Promise<PurchaselyProduct[]>;
   productWithIdentifier(vendorId: string): Promise<PurchaselyProduct>;
@@ -213,7 +211,7 @@ type PurchaselyType = {
   silentRestoreAllProducts(): Promise<boolean>;
   userSubscriptions(): Promise<PurchaselySubscription[]>;
   presentSubscriptions(): void;
-  handle(deeplink: string | null): Promise<boolean>;
+  isDeeplinkHandled(deeplink: string | null): Promise<boolean>;
   synchronize(): void;
   setDefaultPresentationResultHandler(): Promise<PresentPresentationResult>;
   setPaywallActionInterceptor(): Promise<PaywallActionInterceptorResult>;
