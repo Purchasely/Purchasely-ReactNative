@@ -24,7 +24,7 @@ RCT_EXPORT_MODULE(Purchasely);
 	self = [super init];
     self.presenting = false;
     self.presentationsLoaded = [NSMutableArray new];
-    
+
     self.shouldReopenPaywall = NO;
 
 	[Purchasely setAppTechnology:PLYAppTechnologyReactNative];
@@ -44,7 +44,6 @@ RCT_EXPORT_MODULE(Purchasely);
 		@"sourcePlayStore": @(PLYSubscriptionSourceGooglePlayStore),
 		@"sourceHuaweiAppGallery": @(PLYSubscriptionSourceHuaweiAppGallery),
 		@"sourceAmazonAppstore": @(PLYSubscriptionSourceAmazonAppstore),
-		@"amplitudeSessionId": @(PLYAttributeAmplitudeSessionId),
 		@"firebaseAppInstanceId": @(PLYAttributeFirebaseAppInstanceId),
 		@"airshipChannelId": @(PLYAttributeAirshipChannelId),
         @"airshipUserId": @(PLYAttributeAirshipUserId),
@@ -179,7 +178,7 @@ RCT_EXPORT_MODULE(Purchasely);
     if (plan != nil) {
         [productViewResult setObject:[plan asDictionary] forKey:@"plan"];
     }
-    
+
     if (result == PLYProductViewControllerResultPurchased || PLYProductViewControllerResultRestored) {
         [self closePaywall:NO];
         self.shouldReopenPaywall = NO;
@@ -256,18 +255,18 @@ RCT_EXPORT_METHOD(startWithAPIKey:(NSString * _Nonnull)apiKey
 				  reject:(RCTPromiseRejectBlock)reject) {
 
     [Purchasely setSdkBridgeVersion:purchaselySdkVersion];
-    
+
     [Purchasely startWithAPIKey:apiKey
                       appUserId:userId
                     runningMode:runningMode
-                  eventDelegate:self
-                     uiDelegate:nil
       paywallActionsInterceptor:nil
                storekitSettings:[StorekitSettings default]
                        logLevel:logLevel
                     initialized:^(BOOL initialized, NSError * _Nullable error) {
         resolve(@(initialized));
     }];
+    
+    [Purchasely setEventDelegate:self];
 
 	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(purchasePerformed) name:@"ply_purchasedSubscription" object:nil];
 }
@@ -285,7 +284,7 @@ RCT_EXPORT_METHOD(userLogin:(NSString * _Nonnull)userId
 	}];
 }
 
-RCT_EXPORT_METHOD(handle:(NSString * _Nullable) deeplink
+RCT_EXPORT_METHOD(isDeeplinkHandled:(NSString * _Nullable) deeplink
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 {
@@ -298,9 +297,9 @@ RCT_EXPORT_METHOD(handle:(NSString * _Nullable) deeplink
         [self reject: reject with: error];
         return;
     }
-    
+
     dispatch_async(dispatch_get_main_queue(), ^{
-        resolve(@([Purchasely handleWithDeeplink:[NSURL URLWithString:deeplink]]));
+        resolve(@([Purchasely isDeeplinkHandledWithDeeplink:[NSURL URLWithString:deeplink]]));
     });
 }
 
@@ -419,9 +418,9 @@ RCT_REMAP_METHOD(getAnonymousUserId,
 	return resolve([Purchasely anonymousUserId]);
 }
 
-RCT_EXPORT_METHOD(isReadyToPurchase:(BOOL)ready) {
+RCT_EXPORT_METHOD(readyToOpenDeeplink:(BOOL)ready) {
     dispatch_async(dispatch_get_main_queue(), ^{
-        [Purchasely isReadyToPurchase: ready];
+        [Purchasely readyToOpenDeeplink: ready];
     });
 }
 
@@ -562,7 +561,7 @@ RCT_EXPORT_METHOD(presentPresentation:(NSDictionary<NSString *, id> * _Nullable)
             }
 
             self.shouldReopenPaywall = NO;
-            
+
             self.presentedPresentationViewController = presentationLoaded.controller;
 
             [Purchasely showController:presentationLoaded.controller type: PLYUIControllerTypeProductPage];
@@ -618,7 +617,7 @@ RCT_EXPORT_METHOD(presentPresentationWithIdentifier:(NSString * _Nullable)presen
 			}
 
             self.shouldReopenPaywall = NO;
-            
+
             self.presentedPresentationViewController = ctrl;
 
             if (isFullscreen) {
@@ -651,16 +650,16 @@ RCT_EXPORT_METHOD(presentPresentationForPlacement:(NSString * _Nullable)placemen
 					[ctrl.view setBackgroundColor:backColor];
 				}
 			}
-            
-            
+
+
             self.shouldReopenPaywall = NO;
-            
+
             self.presentedPresentationViewController = ctrl;
-            
+
             if (isFullscreen) {
                 ctrl.modalPresentationStyle = UIModalPresentationFullScreen;
             }
-              
+
             [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
         }
     });

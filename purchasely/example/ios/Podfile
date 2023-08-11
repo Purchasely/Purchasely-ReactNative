@@ -12,6 +12,8 @@ target 'PurchaselyExample' do
  #pod 'Purchasely', :path => '../../../../Sources/Purchasely-iOS-Sources'
   pod 'react-native-purchasely', :path => '../..'
 
+  $min_ios_version_supported = 12.4
+
   # Enables Flipper.
   #
   # Note that if you have use_frameworks! enabled, Flipper will not work and

@@ -54,7 +54,6 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     constants["productResultPurchased"] = PLYProductViewResult.PURCHASED.ordinal
     constants["productResultCancelled"] = PLYProductViewResult.CANCELLED.ordinal
     constants["productResultRestored"] = PLYProductViewResult.RESTORED.ordinal
-    constants["amplitudeSessionId"] = Attribute.AMPLITUDE_SESSION_ID.ordinal
     constants["firebaseAppInstanceId"] = Attribute.FIREBASE_APP_INSTANCE_ID.ordinal
     constants["airshipChannelId"] = Attribute.AIRSHIP_CHANNEL_ID.ordinal
     constants["airshipUserId"] = Attribute.AIRSHIP_USER_ID.ordinal
@@ -139,15 +138,16 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
       .apiKey(apiKey)
       .stores(getStoresInstances(stores.toArrayList()))
       .userId(userId)
-      .eventListener(eventListener)
       .logLevel(LogLevel.values()[logLevel])
       .runningMode(when(runningMode) {
-        runningModeTransactionOnly -> PLYRunningMode.TransactionOnly
-        runningModeObserver -> PLYRunningMode.Observer
+        runningModeTransactionOnly -> PLYRunningMode.Full
+        runningModeObserver -> PLYRunningMode.PaywallObserver
         runningModePaywallObserver -> PLYRunningMode.PaywallObserver
         else -> PLYRunningMode.Full
       })
       .build()
+
+    Purchasely.eventListener = eventListener
 
     Purchasely.sdkBridgeVersion = bridgeVersion
 
@@ -199,8 +199,8 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   }
 
   @ReactMethod
-  fun isReadyToPurchase(readyToPurchase: Boolean) {
-    Purchasely.isReadyToPurchase = readyToPurchase
+  fun readyToOpenDeeplink(ready: Boolean) {
+    Purchasely.readyToOpenDeeplink = ready
   }
 
   @ReactMethod
@@ -234,9 +234,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
       presentationId = presentationId,
       contentId = contentId)
 
-    Purchasely.fetchPresentation(
-      properties = properties,
-      resultCallback = null) { presentation: PLYPresentation?, error: PLYError? ->
+    Purchasely.fetchPresentation(properties = properties) { presentation: PLYPresentation?, error: PLYError? ->
       if(presentation != null) {
         presentationsLoaded.removeAll { it.id == presentation.id && it.placementId == presentation.placementId }
         presentationsLoaded.add(presentation)
@@ -401,10 +399,10 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
           Purchasely.purchase(reactApplicationContext.currentActivity!!,
             plan,
             contentId = contentId,
-            success = {
+            onSuccess = {
               promise.resolve(Arguments.makeNativeMap(transformPlanToMap(it)))
             },
-            error = {
+            onError = {
               promise.reject(it)
             }
           )
@@ -420,10 +418,10 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   @ReactMethod
   fun restoreAllProducts(promise: Promise) {
     Purchasely.restoreAllProducts(
-      success = {
+      onSuccess = {
         promise.resolve(true)
       },
-      error = {
+      onError = {
         promise.reject(it)
       }
     )
@@ -432,10 +430,10 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   @ReactMethod
   fun silentRestoreAllProducts(promise: Promise) {
     Purchasely.silentRestoreAllProducts(
-      success = {
+      onSuccess = {
         promise.resolve(true)
       },
-      error = {
+      onError = {
         promise.reject(it)
       }
     )
@@ -599,13 +597,13 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   }
 
   @ReactMethod
-  fun handle(deeplink: String?, promise: Promise) {
+  fun isDeeplinkHandled(deeplink: String?, promise: Promise) {
     if (deeplink == null) {
       promise.reject(IllegalStateException("Deeplink must not be null"))
       return
     }
     val uri = Uri.parse(deeplink)
-    promise.resolve(Purchasely.handle(uri))
+    promise.resolve(Purchasely.isDeeplinkHandled(uri))
   }
 
   @ReactMethod
