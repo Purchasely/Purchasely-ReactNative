@@ -259,14 +259,14 @@ RCT_EXPORT_METHOD(startWithAPIKey:(NSString * _Nonnull)apiKey
     [Purchasely startWithAPIKey:apiKey
                       appUserId:userId
                     runningMode:runningMode
-                  eventDelegate:self
-                     uiDelegate:nil
       paywallActionsInterceptor:nil
                storekitSettings:[StorekitSettings default]
                        logLevel:logLevel
                     initialized:^(BOOL initialized, NSError * _Nullable error) {
         resolve(@(initialized));
     }];
+    
+    [Purchasely setEventDelegate:self];
 
 	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(purchasePerformed) name:@"ply_purchasedSubscription" object:nil];
 }
