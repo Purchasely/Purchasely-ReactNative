@@ -70,7 +70,7 @@ const App: React.FunctionComponent = () => {
       Purchasely.setLogLevel(LogLevels.DEBUG);
 
       //indicate to sdk it is safe to launch purchase flow
-      Purchasely.isReadyToPurchase(true);
+      Purchasely.readyToOpenDeeplink(true);
 
       //force your language
       Purchasely.setLanguage('en');
@@ -384,7 +384,7 @@ const linkingConfiguration = {
   async getInitialURL(): Promise<string | null> {
     const url = await Linking.getInitialURL();
     if (url != null) {
-      Purchasely.handle(url);
+      Purchasely.isDeeplinkHandled(url);
     }
     return url;
   },
