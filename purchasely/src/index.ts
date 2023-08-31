@@ -570,10 +570,12 @@ const purchaseWithPlanVendorId = (
   );
 };
 
-const closePaywall = (
-  definitively: boolean = false
-): Promise<PurchaselyPlan> => {
-  return NativeModules.Purchasely.closePaywall(definitively);
+const closePaywall = (): Promise<PurchaselyPlan> => {
+  return NativeModules.Purchasely.closePaywall();
+};
+
+const hidePaywall = (): Promise<PurchaselyPlan> => {
+  return NativeModules.Purchasely.hidePaywall();
 };
 
 const Purchasely = {
@@ -594,6 +596,7 @@ const Purchasely = {
   purchaseWithPlanVendorId,
   setUserAttributeWithDate,
   closePaywall,
+  hidePaywall,
 };
 
 export default Purchasely;
