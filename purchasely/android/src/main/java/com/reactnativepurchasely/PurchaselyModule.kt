@@ -679,14 +679,14 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   }
 
   @ReactMethod
-  fun closePaywall() {
+  fun closePresentation() {
     val openedPaywall = productActivity?.activity?.get()
     openedPaywall?.finish()
     productActivity = null
   }
 
   @ReactMethod
-  fun hidePaywall() {
+  fun hidePresentation() {
     val reactActivity = reactApplicationContext.currentActivity
     val activity = productActivity?.activity?.get() ?: reactActivity
     reactActivity?.startActivity(

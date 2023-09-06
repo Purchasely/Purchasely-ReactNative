@@ -392,18 +392,21 @@ RCT_EXPORT_METHOD(setLanguage:(NSString * _Nonnull) language) {
     [Purchasely setLanguageFrom:locale];
 }
 
-RCT_EXPORT_METHOD(closePaywall:(BOOL)definitively) {
+RCT_EXPORT_METHOD(hidePresentation) {
     dispatch_async(dispatch_get_main_queue(), ^{
-        self.shouldReopenPaywall = YES;
         if (self.presentedPresentationViewController != nil) {
             UIViewController *presentingViewController = self.presentedPresentationViewController;
             while (presentingViewController.presentingViewController) {
                 presentingViewController = presentingViewController.presentingViewController;
             }
             [presentingViewController dismissViewControllerAnimated:true completion:nil];
-        } else {
-            [Purchasely closeDisplayedPresentation];
         }
+    });
+}
+
+RCT_EXPORT_METHOD(closePresentation) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [Purchasely closeDisplayedPresentation];
     });
 }
 
@@ -570,7 +573,6 @@ RCT_EXPORT_METHOD(presentPresentation:(NSDictionary<NSString *, id> * _Nullable)
     });
 
 }
-
 
 RCT_EXPORT_METHOD(clientPresentationDisplayed:(NSDictionary<NSString *, id> * _Nullable) presentationDictionary)
 {
