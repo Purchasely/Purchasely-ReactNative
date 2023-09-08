@@ -115,7 +115,7 @@ const App: React.FunctionComponent = () => {
             console.log('User wants to login');
             //Present your own screen for user to log in
             // Purchasely.onProcessAction(false);
-            Purchasely.hidePaywall();
+            Purchasely.hidePresentation();
             setIsLoginModalVisible(true);
 
             // Purchasely.onProcessAction(true);

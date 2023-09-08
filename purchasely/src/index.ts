@@ -570,13 +570,21 @@ const purchaseWithPlanVendorId = (
   );
 };
 
-const closePresentation = (): Promise<PurchaselyPlan> => {
+const closePresentation = () => {
   return NativeModules.Purchasely.closePaywall();
 };
 
-const hidePresentation = (): Promise<PurchaselyPlan> => {
+const hidePresentation = () => {
   return NativeModules.Purchasely.hidePaywall();
 };
+
+const showPresentation = () => {
+  return NativeModules.Purchasely.hidePaywall();
+};
+
+const isAnonymous = (): Boolean => {
+  return isAnonymous();
+}
 
 const Purchasely = {
   ...RNPurchasely,
@@ -595,8 +603,10 @@ const Purchasely = {
   presentPlanWithIdentifier,
   purchaseWithPlanVendorId,
   setUserAttributeWithDate,
+  showPresentation,
   closePresentation,
   hidePresentation,
+  isAnonymous,
 };
 
 export default Purchasely;
