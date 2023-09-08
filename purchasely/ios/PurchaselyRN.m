@@ -409,6 +409,7 @@ RCT_EXPORT_METHOD(hidePresentation) {
             while (presentingViewController.presentingViewController) {
                 presentingViewController = presentingViewController.presentingViewController;
             }
+            self.shouldReopenPaywall = YES;
             [presentingViewController dismissViewControllerAnimated:true completion:nil];
         }
     });
@@ -563,14 +564,16 @@ RCT_EXPORT_METHOD(presentPresentation:(NSDictionary<NSString *, id> * _Nullable)
             
             if (self.presentedPresentationViewController != nil) {
                 [Purchasely closeDisplayedPresentation];
+                self.presentedPresentationViewController = presentationLoaded.controller;
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.5 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+                    [Purchasely showController:presentationLoaded.controller type: PLYUIControllerTypeProductPage];
+                });
+            } else {
+                self.presentedPresentationViewController = presentationLoaded.controller;
+                [Purchasely showController:presentationLoaded.controller type: PLYUIControllerTypeProductPage];
             }
-
-            self.presentedPresentationViewController = presentationLoaded.controller;
-
-            [Purchasely showController:presentationLoaded.controller type: PLYUIControllerTypeProductPage];
         }
     });
-
 }
 
 RCT_EXPORT_METHOD(clientPresentationDisplayed:(NSDictionary<NSString *, id> * _Nullable) presentationDictionary)
@@ -618,18 +621,18 @@ RCT_EXPORT_METHOD(presentPresentationWithIdentifier:(NSString * _Nullable)presen
 			}
 
             self.shouldReopenPaywall = NO;
+            ctrl.modalPresentationStyle = isFullscreen ? UIModalPresentationFullScreen : ctrl.modalPresentationStyle;
             
             if (self.presentedPresentationViewController != nil) {
                 [Purchasely closeDisplayedPresentation];
+                self.presentedPresentationViewController = ctrl;
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.5 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+                    [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
+                });
+            } else {
+                self.presentedPresentationViewController = ctrl;
+                [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
             }
-
-            self.presentedPresentationViewController = ctrl;
-
-            if (isFullscreen) {
-                ctrl.modalPresentationStyle = UIModalPresentationFullScreen;
-            }
-
-            [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
         }
 	});
 }
@@ -658,19 +661,18 @@ RCT_EXPORT_METHOD(presentPresentationForPlacement:(NSString * _Nullable)placemen
 			}
 
             self.shouldReopenPaywall = NO;
+            ctrl.modalPresentationStyle = isFullscreen ? UIModalPresentationFullScreen : ctrl.modalPresentationStyle;
             
             if (self.presentedPresentationViewController != nil) {
                 [Purchasely closeDisplayedPresentation];
+                self.presentedPresentationViewController = ctrl;
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.5 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+                    [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
+                });
+            } else {
+                self.presentedPresentationViewController = ctrl;
+                [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
             }
-
-            self.presentedPresentationViewController = ctrl;
-
-            if (isFullscreen) {
-                ctrl.modalPresentationStyle = UIModalPresentationFullScreen;
-            }
-
-            [Purchasely closeDisplayedPresentation];
-            [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
         }
     });
 }
@@ -699,17 +701,19 @@ RCT_EXPORT_METHOD(presentPlanWithIdentifier:(NSString * _Nonnull)planVendorId
 					[ctrl.view setBackgroundColor:backColor];
 				}
 			}
+            
+            ctrl.modalPresentationStyle = isFullscreen ? UIModalPresentationFullScreen : ctrl.modalPresentationStyle;
 
             if (self.presentedPresentationViewController != nil) {
                 [Purchasely closeDisplayedPresentation];
+                self.presentedPresentationViewController = ctrl;
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.5 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+                    [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
+                });
+            } else {
+                self.presentedPresentationViewController = ctrl;
+                [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
             }
-            self.presentedPresentationViewController = ctrl;
-
-            if (isFullscreen) {
-                ctrl.modalPresentationStyle = UIModalPresentationFullScreen;
-            }
-
-            [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
         }
 	});
 }
@@ -738,17 +742,17 @@ RCT_EXPORT_METHOD(presentProductWithIdentifier:(NSString * _Nonnull)productVendo
 					[ctrl.view setBackgroundColor:backColor];
 				}
 			}
-
+            
             if (self.presentedPresentationViewController != nil) {
                 [Purchasely closeDisplayedPresentation];
+                self.presentedPresentationViewController = ctrl;
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.5 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+                    [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
+                });
+            } else {
+                self.presentedPresentationViewController = ctrl;
+                [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
             }
-            self.presentedPresentationViewController = ctrl;
-
-            if (isFullscreen) {
-                ctrl.modalPresentationStyle = UIModalPresentationFullScreen;
-            }
-
-            [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
         }
 	});
 }
