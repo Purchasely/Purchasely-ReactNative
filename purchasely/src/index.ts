@@ -571,15 +571,15 @@ const purchaseWithPlanVendorId = (
 };
 
 const closePresentation = () => {
-  return NativeModules.Purchasely.closePaywall();
+  return NativeModules.Purchasely.closePresentation();
 };
 
 const hidePresentation = () => {
-  return NativeModules.Purchasely.hidePaywall();
+  return NativeModules.Purchasely.hidePresentation();
 };
 
 const showPresentation = () => {
-  return NativeModules.Purchasely.hidePaywall();
+  return NativeModules.Purchasely.showPresentation();
 };
 
 const isAnonymous = (): Boolean => {
