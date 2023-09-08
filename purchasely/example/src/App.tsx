@@ -262,6 +262,18 @@ const App: React.FunctionComponent = () => {
     setLoading(false);
   };
 
+  const onPressShowPresentation = () => {
+    Purchasely.showPresentation()
+  }
+
+  const onPressHidePresentation = () => {
+    Purchasely.hidePresentation()
+  }
+
+  const onPressClosePresentation = () => {
+    Purchasely.closePresentation()
+  }
+
   const onPressContinueAction = () => {
     //Call this method to continue Purchasely action
     Purchasely.onProcessAction(true);
@@ -303,6 +315,59 @@ const App: React.FunctionComponent = () => {
             Fetch presentation
           </Text>
         </TouchableHighlight>
+
+        <TouchableHighlight
+          onPress={onPressShowPresentation}
+          disabled={loading}
+          style={loading ? styles.buttonDisabled : styles.button}
+        >
+          <Text style={styles.text}>
+            {loading && (
+              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
+            )}{' '}
+            Show presentation
+          </Text>
+        </TouchableHighlight>
+
+        <TouchableHighlight
+          onPress={onPressHidePresentation}
+          disabled={loading}
+          style={loading ? styles.buttonDisabled : styles.button}
+        >
+          <Text style={styles.text}>
+            {loading && (
+              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
+            )}{' '}
+            Hide presentation
+          </Text>
+        </TouchableHighlight>
+
+        <TouchableHighlight
+          onPress={onPressClosePresentation}
+          disabled={loading}
+          style={loading ? styles.buttonDisabled : styles.button}
+        >
+          <Text style={styles.text}>
+            {loading && (
+              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
+            )}{' '}
+            Close presentation
+          </Text>
+        </TouchableHighlight>
+
+        <TouchableHighlight
+          onPress={onPressContinueAction}
+          disabled={loading}
+          style={loading ? styles.buttonDisabled : styles.button}
+        >
+          <Text style={styles.text}>
+            {loading && (
+              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
+            )}{' '}
+            Continue action
+          </Text>
+        </TouchableHighlight>
+
         <TouchableHighlight
           onPress={onPressPurchase}
           disabled={loading}
@@ -353,18 +418,6 @@ const App: React.FunctionComponent = () => {
           </Text>
         </TouchableHighlight>
 
-        <TouchableHighlight
-          onPress={onPressContinueAction}
-          disabled={loading}
-          style={loading ? styles.buttonDisabled : styles.button}
-        >
-          <Text style={styles.text}>
-            {loading && (
-              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
-            )}{' '}
-            Continue action
-          </Text>
-        </TouchableHighlight>
       </View>
       <Modal isVisible={isLoginModalVisible}>
         <View style={{ flex: 1, backgroundColor: '#FF00FF' }}>
