@@ -638,26 +638,29 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
 
   @ReactMethod
   fun isAnonymous(): Boolean {
-    Purchasely.isAnonymous()
+    return Purchasely.isAnonymous()
   }
 
   @ReactMethod
   fun showPresentation() {
-      CoroutineScope(Dispatchers.Main).launch {
+    CoroutineScope(Dispatchers.Main).launch {
+      val currentActivity = interceptorActivity?.get()
 
-        if (currentActivity != null
-              && !currentActivity.isFinishing
-              && !currentActivity.isDestroyed) {
-
-              reactApplicationContext.currentActivity?.let {
-                it.startActivity(
-                  Intent(it, currentActivity::class.java).apply {
-                    //flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
-                  }
-                )
-              }
+      if (currentActivity != null && !currentActivity.isFinishing && !currentActivity.isDestroyed) {
+        reactApplicationContext.currentActivity?.let {
+          it.startActivity(
+            Intent(it, currentActivity::class.java).apply {
+              //flags = Intent.FLAG_ACTIVITY_NEW_TASK
+              flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+            }
+          )
+        }
       }
+      else if (productActivity?.relaunch(reactApplicationContext) == false) {
+        //wait for activity to relaunch
+        withContext(Dispatchers.Default) { delay(500) }
+      }
+    }
   }
 
   @ReactMethod
