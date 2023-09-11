@@ -6,6 +6,9 @@ Purchasely is a solution to ease the integration and boost your In-App Purchase 
 
 ```sh
 npm install react-native-purchasely
+
+# Mandatory if you want to use Google Play Store also
+npm install @purchasely/react-native-purchasely-google
 ```
 
 ## Usage
@@ -42,25 +45,40 @@ Purchasely.startWithAPIKey(
 );
 
 try {
-  const result = await Purchasely.presentPresentationForPlacement({
-    placementVendorId: 'onboarding',
-    contentId: 'my_content_id',
-    isFullscreen: true,
-  });
+    const presentation = await Purchasely.fetchPresentation({
+      placementId: 'app_launch_demo'
+    });
 
-  switch (result.result) {
-    case ProductResult.PRODUCT_RESULT_PURCHASED:
-    case ProductResult.PRODUCT_RESULT_RESTORED:
-      if (result.plan != null) {
-        console.log('User purchased ' + result.plan.name);
-      }
-      break;
-    case ProductResult.PRODUCT_RESULT_CANCELLED:
-      break;
+    if (presentation.type === PLYPresentationType.DEACTIVATED) {
+      // No paywall to display
+      return;
+    }
+
+    if (presentation.type === PLYPresentationType.CLIENT) {
+      // Display my own paywall
+      return;
+    }
+
+    //Display Purchasely paywall
+    const result = await Purchasely.presentPresentation({
+      presentation: presentation,
+    });
+
+    switch (result.result) {
+      case ProductResult.PRODUCT_RESULT_PURCHASED:
+      case ProductResult.PRODUCT_RESULT_RESTORED:
+        if (result.plan != null) {
+          console.log('User purchased ' + result.plan.name);
+        }
+
+        break;
+      case ProductResult.PRODUCT_RESULT_CANCELLED:
+        console.log('User cancelled');
+        break;
+    }
+  } catch (e) {
+    console.error(e);
   }
-} catch (e) {
-  console.error(e);
-}
 
 ```
 
