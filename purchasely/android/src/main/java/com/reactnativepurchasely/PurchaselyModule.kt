@@ -637,37 +637,35 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   }
 
   @ReactMethod
+  fun isAnonymous(promise: Promise) {
+    promise.resolve(Purchasely.isAnonymous())
+  }
+
+  @ReactMethod
+  fun showPresentation() {
+    CoroutineScope(Dispatchers.Main).launch {
+      val currentActivity = interceptorActivity?.get()
+
+      if (currentActivity != null && !currentActivity.isFinishing && !currentActivity.isDestroyed) {
+        reactApplicationContext.currentActivity?.let {
+          it.startActivity(
+            Intent(it, currentActivity::class.java).apply {
+              //flags = Intent.FLAG_ACTIVITY_NEW_TASK
+              flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+            }
+          )
+        }
+      }
+      else if (productActivity?.relaunch(reactApplicationContext) == false) {
+        //wait for activity to relaunch
+        withContext(Dispatchers.Default) { delay(500) }
+      }
+    }
+  }
+
+  @ReactMethod
   fun onProcessAction(processAction: Boolean) {
     CoroutineScope(Dispatchers.Main).launch {
-
-      when(paywallAction) {
-        PLYPresentationAction.PROMO_CODE,
-        PLYPresentationAction.RESTORE,
-        PLYPresentationAction.PURCHASE,
-        PLYPresentationAction.LOGIN,
-        PLYPresentationAction.OPEN_PRESENTATION -> {
-          val currentActivity = interceptorActivity?.get()
-          if(currentActivity != null
-            && !currentActivity.isFinishing
-            && !currentActivity.isDestroyed) {
-            reactApplicationContext.currentActivity?.let {
-              it.startActivity(
-                Intent(it, currentActivity::class.java).apply {
-                  //flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                  flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
-                }
-              )
-            }
-          }
-          else if(productActivity?.relaunch(reactApplicationContext) == false) {
-            //wait for activity to relaunch
-            withContext(Dispatchers.Default) { delay(500) }
-          }
-        }
-        //We should not open purchasely paywall for others actions
-        else -> {}
-      }
-
       val activityHandler = interceptorActivity?.get() ?: productActivity?.activity?.get() ?: reactApplicationContext.currentActivity
       activityHandler?.runOnUiThread {
         paywallActionHandler?.invoke(processAction)
@@ -679,14 +677,14 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   }
 
   @ReactMethod
-  fun closePaywall(definitively: Boolean) {
-    if(definitively) {
-      val openedPaywall = productActivity?.activity?.get()
-      openedPaywall?.finish()
-      productActivity = null
-      return
-    }
+  fun closePresentation() {
+    val openedPaywall = productActivity?.activity?.get()
+    openedPaywall?.finish()
+    productActivity = null
+  }
 
+  @ReactMethod
+  fun hidePresentation() {
     val reactActivity = reactApplicationContext.currentActivity
     val activity = productActivity?.activity?.get() ?: reactActivity
     reactActivity?.startActivity(

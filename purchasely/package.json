@@ -29,8 +29,10 @@
     "prepare": "bob build",
     "release": "release-it",
     "example": "yarn --cwd example",
+    "clean": "rm -rf node_modules && yarn pod-clean",
+    "pod-clean": "cd example/ios && pod deintegrate && rm -rf Podfile.lock && cd ../../",
     "pods": "cd example && pod-install --quiet",
-    "bootstrap": "yarn example && yarn && yarn pods"
+    "bootstrap": "npm install && yarn example && yarn && yarn pods"
   },
   "keywords": [
     "react-native",

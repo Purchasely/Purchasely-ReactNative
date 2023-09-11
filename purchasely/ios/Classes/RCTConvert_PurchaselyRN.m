@@ -23,8 +23,7 @@ RCT_ENUM_CONVERTER(PLYProductViewControllerResult, (@{ @"productResultPurchased"
                                                        @"productResultRestored": @(PLYProductViewControllerResultRestored)}),
                    PLYProductViewControllerResultPurchased, integerValue)
 
-RCT_ENUM_CONVERTER(PLYAttribute, (@{@"amplitudeSessionId": @(PLYAttributeAmplitudeSessionId),
-                                    @"amplitudeUserId": @(PLYAttributeAmplitudeUserId),
+RCT_ENUM_CONVERTER(PLYAttribute, (@{@"amplitudeUserId": @(PLYAttributeAmplitudeUserId),
                                     @"amplitudeDeviceId": @(PLYAttributeAmplitudeDeviceId),
 									@"firebaseAppInstanceId": @(PLYAttributeFirebaseAppInstanceId),
 									@"airshipChannelId": @(PLYAttributeAirshipChannelId),
@@ -44,7 +43,7 @@ RCT_ENUM_CONVERTER(PLYAttribute, (@{@"amplitudeSessionId": @(PLYAttributeAmplitu
                                     @"customerIoUserEmail": @(PLYAttributeCustomerioUserEmail),
                                     @"customerIoUserId": @(PLYAttributeCustomerioUserId),
 									@"moengageUniqueId": @(PLYAttributeMoengageUniqueId)}),
-				   PLYAttributeAmplitudeSessionId, integerValue)
+				   PLYAttributeAmplitudeUserId, integerValue)
 
 RCT_ENUM_CONVERTER(PLYSubscriptionSource, (@{ @"sourceAppStore": @(PLYSubscriptionSourceAppleAppStore),
 											  @"sourcePlayStore": @(PLYSubscriptionSourceGooglePlayStore),

@@ -48,6 +48,16 @@ const App: React.FunctionComponent = () => {
 
       setAnonymousUserId(await Purchasely.getAnonymousUserId());
 
+      await Purchasely.isAnonymous().then((isAnonymous) => {
+        console.log('Anonymous ? ' + isAnonymous);
+      });
+
+      /*Purchasely.userLogin("test-user");
+
+      await Purchasely.isAnonymous().then((isAnonymous) => {
+        console.log('Anonymous when connected ? ' + isAnonymous);
+      });*/
+
       const product = await Purchasely.productWithIdentifier('PURCHASELY_PLUS');
       console.log('Product', product);
 
@@ -114,19 +124,34 @@ const App: React.FunctionComponent = () => {
           case PLYPaywallAction.LOGIN:
             console.log('User wants to login');
             //Present your own screen for user to log in
-            // Purchasely.onProcessAction(false);
-            Purchasely.closePaywall();
+            Purchasely.hidePresentation();
             setIsLoginModalVisible(true);
 
+            // Call this method to display Purchaely paywall
+            // Purchasely.showPresentation()
+            // Call this method to update Purchasely Paywall
             // Purchasely.onProcessAction(true);
-            //Call this method to update Purchasely Paywall
             break;
           case PLYPaywallAction.PURCHASE:
             console.log('User wants to purchase');
-            //If you want to intercept it, close paywall and display your screen
-            //then call onProcessAction() to continue or stop purchasely purchase action
-            // Purchasely.closePaywall();
             Purchasely.onProcessAction(true);
+
+            /**
+             * If you want to intercept it, hide presentation and display your screen
+             * then call onProcessAction() to continue or stop purchasely purchase action like this
+             *
+             * First hide presentation to display your own scren
+             * Purchasely.hidePresentation()
+             *
+             * Call this method to display Purchaely paywall
+             * Purchasely.showPresentation()
+             *
+             * Call this method to update Purchasely Paywall
+             * Purchasely.onProcessAction(true|false); // true to continue, false to stop
+             *
+             * Purchasely.closePresentation(); //when you want to close the paywall (after purchase for example)
+             *
+             **/
             break;
           default:
             Purchasely.onProcessAction(true);
@@ -197,7 +222,6 @@ const App: React.FunctionComponent = () => {
       }
 
       //Display Purchasely paywall
-
       const result = await Purchasely.presentPresentation({
         presentation: presentation,
       });
@@ -262,6 +286,18 @@ const App: React.FunctionComponent = () => {
     setLoading(false);
   };
 
+  const onPressShowPresentation = () => {
+    Purchasely.showPresentation()
+  }
+
+  const onPressHidePresentation = () => {
+    Purchasely.hidePresentation()
+  }
+
+  const onPressClosePresentation = () => {
+    Purchasely.closePresentation()
+  }
+
   const onPressContinueAction = () => {
     //Call this method to continue Purchasely action
     Purchasely.onProcessAction(true);
@@ -303,6 +339,59 @@ const App: React.FunctionComponent = () => {
             Fetch presentation
           </Text>
         </TouchableHighlight>
+
+        <TouchableHighlight
+          onPress={onPressShowPresentation}
+          disabled={loading}
+          style={loading ? styles.buttonDisabled : styles.button}
+        >
+          <Text style={styles.text}>
+            {loading && (
+              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
+            )}{' '}
+            Show presentation
+          </Text>
+        </TouchableHighlight>
+
+        <TouchableHighlight
+          onPress={onPressHidePresentation}
+          disabled={loading}
+          style={loading ? styles.buttonDisabled : styles.button}
+        >
+          <Text style={styles.text}>
+            {loading && (
+              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
+            )}{' '}
+            Hide presentation
+          </Text>
+        </TouchableHighlight>
+
+        <TouchableHighlight
+          onPress={onPressClosePresentation}
+          disabled={loading}
+          style={loading ? styles.buttonDisabled : styles.button}
+        >
+          <Text style={styles.text}>
+            {loading && (
+              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
+            )}{' '}
+            Close presentation
+          </Text>
+        </TouchableHighlight>
+
+        <TouchableHighlight
+          onPress={onPressContinueAction}
+          disabled={loading}
+          style={loading ? styles.buttonDisabled : styles.button}
+        >
+          <Text style={styles.text}>
+            {loading && (
+              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
+            )}{' '}
+            Continue action
+          </Text>
+        </TouchableHighlight>
+
         <TouchableHighlight
           onPress={onPressPurchase}
           disabled={loading}
@@ -353,18 +442,6 @@ const App: React.FunctionComponent = () => {
           </Text>
         </TouchableHighlight>
 
-        <TouchableHighlight
-          onPress={onPressContinueAction}
-          disabled={loading}
-          style={loading ? styles.buttonDisabled : styles.button}
-        >
-          <Text style={styles.text}>
-            {loading && (
-              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
-            )}{' '}
-            Continue action
-          </Text>
-        </TouchableHighlight>
       </View>
       <Modal isVisible={isLoginModalVisible}>
         <View style={{ flex: 1, backgroundColor: '#FF00FF' }}>
