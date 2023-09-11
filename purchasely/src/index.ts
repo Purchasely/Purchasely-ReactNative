@@ -1,6 +1,6 @@
 import { NativeModules, NativeEventEmitter } from 'react-native';
 
-const purchaselyVersion = '4.0.0';
+const purchaselyVersion = '4.0.1';
 
 interface Constants {
   logLevelDebug: number;
@@ -227,6 +227,7 @@ type PurchaselyType = {
   clearUserAttributes(): void;
   clientPresentationDisplayed(presentation: PurchaselyPresentation): void;
   clientPresentationClosed(presentation: PurchaselyPresentation): void;
+  isAnonymous(): Promise<boolean>;
 };
 
 const RNPurchasely = NativeModules.Purchasely as PurchaselyType;
@@ -570,10 +571,16 @@ const purchaseWithPlanVendorId = (
   );
 };
 
-const closePaywall = (
-  definitively: boolean = false
-): Promise<PurchaselyPlan> => {
-  return NativeModules.Purchasely.closePaywall(definitively);
+const closePresentation = () => {
+  return NativeModules.Purchasely.closePresentation();
+};
+
+const hidePresentation = () => {
+  return NativeModules.Purchasely.hidePresentation();
+};
+
+const showPresentation = () => {
+  return NativeModules.Purchasely.showPresentation();
 };
 
 const Purchasely = {
@@ -593,7 +600,9 @@ const Purchasely = {
   presentPlanWithIdentifier,
   purchaseWithPlanVendorId,
   setUserAttributeWithDate,
-  closePaywall,
+  showPresentation,
+  closePresentation,
+  hidePresentation,
 };
 
 export default Purchasely;
