@@ -229,6 +229,7 @@ type PurchaselyType = {
   clearUserAttributes(): void;
   clientPresentationDisplayed(presentation: PurchaselyPresentation): void;
   clientPresentationClosed(presentation: PurchaselyPresentation): void;
+  isAnonymous(): Promise<boolean>;
 };
 
 const RNPurchasely = NativeModules.Purchasely as PurchaselyType;
