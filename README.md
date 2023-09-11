@@ -6,6 +6,9 @@ Purchasely is a solution to ease the integration and boost your In-App Purchase 
 
 ```sh
 npm install react-native-purchasely
+
+# Mandatory if you want to use Google Play Store also
+npm install @purchasely/react-native-purchasely-google
 ```
 
 ## Usage

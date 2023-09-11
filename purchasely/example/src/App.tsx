@@ -48,6 +48,16 @@ const App: React.FunctionComponent = () => {
 
       setAnonymousUserId(await Purchasely.getAnonymousUserId());
 
+      await Purchasely.isAnonymous().then((isAnonymous) => {
+        console.log('Anonymous ? ' + isAnonymous);
+      });
+
+      /*Purchasely.userLogin("test-user");
+
+      await Purchasely.isAnonymous().then((isAnonymous) => {
+        console.log('Anonymous when connected ? ' + isAnonymous);
+      });*/
+
       const product = await Purchasely.productWithIdentifier('PURCHASELY_PLUS');
       console.log('Product', product);
 
