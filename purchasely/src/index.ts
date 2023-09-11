@@ -227,6 +227,7 @@ type PurchaselyType = {
   clearUserAttributes(): void;
   clientPresentationDisplayed(presentation: PurchaselyPresentation): void;
   clientPresentationClosed(presentation: PurchaselyPresentation): void;
+  isAnonymous(): Promise<boolean>;
 };
 
 const RNPurchasely = NativeModules.Purchasely as PurchaselyType;
@@ -582,10 +583,6 @@ const showPresentation = () => {
   return NativeModules.Purchasely.showPresentation();
 };
 
-const isAnonymous = (): Boolean => {
-  return isAnonymous();
-}
-
 const Purchasely = {
   ...RNPurchasely,
   startWithAPIKey,
@@ -606,7 +603,6 @@ const Purchasely = {
   showPresentation,
   closePresentation,
   hidePresentation,
-  isAnonymous,
 };
 
 export default Purchasely;

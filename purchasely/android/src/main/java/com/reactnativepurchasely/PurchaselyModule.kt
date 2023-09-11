@@ -637,8 +637,8 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   }
 
   @ReactMethod
-  fun isAnonymous(): Boolean {
-    return Purchasely.isAnonymous()
+  fun isAnonymous(promise: Promise) {
+    promise.resolve(Purchasely.isAnonymous())
   }
 
   @ReactMethod

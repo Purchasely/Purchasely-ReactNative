@@ -19,7 +19,7 @@ RCT_EXPORT_MODULE(Purchasely);
 
 - (instancetype)init {
 	self = [super init];
-    
+
     self.presentationsLoaded = [NSMutableArray new];
     self.shouldReopenPaywall = NO;
 
@@ -261,7 +261,7 @@ RCT_EXPORT_METHOD(startWithAPIKey:(NSString * _Nonnull)apiKey
                     initialized:^(BOOL initialized, NSError * _Nullable error) {
         resolve(@(initialized));
     }];
-    
+
     [Purchasely setEventDelegate:self];
 
 	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(purchasePerformed) name:@"ply_purchasedSubscription" object:nil];
@@ -303,8 +303,11 @@ RCT_EXPORT_METHOD(userLogout) {
 	[Purchasely userLogout];
 }
 
-RCT_EXPORT_METHOD(isAnonymous) {
-    [Purchasely isAnonymous];
+RCT_REMAP_METHOD(isAnonymous,
+                 isAnonymous:(RCTPromiseResolveBlock)resolve
+                 reject:(RCTPromiseRejectBlock)reject)
+{
+    return resolve(@([Purchasely isAnonymous]));
 }
 
 RCT_EXPORT_METHOD(setAttribute:(NSInteger)attribute value:(NSString * _Nonnull)value) {
@@ -561,7 +564,7 @@ RCT_EXPORT_METHOD(presentPresentation:(NSDictionary<NSString *, id> * _Nullable)
             }
 
             self.shouldReopenPaywall = NO;
-            
+
             if (self.presentedPresentationViewController != nil) {
                 [Purchasely closeDisplayedPresentation];
                 self.presentedPresentationViewController = presentationLoaded.controller;
@@ -622,7 +625,7 @@ RCT_EXPORT_METHOD(presentPresentationWithIdentifier:(NSString * _Nullable)presen
 
             self.shouldReopenPaywall = NO;
             ctrl.modalPresentationStyle = isFullscreen ? UIModalPresentationFullScreen : ctrl.modalPresentationStyle;
-            
+
             if (self.presentedPresentationViewController != nil) {
                 [Purchasely closeDisplayedPresentation];
                 self.presentedPresentationViewController = ctrl;
@@ -662,7 +665,7 @@ RCT_EXPORT_METHOD(presentPresentationForPlacement:(NSString * _Nullable)placemen
 
             self.shouldReopenPaywall = NO;
             ctrl.modalPresentationStyle = isFullscreen ? UIModalPresentationFullScreen : ctrl.modalPresentationStyle;
-            
+
             if (self.presentedPresentationViewController != nil) {
                 [Purchasely closeDisplayedPresentation];
                 self.presentedPresentationViewController = ctrl;
@@ -701,7 +704,7 @@ RCT_EXPORT_METHOD(presentPlanWithIdentifier:(NSString * _Nonnull)planVendorId
 					[ctrl.view setBackgroundColor:backColor];
 				}
 			}
-            
+
             ctrl.modalPresentationStyle = isFullscreen ? UIModalPresentationFullScreen : ctrl.modalPresentationStyle;
 
             if (self.presentedPresentationViewController != nil) {
@@ -742,7 +745,7 @@ RCT_EXPORT_METHOD(presentProductWithIdentifier:(NSString * _Nonnull)productVendo
 					[ctrl.view setBackgroundColor:backColor];
 				}
 			}
-            
+
             if (self.presentedPresentationViewController != nil) {
                 [Purchasely closeDisplayedPresentation];
                 self.presentedPresentationViewController = ctrl;
