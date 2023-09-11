@@ -681,6 +681,11 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   }
 
   @ReactMethod
+  fun isAnonymous(): Boolean {
+    return Purchasely.isAnonymous()
+  }
+
+  @ReactMethod
   fun closePaywall(definitively: Boolean) {
     if(definitively) {
       val openedPaywall = productActivity?.activity?.get()

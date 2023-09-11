@@ -578,6 +578,10 @@ const closePaywall = (
   return NativeModules.Purchasely.closePaywall(definitively);
 };
 
+const isAnonymous = (): Boolean => {
+  return isAnonymous();
+};
+
 const Purchasely = {
   ...RNPurchasely,
   startWithAPIKey,
@@ -596,6 +600,7 @@ const Purchasely = {
   purchaseWithPlanVendorId,
   setUserAttributeWithDate,
   closePaywall,
+  isAnonymous,
 };
 
 export default Purchasely;
