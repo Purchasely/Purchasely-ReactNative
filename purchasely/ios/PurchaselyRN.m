@@ -9,20 +9,16 @@
 
 #import <React/RCTLog.h>
 #import <Purchasely/Purchasely-Swift.h>
-//@import Purchasely;
 #import "PurchaselyRN.h"
 #import "Purchasely_Hybrid.h"
 #import "UIColor+PLYHelper.h"
 
 @implementation PurchaselyRN
 
-extern BOOL presenting;
-
 RCT_EXPORT_MODULE(Purchasely);
 
 - (instancetype)init {
 	self = [super init];
-    self.presenting = false;
     self.presentationsLoaded = [NSMutableArray new];
     
     self.shouldReopenPaywall = NO;
@@ -308,6 +304,12 @@ RCT_EXPORT_METHOD(userLogout) {
 	[Purchasely userLogout];
 }
 
+RCT_REMAP_METHOD(isAnonymous,
+                 isAnonymous:(RCTPromiseResolveBlock)resolve
+                 reject:(RCTPromiseRejectBlock)reject)
+{
+    return resolve(@([Purchasely isAnonymous]));
+}
 
 RCT_EXPORT_METHOD(setAttribute:(NSInteger)attribute value:(NSString * _Nonnull)value) {
 	[Purchasely setAttribute:attribute value:value];
@@ -473,8 +475,6 @@ RCT_EXPORT_METHOD(fetchPresentation:(NSString * _Nullable)placementId
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 {
-    if (self.presenting == true) { return; }
-    self.presenting = true;
     dispatch_async(dispatch_get_main_queue(), ^{
         if (placementId != nil) {
             [Purchasely fetchPresentationFor:placementId contentId: contentId fetchCompletion:^(PLYPresentation * _Nullable presentation, NSError * _Nullable error) {
@@ -563,10 +563,16 @@ RCT_EXPORT_METHOD(presentPresentation:(NSDictionary<NSString *, id> * _Nullable)
 
             self.shouldReopenPaywall = NO;
             
-            self.presentedPresentationViewController = presentationLoaded.controller;
-
-            [Purchasely showController:presentationLoaded.controller type: PLYUIControllerTypeProductPage];
-            self.presenting = false;
+            if (self.presentedPresentationViewController != nil) {
+                [Purchasely closeDisplayedPresentation];
+                self.presentedPresentationViewController = presentationLoaded.controller;
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.5 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+                    [Purchasely showController:presentationLoaded.controller type: PLYUIControllerTypeProductPage];
+                });
+            } else {
+                self.presentedPresentationViewController = presentationLoaded.controller;
+                [Purchasely showController:presentationLoaded.controller type: PLYUIControllerTypeProductPage];
+            }
         }
     });
 
@@ -619,12 +625,18 @@ RCT_EXPORT_METHOD(presentPresentationWithIdentifier:(NSString * _Nullable)presen
 
             self.shouldReopenPaywall = NO;
             
-            self.presentedPresentationViewController = ctrl;
+            ctrl.modalPresentationStyle = isFullscreen ? UIModalPresentationFullScreen : ctrl.modalPresentationStyle;
 
-            if (isFullscreen) {
-                ctrl.modalPresentationStyle = UIModalPresentationFullScreen;
+            if (self.presentedPresentationViewController != nil) {
+                [Purchasely closeDisplayedPresentation];
+                self.presentedPresentationViewController = ctrl;
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.5 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+                    [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
+                });
+            } else {
+                self.presentedPresentationViewController = ctrl;
+                [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
             }
-            [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
         }
 	});
 }
@@ -652,16 +664,20 @@ RCT_EXPORT_METHOD(presentPresentationForPlacement:(NSString * _Nullable)placemen
 				}
 			}
             
-            
             self.shouldReopenPaywall = NO;
             
-            self.presentedPresentationViewController = ctrl;
-            
-            if (isFullscreen) {
-                ctrl.modalPresentationStyle = UIModalPresentationFullScreen;
+            ctrl.modalPresentationStyle = isFullscreen ? UIModalPresentationFullScreen : ctrl.modalPresentationStyle;
+
+            if (self.presentedPresentationViewController != nil) {
+                [Purchasely closeDisplayedPresentation];
+                self.presentedPresentationViewController = ctrl;
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.5 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+                    [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
+                });
+            } else {
+                self.presentedPresentationViewController = ctrl;
+                [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
             }
-              
-            [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
         }
     });
 }
@@ -691,13 +707,18 @@ RCT_EXPORT_METHOD(presentPlanWithIdentifier:(NSString * _Nonnull)planVendorId
 				}
 			}
 
-            self.presentedPresentationViewController = ctrl;
+            ctrl.modalPresentationStyle = isFullscreen ? UIModalPresentationFullScreen : ctrl.modalPresentationStyle;
 
-            if (isFullscreen) {
-                ctrl.modalPresentationStyle = UIModalPresentationFullScreen;
+            if (self.presentedPresentationViewController != nil) {
+                [Purchasely closeDisplayedPresentation];
+                self.presentedPresentationViewController = ctrl;
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.5 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+                    [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
+                });
+            } else {
+                self.presentedPresentationViewController = ctrl;
+                [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
             }
-
-            [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
         }
 	});
 }
@@ -727,13 +748,16 @@ RCT_EXPORT_METHOD(presentProductWithIdentifier:(NSString * _Nonnull)productVendo
 				}
 			}
 
-            self.presentedPresentationViewController = ctrl;
-
-            if (isFullscreen) {
-                ctrl.modalPresentationStyle = UIModalPresentationFullScreen;
+            if (self.presentedPresentationViewController != nil) {
+                [Purchasely closeDisplayedPresentation];
+                self.presentedPresentationViewController = ctrl;
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.5 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+                    [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
+                });
+            } else {
+                self.presentedPresentationViewController = ctrl;
+                [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
             }
-
-            [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
         }
 	});
 }

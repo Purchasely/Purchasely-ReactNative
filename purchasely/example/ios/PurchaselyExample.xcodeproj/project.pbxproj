@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		06B452D1FEB063F560E9F5A5 /* libPods-PurchaselyExample.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 88A4D800AD706166DC25D10F /* libPods-PurchaselyExample.a */; };
 		13B07FBC1A68108700A75B9A /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB01A68108700A75B9A /* AppDelegate.m */; };
 		13B07FC11A68108700A75B9A /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB71A68108700A75B9A /* main.m */; };
 		2D02E4BC1E0B4A80006451C7 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB01A68108700A75B9A /* AppDelegate.m */; };
@@ -17,6 +16,7 @@
 		65C958A62701E97200359927 /* Configuration.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 65C958A42701E97200359927 /* Configuration.storekit */; };
 		65DDF2B026153117000829C6 /* main.jsbundle in Resources */ = {isa = PBXBuildFile; fileRef = 65DDF2AF26153117000829C6 /* main.jsbundle */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
+		CD3F7AC8DB0DC9A4DA8CA175 /* libPods-PurchaselyExample.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 0A39F715CA75A6CE10FB76A1 /* libPods-PurchaselyExample.a */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -38,22 +38,22 @@
 
 /* Begin PBXFileReference section */
 		00E356EE1AD99517003FC87E /* PurchaselyExampleTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PurchaselyExampleTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		0A39F715CA75A6CE10FB76A1 /* libPods-PurchaselyExample.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-PurchaselyExample.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07F961A680F5B00A75B9A /* PurchaselyExample.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PurchaselyExample.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FAF1A68108700A75B9A /* AppDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AppDelegate.h; path = PurchaselyExample/AppDelegate.h; sourceTree = "<group>"; };
 		13B07FB01A68108700A75B9A /* AppDelegate.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = AppDelegate.m; path = PurchaselyExample/AppDelegate.m; sourceTree = "<group>"; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = PurchaselyExample/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = PurchaselyExample/Info.plist; sourceTree = "<group>"; };
 		13B07FB71A68108700A75B9A /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = main.m; path = PurchaselyExample/main.m; sourceTree = "<group>"; };
-		1DB889F5D9D7FAAA76D65F65 /* Pods-PurchaselyExample.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PurchaselyExample.debug.xcconfig"; path = "Target Support Files/Pods-PurchaselyExample/Pods-PurchaselyExample.debug.xcconfig"; sourceTree = "<group>"; };
 		2D02E47B1E0B4A5D006451C7 /* PurchaselyExample-tvOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "PurchaselyExample-tvOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		2D02E4901E0B4A5D006451C7 /* PurchaselyExample-tvOSTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "PurchaselyExample-tvOSTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
-		619459F51FBBD7AA0EDCF3FF /* Pods-PurchaselyExample.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PurchaselyExample.release.xcconfig"; path = "Target Support Files/Pods-PurchaselyExample/Pods-PurchaselyExample.release.xcconfig"; sourceTree = "<group>"; };
 		65C958A42701E97200359927 /* Configuration.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = Configuration.storekit; sourceTree = "<group>"; };
 		65DDF2AF26153117000829C6 /* main.jsbundle */ = {isa = PBXFileReference; lastKnownFileType = text; path = main.jsbundle; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = PurchaselyExample/LaunchScreen.storyboard; sourceTree = "<group>"; };
-		88A4D800AD706166DC25D10F /* libPods-PurchaselyExample.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-PurchaselyExample.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		BCD284C0C79EC86A52658529 /* Pods-PurchaselyExample.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PurchaselyExample.release.xcconfig"; path = "Target Support Files/Pods-PurchaselyExample/Pods-PurchaselyExample.release.xcconfig"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		ED2971642150620600B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = Platforms/AppleTVOS.platform/Developer/SDKs/AppleTVOS12.0.sdk/System/Library/Frameworks/JavaScriptCore.framework; sourceTree = DEVELOPER_DIR; };
+		FADF645569537B09804D52B9 /* Pods-PurchaselyExample.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PurchaselyExample.debug.xcconfig"; path = "Target Support Files/Pods-PurchaselyExample/Pods-PurchaselyExample.debug.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -68,7 +68,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				06B452D1FEB063F560E9F5A5 /* libPods-PurchaselyExample.a in Frameworks */,
+				CD3F7AC8DB0DC9A4DA8CA175 /* libPods-PurchaselyExample.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -107,7 +107,7 @@
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
 				ED2971642150620600B7C4FE /* JavaScriptCore.framework */,
-				88A4D800AD706166DC25D10F /* libPods-PurchaselyExample.a */,
+				0A39F715CA75A6CE10FB76A1 /* libPods-PurchaselyExample.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -115,8 +115,8 @@
 		6B9684456A2045ADE5A6E47E /* Pods */ = {
 			isa = PBXGroup;
 			children = (
-				1DB889F5D9D7FAAA76D65F65 /* Pods-PurchaselyExample.debug.xcconfig */,
-				619459F51FBBD7AA0EDCF3FF /* Pods-PurchaselyExample.release.xcconfig */,
+				FADF645569537B09804D52B9 /* Pods-PurchaselyExample.debug.xcconfig */,
+				BCD284C0C79EC86A52658529 /* Pods-PurchaselyExample.release.xcconfig */,
 			);
 			path = Pods;
 			sourceTree = "<group>";
@@ -180,14 +180,14 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "PurchaselyExample" */;
 			buildPhases = (
-				D2089583586BBED6ECC66994 /* [CP] Check Pods Manifest.lock */,
+				958B5596700B701311230F15 /* [CP] Check Pods Manifest.lock */,
 				FD10A7F022414F080027D42C /* Start Packager */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
-				37B60A485BED1902890D2067 /* [CP] Copy Pods Resources */,
-				699DE9B05FCF5A5140FC9E94 /* [CP] Embed Pods Frameworks */,
+				F0FF212809B9B09E1287F6BF /* [CP] Embed Pods Frameworks */,
+				726A9F30EA683D7510D8C54F /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
@@ -348,7 +348,7 @@
 			shellPath = /bin/sh;
 			shellScript = "export NODE_BINARY=node\n../node_modules/react-native/scripts/react-native-xcode.sh";
 		};
-		37B60A485BED1902890D2067 /* [CP] Copy Pods Resources */ = {
+		726A9F30EA683D7510D8C54F /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -366,25 +366,7 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-PurchaselyExample/Pods-PurchaselyExample-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		699DE9B05FCF5A5140FC9E94 /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-PurchaselyExample/Pods-PurchaselyExample-frameworks.sh",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/Purchasely/Purchasely.framework/Purchasely",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputPaths = (
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/Purchasely.framework",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-PurchaselyExample/Pods-PurchaselyExample-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-		D2089583586BBED6ECC66994 /* [CP] Check Pods Manifest.lock */ = {
+		958B5596700B701311230F15 /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -404,6 +386,24 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+		F0FF212809B9B09E1287F6BF /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-PurchaselyExample/Pods-PurchaselyExample-frameworks.sh",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/Purchasely/Purchasely.framework/Purchasely",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputPaths = (
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/Purchasely.framework",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-PurchaselyExample/Pods-PurchaselyExample-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 		FD10A7F022414F080027D42C /* Start Packager */ = {
@@ -538,7 +538,7 @@
 		};
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 1DB889F5D9D7FAAA76D65F65 /* Pods-PurchaselyExample.debug.xcconfig */;
+			baseConfigurationReference = FADF645569537B09804D52B9 /* Pods-PurchaselyExample.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
@@ -569,7 +569,7 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 619459F51FBBD7AA0EDCF3FF /* Pods-PurchaselyExample.release.xcconfig */;
+			baseConfigurationReference = BCD284C0C79EC86A52658529 /* Pods-PurchaselyExample.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
