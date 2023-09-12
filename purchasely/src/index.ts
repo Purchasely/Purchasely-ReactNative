@@ -357,6 +357,9 @@ export type PurchaselyPresentation = {
   plans?: string[] | null;
 };
 
+/**
+ * @deprecated Use `start()` instead
+ **/
 function startWithAPIKey(
   apiKey: string,
   stores: string[],
@@ -373,6 +376,34 @@ function startWithAPIKey(
     purchaselyVersion
   );
 }
+
+interface StartParameters {
+  apiKey: string;
+  stores?: string[] | null;
+  storeKit1?: boolean | null;
+  userId?: string | null;
+  logLevel?: number | null;
+  runningMode?: number | null;
+}
+
+const start = ({
+  apiKey,
+  stores = ['Google'],
+  storeKit1 = false,
+  userId = null,
+  logLevel = LogLevels.ERROR,
+  runningMode = RunningMode.FULL,
+}: StartParameters): Promise<boolean> => {
+  return NativeModules.Purchasely.start(
+    apiKey,
+    stores,
+    storeKit1,
+    userId,
+    logLevel,
+    runningMode,
+    purchaselyVersion
+  );
+};
 
 function setUserAttributeWithDate(key: string, value: Date): void {
   const dateAsString = value.toISOString();
@@ -586,6 +617,7 @@ const showPresentation = () => {
 const Purchasely = {
   ...RNPurchasely,
   startWithAPIKey,
+  start,
   addEventListener,
   removeEventListener,
   addPurchasedListener,
