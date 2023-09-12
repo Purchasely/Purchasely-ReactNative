@@ -125,6 +125,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     return result
   }
 
+  @Deprecated("Should use start method", ReplaceWith("start"))
   @ReactMethod
   fun startWithAPIKey(apiKey: String,
                       stores: ReadableArray,
@@ -134,6 +135,18 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
                       bridgeVersion: String,
                       promise: Promise) {
 
+    start(apiKey, stores, false, userId, logLevel, runningMode, bridgeVersion, promise)
+  }
+
+  @ReactMethod
+  fun start(apiKey: String,
+            stores: ReadableArray,
+            storeKit1: Boolean,
+            userId: String?,
+            logLevel: Int,
+            runningMode: Int,
+            bridgeVersion: String,
+            promise: Promise) {
     Purchasely.Builder(reactApplicationContext.applicationContext)
       .apiKey(apiKey)
       .stores(getStoresInstances(stores.toArrayList()))
