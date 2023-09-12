@@ -37,7 +37,7 @@ const App: React.FunctionComponent = () => {
           userId: 'test-user', // if you know your user id
           runningMode: RunningMode.FULL, // to set mode manually
           storeKit1: false, // default is StoreKit2
-          stores: ['Google'] // set null if you are app is only available on iOS
+          androidStores: ['Google', 'Huawei'] // Google is already set by default
         });
       } catch (e) {
         console.log('Purchasely SDK configuration errror', e);

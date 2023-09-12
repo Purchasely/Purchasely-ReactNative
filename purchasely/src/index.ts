@@ -379,7 +379,7 @@ function startWithAPIKey(
 
 interface StartParameters {
   apiKey: string;
-  stores?: string[] | null;
+  androidStores?: string[] | null;
   storeKit1?: boolean | null;
   userId?: string | null;
   logLevel?: number | null;
@@ -388,7 +388,7 @@ interface StartParameters {
 
 const start = ({
   apiKey,
-  stores = ['Google'],
+  androidStores = ['Google'],
   storeKit1 = false,
   userId = null,
   logLevel = LogLevels.ERROR,
@@ -396,7 +396,7 @@ const start = ({
 }: StartParameters): Promise<boolean> => {
   return NativeModules.Purchasely.start(
     apiKey,
-    stores,
+    androidStores,
     storeKit1,
     userId,
     logLevel,
