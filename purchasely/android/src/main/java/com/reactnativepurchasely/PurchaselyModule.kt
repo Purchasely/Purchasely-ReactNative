@@ -621,7 +621,12 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
       parametersForReact["title"] = parameters.title
       parametersForReact["url"] = parameters.url?.toString()
       parametersForReact["plan"] = transformPlanToMap(parameters.plan)
+      parametersForReact["offer"] = mapOf(
+        "vendorId" to parameters.offer?.vendorId,
+        "storeOfferId" to parameters.offer?.storeOfferId
+      )
       parametersForReact["presentation"] = parameters.presentation
+      parametersForReact["placement"] = parameters.placement
 
       promise.resolve(Arguments.makeNativeMap(
         mapOf(
