@@ -391,13 +391,16 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   }
 
   @ReactMethod
-  fun purchaseWithPlanVendorId(planVendorId: String, contentId: String?, promise: Promise) {
+  fun purchaseWithPlanVendorId(planVendorId: String, offerId: String?, contentId: String?, promise: Promise) {
     GlobalScope.launch {
       try {
         val plan = Purchasely.plan(planVendorId)
+        val offer = plan?.promoOffers?.firstOrNull { it.vendorId == offerId }
         if(plan != null) {
-          Purchasely.purchase(reactApplicationContext.currentActivity!!,
-            plan,
+          Purchasely.purchase(
+            activity = reactApplicationContext.currentActivity!!,
+            plan = plan,
+            offer = offer,
             contentId = contentId,
             onSuccess = {
               promise.resolve(Arguments.makeNativeMap(transformPlanToMap(it)))

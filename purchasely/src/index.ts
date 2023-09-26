@@ -563,10 +563,12 @@ const presentPlanWithIdentifier = ({
 
 const purchaseWithPlanVendorId = (
   planVendorId: string,
+  offerId: string | null = null,
   contentId: string | null = null
 ): Promise<PurchaselyPlan> => {
   return NativeModules.Purchasely.purchaseWithPlanVendorId(
     planVendorId,
+    offerId,
     contentId
   );
 };
