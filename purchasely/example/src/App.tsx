@@ -251,6 +251,7 @@ const App: React.FunctionComponent = () => {
     try {
       const plan = await Purchasely.purchaseWithPlanVendorId(
         'PURCHASELY_PLUS_MONTHLY',
+        'OFFER_TEST',
         'my_content_id'
       );
       console.log('Purchased ' + plan);
