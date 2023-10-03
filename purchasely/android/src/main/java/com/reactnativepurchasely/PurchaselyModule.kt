@@ -638,7 +638,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
         "vendorId" to parameters.offer?.vendorId,
         "storeOfferId" to parameters.offer?.storeOfferId
       )
-      parametersForReact["subscriptionOffer"] = parameters.subscriptionOffer.toMap()
+      parametersForReact["subscriptionOffer"] = parameters.subscriptionOffer?.toMap()
       parametersForReact["presentation"] = parameters.presentation
       parametersForReact["placement"] = parameters.placement
 
