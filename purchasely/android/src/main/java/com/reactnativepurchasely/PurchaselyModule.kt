@@ -658,6 +658,22 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   }
 
   @ReactMethod
+  fun isEligibleForIntroOffer(planVendorId: String, promise: Promise) {
+    GlobalScope.launch {
+      try {
+        val plan = Purchasely.plan(planVendorId)
+        if(plan != null) {
+          promise.resolve(plan.isEligibleToIntroOffer())
+        } else {
+          promise.reject(IllegalStateException("plan $planVendorId not found"))
+        }
+      } catch (e: Exception) {
+        promise.reject(e)
+      }
+    }
+  }
+
+  @ReactMethod
   fun isAnonymous(promise: Promise) {
     promise.resolve(Purchasely.isAnonymous())
   }
@@ -769,8 +785,6 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
           DistributionType.UNKNOWN -> DistributionType.UNKNOWN.ordinal
           else -> null
         }
-
-        this["isEligibleForIntroOffer"] = plan.isEligibleToIntroOffer()
       }
     }
   }

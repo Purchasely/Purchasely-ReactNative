@@ -152,7 +152,6 @@ export type PurchaselyPlan = {
   introDuration: string;
   introPeriod: string;
   hasFreeTrial: boolean;
-  isEligibleForIntroOffer: boolean;
 };
 
 export type PurchaselyProduct = {
@@ -228,6 +227,7 @@ type PurchaselyType = {
   clientPresentationDisplayed(presentation: PurchaselyPresentation): void;
   clientPresentationClosed(presentation: PurchaselyPresentation): void;
   isAnonymous(): Promise<boolean>;
+  isEligibleForIntroOffer(planVendorId: String, promise: Promise);
 };
 
 const RNPurchasely = NativeModules.Purchasely as PurchaselyType;

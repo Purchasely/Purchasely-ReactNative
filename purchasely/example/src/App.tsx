@@ -40,7 +40,7 @@ const App: React.FunctionComponent = () => {
           androidStores: ['Google', 'Huawei'] // Google is already set by default
         });
       } catch (e) {
-        console.log('Purchasely SDK configuration errror', e);
+        console.log('Purchasely SDK configuration error', e);
       }
 
       if (!configured) {
@@ -67,13 +67,12 @@ const App: React.FunctionComponent = () => {
       const subscriptions = await Purchasely.userSubscriptions();
       console.log('Subscriptions', subscriptions);
 
-      const plan = await Purchasely.planWithIdentifier(
-        'PURCHASELY_PLUS_YEARLY'
-      );
+      const plan = await Purchasely.planWithIdentifier('PURCHASELY_PLUS_YEARLY');
       console.log('Plan', plan);
-      console.log(
-        'User is eligible for intro offer:' + plan.isEligibleForIntroOffer
-      );
+
+      await Purchasely.isEligibleForIntroOffer(plan.vendorId).then((isEligible) => {
+        console.log('User is eligible for intro offer:' + isEligible);
+      });
 
       Purchasely.userDidConsumeSubscriptionContent();
 
