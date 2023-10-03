@@ -154,6 +154,18 @@ export type PurchaselyPlan = {
   hasFreeTrial: boolean;
 };
 
+export type PurchaselyOffer = {
+  vendorId?: string | null;
+  storeOfferId?: string | null;
+};
+
+export type PurchaselySubscriptionOffer = {
+  subscriptionId: string;
+  basePlanId?: string | null;
+  offerToken?: string | null;
+  offerId?: string | null;
+};
+
 export type PurchaselyProduct = {
   name: string;
   vendorId: string;
@@ -190,6 +202,8 @@ export type PaywallActionInterceptorResult = {
     url: String;
     title: String;
     plan: PurchaselyPlan;
+    offer: PurchaselyOffer | null;
+    subscriptionOffer: PurchaselySubscriptionOffer | null;
     presentation: String;
   };
 };

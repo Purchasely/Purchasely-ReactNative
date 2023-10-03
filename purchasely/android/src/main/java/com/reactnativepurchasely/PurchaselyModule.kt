@@ -638,6 +638,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
         "vendorId" to parameters.offer?.vendorId,
         "storeOfferId" to parameters.offer?.storeOfferId
       )
+      parametersForReact["subscriptionOffer"] = parameters.subscriptionOffer.toMap()
       parametersForReact["presentation"] = parameters.presentation
       parametersForReact["placement"] = parameters.placement
 
@@ -654,22 +655,6 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
           Pair("parameters", parametersForReact.filterNot { it.value == null })
         )
       ))
-    }
-  }
-
-  @ReactMethod
-  fun isEligibleForIntroOffer(planVendorId: String, promise: Promise) {
-    GlobalScope.launch {
-      try {
-        val plan = Purchasely.plan(planVendorId)
-        if(plan != null) {
-          promise.resolve(plan.isEligibleToIntroOffer())
-        } else {
-          promise.reject(IllegalStateException("plan $planVendorId not found"))
-        }
-      } catch (e: Exception) {
-        promise.reject(e)
-      }
     }
   }
 
