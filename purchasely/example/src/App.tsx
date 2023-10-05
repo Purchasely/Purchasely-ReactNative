@@ -70,10 +70,6 @@ const App: React.FunctionComponent = () => {
       const plan = await Purchasely.planWithIdentifier('PURCHASELY_PLUS_YEARLY');
       console.log('Plan', plan);
 
-      await Purchasely.isEligibleForIntroOffer(plan.vendorId).then((isEligible) => {
-        console.log('User is eligible for intro offer:' + isEligible);
-      });
-
       Purchasely.userDidConsumeSubscriptionContent();
 
       const products = await Purchasely.allProducts();
@@ -253,7 +249,7 @@ const App: React.FunctionComponent = () => {
     try {
       const plan = await Purchasely.purchaseWithPlanVendorId(
         'PURCHASELY_PLUS_MONTHLY',
-        'OFFER_TEST',
+        null,
         'my_content_id'
       );
       console.log('Purchased ' + plan);
@@ -262,6 +258,42 @@ const App: React.FunctionComponent = () => {
     }
     setLoading(false);
   };
+
+  const onPressPurchaseWithPromotionalOffer = async () => {
+    setLoading(true);
+    try {
+      const plan = await Purchasely.purchaseWithPlanVendorId(
+        'PURCHASELY_PLUS_YEARLY',
+        'com.purchasely.plus.yearly.promo',
+        'my_content_id'
+      );
+      console.log('Purchased ' + plan);
+    } catch (e) {
+      console.error(e);
+    }
+    setLoading(false);
+  };
+
+  const onPressSignPromotionalOffer = async () => {
+    setLoading(true);
+    try {
+
+      const signature = await Purchasely.signPromotionalOffer(
+        'com.purchasely.plus.yearly',
+        'com.purchasely.plus.yearly.winback.test'
+      );
+      
+      console.log('Signature timestamp: ' + signature.timestamp);
+      console.log('Signature planVendorId: ' + signature.planVendorId);
+      console.log('Signature identifier: ' + signature.identifier);
+      console.log('Signature signature: ' + signature.signature);
+      console.log('Signature nonce: ' + signature.nonce);
+      console.log('Signature keyIdentifier: ' + signature.keyIdentifier);
+    } catch (e) {
+      console.error(e);
+    }
+    setLoading(false);
+  }
 
   const onPressSubscriptions = () => {
     Purchasely.presentSubscriptions();
@@ -405,6 +437,31 @@ const App: React.FunctionComponent = () => {
               <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
             )}{' '}
             Tap to purchase
+          </Text>
+        </TouchableHighlight>
+        <TouchableHighlight
+          onPress={onPressPurchaseWithPromotionalOffer}
+          disabled={loading}
+          style={loading ? styles.buttonDisabled : styles.button}
+        >
+          <Text style={styles.text}>
+            {loading && (
+              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
+            )}{' '}
+            Tap to purchase with promo offer
+          </Text>
+        </TouchableHighlight>
+
+        <TouchableHighlight
+          onPress={onPressSignPromotionalOffer}
+          disabled={loading}
+          style={loading ? styles.buttonDisabled : styles.button}
+        >
+          <Text style={styles.text}>
+            {loading && (
+              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
+            )}{' '}
+            Sign promo offer
           </Text>
         </TouchableHighlight>
         <TouchableHighlight
