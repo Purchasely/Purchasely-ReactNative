@@ -181,6 +181,11 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   }
 
   @ReactMethod
+  fun signPromotionalOffer(promise: Promise) {
+    promise.reject(null)
+  }
+
+  @ReactMethod
   fun getAnonymousUserId(promise: Promise) {
     promise.resolve(Purchasely.anonymousUserId)
   }

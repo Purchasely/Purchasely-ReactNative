@@ -14,6 +14,7 @@ NS_ASSUME_NONNULL_BEGIN
 @interface PLYPlan (Hybrid)
 
 - (NSDictionary *)asDictionary;
+- (void)isUserEligibleForIntroductoryOffer:(void (^)(BOOL))completion;
 
 @end
 

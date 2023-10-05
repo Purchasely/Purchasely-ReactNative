@@ -172,6 +172,15 @@ export type PurchaselyProduct = {
   plans: PurchaselyPlan[];
 };
 
+export type PurchaselyPromotionalOfferSignature = {
+  planVendorId: String;
+  identifier: String;
+  signature: String;
+  nonce: any;
+  keyIdentifier: String;
+  timestamp: number;
+};
+
 export type PurchaselyUserAttribute = {
   key: string;
   value: any;
@@ -241,7 +250,7 @@ type PurchaselyType = {
   clientPresentationDisplayed(presentation: PurchaselyPresentation): void;
   clientPresentationClosed(presentation: PurchaselyPresentation): void;
   isAnonymous(): Promise<boolean>;
-  isEligibleForIntroOffer(planVendorId: String, promise: Promise);
+  isEligibleForIntroOffer(planVendorId: String): Promise<boolean>;
 };
 
 const RNPurchasely = NativeModules.Purchasely as PurchaselyType;
@@ -618,6 +627,16 @@ const purchaseWithPlanVendorId = (
   );
 };
 
+const signPromotionalOffer = (
+  storeProductId: string,
+  storeOfferId: string
+  ): Promise<PurchaselyPromotionalOfferSignature> => {
+  return NativeModules.Purchasely.signPromotionalOffer(
+    storeProductId,
+    storeOfferId
+  );
+}
+
 const closePresentation = () => {
   return NativeModules.Purchasely.closePresentation();
 };
@@ -651,6 +670,7 @@ const Purchasely = {
   showPresentation,
   closePresentation,
   hidePresentation,
+  signPromotionalOffer
 };
 
 export default Purchasely;
