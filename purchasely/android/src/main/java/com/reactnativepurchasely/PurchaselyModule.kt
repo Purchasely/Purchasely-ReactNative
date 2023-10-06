@@ -14,6 +14,8 @@ import io.purchasely.ext.*
 import io.purchasely.ext.EventListener
 import io.purchasely.models.PLYError
 import io.purchasely.models.PLYPlan
+import io.purchasely.models.PLYPromoOffer
+import io.purchasely.models.PLYPresentationPlan
 import kotlinx.coroutines.*
 import java.lang.ref.WeakReference
 import java.text.SimpleDateFormat
@@ -181,8 +183,8 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   }
 
   @ReactMethod
-  fun signPromotionalOffer(promise: Promise) {
-    promise.reject(null)
+  fun signPromotionalOffer(storeProductId: String, storeOfferId: String, promise: Promise) {
+    promise.reject("Not supported on Android")
   }
 
   @ReactMethod
@@ -669,7 +671,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
       try {
         val plan = Purchasely.plan(planVendorId)
         if(plan != null) {
-          promise.resolve(plan.isEligibleToIntroOffer())
+          promise.resolve(plan.promoOffers.any { plan.isEligibleToIntroOffer(it.storeOfferId) })
         } else {
           promise.reject(IllegalStateException("plan $planVendorId not found"))
         }
