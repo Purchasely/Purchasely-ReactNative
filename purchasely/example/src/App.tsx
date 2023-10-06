@@ -142,10 +142,10 @@ const App: React.FunctionComponent = () => {
              * If you want to intercept it, hide presentation and display your screen
              * then call onProcessAction() to continue or stop purchasely purchase action like this
              *
-             * First hide presentation to display your own scren
+             * First hide presentation to display your own screen
              * Purchasely.hidePresentation()
              *
-             * Call this method to display Purchaely paywall
+             * Call this method to display Purchasely paywall
              * Purchasely.showPresentation()
              *
              * Call this method to update Purchasely Paywall
@@ -220,6 +220,7 @@ const App: React.FunctionComponent = () => {
 
       if (presentation.type === PLYPresentationType.CLIENT) {
         // Display my own paywall
+        console.log('metadata: ' + JSON.stringify(presentation.metadata, null, 2));
         return;
       }
 
@@ -286,7 +287,7 @@ const App: React.FunctionComponent = () => {
         'com.purchasely.plus.yearly',
         'com.purchasely.plus.yearly.winback.test'
       );
-      
+
       console.log('Signature timestamp: ' + signature.timestamp);
       console.log('Signature planVendorId: ' + signature.planVendorId);
       console.log('Signature identifier: ' + signature.identifier);

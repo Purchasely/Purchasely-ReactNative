@@ -369,6 +369,17 @@ type PurchaselyEventProperties = {
   running_subscriptions?: PurchaselyEventPropertySubscription[];
 };
 
+export type PLYPresentationPlan = {
+  planVendorId: string | null;
+  storeProductId?: string | null;
+  basePlanId?: string | null;
+  offerId?: string | null;
+}
+
+export type PLYPresentationMetadata = {
+  [key: string]: string | number | boolean | null;
+};
+
 export type PurchaselyPresentation = {
   id: string;
   placementId?: string | null;
@@ -377,7 +388,8 @@ export type PurchaselyPresentation = {
   abTestVariantId?: string | null;
   language?: string | null;
   type?: PLYPresentationType | null;
-  plans?: string[] | null;
+  plans?: PLYPresentationPlan[] | null;
+  metadata?: PLYPresentationMetadata | null;
 };
 
 /**

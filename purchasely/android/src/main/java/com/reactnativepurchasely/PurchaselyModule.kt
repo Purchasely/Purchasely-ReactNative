@@ -255,16 +255,24 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
       contentId = contentId)
 
     Purchasely.fetchPresentation(properties = properties) { presentation: PLYPresentation?, error: PLYError? ->
-      if(presentation != null) {
-        presentationsLoaded.removeAll { it.id == presentation.id && it.placementId == presentation.placementId }
-        presentationsLoaded.add(presentation)
-        promise.resolve(Arguments.makeNativeMap(presentation.toMap().mapValues {
-          val value = it.value
-          if(value is PLYPresentationType) value.ordinal
-          else value
-        }))
+      GlobalScope.launch {
+        if(presentation != null) {
+          presentationsLoaded.removeAll { it.id == presentation.id && it.placementId == presentation.placementId }
+          presentationsLoaded.add(presentation)
+          val map = presentation.toMap().mapValues {
+            val value = it.value
+            if(value is PLYPresentationType) value.ordinal
+            else value
+          }
+
+          val mutableMap = map.toMutableMap().apply {
+            this["metadata"] = presentation.metadata?.toMap()
+            this["plans"] = (this["plans"] as List<PLYPresentationPlan>).map { it.toMap() }
+          }
+          promise.resolve(Arguments.makeNativeMap(mutableMap))
+        }
+        if(error != null) promise.reject(IllegalStateException(error.message ?: "Unable to fetch presentation"))
       }
-      if(error != null) promise.reject(IllegalStateException(error.message ?: "Unable to fetch presentation"))
     }
   }
 
@@ -843,4 +851,32 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     }
   }
 
+  fun PLYPresentationPlan.toMap() : Map<String, String?> {
+    return mapOf(
+      Pair("planVendorId", planVendorId),
+      Pair("storeProductId", storeProductId),
+      Pair("basePlanId", basePlanId),
+      Pair("offerId", offerId)
+    )
+  }
+
+  suspend fun PLYPresentationMetadata.toMap() : Map<String, Any> {
+    val metadata = mutableMapOf<String, Any>()
+    this.keys()?.forEach { key ->
+      val value = when (this.type(key)) {
+        kotlin.Boolean::class.java.simpleName -> this.getBoolean(key)
+        kotlin.String::class.java.simpleName -> this.getString(key)
+        kotlin.Int::class.java.simpleName -> this.getInt(key)
+        kotlin.Long::class.java.simpleName -> this.getLong(key)
+        kotlin.Double::class.java.simpleName -> this.getDouble(key)
+        kotlin.Float::class.java.simpleName -> this.getFloat(key)
+        else -> null
+      }
+      value?.let {
+        metadata.put(key, it)
+      }
+    }
+
+    return metadata
+  }
 }
