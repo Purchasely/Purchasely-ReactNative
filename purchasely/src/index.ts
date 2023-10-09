@@ -376,8 +376,27 @@ export type PLYPresentationPlan = {
   offerId?: string | null;
 }
 
-export type PLYPresentationMetadata = {
-  [key: string]: string | number | boolean | null;
+export class PLYPresentationMetadata {
+  [key: string]: string | number | boolean;
+
+  getBoolean(key: string): boolean | undefined;
+  getString(key: string): string | undefined;
+  getNumber(key: string): number | undefined;
+};
+
+PLYPresentationMetadata.getBoolean = function(key: string): boolean | undefined {
+  const value = this[key];
+  return typeof value === 'boolean' ? value : undefined;
+};
+
+PLYPresentationMetadata.getString = function(key: string): string | undefined {
+  const value = this[key];
+  return typeof value === 'string' ? value : undefined;
+};
+
+PLYPresentationMetadata.getNumber = function(key: string): number | undefined {
+  const value = this[key];
+  return typeof value === 'number' ? value : undefined;
 };
 
 export type PurchaselyPresentation = {

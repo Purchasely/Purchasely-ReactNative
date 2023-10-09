@@ -864,13 +864,8 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     val metadata = mutableMapOf<String, Any>()
     this.keys()?.forEach { key ->
       val value = when (this.type(key)) {
-        kotlin.Boolean::class.java.simpleName -> this.getBoolean(key)
         kotlin.String::class.java.simpleName -> this.getString(key)
-        kotlin.Int::class.java.simpleName -> this.getInt(key)
-        kotlin.Long::class.java.simpleName -> this.getLong(key)
-        kotlin.Double::class.java.simpleName -> this.getDouble(key)
-        kotlin.Float::class.java.simpleName -> this.getFloat(key)
-        else -> null
+        else -> this.get(key)
       }
       value?.let {
         metadata.put(key, it)

@@ -209,9 +209,16 @@ const App: React.FunctionComponent = () => {
   const onPressFetch = async () => {
     try {
       const presentation = await Purchasely.fetchPresentation({
-        placementId: 'app_launch_demo',
-        contentId: 'content_id_from_reactnative',
+        presentationId: 'meta-cm',
+        placementId: null,
+        contentId: null,
       });
+
+      console.log('Type = ' + presentation.type);
+
+      console.log('metadata: isAdult = ' + presentation.metadata.getBoolean('isAdult'));
+      console.log('metadata: userId  = ' + presentation.metadata.getString('userId'));
+      console.log('metadata: ' + JSON.stringify(presentation.metadata, null, 2));
 
       if (presentation.type === PLYPresentationType.DEACTIVATED) {
         // No paywall to display
@@ -220,6 +227,8 @@ const App: React.FunctionComponent = () => {
 
       if (presentation.type === PLYPresentationType.CLIENT) {
         // Display my own paywall
+        console.log('metadata: isAdult = ' + presentation.metadata.getBoolean('isAdult'));
+        console.log('metadata: userId  = ' + presentation.metadata.getString('userId'));
         console.log('metadata: ' + JSON.stringify(presentation.metadata, null, 2));
         return;
       }
