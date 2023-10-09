@@ -216,10 +216,6 @@ const App: React.FunctionComponent = () => {
 
       console.log('Type = ' + presentation.type);
 
-      console.log('metadata: isAdult = ' + presentation.metadata.getBoolean('isAdult'));
-      console.log('metadata: userId  = ' + presentation.metadata.getString('userId'));
-      console.log('metadata: ' + JSON.stringify(presentation.metadata, null, 2));
-
       if (presentation.type === PLYPresentationType.DEACTIVATED) {
         // No paywall to display
         return;
@@ -227,8 +223,6 @@ const App: React.FunctionComponent = () => {
 
       if (presentation.type === PLYPresentationType.CLIENT) {
         // Display my own paywall
-        console.log('metadata: isAdult = ' + presentation.metadata.getBoolean('isAdult'));
-        console.log('metadata: userId  = ' + presentation.metadata.getString('userId'));
         console.log('metadata: ' + JSON.stringify(presentation.metadata, null, 2));
         return;
       }
