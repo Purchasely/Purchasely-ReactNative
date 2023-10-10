@@ -348,9 +348,7 @@ RCT_EXPORT_METHOD(isEligibleForIntroOffer:(NSString * _Nonnull)planVendorId
         [Purchasely planWith:planVendorId
                      success:^(PLYPlan * _Nonnull plan) {
             [plan isEligibleForIntroductoryOffer:^(BOOL isEligible) {
-                NSMutableDictionary *result = [NSMutableDictionary new];
-                [result setObject:@(isEligible) forKey:@"isEligible"];
-                resolve(result);
+                resolve(@(isEligible));
             }];
         } failure:^(NSError * _Nullable error) {
             [self reject: reject with: error];
