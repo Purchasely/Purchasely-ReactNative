@@ -70,7 +70,7 @@ const App: React.FunctionComponent = () => {
       const plan = await Purchasely.planWithIdentifier('PURCHASELY_PLUS_YEARLY');
       console.log('Plan', plan);
 
-      await Purchasely.isEligibleForIntroOffer("gb-v5-monthly-promo-offers").then((isEligible) => {
+      await Purchasely.isEligibleForIntroOffer("PURCHASELY_PLUS_YEARLY").then((isEligible) => {
         console.log('Is eligible for promo offer ? ' + isEligible);
       });
 

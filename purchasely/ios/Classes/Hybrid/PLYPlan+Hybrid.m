@@ -9,8 +9,8 @@
 
 @implementation PLYPlan (Hybrid)
 
-- (void)isUserEligibleForIntroductoryOffer:(void (^)(BOOL))completion {
-    [self isUserEligibleForIntroductoryOffer:completion];
+- (void)isEligibleForIntroductoryOffer:(void (^)(BOOL))completion {
+    [self isUserEligibleForIntroductoryOfferWithCompletion:completion];
 }
 
 - (NSDictionary *)asDictionary {
