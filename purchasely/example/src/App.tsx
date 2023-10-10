@@ -214,7 +214,7 @@ const App: React.FunctionComponent = () => {
         contentId: null,
       });
 
-      console.log('metadata: ' + JSON.stringify(presentation.metadata, null, 2));
+      console.log('Type = ' + presentation.type);
 
       if (presentation.type === PLYPresentationType.DEACTIVATED) {
         // No paywall to display
