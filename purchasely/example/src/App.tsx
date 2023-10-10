@@ -31,20 +31,23 @@ const App: React.FunctionComponent = () => {
     async function setupPurchasely() {
       var configured = false;
       try {
-        configured = await Purchasely.startWithAPIKey(
-          'fcb39be4-2ba4-4db7-bde3-2a5a1e20745d',
-          ['Google'],
-          null,
-          LogLevels.DEBUG,
-          RunningMode.FULL
-        );
+        configured = await Purchasely.start({
+          apiKey: 'fcb39be4-2ba4-4db7-bde3-2a5a1e20745d',
+          logLevel: LogLevels.DEBUG, // to force log level for debug
+          userId: 'test-user', // if you know your user id
+          runningMode: RunningMode.FULL, // to set mode manually
+          storeKit1: false, // default is StoreKit2
+          androidStores: ['Google', 'Huawei'] // Google is already set by default
+        });
       } catch (e) {
-        console.log('Purchasely SDK configuration errror', e);
+        console.log('Purchasely SDK configuration error', e);
       }
 
       if (!configured) {
         console.log('Purchasely SDK not properly initialized');
       }
+
+      Purchasely.userLogout();
 
       setAnonymousUserId(await Purchasely.getAnonymousUserId());
 
@@ -64,13 +67,12 @@ const App: React.FunctionComponent = () => {
       const subscriptions = await Purchasely.userSubscriptions();
       console.log('Subscriptions', subscriptions);
 
-      const plan = await Purchasely.planWithIdentifier(
-        'PURCHASELY_PLUS_YEARLY'
-      );
+      const plan = await Purchasely.planWithIdentifier('PURCHASELY_PLUS_YEARLY');
       console.log('Plan', plan);
-      console.log(
-        'User is eligible for intro offer:' + plan.isEligibleForIntroOffer
-      );
+
+      await Purchasely.isEligibleForIntroOffer("PURCHASELY_PLUS_YEARLY").then((isEligible) => {
+        console.log('Is eligible for promo offer ? ' + isEligible);
+      });
 
       Purchasely.userDidConsumeSubscriptionContent();
 
@@ -140,10 +142,10 @@ const App: React.FunctionComponent = () => {
              * If you want to intercept it, hide presentation and display your screen
              * then call onProcessAction() to continue or stop purchasely purchase action like this
              *
-             * First hide presentation to display your own scren
+             * First hide presentation to display your own screen
              * Purchasely.hidePresentation()
              *
-             * Call this method to display Purchaely paywall
+             * Call this method to display Purchasely paywall
              * Purchasely.showPresentation()
              *
              * Call this method to update Purchasely Paywall
@@ -207,9 +209,12 @@ const App: React.FunctionComponent = () => {
   const onPressFetch = async () => {
     try {
       const presentation = await Purchasely.fetchPresentation({
-        placementId: 'app_launch_demo',
-        contentId: 'content_id_from_reactnative',
+        presentationId: 'meta-cm',
+        placementId: null,
+        contentId: null,
       });
+
+      console.log('Type = ' + presentation.type);
 
       if (presentation.type === PLYPresentationType.DEACTIVATED) {
         // No paywall to display
@@ -218,6 +223,7 @@ const App: React.FunctionComponent = () => {
 
       if (presentation.type === PLYPresentationType.CLIENT) {
         // Display my own paywall
+        console.log('metadata: ' + JSON.stringify(presentation.metadata, null, 2));
         return;
       }
 
@@ -251,6 +257,7 @@ const App: React.FunctionComponent = () => {
     try {
       const plan = await Purchasely.purchaseWithPlanVendorId(
         'PURCHASELY_PLUS_MONTHLY',
+        null,
         'my_content_id'
       );
       console.log('Purchased ' + plan);
@@ -259,6 +266,42 @@ const App: React.FunctionComponent = () => {
     }
     setLoading(false);
   };
+
+  const onPressPurchaseWithPromotionalOffer = async () => {
+    setLoading(true);
+    try {
+      const plan = await Purchasely.purchaseWithPlanVendorId(
+        'PURCHASELY_PLUS_YEARLY',
+        'com.purchasely.plus.yearly.promo',
+        'my_content_id'
+      );
+      console.log('Purchased ' + plan);
+    } catch (e) {
+      console.error(e);
+    }
+    setLoading(false);
+  };
+
+  const onPressSignPromotionalOffer = async () => {
+    setLoading(true);
+    try {
+
+      const signature = await Purchasely.signPromotionalOffer(
+        'com.purchasely.plus.yearly',
+        'com.purchasely.plus.yearly.winback.test'
+      );
+
+      console.log('Signature timestamp: ' + signature.timestamp);
+      console.log('Signature planVendorId: ' + signature.planVendorId);
+      console.log('Signature identifier: ' + signature.identifier);
+      console.log('Signature signature: ' + signature.signature);
+      console.log('Signature nonce: ' + signature.nonce);
+      console.log('Signature keyIdentifier: ' + signature.keyIdentifier);
+    } catch (e) {
+      console.error(e);
+    }
+    setLoading(false);
+  }
 
   const onPressSubscriptions = () => {
     Purchasely.presentSubscriptions();
@@ -402,6 +445,31 @@ const App: React.FunctionComponent = () => {
               <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
             )}{' '}
             Tap to purchase
+          </Text>
+        </TouchableHighlight>
+        <TouchableHighlight
+          onPress={onPressPurchaseWithPromotionalOffer}
+          disabled={loading}
+          style={loading ? styles.buttonDisabled : styles.button}
+        >
+          <Text style={styles.text}>
+            {loading && (
+              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
+            )}{' '}
+            Tap to purchase with promo offer
+          </Text>
+        </TouchableHighlight>
+
+        <TouchableHighlight
+          onPress={onPressSignPromotionalOffer}
+          disabled={loading}
+          style={loading ? styles.buttonDisabled : styles.button}
+        >
+          <Text style={styles.text}>
+            {loading && (
+              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
+            )}{' '}
+            Sign promo offer
           </Text>
         </TouchableHighlight>
         <TouchableHighlight

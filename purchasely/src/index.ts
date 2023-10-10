@@ -1,6 +1,6 @@
 import { NativeModules, NativeEventEmitter } from 'react-native';
 
-const purchaselyVersion = '4.0.2';
+const purchaselyVersion = '4.1.0';
 
 interface Constants {
   logLevelDebug: number;
@@ -152,13 +152,33 @@ export type PurchaselyPlan = {
   introDuration: string;
   introPeriod: string;
   hasFreeTrial: boolean;
-  isEligibleForIntroOffer: boolean;
+};
+
+export type PurchaselyOffer = {
+  vendorId?: string | null;
+  storeOfferId?: string | null;
+};
+
+export type PurchaselySubscriptionOffer = {
+  subscriptionId: string;
+  basePlanId?: string | null;
+  offerToken?: string | null;
+  offerId?: string | null;
 };
 
 export type PurchaselyProduct = {
   name: string;
   vendorId: string;
   plans: PurchaselyPlan[];
+};
+
+export type PurchaselyPromotionalOfferSignature = {
+  planVendorId: String;
+  identifier: String;
+  signature: String;
+  nonce: any;
+  keyIdentifier: String;
+  timestamp: number;
 };
 
 export type PurchaselyUserAttribute = {
@@ -191,6 +211,8 @@ export type PaywallActionInterceptorResult = {
     url: String;
     title: String;
     plan: PurchaselyPlan;
+    offer: PurchaselyOffer | null;
+    subscriptionOffer: PurchaselySubscriptionOffer | null;
     presentation: String;
   };
 };
@@ -228,6 +250,7 @@ type PurchaselyType = {
   clientPresentationDisplayed(presentation: PurchaselyPresentation): void;
   clientPresentationClosed(presentation: PurchaselyPresentation): void;
   isAnonymous(): Promise<boolean>;
+  isEligibleForIntroOffer(planVendorId: String): Promise<boolean>;
 };
 
 const RNPurchasely = NativeModules.Purchasely as PurchaselyType;
@@ -346,6 +369,17 @@ type PurchaselyEventProperties = {
   running_subscriptions?: PurchaselyEventPropertySubscription[];
 };
 
+export type PLYPresentationPlan = {
+  planVendorId: string | null;
+  storeProductId?: string | null;
+  basePlanId?: string | null;
+  offerId?: string | null;
+}
+
+export type PLYPresentationMetadata = {
+  [key: string]: string | number | boolean;
+};
+
 export type PurchaselyPresentation = {
   id: string;
   placementId?: string | null;
@@ -354,9 +388,13 @@ export type PurchaselyPresentation = {
   abTestVariantId?: string | null;
   language?: string | null;
   type?: PLYPresentationType | null;
-  plans?: string[] | null;
+  plans?: PLYPresentationPlan[] | null;
+  metadata: PLYPresentationMetadata;
 };
 
+/**
+ * @deprecated Use `start()` instead
+ **/
 function startWithAPIKey(
   apiKey: string,
   stores: string[],
@@ -373,6 +411,34 @@ function startWithAPIKey(
     purchaselyVersion
   );
 }
+
+interface StartParameters {
+  apiKey: string;
+  androidStores?: string[] | null;
+  storeKit1?: boolean | null;
+  userId?: string | null;
+  logLevel?: number | null;
+  runningMode?: number | null;
+}
+
+const start = ({
+  apiKey,
+  androidStores = ['Google'],
+  storeKit1 = false,
+  userId = null,
+  logLevel = LogLevels.ERROR,
+  runningMode = RunningMode.FULL,
+}: StartParameters): Promise<boolean> => {
+  return NativeModules.Purchasely.start(
+    apiKey,
+    androidStores,
+    storeKit1,
+    userId,
+    logLevel,
+    runningMode,
+    purchaselyVersion
+  );
+};
 
 function setUserAttributeWithDate(key: string, value: Date): void {
   const dateAsString = value.toISOString();
@@ -563,13 +629,25 @@ const presentPlanWithIdentifier = ({
 
 const purchaseWithPlanVendorId = (
   planVendorId: string,
+  offerId: string | null = null,
   contentId: string | null = null
 ): Promise<PurchaselyPlan> => {
   return NativeModules.Purchasely.purchaseWithPlanVendorId(
     planVendorId,
+    offerId,
     contentId
   );
 };
+
+const signPromotionalOffer = (
+  storeProductId: string,
+  storeOfferId: string
+  ): Promise<PurchaselyPromotionalOfferSignature> => {
+  return NativeModules.Purchasely.signPromotionalOffer(
+    storeProductId,
+    storeOfferId
+  );
+}
 
 const closePresentation = () => {
   return NativeModules.Purchasely.closePresentation();
@@ -586,6 +664,7 @@ const showPresentation = () => {
 const Purchasely = {
   ...RNPurchasely,
   startWithAPIKey,
+  start,
   addEventListener,
   removeEventListener,
   addPurchasedListener,
@@ -603,6 +682,7 @@ const Purchasely = {
   showPresentation,
   closePresentation,
   hidePresentation,
+  signPromotionalOffer
 };
 
 export default Purchasely;
