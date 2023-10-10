@@ -70,4 +70,4 @@ This file provides the underlying native SDK versions that the React Native SDK 
 | 4.0.0   | 4.0.0       | 4.0.0           |
 | 4.0.1   | 4.0.1       | 4.0.0           |
 | 4.0.2   | 4.0.3       | 4.0.0           |
-| 4.1.0   | 4.1.1       | 4.1.1           |
+| 4.1.0   | 4.1.3       | 4.1.1           |

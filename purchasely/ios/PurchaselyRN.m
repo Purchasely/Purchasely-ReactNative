@@ -219,7 +219,49 @@ RCT_EXPORT_MODULE(Purchasely);
         }
 
         if (presentation.plans != nil) {
-            [presentationResult setObject:presentation.plans forKey:@"plans"];
+            NSMutableArray *plans = [NSMutableArray new];
+            
+            for (NSDictionary *plan in presentation.plans) {
+                NSMutableDictionary<NSString *, NSObject *> *newPlan = [NSMutableDictionary new];
+                if (plan[@"planVendorId"] != nil) { [newPlan setObject:plan[@"planVendorId"] forKey:@"planVendorId"]; }
+                if (plan[@"storeProductId"] != nil) { [newPlan setObject:plan[@"storeProductId"] forKey:@"storeProductId"]; }
+                if (plan[@"offerId"] != nil) { [newPlan setObject:plan[@"offerId"] forKey:@"offerId"]; }
+                [plans addObject:newPlan];
+            }
+            [presentationResult setObject:plans forKey:@"plans"];
+        }
+
+        if (presentation.metadata != nil) {
+            
+            NSDictionary<NSString *,id> *rawMetadata = [presentation.metadata getRawMetadata];
+            NSMutableDictionary<NSString *,id> *resultDict = [NSMutableDictionary dictionary];
+            
+            dispatch_group_t group = dispatch_group_create();
+            dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
+            dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
+
+            for (NSString *key in rawMetadata)  {
+                id value = rawMetadata[key];
+                
+                if ([value isKindOfClass: [NSString class]]) {
+                    dispatch_group_enter(group); // Enter the dispatch group before making the async call
+                    [presentation.metadata getStringWith:key completion:^(NSString * _Nullable result) {
+                        [resultDict setObject:result forKey:key];
+                        dispatch_group_leave(group); // Leave the dispatch group after the async call is completed
+                    }];
+                } else {
+                    [resultDict setObject:value forKey:key];
+                }
+            }
+
+            dispatch_group_notify(group, queue, ^{
+                // Code to execute after all async calls are completed
+                [presentationResult setObject:resultDict forKey:@"metadata"];
+                dispatch_semaphore_signal(semaphore);
+            });
+            
+            // Wait until all async calls are completed
+            dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
         }
 
         int resultString;
@@ -305,7 +347,7 @@ RCT_EXPORT_METHOD(isEligibleForIntroOffer:(NSString * _Nonnull)planVendorId
     dispatch_async(dispatch_get_main_queue(), ^{
         [Purchasely planWith:planVendorId
                      success:^(PLYPlan * _Nonnull plan) {
-            [plan isUserEligibleForIntroductoryOffer:^(BOOL isEligible) {
+            [plan isEligibleForIntroductoryOffer:^(BOOL isEligible) {
                 NSMutableDictionary *result = [NSMutableDictionary new];
                 [result setObject:@(isEligible) forKey:@"isEligible"];
                 resolve(result);

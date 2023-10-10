@@ -14,6 +14,8 @@ import io.purchasely.ext.*
 import io.purchasely.ext.EventListener
 import io.purchasely.models.PLYError
 import io.purchasely.models.PLYPlan
+import io.purchasely.models.PLYPromoOffer
+import io.purchasely.models.PLYPresentationPlan
 import kotlinx.coroutines.*
 import java.lang.ref.WeakReference
 import java.text.SimpleDateFormat
@@ -181,8 +183,8 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   }
 
   @ReactMethod
-  fun signPromotionalOffer(promise: Promise) {
-    promise.reject(null)
+  fun signPromotionalOffer(storeProductId: String, storeOfferId: String, promise: Promise) {
+    promise.reject("Not supported on Android")
   }
 
   @ReactMethod
@@ -253,16 +255,24 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
       contentId = contentId)
 
     Purchasely.fetchPresentation(properties = properties) { presentation: PLYPresentation?, error: PLYError? ->
-      if(presentation != null) {
-        presentationsLoaded.removeAll { it.id == presentation.id && it.placementId == presentation.placementId }
-        presentationsLoaded.add(presentation)
-        promise.resolve(Arguments.makeNativeMap(presentation.toMap().mapValues {
-          val value = it.value
-          if(value is PLYPresentationType) value.ordinal
-          else value
-        }))
+      GlobalScope.launch {
+        if(presentation != null) {
+          presentationsLoaded.removeAll { it.id == presentation.id && it.placementId == presentation.placementId }
+          presentationsLoaded.add(presentation)
+          val map = presentation.toMap().mapValues {
+            val value = it.value
+            if(value is PLYPresentationType) value.ordinal
+            else value
+          }
+
+          val mutableMap = map.toMutableMap().apply {
+            this["metadata"] = presentation.metadata?.toMap()
+            this["plans"] = (this["plans"] as List<PLYPresentationPlan>).map { it.toMap() }
+          }
+          promise.resolve(Arguments.makeNativeMap(mutableMap))
+        }
+        if(error != null) promise.reject(IllegalStateException(error.message ?: "Unable to fetch presentation"))
       }
-      if(error != null) promise.reject(IllegalStateException(error.message ?: "Unable to fetch presentation"))
     }
   }
 
@@ -669,7 +679,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
       try {
         val plan = Purchasely.plan(planVendorId)
         if(plan != null) {
-          promise.resolve(plan.isEligibleToIntroOffer())
+          promise.resolve(plan.promoOffers.any { plan.isEligibleToIntroOffer(it.storeOfferId) })
         } else {
           promise.reject(IllegalStateException("plan $planVendorId not found"))
         }
@@ -841,4 +851,27 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     }
   }
 
+  fun PLYPresentationPlan.toMap() : Map<String, String?> {
+    return mapOf(
+      Pair("planVendorId", planVendorId),
+      Pair("storeProductId", storeProductId),
+      Pair("basePlanId", basePlanId),
+      Pair("offerId", offerId)
+    )
+  }
+
+  suspend fun PLYPresentationMetadata.toMap() : Map<String, Any> {
+    val metadata = mutableMapOf<String, Any>()
+    this.keys()?.forEach { key ->
+      val value = when (this.type(key)) {
+        kotlin.String::class.java.simpleName -> this.getString(key)
+        else -> this.get(key)
+      }
+      value?.let {
+        metadata.put(key, it)
+      }
+    }
+
+    return metadata
+  }
 }
