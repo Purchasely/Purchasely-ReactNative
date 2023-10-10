@@ -14,6 +14,8 @@ import io.purchasely.ext.*
 import io.purchasely.ext.EventListener
 import io.purchasely.models.PLYError
 import io.purchasely.models.PLYPlan
+import io.purchasely.models.PLYPromoOffer
+import io.purchasely.models.PLYPresentationPlan
 import kotlinx.coroutines.*
 import java.lang.ref.WeakReference
 import java.text.SimpleDateFormat
@@ -125,6 +127,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     return result
   }
 
+  @Deprecated("Should use start method", ReplaceWith("start"))
   @ReactMethod
   fun startWithAPIKey(apiKey: String,
                       stores: ReadableArray,
@@ -134,6 +137,18 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
                       bridgeVersion: String,
                       promise: Promise) {
 
+    start(apiKey, stores, false, userId, logLevel, runningMode, bridgeVersion, promise)
+  }
+
+  @ReactMethod
+  fun start(apiKey: String,
+            stores: ReadableArray,
+            storeKit1: Boolean,
+            userId: String?,
+            logLevel: Int,
+            runningMode: Int,
+            bridgeVersion: String,
+            promise: Promise) {
     Purchasely.Builder(reactApplicationContext.applicationContext)
       .apiKey(apiKey)
       .stores(getStoresInstances(stores.toArrayList()))
@@ -165,6 +180,11 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   fun close() {
     productActivity = null
     Purchasely.close()
+  }
+
+  @ReactMethod
+  fun signPromotionalOffer(storeProductId: String, storeOfferId: String, promise: Promise) {
+    promise.reject("Not supported on Android")
   }
 
   @ReactMethod
@@ -235,16 +255,24 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
       contentId = contentId)
 
     Purchasely.fetchPresentation(properties = properties) { presentation: PLYPresentation?, error: PLYError? ->
-      if(presentation != null) {
-        presentationsLoaded.removeAll { it.id == presentation.id && it.placementId == presentation.placementId }
-        presentationsLoaded.add(presentation)
-        promise.resolve(Arguments.makeNativeMap(presentation.toMap().mapValues {
-          val value = it.value
-          if(value is PLYPresentationType) value.ordinal
-          else value
-        }))
+      GlobalScope.launch {
+        if(presentation != null) {
+          presentationsLoaded.removeAll { it.id == presentation.id && it.placementId == presentation.placementId }
+          presentationsLoaded.add(presentation)
+          val map = presentation.toMap().mapValues {
+            val value = it.value
+            if(value is PLYPresentationType) value.ordinal
+            else value
+          }
+
+          val mutableMap = map.toMutableMap().apply {
+            this["metadata"] = presentation.metadata?.toMap()
+            this["plans"] = (this["plans"] as List<PLYPresentationPlan>).map { it.toMap() }
+          }
+          promise.resolve(Arguments.makeNativeMap(mutableMap))
+        }
+        if(error != null) promise.reject(IllegalStateException(error.message ?: "Unable to fetch presentation"))
       }
-      if(error != null) promise.reject(IllegalStateException(error.message ?: "Unable to fetch presentation"))
     }
   }
 
@@ -391,13 +419,16 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   }
 
   @ReactMethod
-  fun purchaseWithPlanVendorId(planVendorId: String, contentId: String?, promise: Promise) {
+  fun purchaseWithPlanVendorId(planVendorId: String, offerId: String?, contentId: String?, promise: Promise) {
     GlobalScope.launch {
       try {
         val plan = Purchasely.plan(planVendorId)
+        val offer = plan?.promoOffers?.firstOrNull { it.vendorId == offerId }
         if(plan != null) {
-          Purchasely.purchase(reactApplicationContext.currentActivity!!,
-            plan,
+          Purchasely.purchase(
+            activity = reactApplicationContext.currentActivity!!,
+            plan = plan,
+            offer = offer,
             contentId = contentId,
             onSuccess = {
               promise.resolve(Arguments.makeNativeMap(transformPlanToMap(it)))
@@ -618,7 +649,13 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
       parametersForReact["title"] = parameters.title
       parametersForReact["url"] = parameters.url?.toString()
       parametersForReact["plan"] = transformPlanToMap(parameters.plan)
+      parametersForReact["offer"] = mapOf(
+        "vendorId" to parameters.offer?.vendorId,
+        "storeOfferId" to parameters.offer?.storeOfferId
+      )
+      parametersForReact["subscriptionOffer"] = parameters.subscriptionOffer?.toMap()
       parametersForReact["presentation"] = parameters.presentation
+      parametersForReact["placement"] = parameters.placement
 
       promise.resolve(Arguments.makeNativeMap(
         mapOf(
@@ -633,6 +670,22 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
           Pair("parameters", parametersForReact.filterNot { it.value == null })
         )
       ))
+    }
+  }
+
+  @ReactMethod
+  fun isEligibleForIntroOffer(planVendorId: String, promise: Promise) {
+    GlobalScope.launch {
+      try {
+        val plan = Purchasely.plan(planVendorId)
+        if(plan != null) {
+          promise.resolve(plan.promoOffers.any { plan.isEligibleToIntroOffer(it.storeOfferId) })
+        } else {
+          promise.reject(IllegalStateException("plan $planVendorId not found"))
+        }
+      } catch (e: Exception) {
+        promise.reject(e)
+      }
     }
   }
 
@@ -748,8 +801,6 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
           DistributionType.UNKNOWN -> DistributionType.UNKNOWN.ordinal
           else -> null
         }
-
-        this["isEligibleForIntroOffer"] = plan.isEligibleToIntroOffer()
       }
     }
   }
@@ -800,4 +851,27 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     }
   }
 
+  fun PLYPresentationPlan.toMap() : Map<String, String?> {
+    return mapOf(
+      Pair("planVendorId", planVendorId),
+      Pair("storeProductId", storeProductId),
+      Pair("basePlanId", basePlanId),
+      Pair("offerId", offerId)
+    )
+  }
+
+  suspend fun PLYPresentationMetadata.toMap() : Map<String, Any> {
+    val metadata = mutableMapOf<String, Any>()
+    this.keys()?.forEach { key ->
+      val value = when (this.type(key)) {
+        kotlin.String::class.java.simpleName -> this.getString(key)
+        else -> this.get(key)
+      }
+      value?.let {
+        metadata.put(key, it)
+      }
+    }
+
+    return metadata
+  }
 }

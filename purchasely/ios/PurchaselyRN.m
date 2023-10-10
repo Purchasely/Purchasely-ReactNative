@@ -146,6 +146,12 @@ RCT_EXPORT_MODULE(Purchasely);
         if (params.presentation != nil) {
             [paramsResult setObject:params.presentation forKey:@"presentation"];
         }
+        if (params.promoOffer != nil) {
+            NSMutableDictionary<NSString *, NSObject *> *promoOffer = [NSMutableDictionary new];
+            [promoOffer setObject:params.promoOffer.vendorId forKey:@"vendorId"];
+            [promoOffer setObject:params.promoOffer.storeOfferId forKey:@"storeOfferId"];
+            [paramsResult setObject:promoOffer forKey:@"offer"];
+        }
 
         [actionInterceptorResult setObject:paramsResult forKey:@"parameters"];
     }
@@ -213,7 +219,49 @@ RCT_EXPORT_MODULE(Purchasely);
         }
 
         if (presentation.plans != nil) {
-            [presentationResult setObject:presentation.plans forKey:@"plans"];
+            NSMutableArray *plans = [NSMutableArray new];
+            
+            for (NSDictionary *plan in presentation.plans) {
+                NSMutableDictionary<NSString *, NSObject *> *newPlan = [NSMutableDictionary new];
+                if (plan[@"planVendorId"] != nil) { [newPlan setObject:plan[@"planVendorId"] forKey:@"planVendorId"]; }
+                if (plan[@"storeProductId"] != nil) { [newPlan setObject:plan[@"storeProductId"] forKey:@"storeProductId"]; }
+                if (plan[@"offerId"] != nil) { [newPlan setObject:plan[@"offerId"] forKey:@"offerId"]; }
+                [plans addObject:newPlan];
+            }
+            [presentationResult setObject:plans forKey:@"plans"];
+        }
+
+        if (presentation.metadata != nil) {
+            
+            NSDictionary<NSString *,id> *rawMetadata = [presentation.metadata getRawMetadata];
+            NSMutableDictionary<NSString *,id> *resultDict = [NSMutableDictionary dictionary];
+            
+            dispatch_group_t group = dispatch_group_create();
+            dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
+            dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
+
+            for (NSString *key in rawMetadata)  {
+                id value = rawMetadata[key];
+                
+                if ([value isKindOfClass: [NSString class]]) {
+                    dispatch_group_enter(group); // Enter the dispatch group before making the async call
+                    [presentation.metadata getStringWith:key completion:^(NSString * _Nullable result) {
+                        [resultDict setObject:result forKey:key];
+                        dispatch_group_leave(group); // Leave the dispatch group after the async call is completed
+                    }];
+                } else {
+                    [resultDict setObject:value forKey:key];
+                }
+            }
+
+            dispatch_group_notify(group, queue, ^{
+                // Code to execute after all async calls are completed
+                [presentationResult setObject:resultDict forKey:@"metadata"];
+                dispatch_semaphore_signal(semaphore);
+            });
+            
+            // Wait until all async calls are completed
+            dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
         }
 
         int resultString;
@@ -240,6 +288,32 @@ RCT_EXPORT_MODULE(Purchasely);
     return presentationResult;
 }
 
+RCT_EXPORT_METHOD(start:(NSString * _Nonnull)apiKey
+                  stores:(NSArray * _Nullable)stores
+                  storeKit1:(BOOL)storeKit1
+                  userId:(NSString * _Nullable)userId
+                  logLevel:(NSInteger)logLevel
+                  runningMode:(NSInteger)runningMode
+                  purchaselySdkVersion:(NSString * _Nullable)purchaselySdkVersion
+                  initialized:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
+
+    [Purchasely setSdkBridgeVersion:purchaselySdkVersion];
+
+    [Purchasely startWithAPIKey:apiKey
+                      appUserId:userId
+                    runningMode:runningMode
+                    paywallActionsInterceptor:nil
+               storekitSettings: storeKit1 ? [StorekitSettings storeKit1] : [StorekitSettings storeKit2]
+                       logLevel:logLevel
+                    initialized:^(BOOL initialized, NSError * _Nullable error) {
+        resolve(@(initialized));
+    }];
+
+    [Purchasely setEventDelegate:self];
+
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(purchasePerformed) name:@"ply_purchasedSubscription" object:nil];
+}
 
 RCT_EXPORT_METHOD(startWithAPIKey:(NSString * _Nonnull)apiKey
 				  stores:(NSArray * _Nullable)stores
@@ -265,6 +339,21 @@ RCT_EXPORT_METHOD(startWithAPIKey:(NSString * _Nonnull)apiKey
     [Purchasely setEventDelegate:self];
 
 	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(purchasePerformed) name:@"ply_purchasedSubscription" object:nil];
+}
+
+RCT_EXPORT_METHOD(isEligibleForIntroOffer:(NSString * _Nonnull)planVendorId
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [Purchasely planWith:planVendorId
+                     success:^(PLYPlan * _Nonnull plan) {
+            [plan isEligibleForIntroductoryOffer:^(BOOL isEligible) {
+                resolve(@(isEligible));
+            }];
+        } failure:^(NSError * _Nullable error) {
+            [self reject: reject with: error];
+        }];
+    });
 }
 
 RCT_EXPORT_METHOD(setLogLevel:(NSInteger)logLevel) {
@@ -467,6 +556,25 @@ RCT_EXPORT_METHOD(setPaywallActionInterceptor:(RCTPromiseResolveBlock)resolve
 RCT_EXPORT_METHOD(onProcessAction:(BOOL)processAction) {
     dispatch_async(dispatch_get_main_queue(), ^{
         self.onProcessActionHandler(processAction);
+    });
+}
+
+RCT_EXPORT_METHOD(signPromotionalOffer:(NSString * )storeProductId
+                  storeOfferId:(NSString * )storeOfferId
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+{
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (@available(iOS 12.2, *)) {
+            [Purchasely signPromotionalOfferWithStoreProductId:storeProductId storeOfferId:storeOfferId success:^(PLYOfferSignature * _Nonnull signature) {
+                NSDictionary* result = signature.asDictionary;
+                resolve(result);
+            } failure:^(NSError * _Nullable error) {
+                [self reject: reject with: error];
+            }];
+        } else {
+            [self reject: reject with: nil];
+        }
     });
 }
 
@@ -776,23 +884,55 @@ RCT_EXPORT_METHOD(presentSubscriptions)
 }
 
 RCT_EXPORT_METHOD(purchaseWithPlanVendorId:(NSString * _Nonnull)planVendorId
+                  offerId:(NSString * _Nullable)offerId
 				  contentId:(NSString * _Nullable)contentId
 				  resolve:(RCTPromiseResolveBlock)resolve
 				  reject:(RCTPromiseRejectBlock)reject)
 {
 	dispatch_async(dispatch_get_main_queue(), ^{
+        
 		[Purchasely planWith:planVendorId
 					 success:^(PLYPlan * _Nonnull plan) {
-			[Purchasely purchaseWithPlan:plan
-							   contentId:contentId
-								 success:^{
-				resolve(plan.asDictionary);
-			}
-								 failure:^(NSError * _Nonnull error) {
-				[self reject: reject with: error];
-			}];
-		}
-					 failure:^(NSError * _Nullable error) {
+            
+            if (@available(iOS 12.2, macOS 12.0, tvOS 15.0, watchOS 8.0, *)) {
+                
+                NSString *storeOfferId = nil;
+                for (PLYPromoOffer *promoOffer in plan.promoOffers) {
+                    if ([promoOffer.vendorId isEqualToString:offerId]) {
+                        storeOfferId = promoOffer.storeOfferId;
+                        break;
+                    }
+                }
+                
+                if (storeOfferId) {
+                    [Purchasely purchaseWithPromotionalOfferWithPlan:plan
+                                                           contentId:contentId
+                                                        storeOfferId:storeOfferId
+                                                             success:^{
+                        resolve(plan.asDictionary);
+                    } failure:^(NSError * _Nonnull error) {
+                        [self reject: reject with: error];
+                    }];
+                } else {
+                    [Purchasely purchaseWithPlan:plan
+                                       contentId:contentId
+                                         success:^{
+                        resolve(plan.asDictionary);
+                    } failure:^(NSError * _Nonnull error) {
+                        [self reject: reject with: error];
+                    }];
+                }
+            } else {
+                [Purchasely purchaseWithPlan:plan
+                                   contentId:contentId
+                                     success:^{
+                    resolve(plan.asDictionary);
+                } failure:^(NSError * _Nonnull error) {
+                    [self reject: reject with: error];
+                }];
+            }
+            
+		} failure:^(NSError * _Nullable error) {
 			[self reject: reject with: error];
 		}];
 	});
@@ -894,7 +1034,6 @@ RCT_EXPORT_METHOD(userSubscriptions:(RCTPromiseResolveBlock)resolve
 		}];
 	});
 }
-
 
 // ****************************************************************************
 #pragma mark - Events
