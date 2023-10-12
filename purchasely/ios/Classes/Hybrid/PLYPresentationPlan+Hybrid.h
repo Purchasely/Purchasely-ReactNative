@@ -1,5 +1,5 @@
 //
-//  PLYOfferSignature+Hybrid.h
+//  PLYPresentationPlan+Hybrid.h
 //  Pods
 //
 //  Created by Florian Huet on 29/09/2023.
@@ -11,7 +11,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface PLYOfferSignature (Hybrid)
+@interface PLYPresentationPlan (Hybrid)
 
 - (NSDictionary *)asDictionary;
 

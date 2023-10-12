@@ -221,12 +221,8 @@ RCT_EXPORT_MODULE(Purchasely);
         if (presentation.plans != nil) {
             NSMutableArray *plans = [NSMutableArray new];
             
-            for (NSDictionary *plan in presentation.plans) {
-                NSMutableDictionary<NSString *, NSObject *> *newPlan = [NSMutableDictionary new];
-                if (plan[@"planVendorId"] != nil) { [newPlan setObject:plan[@"planVendorId"] forKey:@"planVendorId"]; }
-                if (plan[@"storeProductId"] != nil) { [newPlan setObject:plan[@"storeProductId"] forKey:@"storeProductId"]; }
-                if (plan[@"offerId"] != nil) { [newPlan setObject:plan[@"offerId"] forKey:@"offerId"]; }
-                [plans addObject:newPlan];
+            for (PLYPresentationPlan *plan in presentation.plans) {
+                [plans addObject:plan.asDictionary];
             }
             [presentationResult setObject:plans forKey:@"plans"];
         }
@@ -307,7 +303,11 @@ RCT_EXPORT_METHOD(start:(NSString * _Nonnull)apiKey
                storekitSettings: storeKit1 ? [StorekitSettings storeKit1] : [StorekitSettings storeKit2]
                        logLevel:logLevel
                     initialized:^(BOOL initialized, NSError * _Nullable error) {
-        resolve(@(initialized));
+        if (error != nil) {
+            [self reject: reject with: error];
+        } else {
+            resolve(@(initialized));
+        }
     }];
 
     [Purchasely setEventDelegate:self];
@@ -333,7 +333,11 @@ RCT_EXPORT_METHOD(startWithAPIKey:(NSString * _Nonnull)apiKey
                storekitSettings:[StorekitSettings storeKit2]
                        logLevel:logLevel
                     initialized:^(BOOL initialized, NSError * _Nullable error) {
-        resolve(@(initialized));
+        if (error != nil) {
+            [self reject: reject with: error];
+        } else {
+            resolve(@(initialized));
+        }
     }];
 
     [Purchasely setEventDelegate:self];

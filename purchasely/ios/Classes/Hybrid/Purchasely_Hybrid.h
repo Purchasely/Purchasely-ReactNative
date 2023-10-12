@@ -12,6 +12,7 @@
 #import "PLYProduct+Hybrid.h"
 #import "PLYSubscription+Hybrid.h"
 #import "PLYOfferSignature+Hybrid.h"
+#import "PLYPresentationPlan+Hybrid.h"
 #import "UIViewController+Hybrid.h"
 
 #endif /* Purchasely_Hybrid_h */
