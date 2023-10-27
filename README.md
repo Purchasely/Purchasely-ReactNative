@@ -84,4 +84,4 @@ try {
 
 ## 🏁 Documentation
 
-A complete documentation is available on our website [https://docs.purchasely.com](https://docs.purchasely.com/quick-start/sdk-installation/react-native-sdk)
+A complete documentation is available on our website [https://docs.purchasely.com](https://docs.purchasely.com/quick-start-1/sdk-installation/react-native-sdk)
