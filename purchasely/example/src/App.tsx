@@ -71,7 +71,7 @@ const App: React.FunctionComponent = () => {
       console.log('Plan', plan);
 
       await Purchasely.isEligibleForIntroOffer("PURCHASELY_PLUS_YEARLY").then((isEligible) => {
-        console.log('Is eligible for promo offer ? ' + isEligible);
+        console.log('Is eligible for intro offer ? ' + isEligible);
       });
 
       Purchasely.userDidConsumeSubscriptionContent();
