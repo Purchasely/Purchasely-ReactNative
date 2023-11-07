@@ -220,7 +220,7 @@ RCT_EXPORT_MODULE(Purchasely);
 
         if (presentation.plans != nil) {
             NSMutableArray *plans = [NSMutableArray new];
-            
+
             for (PLYPresentationPlan *plan in presentation.plans) {
                 [plans addObject:plan.asDictionary];
             }
@@ -228,17 +228,17 @@ RCT_EXPORT_MODULE(Purchasely);
         }
 
         if (presentation.metadata != nil) {
-            
+
             NSDictionary<NSString *,id> *rawMetadata = [presentation.metadata getRawMetadata];
             NSMutableDictionary<NSString *,id> *resultDict = [NSMutableDictionary dictionary];
-            
+
             dispatch_group_t group = dispatch_group_create();
             dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
             dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
 
             for (NSString *key in rawMetadata)  {
                 id value = rawMetadata[key];
-                
+
                 if ([value isKindOfClass: [NSString class]]) {
                     dispatch_group_enter(group); // Enter the dispatch group before making the async call
                     [presentation.metadata getStringWith:key completion:^(NSString * _Nullable result) {
@@ -255,7 +255,7 @@ RCT_EXPORT_MODULE(Purchasely);
                 [presentationResult setObject:resultDict forKey:@"metadata"];
                 dispatch_semaphore_signal(semaphore);
             });
-            
+
             // Wait until all async calls are completed
             dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
         }
@@ -656,8 +656,13 @@ RCT_EXPORT_METHOD(presentPresentation:(NSDictionary<NSString *, id> * _Nullable)
 
         PLYPresentation *presentationLoaded = [self findPresentationLoadedFor:(NSString *)[presentationDictionary objectForKey:@"id"]];
 
-        if (presentationLoaded == nil || presentationLoaded.controller == nil) {
-            [self reject:reject with:[NSError errorWithDomain:@"io.purchasely" code:2 userInfo:@{@"Error reason": @"Presentation not loaded"}]];
+        if (presentationLoaded == nil) {
+            reject(@"presentation_failure", [NSString stringWithFormat:@"No presentation found for this placement %@", [presentationDictionary objectForKey:@"placementId"]], nil);
+            return;
+        }
+
+        if (presentationLoaded.controller == nil) {
+            reject(@"presentation_failure", [NSString stringWithFormat:@"No Purchasely presentation attached to this placement %@", [presentationDictionary objectForKey:@"placementId"]], nil);
             return;
         }
 
@@ -894,12 +899,12 @@ RCT_EXPORT_METHOD(purchaseWithPlanVendorId:(NSString * _Nonnull)planVendorId
 				  reject:(RCTPromiseRejectBlock)reject)
 {
 	dispatch_async(dispatch_get_main_queue(), ^{
-        
+
 		[Purchasely planWith:planVendorId
 					 success:^(PLYPlan * _Nonnull plan) {
-            
+
             if (@available(iOS 12.2, macOS 12.0, tvOS 15.0, watchOS 8.0, *)) {
-                
+
                 NSString *storeOfferId = nil;
                 for (PLYPromoOffer *promoOffer in plan.promoOffers) {
                     if ([promoOffer.vendorId isEqualToString:offerId]) {
@@ -907,7 +912,7 @@ RCT_EXPORT_METHOD(purchaseWithPlanVendorId:(NSString * _Nonnull)planVendorId
                         break;
                     }
                 }
-                
+
                 if (storeOfferId) {
                     [Purchasely purchaseWithPromotionalOfferWithPlan:plan
                                                            contentId:contentId
@@ -935,7 +940,7 @@ RCT_EXPORT_METHOD(purchaseWithPlanVendorId:(NSString * _Nonnull)planVendorId
                     [self reject: reject with: error];
                 }];
             }
-            
+
 		} failure:^(NSError * _Nullable error) {
 			[self reject: reject with: error];
 		}];
