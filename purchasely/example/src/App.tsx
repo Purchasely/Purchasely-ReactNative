@@ -140,7 +140,7 @@ const App: React.FunctionComponent = () => {
             break;
           case PLYPaywallAction.PURCHASE:
             console.log('User wants to purchase');
-            Purchasely.onProcessAction(true);
+            Purchasely.hidePresentation();
 
             /**
              * If you want to intercept it, hide presentation and display your screen
@@ -346,6 +346,7 @@ const App: React.FunctionComponent = () => {
 
   const onPressContinueAction = () => {
     //Call this method to continue Purchasely action
+    Purchasely.showPresentation();
     Purchasely.onProcessAction(true);
   };
 
