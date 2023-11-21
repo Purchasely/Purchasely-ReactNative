@@ -61,23 +61,27 @@ const App: React.FunctionComponent = () => {
         console.log('Anonymous when connected ? ' + isAnonymous);
       });*/
 
-      const product = await Purchasely.productWithIdentifier('PURCHASELY_PLUS');
-      console.log('Product', product);
+      try {
+        const product = await Purchasely.productWithIdentifier('PURCHASELY_PLUS');
+        console.log('Product', product);
 
-      const subscriptions = await Purchasely.userSubscriptions();
-      console.log('Subscriptions', subscriptions);
+        const subscriptions = await Purchasely.userSubscriptions();
+        console.log('Subscriptions', subscriptions);
 
-      const plan = await Purchasely.planWithIdentifier('PURCHASELY_PLUS_YEARLY');
-      console.log('Plan', plan);
+        const plan = await Purchasely.planWithIdentifier('PURCHASELY_PLUS_YEARLY');
+        console.log('Plan', plan);
 
-      await Purchasely.isEligibleForIntroOffer("PURCHASELY_PLUS_YEARLY").then((isEligible) => {
-        console.log('Is eligible for intro offer ? ' + isEligible);
-      });
+        await Purchasely.isEligibleForIntroOffer("PURCHASELY_PLUS_YEARLY").then((isEligible) => {
+          console.log('Is eligible for intro offer ? ' + isEligible);
+        });
 
-      Purchasely.userDidConsumeSubscriptionContent();
+        Purchasely.userDidConsumeSubscriptionContent();
 
-      const products = await Purchasely.allProducts();
-      console.log('Products', products);
+        const products = await Purchasely.allProducts();
+        console.log('Products', products);
+      } catch (e) {
+        console.log('Purchasely SDK product fetching error', e);
+      }
 
       Purchasely.setLogLevel(LogLevels.DEBUG);
 
@@ -136,7 +140,7 @@ const App: React.FunctionComponent = () => {
             break;
           case PLYPaywallAction.PURCHASE:
             console.log('User wants to purchase');
-            Purchasely.onProcessAction(true);
+            Purchasely.hidePresentation();
 
             /**
              * If you want to intercept it, hide presentation and display your screen
@@ -209,8 +213,7 @@ const App: React.FunctionComponent = () => {
   const onPressFetch = async () => {
     try {
       const presentation = await Purchasely.fetchPresentation({
-        presentationId: 'meta-cm',
-        placementId: null,
+        placementId: "abtest",
         contentId: null,
       });
 
@@ -343,6 +346,7 @@ const App: React.FunctionComponent = () => {
 
   const onPressContinueAction = () => {
     //Call this method to continue Purchasely action
+    Purchasely.showPresentation();
     Purchasely.onProcessAction(true);
   };
 

@@ -643,8 +643,6 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
       paywallActionHandler = processAction
       paywallAction = action
 
-      interceptorActivity = WeakReference(info?.activity)
-
       val parametersForReact = hashMapOf<String, Any?>();
       parametersForReact["title"] = parameters.title
       parametersForReact["url"] = parameters.url?.toString()
@@ -697,19 +695,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   @ReactMethod
   fun showPresentation() {
     CoroutineScope(Dispatchers.Main).launch {
-      val currentActivity = interceptorActivity?.get()
-
-      if (currentActivity != null && !currentActivity.isFinishing && !currentActivity.isDestroyed) {
-        reactApplicationContext.currentActivity?.let {
-          it.startActivity(
-            Intent(it, currentActivity::class.java).apply {
-              //flags = Intent.FLAG_ACTIVITY_NEW_TASK
-              flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
-            }
-          )
-        }
-      }
-      else if (productActivity?.relaunch(reactApplicationContext) == false) {
+      if (productActivity?.relaunch(reactApplicationContext) == false) {
         //wait for activity to relaunch
         withContext(Dispatchers.Default) { delay(500) }
       }
@@ -718,14 +704,14 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
 
   @ReactMethod
   fun onProcessAction(processAction: Boolean) {
-    CoroutineScope(Dispatchers.Main).launch {
-      val activityHandler = interceptorActivity?.get() ?: productActivity?.activity?.get() ?: reactApplicationContext.currentActivity
-      activityHandler?.runOnUiThread {
-        paywallActionHandler?.invoke(processAction)
+    CoroutineScope(Dispatchers.Default).launch {
+      delay(500)
+      val activityHandler = productActivity?.activity?.get() ?: reactApplicationContext.currentActivity
+      withContext(Dispatchers.Main) {
+        activityHandler?.runOnUiThread {
+          paywallActionHandler?.invoke(processAction)
+        }
       }
-
-      interceptorActivity?.clear()
-      interceptorActivity = null
     }
   }
 
@@ -738,9 +724,9 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
 
   @ReactMethod
   fun hidePresentation() {
-    val reactActivity = reactApplicationContext.currentActivity
+    val reactActivity = reactApplicationContext.currentActivity ?: return
     val activity = productActivity?.activity?.get() ?: reactActivity
-    reactActivity?.startActivity(
+    activity.startActivity(
       Intent(activity, reactActivity::class.java).apply {
         flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
       }
@@ -773,8 +759,6 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     var defaultPurchasePromise: Promise? = null
     var paywallActionHandler: PLYCompletionHandler? = null
     var paywallAction: PLYPresentationAction? = null
-
-    var interceptorActivity: WeakReference<Activity>? = null
 
     fun sendPurchaseResult(result: PLYProductViewResult, plan: PLYPlan?) {
       val productViewResult = when(result) {

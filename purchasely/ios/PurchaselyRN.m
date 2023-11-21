@@ -619,19 +619,21 @@ RCT_EXPORT_METHOD(fetchPresentation:(NSString * _Nullable)placementId
     });
 }
 
-- (PLYPresentation *) findPresentationLoadedFor:(NSString * _Nullable) presentationId {
+- (PLYPresentation *) findPresentationLoadedFor:(NSString * _Nullable)presentationId
+                                    placementId:(NSString * _Nullable)placementId {
     for (PLYPresentation *presentationLoaded in self.presentationsLoaded) {
-        if ([presentationLoaded.id isEqualToString: presentationId]) {
+        if ([presentationLoaded.id isEqualToString: presentationId] && [presentationLoaded.placementId isEqualToString: placementId]) {
             return presentationLoaded;
         }
     }
     return nil;
 }
 
-- (NSInteger) findIndexPresentationLoadedFor:(NSString * _Nullable) presentationId {
+- (NSInteger) findIndexPresentationLoadedFor:(NSString * _Nullable)presentationId
+                                 placementId:(NSString * _Nullable)placementId {
     NSInteger index = 0;
     for (PLYPresentation *presentationLoaded in self.presentationsLoaded) {
-        if ([presentationLoaded.id isEqualToString: presentationId]) {
+        if ([presentationLoaded.id isEqualToString: presentationId] && [presentationLoaded.placementId isEqualToString: placementId]) {
             return index;
         }
         index++;
@@ -654,7 +656,7 @@ RCT_EXPORT_METHOD(presentPresentation:(NSDictionary<NSString *, id> * _Nullable)
 
     dispatch_async(dispatch_get_main_queue(), ^{
 
-        PLYPresentation *presentationLoaded = [self findPresentationLoadedFor:(NSString *)[presentationDictionary objectForKey:@"id"]];
+        PLYPresentation *presentationLoaded = [self findPresentationLoadedFor:(NSString *)[presentationDictionary objectForKey:@"id"] placementId:(NSString *)[presentationDictionary objectForKey:@"placementId"]];
 
         if (presentationLoaded == nil) {
             reject(@"presentation_failure", [NSString stringWithFormat:@"No presentation found for this placement %@", [presentationDictionary objectForKey:@"placementId"]], nil);
@@ -666,7 +668,7 @@ RCT_EXPORT_METHOD(presentPresentation:(NSDictionary<NSString *, id> * _Nullable)
             return;
         }
 
-        [self.presentationsLoaded removeObjectAtIndex:[self findIndexPresentationLoadedFor:(NSString *)[presentationDictionary objectForKey:@"id"]]];
+        [self.presentationsLoaded removeObjectAtIndex:[self findIndexPresentationLoadedFor:(NSString *)[presentationDictionary objectForKey:@"id"] placementId:(NSString *)[presentationDictionary objectForKey:@"placementId"]]];
 
         if (presentationLoaded.controller != nil) {
             if (backgroundColorCode != nil) {
@@ -703,7 +705,7 @@ RCT_EXPORT_METHOD(clientPresentationDisplayed:(NSDictionary<NSString *, id> * _N
         return;
     }
 
-    PLYPresentation *presentationLoaded = [self findPresentationLoadedFor:(NSString *)[presentationDictionary objectForKey:@"id"]];
+    PLYPresentation *presentationLoaded = [self findPresentationLoadedFor:(NSString *)[presentationDictionary objectForKey:@"id"] placementId:(NSString *)[presentationDictionary objectForKey:@"placementId"]];
     [Purchasely clientPresentationOpenedWith:presentationLoaded];
 }
 
@@ -713,7 +715,7 @@ RCT_EXPORT_METHOD(clientPresentationClosed:(NSDictionary<NSString *, id> * _Null
         NSLog(@"Presentation cannot be null");
         return;
     }
-    PLYPresentation *presentationLoaded = [self findPresentationLoadedFor:(NSString *)[presentationDictionary objectForKey:@"id"]];
+    PLYPresentation *presentationLoaded = [self findPresentationLoadedFor:(NSString *)[presentationDictionary objectForKey:@"id"] placementId:(NSString *)[presentationDictionary objectForKey:@"placementId"]];
     [Purchasely clientPresentationClosedWith:presentationLoaded];
 }
 
