@@ -627,11 +627,16 @@ const presentPlanWithIdentifier = ({
   );
 };
 
-const purchaseWithPlanVendorId = (
-  planVendorId: string,
-  offerId: string | null = null,
-  contentId: string | null = null
-): Promise<PurchaselyPlan> => {
+interface PurchasePlanParameters {
+  planVendorId: string;
+  offerId?: string | null;
+  contentId?: string | null;
+}
+const purchaseWithPlanVendorId = ({
+  planVendorId,
+  offerId = null,
+  contentId = null
+}: PurchasePlanParameters): Promise<PurchaselyPlan> => {
   return NativeModules.Purchasely.purchaseWithPlanVendorId(
     planVendorId,
     offerId,
@@ -639,10 +644,14 @@ const purchaseWithPlanVendorId = (
   );
 };
 
-const signPromotionalOffer = (
-  storeProductId: string,
-  storeOfferId: string
-  ): Promise<PurchaselyPromotionalOfferSignature> => {
+interface SignPromotionalOfferParameters {
+  storeProductId: string;
+  storeOfferId: string;
+}
+const signPromotionalOffer = ({
+  storeProductId,
+  storeOfferId
+}: SignPromotionalOfferParameters): Promise<PurchaselyPromotionalOfferSignature> => {
   return NativeModules.Purchasely.signPromotionalOffer(
     storeProductId,
     storeOfferId
