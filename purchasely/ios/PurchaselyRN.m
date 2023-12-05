@@ -60,6 +60,7 @@ RCT_EXPORT_MODULE(Purchasely);
         @"customerIoUserEmail": @(PLYAttributeCustomerioUserEmail),
         @"branchUserDeveloperIdentity": @(PLYAttributeBranchUserDeveloperIdentity),
         @"moengageUniqueId": @(PLYAttributeMoengageUniqueId),
+        @"batchCustomUserId": @(PLYAttributeBatchCustomUserId),
 		@"consumable": @(PLYPlanTypeConsumable),
 		@"nonConsumable": @(PLYPlanTypeNonConsumable),
 		@"autoRenewingSubscription": @(PLYPlanTypeAutoRenewingSubscription),
@@ -72,7 +73,10 @@ RCT_EXPORT_MODULE(Purchasely);
         @"presentationTypeNormal": @(PLYPresentationTypeNormal),
         @"presentationTypeFallback": @(PLYPresentationTypeFallback),
         @"presentationTypeDeactivated": @(PLYPresentationTypeDeactivated),
-        @"presentationTypeClient": @(PLYPresentationTypeClient)
+        @"presentationTypeClient": @(PLYPresentationTypeClient),
+        @"themeLight": @(PLYThemeModeLight),
+        @"themeDark": @(PLYThemeModeDark),
+        @"themeSystem": @(PLYThemeModeSystem),
 	};
 }
 
@@ -401,6 +405,10 @@ RCT_REMAP_METHOD(isAnonymous,
                  reject:(RCTPromiseRejectBlock)reject)
 {
     return resolve(@([Purchasely isAnonymous]));
+}
+
+RCT_EXPORT_METHOD(setThemeMode:(NSInteger)mode) {
+    [Purchasely setThemeMode: mode];
 }
 
 RCT_EXPORT_METHOD(setAttribute:(NSInteger)attribute value:(NSString * _Nonnull)value) {
@@ -1033,16 +1041,16 @@ RCT_EXPORT_METHOD(userSubscriptions:(RCTPromiseResolveBlock)resolve
 				  reject:(RCTPromiseRejectBlock)reject)
 {
 	dispatch_async(dispatch_get_main_queue(), ^{
-		[Purchasely userSubscriptionsWithSuccess:^(NSArray<PLYSubscription *> * _Nullable subscriptions) {
-			NSMutableArray *result = [NSMutableArray new];
-			for (PLYSubscription *subscription in subscriptions) {
-				[result addObject:subscription.asDictionary];
-			}
-			resolve(result);
-		}
-										 failure:^(NSError * _Nonnull error) {
-			[self reject: reject with: error];
-		}];
+		[Purchasely userSubscriptions:false
+                              success:^(NSArray<PLYSubscription *> * _Nullable subscriptions) {
+            NSMutableArray *result = [NSMutableArray new];
+            for (PLYSubscription *subscription in subscriptions) {
+                [result addObject:subscription.asDictionary];
+            }
+            resolve(result);
+        } failure:^(NSError * _Nonnull error) {
+            [self reject: reject with: error];
+        }];
 	});
 }
 

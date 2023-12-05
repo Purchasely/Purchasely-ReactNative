@@ -35,6 +35,7 @@ interface Constants {
   customerIoUserEmail: number;
   branchUserDeveloperIdentity: number;
   moEngageUniqueId: number;
+  batchCustomUserId: number;
   consumable: number;
   nonConsumable: number;
   autoRenewingSubscription: number;
@@ -48,6 +49,9 @@ interface Constants {
   presentationTypeFallback: number;
   presentationTypeDeactivated: number;
   presentationTypeClient: number;
+  themeLight: number;
+  themeDark: number;
+  themeSystem: number;
 }
 
 const constants = NativeModules.Purchasely.getConstants() as Constants;
@@ -93,6 +97,7 @@ export enum Attributes {
   CUSTOMER_IO_USER_EMAIL = constants.customerIoUserEmail,
   BRANCH_DEVELOPER_IDENTITY = constants.branchUserDeveloperIdentity,
   MOENGAGE_UNIQUE_ID = constants.moEngageUniqueId,
+  BATCH_CUSTOM_USER_ID = constants.batchCustomUserId,
 }
 
 export enum PlanType {
@@ -108,6 +113,12 @@ export enum RunningMode {
   OBSERVER = constants.runningModeObserver,
   PAYWALL_OBSERVER = constants.runningModePaywallObserver,
   FULL = constants.runningModeFull,
+}
+
+export enum PLYThemeMode {
+  LIGHT = constants.themeLight,
+  DARK = constants.themeDark,
+  SYSTEM = constants.themeSystem,
 }
 
 export enum PLYPaywallAction {
@@ -251,6 +262,7 @@ type PurchaselyType = {
   clientPresentationClosed(presentation: PurchaselyPresentation): void;
   isAnonymous(): Promise<boolean>;
   isEligibleForIntroOffer(planVendorId: String): Promise<boolean>;
+  setThemeMode(theme: PLYThemeMode): void;
 };
 
 const RNPurchasely = NativeModules.Purchasely as PurchaselyType;
@@ -374,7 +386,7 @@ export type PLYPresentationPlan = {
   storeProductId?: string | null;
   basePlanId?: string | null;
   offerId?: string | null;
-}
+};
 
 export type PLYPresentationMetadata = {
   [key: string]: string | number | boolean;
@@ -392,30 +404,10 @@ export type PurchaselyPresentation = {
   metadata: PLYPresentationMetadata;
 };
 
-/**
- * @deprecated Use `start()` instead
- **/
-function startWithAPIKey(
-  apiKey: string,
-  stores: string[],
-  userId: string | null,
-  logLevel: number,
-  runningMode: number
-): Promise<boolean> {
-  return NativeModules.Purchasely.startWithAPIKey(
-    apiKey,
-    stores,
-    userId,
-    logLevel,
-    runningMode,
-    purchaselyVersion
-  );
-}
-
 interface StartParameters {
   apiKey: string;
   androidStores?: string[] | null;
-  storeKit1?: boolean | null;
+  storeKit1: boolean;
   userId?: string | null;
   logLevel?: number | null;
   runningMode?: number | null;
@@ -424,7 +416,7 @@ interface StartParameters {
 const start = ({
   apiKey,
   androidStores = ['Google'],
-  storeKit1 = false,
+  storeKit1,
   userId = null,
   logLevel = LogLevels.ERROR,
   runningMode = RunningMode.FULL,
@@ -635,7 +627,7 @@ interface PurchasePlanParameters {
 const purchaseWithPlanVendorId = ({
   planVendorId,
   offerId = null,
-  contentId = null
+  contentId = null,
 }: PurchasePlanParameters): Promise<PurchaselyPlan> => {
   return NativeModules.Purchasely.purchaseWithPlanVendorId(
     planVendorId,
@@ -650,13 +642,13 @@ interface SignPromotionalOfferParameters {
 }
 const signPromotionalOffer = ({
   storeProductId,
-  storeOfferId
+  storeOfferId,
 }: SignPromotionalOfferParameters): Promise<PurchaselyPromotionalOfferSignature> => {
   return NativeModules.Purchasely.signPromotionalOffer(
     storeProductId,
     storeOfferId
   );
-}
+};
 
 const closePresentation = () => {
   return NativeModules.Purchasely.closePresentation();
@@ -672,7 +664,6 @@ const showPresentation = () => {
 
 const Purchasely = {
   ...RNPurchasely,
-  startWithAPIKey,
   start,
   addEventListener,
   removeEventListener,
@@ -691,7 +682,7 @@ const Purchasely = {
   showPresentation,
   closePresentation,
   hidePresentation,
-  signPromotionalOffer
+  signPromotionalOffer,
 };
 
 export default Purchasely;
