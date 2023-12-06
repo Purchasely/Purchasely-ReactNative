@@ -16,6 +16,7 @@ import io.purchasely.models.PLYError
 import io.purchasely.models.PLYPlan
 import io.purchasely.models.PLYPromoOffer
 import io.purchasely.models.PLYPresentationPlan
+import io.purchasely.views.presentation.PLYThemeMode
 import kotlinx.coroutines.*
 import java.lang.ref.WeakReference
 import java.text.SimpleDateFormat
@@ -76,6 +77,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     constants["customerIoUserEmail"] = Attribute.CUSTOMERIO_USER_EMAIL.ordinal
     constants["branchUserDeveloperIdentity"] = Attribute.BRANCH_USER_DEVELOPER_IDENTITY.ordinal
     constants["moEngageUniqueId"] = Attribute.MOENGAGE_UNIQUE_ID.ordinal
+    constants["batchCustomUserId"] = Attribute.BATCH_CUSTOM_USER_ID.ordinal
     constants["sourceAppStore"] = StoreType.APPLE_APP_STORE.ordinal
     constants["sourcePlayStore"] = StoreType.GOOGLE_PLAY_STORE.ordinal
     constants["sourceHuaweiAppGallery"] = StoreType.HUAWEI_APP_GALLERY.ordinal
@@ -95,6 +97,9 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     constants["presentationTypeFallback"] = PLYPresentationType.FALLBACK.ordinal
     constants["presentationTypeDeactivated"] = PLYPresentationType.DEACTIVATED.ordinal
     constants["presentationTypeClient"] = PLYPresentationType.CLIENT.ordinal
+    constants["themeLight"] = PLYThemeMode.LIGHT.ordinal
+    constants["themeDark"] = PLYThemeMode.DARK.ordinal
+    constants["themeSystem"] = PLYThemeMode.SYSTEM.ordinal
     return constants
   }
 
@@ -227,6 +232,11 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   fun setAttribute(attribute: Int, value: String?) {
     if(value == null) return
     Purchasely.setAttribute(Attribute.values()[attribute], value)
+  }
+
+  @ReactMethod
+  fun setThemeMode(themeMode: Int) {
+    Purchasely.setThemeMode(PLYThemeMode.values()[themeMode])
   }
 
   @ReactMethod

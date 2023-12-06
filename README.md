@@ -22,13 +22,10 @@ import Purchasely, {
   PLYPaywallAction,
 } from 'react-native-purchasely';
 
-Purchasely.startWithAPIKey(
-  'afa96c76-1d8e-4e3c-a48f-204a3cd93a15',
-  ['Google'], // list of stores for Android, accepted values: Google, Huawei and Amazon
-  null, // your user id
-  LogLevels.DEBUG, // log level, should be warning or error in production
-  RunningMode.FULL // running mode
-).then(
+await Purchasely.start({
+          apiKey: 'fcb39be4-2ba4-4db7-bde3-2a5a1e20745d',
+          storeKit1: false, // false to use StoreKit 2 and true to use StoreKit 1
+}).then(
   (configured) => {
     if (!configured) {
       console.log('Purchasely SDK not properly initialized');
@@ -43,6 +40,18 @@ Purchasely.startWithAPIKey(
     console.log('Purchasely SDK initialization error', error);
   }
 );
+
+// ----
+// You can also start the SDK with all possible parameters
+await Purchasely.start({
+  apiKey: 'fcb39be4-2ba4-4db7-bde3-2a5a1e20745d',
+  storeKit1: false, // false to use StoreKit 2 and true to use StoreKit 1
+  logLevel: LogLevels.DEBUG, // to force log level for debug
+  userId: 'test-user', // if you know your user id
+  runningMode: RunningMode.FULL, // to set mode manually
+  androidStores: ['Google', 'Huawei'], // Google is already set by default, you can add Huawei and Amazon
+});
+// ----
 
 try {
     const presentation = await Purchasely.fetchPresentation({
