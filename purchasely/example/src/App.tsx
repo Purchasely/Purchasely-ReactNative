@@ -31,6 +31,7 @@ const App: React.FunctionComponent = () => {
     async function setupPurchasely() {
       var configured = false;
       try {
+        // ApiKey and StoreKit1 attributes are mandatory
         configured = await Purchasely.start({
           apiKey: 'fcb39be4-2ba4-4db7-bde3-2a5a1e20745d',
           storeKit1: false, // false to use StoreKit 2 and true to use StoreKit 1
