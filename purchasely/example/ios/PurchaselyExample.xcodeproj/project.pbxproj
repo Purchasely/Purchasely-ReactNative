@@ -12,11 +12,11 @@
 		2D02E4BC1E0B4A80006451C7 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB01A68108700A75B9A /* AppDelegate.m */; };
 		2D02E4BD1E0B4A84006451C7 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		2D02E4BF1E0B4AB3006451C7 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB71A68108700A75B9A /* main.m */; };
-		3D08B6CD70415534533BAA96 /* libPods-PurchaselyExample.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 77162AA921EF0816E3DD8BC1 /* libPods-PurchaselyExample.a */; };
 		65C958A52701E97200359927 /* Configuration.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 65C958A42701E97200359927 /* Configuration.storekit */; };
 		65C958A62701E97200359927 /* Configuration.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 65C958A42701E97200359927 /* Configuration.storekit */; };
 		65DDF2B026153117000829C6 /* main.jsbundle in Resources */ = {isa = PBXBuildFile; fileRef = 65DDF2AF26153117000829C6 /* main.jsbundle */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
+		E309DF34F4FCB4AC2564B3B8 /* libPods-PurchaselyExample.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 73C2D86908F08E93D11AC37D /* libPods-PurchaselyExample.a */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -44,14 +44,14 @@
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = PurchaselyExample/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = PurchaselyExample/Info.plist; sourceTree = "<group>"; };
 		13B07FB71A68108700A75B9A /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = main.m; path = PurchaselyExample/main.m; sourceTree = "<group>"; };
+		15BA1C452CD5853301AB456C /* Pods-PurchaselyExample.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PurchaselyExample.release.xcconfig"; path = "Target Support Files/Pods-PurchaselyExample/Pods-PurchaselyExample.release.xcconfig"; sourceTree = "<group>"; };
 		2D02E47B1E0B4A5D006451C7 /* PurchaselyExample-tvOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "PurchaselyExample-tvOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		2D02E4901E0B4A5D006451C7 /* PurchaselyExample-tvOSTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "PurchaselyExample-tvOSTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		3D0C23685AB6A2830E2BEFE6 /* Pods-PurchaselyExample.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PurchaselyExample.debug.xcconfig"; path = "Target Support Files/Pods-PurchaselyExample/Pods-PurchaselyExample.debug.xcconfig"; sourceTree = "<group>"; };
 		65C958A42701E97200359927 /* Configuration.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = Configuration.storekit; sourceTree = "<group>"; };
 		65DDF2AF26153117000829C6 /* main.jsbundle */ = {isa = PBXFileReference; lastKnownFileType = text; path = main.jsbundle; sourceTree = "<group>"; };
-		77162AA921EF0816E3DD8BC1 /* libPods-PurchaselyExample.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-PurchaselyExample.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		73C2D86908F08E93D11AC37D /* libPods-PurchaselyExample.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-PurchaselyExample.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = PurchaselyExample/LaunchScreen.storyboard; sourceTree = "<group>"; };
-		9F9FA34AF3253A7BA19B7DA2 /* Pods-PurchaselyExample.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PurchaselyExample.debug.xcconfig"; path = "Target Support Files/Pods-PurchaselyExample/Pods-PurchaselyExample.debug.xcconfig"; sourceTree = "<group>"; };
-		E2F34A9FC51AF0D305A1EB56 /* Pods-PurchaselyExample.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PurchaselyExample.release.xcconfig"; path = "Target Support Files/Pods-PurchaselyExample/Pods-PurchaselyExample.release.xcconfig"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		ED2971642150620600B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = Platforms/AppleTVOS.platform/Developer/SDKs/AppleTVOS12.0.sdk/System/Library/Frameworks/JavaScriptCore.framework; sourceTree = DEVELOPER_DIR; };
 /* End PBXFileReference section */
@@ -68,7 +68,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				3D08B6CD70415534533BAA96 /* libPods-PurchaselyExample.a in Frameworks */,
+				E309DF34F4FCB4AC2564B3B8 /* libPods-PurchaselyExample.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -107,7 +107,7 @@
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
 				ED2971642150620600B7C4FE /* JavaScriptCore.framework */,
-				77162AA921EF0816E3DD8BC1 /* libPods-PurchaselyExample.a */,
+				73C2D86908F08E93D11AC37D /* libPods-PurchaselyExample.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -115,8 +115,8 @@
 		6B9684456A2045ADE5A6E47E /* Pods */ = {
 			isa = PBXGroup;
 			children = (
-				9F9FA34AF3253A7BA19B7DA2 /* Pods-PurchaselyExample.debug.xcconfig */,
-				E2F34A9FC51AF0D305A1EB56 /* Pods-PurchaselyExample.release.xcconfig */,
+				3D0C23685AB6A2830E2BEFE6 /* Pods-PurchaselyExample.debug.xcconfig */,
+				15BA1C452CD5853301AB456C /* Pods-PurchaselyExample.release.xcconfig */,
 			);
 			path = Pods;
 			sourceTree = "<group>";
@@ -180,14 +180,14 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "PurchaselyExample" */;
 			buildPhases = (
-				C8A4406473C1A5575F93FE46 /* [CP] Check Pods Manifest.lock */,
+				F5315D0808ECBA50879C834B /* [CP] Check Pods Manifest.lock */,
 				FD10A7F022414F080027D42C /* Start Packager */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
-				E696CBBC9500F7BB754FE451 /* [CP] Embed Pods Frameworks */,
-				ADC87810859C12B5F0721D36 /* [CP] Copy Pods Resources */,
+				CA758A46C339FBFE23ACCEDE /* [CP] Embed Pods Frameworks */,
+				D0FB16046E7BA997EAE87673 /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
@@ -322,7 +322,7 @@
 /* Begin PBXShellScriptBuildPhase section */
 		00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */ = {
 			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
+			buildActionMask = 12;
 			files = (
 			);
 			inputPaths = (
@@ -332,7 +332,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "export NODE_BINARY=/opt/homebrew/bin/node\n../node_modules/react-native/scripts/react-native-xcode.sh index.tsx\n";
+			shellScript = "export NODE_BINARY=node\n../node_modules/react-native/scripts/react-native-xcode.sh\n";
 		};
 		2D02E4CB1E0B4B27006451C7 /* Bundle React Native Code And Images */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -346,9 +346,29 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "export NODE_BINARY=node\n../node_modules/react-native/scripts/react-native-xcode.sh";
+			shellScript = "export NODE_BINARY=node\n../node_modules/react-native/scripts/react-native-xcode.sh\n";
 		};
-		ADC87810859C12B5F0721D36 /* [CP] Copy Pods Resources */ = {
+		CA758A46C339FBFE23ACCEDE /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-PurchaselyExample/Pods-PurchaselyExample-frameworks.sh",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/Purchasely/Purchasely.framework/Purchasely",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/hermes.framework/hermes",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputPaths = (
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/Purchasely.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-PurchaselyExample/Pods-PurchaselyExample-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		D0FB16046E7BA997EAE87673 /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -366,7 +386,7 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-PurchaselyExample/Pods-PurchaselyExample-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		C8A4406473C1A5575F93FE46 /* [CP] Check Pods Manifest.lock */ = {
+		F5315D0808ECBA50879C834B /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -386,26 +406,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
-			showEnvVarsInLog = 0;
-		};
-		E696CBBC9500F7BB754FE451 /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-PurchaselyExample/Pods-PurchaselyExample-frameworks.sh",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/Purchasely/Purchasely.framework/Purchasely",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/hermes.framework/hermes",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputPaths = (
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/Purchasely.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-PurchaselyExample/Pods-PurchaselyExample-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 		FD10A7F022414F080027D42C /* Start Packager */ = {
@@ -540,7 +540,7 @@
 		};
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 9F9FA34AF3253A7BA19B7DA2 /* Pods-PurchaselyExample.debug.xcconfig */;
+			baseConfigurationReference = 3D0C23685AB6A2830E2BEFE6 /* Pods-PurchaselyExample.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
@@ -571,7 +571,7 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = E2F34A9FC51AF0D305A1EB56 /* Pods-PurchaselyExample.release.xcconfig */;
+			baseConfigurationReference = 15BA1C452CD5853301AB456C /* Pods-PurchaselyExample.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;

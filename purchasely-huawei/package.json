@@ -47,8 +47,7 @@
     "registry": "https://registry.npmjs.org/"
   },
   "devDependencies": {
-    "react-native-builder-bob": "^0.23.2",
-    "typescript": "^5.3.3"
+
   },
   "peerDependencies": {
 		"react-native-purchasely": "4.2.1",
