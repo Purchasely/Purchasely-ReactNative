@@ -1,13 +1,10 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
-
 import React from 'react';
 import type {PropsWithChildren} from 'react';
 import {
+  Linking,
+  TouchableHighlight,
+  ActivityIndicator,
+  Button,
   SafeAreaView,
   ScrollView,
   StatusBar,
@@ -19,10 +16,6 @@ import {
 
 import {
   Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
 } from 'react-native/Libraries/NewAppScreen';
 
 import Purchasely, {
@@ -38,33 +31,179 @@ type SectionProps = PropsWithChildren<{
   title: string;
 }>;
 
-function Section({children, title}: SectionProps): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-}
-
 function App(): React.JSX.Element {
+
+  const onPressPresentation = async () => {
+    try {
+      const result = await Purchasely.presentPresentationForPlacement({
+        placementVendorId: 'ONBOARDING',
+        isFullscreen: false,
+        loadingBackgroundColor: '#FFFFFFFF',
+      });
+
+      console.log('Result is ' + result.result);
+
+      switch (result.result) {
+        case ProductResult.PRODUCT_RESULT_PURCHASED:
+        case ProductResult.PRODUCT_RESULT_RESTORED:
+          if (result.plan != null) {
+            console.log('User purchased ' + result.plan.name);
+          }
+
+          break;
+        case ProductResult.PRODUCT_RESULT_CANCELLED:
+          break;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const onPressFetch = async () => {
+    try {
+      const presentation = await Purchasely.fetchPresentation({
+        placementId: "abtest",
+        contentId: null,
+      });
+
+      console.log('Type = ' + presentation.type);
+      console.log('Plans = ' + JSON.stringify(presentation.plans, null, 2));
+      if (presentation.type === PLYPresentationType.DEACTIVATED) {
+        // No paywall to display
+        return;
+      }
+
+      if (presentation.type === PLYPresentationType.CLIENT) {
+        // Display my own paywall
+        console.log('metadata: ' + JSON.stringify(presentation.metadata, null, 2));
+        return;
+      }
+
+      //Display Purchasely paywall
+      const result = await Purchasely.presentPresentation({
+        presentation: presentation,
+      });
+
+      console.log('---- Paywall Closed ----');
+      console.log('Result is ' + result.result);
+
+      switch (result.result) {
+        case ProductResult.PRODUCT_RESULT_PURCHASED:
+        case ProductResult.PRODUCT_RESULT_RESTORED:
+          if (result.plan != null) {
+            console.log('User purchased ' + result.plan.name);
+          }
+
+          break;
+        case ProductResult.PRODUCT_RESULT_CANCELLED:
+          console.log('User cancelled');
+          break;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const onPressShowPresentation = () => {
+    Purchasely.showPresentation()
+  }
+
+  const onPressHidePresentation = () => {
+    Purchasely.hidePresentation()
+  }
+
+  const onPressClosePresentation = () => {
+    Purchasely.closePresentation()
+  }
+
+  const onPressContinueAction = () => {
+    //Call this method to continue Purchasely action
+    Purchasely.showPresentation();
+    Purchasely.onProcessAction(true);
+  };
+
+  const onPressPurchase = async () => {
+    setLoading(true);
+    try {
+      const plan = await Purchasely.purchaseWithPlanVendorId(
+        {
+          planVendorId: 'PURCHASELY_PLUS_MONTHLY',
+          offerId: null,
+          contentId: 'my_content_id'}
+      );
+      console.log('Purchased ' + plan);
+    } catch (e) {
+      console.error(e);
+    }
+    setLoading(false);
+  };
+
+  const onPressPurchaseWithPromotionalOffer = async () => {
+    setLoading(true);
+    try {
+      const plan = await Purchasely.purchaseWithPlanVendorId(
+        {
+          planVendorId: 'PURCHASELY_PLUS_YEARLY',
+          offerId: 'com.purchasely.plus.yearly.promo',
+          contentId: 'my_content_id',
+        }
+
+      );
+      console.log('Purchased ' + plan);
+    } catch (e) {
+      console.error(e);
+    }
+    setLoading(false);
+  };
+
+  const onPressSignPromotionalOffer = async () => {
+    setLoading(true);
+    try {
+      const signature = await Purchasely.signPromotionalOffer(
+        {
+          storeProductId: 'com.purchasely.plus.yearly',
+          storeOfferId: 'com.purchasely.plus.yearly.winback.test'
+      }
+      );
+
+      console.log('Signature timestamp: ' + signature.timestamp);
+      console.log('Signature planVendorId: ' + signature.planVendorId);
+      console.log('Signature identifier: ' + signature.identifier);
+      console.log('Signature signature: ' + signature.signature);
+      console.log('Signature nonce: ' + signature.nonce);
+      console.log('Signature keyIdentifier: ' + signature.keyIdentifier);
+    } catch (e) {
+      console.error(e);
+    }
+    setLoading(false);
+  }
+
+  const onPressSubscriptions = () => {
+    Purchasely.presentSubscriptions();
+  };
+
+  const onPressRestore = async () => {
+    setLoading(true);
+    try {
+      const restored = await Purchasely.restoreAllProducts();
+      console.log('Restoration success ? ' + restored);
+    } catch (e) {
+      console.error(e);
+    }
+    setLoading(false);
+  };
+
+  const onPressSilentRestore = async () => {
+    setLoading(true);
+    try {
+      const restored = await Purchasely.silentRestoreAllProducts();
+      console.log('Silent Restoration success ? ' + restored);
+    } catch (e) {
+      console.error(e);
+    }
+    setLoading(false);
+  };
+
   React.useEffect(() => {
     Purchasely.userLogout();
 
@@ -209,10 +348,10 @@ function App(): React.JSX.Element {
         }
       });
 
-      //Purchasely.addEventListener((event) => {
-      //console.log(event.name);
-      //console.log(event.properties);
-      //});
+      Purchasely.addEventListener((event) => {
+        console.log(event.name);
+        console.log(event.properties);
+      });
 
       Purchasely.addPurchasedListener(() => {
         // User has successfully purchased a product, reload content
@@ -230,6 +369,8 @@ function App(): React.JSX.Element {
   }, []);
 
   const isDarkMode = useColorScheme() === 'dark';
+  const [anonymousUserId, setAnonymousUserId] = React.useState<string>('');
+  const [loading, setLoading] = React.useState<boolean>(false);
 
   const backgroundStyle = {
     backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
@@ -244,47 +385,242 @@ function App(): React.JSX.Element {
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
+        <View style={{ backgroundColor: isDarkMode ? Colors.black : Colors.white }}>
+
+        <TouchableHighlight
+          onPress={onPressPresentation}
+          disabled={loading}
+          style={loading ? styles.buttonDisabled : styles.button}>
+          <Text style={styles.text}>
+            {loading && (
+              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
+            )}{' '}
+            Display presentation
+          </Text>
+        </TouchableHighlight>
+
+        <TouchableHighlight
+          onPress={onPressFetch}
+          disabled={loading}
+          style={loading ? styles.buttonDisabled : styles.button}
+        >
+          <Text style={styles.text}>
+            {loading && (
+              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
+            )}{' '}
+            Fetch presentation
+          </Text>
+        </TouchableHighlight>
+
+        <TouchableHighlight
+          onPress={onPressShowPresentation}
+          disabled={loading}
+          style={loading ? styles.buttonDisabled : styles.button}
+        >
+          <Text style={styles.text}>
+            {loading && (
+              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
+            )}{' '}
+            Show presentation
+          </Text>
+        </TouchableHighlight>
+
+        <TouchableHighlight
+          onPress={onPressHidePresentation}
+          disabled={loading}
+          style={loading ? styles.buttonDisabled : styles.button}
+        >
+          <Text style={styles.text}>
+            {loading && (
+              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
+            )}{' '}
+            Hide presentation
+          </Text>
+        </TouchableHighlight>
+
+        <TouchableHighlight
+          onPress={onPressClosePresentation}
+          disabled={loading}
+          style={loading ? styles.buttonDisabled : styles.button}
+        >
+          <Text style={styles.text}>
+            {loading && (
+              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
+            )}{' '}
+            Close presentation
+          </Text>
+        </TouchableHighlight>
+
+        <TouchableHighlight
+          onPress={onPressContinueAction}
+          disabled={loading}
+          style={loading ? styles.buttonDisabled : styles.button}
+        >
+          <Text style={styles.text}>
+            {loading && (
+              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
+            )}{' '}
+            Continue action
+          </Text>
+        </TouchableHighlight>
+
+        <TouchableHighlight
+          onPress={onPressPurchase}
+          disabled={loading}
+          style={loading ? styles.buttonDisabled : styles.button}
+        >
+          <Text style={styles.text}>
+            {loading && (
+              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
+            )}{' '}
+            Tap to purchase
+          </Text>
+        </TouchableHighlight>
+
+        <TouchableHighlight
+          onPress={onPressPurchaseWithPromotionalOffer}
+          disabled={loading}
+          style={loading ? styles.buttonDisabled : styles.button}
+        >
+          <Text style={styles.text}>
+            {loading && (
+              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
+            )}{' '}
+            Tap to purchase with promo offer
+          </Text>
+        </TouchableHighlight>
+
+        <TouchableHighlight
+          onPress={onPressSignPromotionalOffer}
+          disabled={loading}
+          style={loading ? styles.buttonDisabled : styles.button}
+        >
+          <Text style={styles.text}>
+            {loading && (
+              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
+            )}{' '}
+            Sign promo offer
+          </Text>
+        </TouchableHighlight>
+        <TouchableHighlight
+          onPress={onPressSubscriptions}
+          disabled={loading}
+          style={loading ? styles.buttonDisabled : styles.button}
+        >
+          <Text style={styles.text}>
+            {loading && (
+              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
+            )}{' '}
+            My subscriptions
+          </Text>
+        </TouchableHighlight>
+
+        <TouchableHighlight
+          onPress={onPressRestore}
+          disabled={loading}
+          style={loading ? styles.buttonDisabled : styles.button}
+        >
+          <Text style={styles.text}>
+            {loading && (
+              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
+            )}{' '}
+            Restore purchases
+          </Text>
+        </TouchableHighlight>
+
+        <TouchableHighlight
+          onPress={onPressSilentRestore}
+          disabled={loading}
+          style={loading ? styles.buttonDisabled : styles.button}
+        >
+          <Text style={styles.text}>
+            {loading && (
+              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
+            )}{' '}
+            Silent Restore purchases
+          </Text>
+        </TouchableHighlight>
+
+
         </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
+// purchaselyrn://ply/placements/test
+const linkingConfiguration = {
+  prefixes: ['purchaselyrn://'],
+
+  // Custom function to get the URL which was used to open the app
+  async getInitialURL(): Promise<string | null> {
+    const url = await Linking.getInitialURL();
+    if (url != null) {
+      Purchasely.isDeeplinkHandled(url);
+    }
+    return url;
+  },
+
+  // Custom function to subscribe to incoming links
+  /*subscribe(listener) {
+
+  // Listen to incoming links from deep linking
+  const linkingSubscription = Linking.addEventListener('url', ({ url }) => {
+    Purchasely.handle(url);
+  });
+
+  return () => {
+    linkingSubscription.remove();
+  };
+}*/
+};
+
 const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F5FCFF',
+    marginTop: 30
   },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
+  button: {
+    backgroundColor: '#ccc',
+    marginVertical: 5,
+    marginHorizontal: 30,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
+  buttonDisabled: {
+    backgroundColor: '#ccf',
+    marginVertical: 5,
+    marginHorizontal: 30,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  highlight: {
-    fontWeight: '700',
+  center: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  block: {
+    borderColor: '#000',
+    borderWidth: 1,
+    paddingBottom: 5,
+  },
+  text: {
+    lineHeight: 30,
+    fontSize: 20,
+    textAlign: 'center',
+    margin: 10,
+  },
+  title: {
+    fontSize: 30,
+    margin: 10,
+  },
+  subtitle: {
+    fontSize: 25,
+    margin: 10,
   },
 });
 
