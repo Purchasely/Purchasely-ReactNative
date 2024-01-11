@@ -29,8 +29,8 @@ then
     cd ../purchasely-android-player && npm publish --access public
 else
     cd purchasely && yarn && yarn prepare
-    cd ../purchasely-google && yarn && yarn prepare
-    cd ../purchasely-huawei && yarn && yarn prepare
-    cd ../purchasely-amazon && yarn && yarn prepare
-    cd ../purchasely-android-player && yarn && yarn prepare
+    cd ../purchasely-google && yarn install && yarn prepare
+    cd ../purchasely-huawei && yarn install && yarn prepare
+    cd ../purchasely-amazon && yarn install && yarn prepare
+    cd ../purchasely-android-player && yarn install && yarn prepare
 fi

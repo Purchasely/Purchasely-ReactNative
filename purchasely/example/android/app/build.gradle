@@ -76,11 +76,11 @@ android {
 
     namespace "com.example"
     defaultConfig {
-        applicationId "com.example"
+        applicationId "com.purchasely.demo"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode 4200
+        versionName "4.2.2"
     }
     signingConfigs {
         debug {
@@ -108,6 +108,9 @@ dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
     implementation("com.facebook.react:flipper-integration")
+
+    implementation 'io.purchasely:google-play:4.2.2'
+    implementation 'io.purchasely:player:4.2.2'
 
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
