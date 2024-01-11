@@ -552,6 +552,19 @@ function App(): React.JSX.Element {
           </Text>
         </TouchableHighlight>
 
+        <TouchableHighlight
+          onPress={onPressSynchronize}
+          disabled={loading}
+          style={loading ? styles.buttonDisabled : styles.button}
+        >
+          <Text style={styles.text}>
+            {loading && (
+              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
+            )}{' '}
+            Synchronize
+          </Text>
+        </TouchableHighlight>
+
 
         </View>
       </ScrollView>
