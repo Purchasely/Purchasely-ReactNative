@@ -204,6 +204,11 @@ function App(): React.JSX.Element {
     setLoading(false);
   };
 
+  const onPressSynchronize = async () => {
+    Purchasely.synchronize();
+    console.log('Synchronize done');
+  };
+
   React.useEffect(() => {
     Purchasely.userLogout();
 
@@ -538,6 +543,19 @@ function App(): React.JSX.Element {
               <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
             )}{' '}
             Silent Restore purchases
+          </Text>
+        </TouchableHighlight>
+
+        <TouchableHighlight
+          onPress={onPressSynchronize}
+          disabled={loading}
+          style={loading ? styles.buttonDisabled : styles.button}
+        >
+          <Text style={styles.text}>
+            {loading && (
+              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
+            )}{' '}
+            Synchronize
           </Text>
         </TouchableHighlight>
 

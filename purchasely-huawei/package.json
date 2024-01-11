@@ -1,6 +1,6 @@
 {
   "name": "@purchasely/react-native-purchasely-huawei",
-  "version": "4.2.1",
+  "version": "4.2.2",
   "description": "Purchasely Huawei Mobile Services dependencies",
   "main": "lib/commonjs/index",
   "module": "lib/module/index",
@@ -47,10 +47,13 @@
     "registry": "https://registry.npmjs.org/"
   },
   "devDependencies": {
-
+    "react-native-builder-bob": "^0.23.2",
+    "pod-install": "^0.1.39",
+    "react-native": "0.73.1",
+    "typescript": "^5.3.3"
   },
   "peerDependencies": {
-		"react-native-purchasely": "4.2.1",
+		"react-native-purchasely": "4.2.2",
     "react": "*",
     "react-native": "*"
   },
