@@ -204,6 +204,17 @@ function App(): React.JSX.Element {
     setLoading(false);
   };
 
+  const onPressSynchronize = async () => {
+    setLoading(true);
+    try {
+      const restored = await Purchasely.synchronize();
+      console.log('Silent Restoration success ? ' + restored);
+    } catch (e) {
+      console.error(e);
+    }
+    setLoading(false);
+  };
+
   React.useEffect(() => {
     Purchasely.userLogout();
 
