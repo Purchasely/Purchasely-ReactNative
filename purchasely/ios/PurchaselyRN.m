@@ -984,6 +984,18 @@ RCT_REMAP_METHOD(silentRestoreAllProducts,
     });
 }
 
+RCT_EXPORT_METHOD(synchronize:(RCTPromiseResolveBlock)resolve
+                 reject:(RCTPromiseRejectBlock)reject)
+{
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [Purchasely synchronizeWithSuccess:^{
+            resolve([NSNumber numberWithBool:true]);
+        } failure:^(NSError * _Nonnull error) {
+            [self reject: reject with: error];
+        }];
+    });
+}
+
 RCT_EXPORT_METHOD(allProducts:(RCTPromiseResolveBlock)resolve
 				  reject:(RCTPromiseRejectBlock)reject)
 {
