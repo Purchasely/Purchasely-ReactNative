@@ -22,6 +22,7 @@ RCT_EXPORT_MODULE(Purchasely);
 
     self.presentationsLoaded = [NSMutableArray new];
     self.shouldReopenPaywall = NO;
+    self.shouldEmit = NO;
 
 	[Purchasely setAppTechnology:PLYAppTechnologyReactNative];
 	return self;
@@ -1073,7 +1074,19 @@ RCT_EXPORT_METHOD(userSubscriptions:(RCTPromiseResolveBlock)resolve
 	return @[@"PURCHASELY_EVENTS", @"PURCHASE_LISTENER"];
 }
 
+- (void)startObserving
+{
+  self.shouldEmit = YES;
+}
+
+- (void)stopObserving
+{
+  self.shouldEmit = NO;
+}
+
 - (void)eventTriggered:(enum PLYEvent)event properties:(NSDictionary<NSString *, id> * _Nullable)properties {
+    if (!self.shouldEmit) return
+    
 	if (properties != nil) {
 		NSDictionary<NSString *, id> *body = @{@"name": [NSString fromPLYEvent:event], @"properties": properties};
 		[self sendEventWithName: @"PURCHASELY_EVENTS" body: body];
