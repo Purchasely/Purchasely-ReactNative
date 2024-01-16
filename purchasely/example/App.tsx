@@ -12,6 +12,7 @@ import {
   Text,
   useColorScheme,
   View,
+  requireNativeComponent
 } from 'react-native';
 
 import {
@@ -26,6 +27,8 @@ import Purchasely, {
   PLYPaywallAction,
   PLYPresentationType,
 } from 'react-native-purchasely';
+
+const NativeView = requireNativeComponent('NativeViewManager');
 
 type SectionProps = PropsWithChildren<{
   title: string;
@@ -381,190 +384,17 @@ function App(): React.JSX.Element {
     backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
   };
 
+
+
   return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
-      />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <View style={{ backgroundColor: isDarkMode ? Colors.black : Colors.white }}>
+      <NativeView style={{ flex: 1, width: '100%', height: '100%' }}       
+        presentationId="TF1" />
 
-        <TouchableHighlight
-          onPress={onPressPresentation}
-          disabled={loading}
-          style={loading ? styles.buttonDisabled : styles.button}>
-          <Text style={styles.text}>
-            {loading && (
-              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
-            )}{' '}
-            Display presentation
-          </Text>
-        </TouchableHighlight>
-
-        <TouchableHighlight
-          onPress={onPressFetch}
-          disabled={loading}
-          style={loading ? styles.buttonDisabled : styles.button}
-        >
-          <Text style={styles.text}>
-            {loading && (
-              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
-            )}{' '}
-            Fetch presentation
-          </Text>
-        </TouchableHighlight>
-
-        <TouchableHighlight
-          onPress={onPressShowPresentation}
-          disabled={loading}
-          style={loading ? styles.buttonDisabled : styles.button}
-        >
-          <Text style={styles.text}>
-            {loading && (
-              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
-            )}{' '}
-            Show presentation
-          </Text>
-        </TouchableHighlight>
-
-        <TouchableHighlight
-          onPress={onPressHidePresentation}
-          disabled={loading}
-          style={loading ? styles.buttonDisabled : styles.button}
-        >
-          <Text style={styles.text}>
-            {loading && (
-              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
-            )}{' '}
-            Hide presentation
-          </Text>
-        </TouchableHighlight>
-
-        <TouchableHighlight
-          onPress={onPressClosePresentation}
-          disabled={loading}
-          style={loading ? styles.buttonDisabled : styles.button}
-        >
-          <Text style={styles.text}>
-            {loading && (
-              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
-            )}{' '}
-            Close presentation
-          </Text>
-        </TouchableHighlight>
-
-        <TouchableHighlight
-          onPress={onPressContinueAction}
-          disabled={loading}
-          style={loading ? styles.buttonDisabled : styles.button}
-        >
-          <Text style={styles.text}>
-            {loading && (
-              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
-            )}{' '}
-            Continue action
-          </Text>
-        </TouchableHighlight>
-
-        <TouchableHighlight
-          onPress={onPressPurchase}
-          disabled={loading}
-          style={loading ? styles.buttonDisabled : styles.button}
-        >
-          <Text style={styles.text}>
-            {loading && (
-              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
-            )}{' '}
-            Tap to purchase
-          </Text>
-        </TouchableHighlight>
-
-        <TouchableHighlight
-          onPress={onPressPurchaseWithPromotionalOffer}
-          disabled={loading}
-          style={loading ? styles.buttonDisabled : styles.button}
-        >
-          <Text style={styles.text}>
-            {loading && (
-              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
-            )}{' '}
-            Tap to purchase with promo offer
-          </Text>
-        </TouchableHighlight>
-
-        <TouchableHighlight
-          onPress={onPressSignPromotionalOffer}
-          disabled={loading}
-          style={loading ? styles.buttonDisabled : styles.button}
-        >
-          <Text style={styles.text}>
-            {loading && (
-              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
-            )}{' '}
-            Sign promo offer
-          </Text>
-        </TouchableHighlight>
-        <TouchableHighlight
-          onPress={onPressSubscriptions}
-          disabled={loading}
-          style={loading ? styles.buttonDisabled : styles.button}
-        >
-          <Text style={styles.text}>
-            {loading && (
-              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
-            )}{' '}
-            My subscriptions
-          </Text>
-        </TouchableHighlight>
-
-        <TouchableHighlight
-          onPress={onPressRestore}
-          disabled={loading}
-          style={loading ? styles.buttonDisabled : styles.button}
-        >
-          <Text style={styles.text}>
-            {loading && (
-              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
-            )}{' '}
-            Restore purchases
-          </Text>
-        </TouchableHighlight>
-
-        <TouchableHighlight
-          onPress={onPressSilentRestore}
-          disabled={loading}
-          style={loading ? styles.buttonDisabled : styles.button}
-        >
-          <Text style={styles.text}>
-            {loading && (
-              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
-            )}{' '}
-            Silent Restore purchases
-          </Text>
-        </TouchableHighlight>
-
-        <TouchableHighlight
-          onPress={onPressSynchronize}
-          disabled={loading}
-          style={loading ? styles.buttonDisabled : styles.button}
-        >
-          <Text style={styles.text}>
-            {loading && (
-              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
-            )}{' '}
-            Synchronize
-          </Text>
-        </TouchableHighlight>
-
-
-        </View>
-      </ScrollView>
-    </SafeAreaView>
   );
 }
+
+
+
 
 // purchaselyrn://ply/placements/test
 const linkingConfiguration = {
