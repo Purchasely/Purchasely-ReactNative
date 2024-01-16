@@ -1085,7 +1085,7 @@ RCT_EXPORT_METHOD(userSubscriptions:(RCTPromiseResolveBlock)resolve
 }
 
 - (void)eventTriggered:(enum PLYEvent)event properties:(NSDictionary<NSString *, id> * _Nullable)properties {
-    if (!self.shouldEmit) return
+    if (!self.shouldEmit) return;
     
 	if (properties != nil) {
 		NSDictionary<NSString *, id> *body = @{@"name": [NSString fromPLYEvent:event], @"properties": properties};
