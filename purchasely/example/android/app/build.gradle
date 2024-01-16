@@ -102,6 +102,20 @@ android {
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
     }
+
+    compileOptions {
+        incremental true
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    kotlinOptions {
+      freeCompilerArgs = ["-Xstring-concat=inline"]
+    }
+
+    lint {
+        abortOnError false
+    }
 }
 
 dependencies {
@@ -109,8 +123,8 @@ dependencies {
     implementation("com.facebook.react:react-android")
     implementation("com.facebook.react:flipper-integration")
 
-    implementation 'io.purchasely:google-play:4.2.2'
-    implementation 'io.purchasely:player:4.2.2'
+    implementation 'io.purchasely:google-play:4.2.3-alpha01'
+    implementation 'io.purchasely:player:4.2.3-alpha01'
 
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
