@@ -79,8 +79,8 @@ android {
         applicationId "com.purchasely.demo"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 4200
-        versionName "4.2.2"
+        versionCode 4230
+        versionName "4.2.3"
     }
     signingConfigs {
         debug {
@@ -109,8 +109,8 @@ dependencies {
     implementation("com.facebook.react:react-android")
     implementation("com.facebook.react:flipper-integration")
 
-    implementation 'io.purchasely:google-play:4.2.2'
-    implementation 'io.purchasely:player:4.2.2'
+    implementation 'io.purchasely:google-play:4.2.3'
+    implementation 'io.purchasely:player:4.2.3'
 
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
