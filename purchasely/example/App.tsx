@@ -1,10 +1,8 @@
 import React from 'react';
-import type {PropsWithChildren} from 'react';
 import {
   Linking,
   TouchableHighlight,
   ActivityIndicator,
-  Button,
   SafeAreaView,
   ScrollView,
   StatusBar,
@@ -14,9 +12,7 @@ import {
   View,
 } from 'react-native';
 
-import {
-  Colors,
-} from 'react-native/Libraries/NewAppScreen';
+import {Colors} from 'react-native/Libraries/NewAppScreen';
 
 import Purchasely, {
   LogLevels,
@@ -27,12 +23,7 @@ import Purchasely, {
   PLYPresentationType,
 } from 'react-native-purchasely';
 
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
-
 function App(): React.JSX.Element {
-
   const onPressPresentation = async () => {
     try {
       const result = await Purchasely.presentPresentationForPlacement({
@@ -62,7 +53,7 @@ function App(): React.JSX.Element {
   const onPressFetch = async () => {
     try {
       const presentation = await Purchasely.fetchPresentation({
-        placementId: "abtest",
+        placementId: 'abtest',
         contentId: null,
       });
 
@@ -75,7 +66,9 @@ function App(): React.JSX.Element {
 
       if (presentation.type === PLYPresentationType.CLIENT) {
         // Display my own paywall
-        console.log('metadata: ' + JSON.stringify(presentation.metadata, null, 2));
+        console.log(
+          'metadata: ' + JSON.stringify(presentation.metadata, null, 2),
+        );
         return;
       }
 
@@ -105,16 +98,16 @@ function App(): React.JSX.Element {
   };
 
   const onPressShowPresentation = () => {
-    Purchasely.showPresentation()
-  }
+    Purchasely.showPresentation();
+  };
 
   const onPressHidePresentation = () => {
-    Purchasely.hidePresentation()
-  }
+    Purchasely.hidePresentation();
+  };
 
   const onPressClosePresentation = () => {
-    Purchasely.closePresentation()
-  }
+    Purchasely.closePresentation();
+  };
 
   const onPressContinueAction = () => {
     //Call this method to continue Purchasely action
@@ -125,12 +118,11 @@ function App(): React.JSX.Element {
   const onPressPurchase = async () => {
     setLoading(true);
     try {
-      const plan = await Purchasely.purchaseWithPlanVendorId(
-        {
-          planVendorId: 'PURCHASELY_PLUS_MONTHLY',
-          offerId: null,
-          contentId: 'my_content_id'}
-      );
+      const plan = await Purchasely.purchaseWithPlanVendorId({
+        planVendorId: 'PURCHASELY_PLUS_MONTHLY',
+        offerId: null,
+        contentId: 'my_content_id',
+      });
       console.log('Purchased ' + plan);
     } catch (e) {
       console.error(e);
@@ -141,14 +133,11 @@ function App(): React.JSX.Element {
   const onPressPurchaseWithPromotionalOffer = async () => {
     setLoading(true);
     try {
-      const plan = await Purchasely.purchaseWithPlanVendorId(
-        {
-          planVendorId: 'PURCHASELY_PLUS_YEARLY',
-          offerId: 'com.purchasely.plus.yearly.promo',
-          contentId: 'my_content_id',
-        }
-
-      );
+      const plan = await Purchasely.purchaseWithPlanVendorId({
+        planVendorId: 'PURCHASELY_PLUS_YEARLY',
+        offerId: 'com.purchasely.plus.yearly.promo',
+        contentId: 'my_content_id',
+      });
       console.log('Purchased ' + plan);
     } catch (e) {
       console.error(e);
@@ -159,12 +148,10 @@ function App(): React.JSX.Element {
   const onPressSignPromotionalOffer = async () => {
     setLoading(true);
     try {
-      const signature = await Purchasely.signPromotionalOffer(
-        {
-          storeProductId: 'com.purchasely.plus.yearly',
-          storeOfferId: 'com.purchasely.plus.yearly.winback.test'
-      }
-      );
+      const signature = await Purchasely.signPromotionalOffer({
+        storeProductId: 'com.purchasely.plus.yearly',
+        storeOfferId: 'com.purchasely.plus.yearly.winback.test',
+      });
 
       console.log('Signature timestamp: ' + signature.timestamp);
       console.log('Signature planVendorId: ' + signature.planVendorId);
@@ -176,7 +163,7 @@ function App(): React.JSX.Element {
       console.error(e);
     }
     setLoading(false);
-  }
+  };
 
   const onPressSubscriptions = () => {
     Purchasely.presentSubscriptions();
@@ -353,11 +340,6 @@ function App(): React.JSX.Element {
         }
       });
 
-      Purchasely.addEventListener((event) => {
-        console.log(event.name);
-        console.log(event.properties);
-      });
-
       Purchasely.addPurchasedListener(() => {
         // User has successfully purchased a product, reload content
         console.log('User has purchased');
@@ -365,6 +347,12 @@ function App(): React.JSX.Element {
 
       Purchasely.setAttribute(Attributes.FIREBASE_APP_INSTANCE_ID, 'test0');
     }
+
+    Purchasely.addEventListener(event => {
+      console.log('Event received');
+      console.log(event.name);
+      console.log(event.properties);
+    });
 
     setupPurchasely();
 
@@ -374,7 +362,7 @@ function App(): React.JSX.Element {
   }, []);
 
   const isDarkMode = useColorScheme() === 'dark';
-  const [anonymousUserId, setAnonymousUserId] = React.useState<string>('');
+  const [] = React.useState<string>('');
   const [loading, setLoading] = React.useState<boolean>(false);
 
   const backgroundStyle = {
@@ -390,176 +378,201 @@ function App(): React.JSX.Element {
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         style={backgroundStyle}>
-        <View style={{ backgroundColor: isDarkMode ? Colors.black : Colors.white }}>
+        <View
+          style={{backgroundColor: isDarkMode ? Colors.black : Colors.white}}>
+          <TouchableHighlight
+            onPress={onPressPresentation}
+            disabled={loading}
+            style={loading ? styles.buttonDisabled : styles.button}>
+            <Text style={styles.text}>
+              {loading && (
+                <ActivityIndicator
+                  color="#0000ff"
+                  size={styles.text.fontSize}
+                />
+              )}{' '}
+              Display presentation
+            </Text>
+          </TouchableHighlight>
 
-        <TouchableHighlight
-          onPress={onPressPresentation}
-          disabled={loading}
-          style={loading ? styles.buttonDisabled : styles.button}>
-          <Text style={styles.text}>
-            {loading && (
-              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
-            )}{' '}
-            Display presentation
-          </Text>
-        </TouchableHighlight>
+          <TouchableHighlight
+            onPress={onPressFetch}
+            disabled={loading}
+            style={loading ? styles.buttonDisabled : styles.button}>
+            <Text style={styles.text}>
+              {loading && (
+                <ActivityIndicator
+                  color="#0000ff"
+                  size={styles.text.fontSize}
+                />
+              )}{' '}
+              Fetch presentation
+            </Text>
+          </TouchableHighlight>
 
-        <TouchableHighlight
-          onPress={onPressFetch}
-          disabled={loading}
-          style={loading ? styles.buttonDisabled : styles.button}
-        >
-          <Text style={styles.text}>
-            {loading && (
-              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
-            )}{' '}
-            Fetch presentation
-          </Text>
-        </TouchableHighlight>
+          <TouchableHighlight
+            onPress={onPressShowPresentation}
+            disabled={loading}
+            style={loading ? styles.buttonDisabled : styles.button}>
+            <Text style={styles.text}>
+              {loading && (
+                <ActivityIndicator
+                  color="#0000ff"
+                  size={styles.text.fontSize}
+                />
+              )}{' '}
+              Show presentation
+            </Text>
+          </TouchableHighlight>
 
-        <TouchableHighlight
-          onPress={onPressShowPresentation}
-          disabled={loading}
-          style={loading ? styles.buttonDisabled : styles.button}
-        >
-          <Text style={styles.text}>
-            {loading && (
-              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
-            )}{' '}
-            Show presentation
-          </Text>
-        </TouchableHighlight>
+          <TouchableHighlight
+            onPress={onPressHidePresentation}
+            disabled={loading}
+            style={loading ? styles.buttonDisabled : styles.button}>
+            <Text style={styles.text}>
+              {loading && (
+                <ActivityIndicator
+                  color="#0000ff"
+                  size={styles.text.fontSize}
+                />
+              )}{' '}
+              Hide presentation
+            </Text>
+          </TouchableHighlight>
 
-        <TouchableHighlight
-          onPress={onPressHidePresentation}
-          disabled={loading}
-          style={loading ? styles.buttonDisabled : styles.button}
-        >
-          <Text style={styles.text}>
-            {loading && (
-              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
-            )}{' '}
-            Hide presentation
-          </Text>
-        </TouchableHighlight>
+          <TouchableHighlight
+            onPress={onPressClosePresentation}
+            disabled={loading}
+            style={loading ? styles.buttonDisabled : styles.button}>
+            <Text style={styles.text}>
+              {loading && (
+                <ActivityIndicator
+                  color="#0000ff"
+                  size={styles.text.fontSize}
+                />
+              )}{' '}
+              Close presentation
+            </Text>
+          </TouchableHighlight>
 
-        <TouchableHighlight
-          onPress={onPressClosePresentation}
-          disabled={loading}
-          style={loading ? styles.buttonDisabled : styles.button}
-        >
-          <Text style={styles.text}>
-            {loading && (
-              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
-            )}{' '}
-            Close presentation
-          </Text>
-        </TouchableHighlight>
+          <TouchableHighlight
+            onPress={onPressContinueAction}
+            disabled={loading}
+            style={loading ? styles.buttonDisabled : styles.button}>
+            <Text style={styles.text}>
+              {loading && (
+                <ActivityIndicator
+                  color="#0000ff"
+                  size={styles.text.fontSize}
+                />
+              )}{' '}
+              Continue action
+            </Text>
+          </TouchableHighlight>
 
-        <TouchableHighlight
-          onPress={onPressContinueAction}
-          disabled={loading}
-          style={loading ? styles.buttonDisabled : styles.button}
-        >
-          <Text style={styles.text}>
-            {loading && (
-              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
-            )}{' '}
-            Continue action
-          </Text>
-        </TouchableHighlight>
+          <TouchableHighlight
+            onPress={onPressPurchase}
+            disabled={loading}
+            style={loading ? styles.buttonDisabled : styles.button}>
+            <Text style={styles.text}>
+              {loading && (
+                <ActivityIndicator
+                  color="#0000ff"
+                  size={styles.text.fontSize}
+                />
+              )}{' '}
+              Tap to purchase
+            </Text>
+          </TouchableHighlight>
 
-        <TouchableHighlight
-          onPress={onPressPurchase}
-          disabled={loading}
-          style={loading ? styles.buttonDisabled : styles.button}
-        >
-          <Text style={styles.text}>
-            {loading && (
-              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
-            )}{' '}
-            Tap to purchase
-          </Text>
-        </TouchableHighlight>
+          <TouchableHighlight
+            onPress={onPressPurchaseWithPromotionalOffer}
+            disabled={loading}
+            style={loading ? styles.buttonDisabled : styles.button}>
+            <Text style={styles.text}>
+              {loading && (
+                <ActivityIndicator
+                  color="#0000ff"
+                  size={styles.text.fontSize}
+                />
+              )}{' '}
+              Tap to purchase with promo offer
+            </Text>
+          </TouchableHighlight>
 
-        <TouchableHighlight
-          onPress={onPressPurchaseWithPromotionalOffer}
-          disabled={loading}
-          style={loading ? styles.buttonDisabled : styles.button}
-        >
-          <Text style={styles.text}>
-            {loading && (
-              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
-            )}{' '}
-            Tap to purchase with promo offer
-          </Text>
-        </TouchableHighlight>
+          <TouchableHighlight
+            onPress={onPressSignPromotionalOffer}
+            disabled={loading}
+            style={loading ? styles.buttonDisabled : styles.button}>
+            <Text style={styles.text}>
+              {loading && (
+                <ActivityIndicator
+                  color="#0000ff"
+                  size={styles.text.fontSize}
+                />
+              )}{' '}
+              Sign promo offer
+            </Text>
+          </TouchableHighlight>
+          <TouchableHighlight
+            onPress={onPressSubscriptions}
+            disabled={loading}
+            style={loading ? styles.buttonDisabled : styles.button}>
+            <Text style={styles.text}>
+              {loading && (
+                <ActivityIndicator
+                  color="#0000ff"
+                  size={styles.text.fontSize}
+                />
+              )}{' '}
+              My subscriptions
+            </Text>
+          </TouchableHighlight>
 
-        <TouchableHighlight
-          onPress={onPressSignPromotionalOffer}
-          disabled={loading}
-          style={loading ? styles.buttonDisabled : styles.button}
-        >
-          <Text style={styles.text}>
-            {loading && (
-              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
-            )}{' '}
-            Sign promo offer
-          </Text>
-        </TouchableHighlight>
-        <TouchableHighlight
-          onPress={onPressSubscriptions}
-          disabled={loading}
-          style={loading ? styles.buttonDisabled : styles.button}
-        >
-          <Text style={styles.text}>
-            {loading && (
-              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
-            )}{' '}
-            My subscriptions
-          </Text>
-        </TouchableHighlight>
+          <TouchableHighlight
+            onPress={onPressRestore}
+            disabled={loading}
+            style={loading ? styles.buttonDisabled : styles.button}>
+            <Text style={styles.text}>
+              {loading && (
+                <ActivityIndicator
+                  color="#0000ff"
+                  size={styles.text.fontSize}
+                />
+              )}{' '}
+              Restore purchases
+            </Text>
+          </TouchableHighlight>
 
-        <TouchableHighlight
-          onPress={onPressRestore}
-          disabled={loading}
-          style={loading ? styles.buttonDisabled : styles.button}
-        >
-          <Text style={styles.text}>
-            {loading && (
-              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
-            )}{' '}
-            Restore purchases
-          </Text>
-        </TouchableHighlight>
+          <TouchableHighlight
+            onPress={onPressSilentRestore}
+            disabled={loading}
+            style={loading ? styles.buttonDisabled : styles.button}>
+            <Text style={styles.text}>
+              {loading && (
+                <ActivityIndicator
+                  color="#0000ff"
+                  size={styles.text.fontSize}
+                />
+              )}{' '}
+              Silent Restore purchases
+            </Text>
+          </TouchableHighlight>
 
-        <TouchableHighlight
-          onPress={onPressSilentRestore}
-          disabled={loading}
-          style={loading ? styles.buttonDisabled : styles.button}
-        >
-          <Text style={styles.text}>
-            {loading && (
-              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
-            )}{' '}
-            Silent Restore purchases
-          </Text>
-        </TouchableHighlight>
-
-        <TouchableHighlight
-          onPress={onPressSynchronize}
-          disabled={loading}
-          style={loading ? styles.buttonDisabled : styles.button}
-        >
-          <Text style={styles.text}>
-            {loading && (
-              <ActivityIndicator color="#0000ff" size={styles.text.fontSize} />
-            )}{' '}
-            Synchronize
-          </Text>
-        </TouchableHighlight>
-
-
+          <TouchableHighlight
+            onPress={onPressSynchronize}
+            disabled={loading}
+            style={loading ? styles.buttonDisabled : styles.button}>
+            <Text style={styles.text}>
+              {loading && (
+                <ActivityIndicator
+                  color="#0000ff"
+                  size={styles.text.fontSize}
+                />
+              )}{' '}
+              Synchronize
+            </Text>
+          </TouchableHighlight>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -599,7 +612,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#F5FCFF',
-    marginTop: 30
+    marginTop: 30,
   },
   button: {
     backgroundColor: '#ccc',

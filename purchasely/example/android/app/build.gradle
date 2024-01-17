@@ -79,8 +79,8 @@ android {
         applicationId "com.purchasely.demo"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 4200
-        versionName "4.2.2"
+        versionCode 4230
+        versionName "4.2.3"
     }
     signingConfigs {
         debug {
