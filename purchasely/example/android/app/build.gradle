@@ -109,6 +109,7 @@ dependencies {
     implementation("com.facebook.react:react-android")
     implementation("com.facebook.react:flipper-integration")
 
+    implementation 'io.purchasely:core:4.2.4-alpha02'
     implementation 'io.purchasely:google-play:4.2.3'
     implementation 'io.purchasely:player:4.2.3'
 

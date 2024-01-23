@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useEffect, useRef} from 'react';
 import {
   Linking,
   TouchableHighlight,
@@ -10,6 +10,10 @@ import {
   Text,
   useColorScheme,
   View,
+  PixelRatio,
+  UIManager,
+  findNodeHandle,
+  NativeModules,
 } from 'react-native';
 
 import {Colors} from 'react-native/Libraries/NewAppScreen';
@@ -21,9 +25,214 @@ import Purchasely, {
   RunningMode,
   PLYPaywallAction,
   PLYPresentationType,
+  PurchaselyPresentation,
+  PresentPresentationResult,
 } from 'react-native-purchasely';
 
+import {NavigationContainer} from '@react-navigation/native';
+import {createNativeStackNavigator} from '@react-navigation/native-stack';
+
+import {PurchaselyViewManager} from './PurchaselyViewManager.ts';
+
+const Stack = createNativeStackNavigator();
+
+var presentationForComponent: PurchaselyPresentation | null = null;
+
 function App(): React.JSX.Element {
+  React.useEffect(() => {
+    Purchasely.userLogout();
+
+    const fetchPresentation = async () => {
+      try {
+        presentationForComponent = await Purchasely.fetchPresentation({
+          placementId: 'ACCOUNT',
+          contentId: null,
+        });
+        console.log('presentation fetched is %s', presentationForComponent?.id);
+      } catch (e) {
+        console.error(e);
+      }
+    };
+
+    async function setupPurchasely() {
+      var configured = false;
+      try {
+        // ApiKey and StoreKit1 attributes are mandatory
+        configured = await Purchasely.start({
+          apiKey: 'fcb39be4-2ba4-4db7-bde3-2a5a1e20745d',
+          storeKit1: false, // false to use StoreKit 2 and true to use StoreKit 1
+          logLevel: LogLevels.DEBUG, // to force log level for debug
+          userId: 'test-user', // if you know your user id
+          runningMode: RunningMode.FULL, // to set mode manually
+          androidStores: ['Google', 'Huawei'], // Google is already set by default
+        });
+      } catch (e) {
+        console.log('Purchasely SDK configuration error', e);
+      }
+
+      if (!configured) {
+        console.log('Purchasely SDK not properly initialized');
+      }
+
+      fetchPresentation();
+
+      Purchasely.userLogout();
+
+      //setAnonymousUserId(await Purchasely.getAnonymousUserId());
+
+      await Purchasely.isAnonymous().then(isAnonymous => {
+        console.log('Anonymous ? ' + isAnonymous);
+      });
+
+      /*Purchasely.userLogin("test-user");
+
+      await Purchasely.isAnonymous().then((isAnonymous) => {
+        console.log('Anonymous when connected ? ' + isAnonymous);
+      });*/
+
+      try {
+        const product = await Purchasely.productWithIdentifier(
+          'PURCHASELY_PLUS',
+        );
+        console.log('Product', product);
+
+        const subscriptions = await Purchasely.userSubscriptions();
+        console.log('Subscriptions', subscriptions);
+
+        const plan = await Purchasely.planWithIdentifier(
+          'PURCHASELY_PLUS_YEARLY',
+        );
+        console.log('Plan', plan);
+
+        await Purchasely.isEligibleForIntroOffer('PURCHASELY_PLUS_YEARLY').then(
+          (isEligible: boolean) => {
+            console.log('Is eligible for intro offer ? ' + isEligible);
+          },
+        );
+
+        Purchasely.userDidConsumeSubscriptionContent();
+
+        const products = await Purchasely.allProducts();
+        console.log('Products', products);
+      } catch (e) {
+        console.log('Purchasely SDK product fetching error', e);
+      }
+
+      Purchasely.setLogLevel(LogLevels.DEBUG);
+
+      //indicate to sdk it is safe to launch purchase flow
+      Purchasely.readyToOpenDeeplink(true);
+
+      //force your language
+      Purchasely.setLanguage('en');
+
+      //Set an attribute for each type
+      Purchasely.setUserAttributeWithString('stringKey', 'StringValue');
+      Purchasely.setUserAttributeWithNumber('intKey', 3);
+      Purchasely.setUserAttributeWithNumber('floatKey', 1.2);
+      Purchasely.setUserAttributeWithBoolean('booleanKey', true);
+      Purchasely.setUserAttributeWithDate('dateKey', new Date());
+
+      //get all attributes
+      const attributes = await Purchasely.userAttributes();
+      console.log(attributes);
+
+      //retrive a date attribute
+      const dateAttribute = await Purchasely.userAttribute('dateKey');
+      console.log(new Date(dateAttribute).getFullYear());
+
+      //remove an attribute
+      Purchasely.clearUserAttribute('dateKey');
+      console.log(await Purchasely.userAttribute('dateKey'));
+
+      //remove all attributes
+      Purchasely.clearUserAttributes();
+
+      Purchasely.setPaywallActionInterceptorCallback(result => {
+        console.log('Received action from paywall');
+        console.log(result.info);
+
+        switch (result.action) {
+          case PLYPaywallAction.NAVIGATE:
+            console.log(
+              'User wants to navigate to website ' +
+                result.parameters.title +
+                ' ' +
+                result.parameters.url,
+            );
+            Purchasely.onProcessAction(true);
+            break;
+          case PLYPaywallAction.LOGIN:
+            console.log('User wants to login');
+            //Present your own screen for user to log in
+            Purchasely.hidePresentation();
+            // Call this method to display Purchaely paywall
+            // Purchasely.showPresentation()
+            // Call this method to update Purchasely Paywall
+            // Purchasely.onProcessAction(true);
+            break;
+          case PLYPaywallAction.PURCHASE:
+            console.log('User wants to purchase');
+            Purchasely.hidePresentation();
+
+            /**
+             * If you want to intercept it, hide presentation and display your screen
+             * then call onProcessAction() to continue or stop purchasely purchase action like this
+             *
+             * First hide presentation to display your own screen
+             * Purchasely.hidePresentation()
+             *
+             * Call this method to display Purchasely paywall
+             * Purchasely.showPresentation()
+             *
+             * Call this method to update Purchasely Paywall
+             * Purchasely.onProcessAction(true|false); // true to continue, false to stop
+             *
+             * Purchasely.closePresentation(); //when you want to close the paywall (after purchase for example)
+             *
+             **/
+            break;
+          default:
+            Purchasely.onProcessAction(true);
+        }
+      });
+
+      Purchasely.addPurchasedListener(() => {
+        // User has successfully purchased a product, reload content
+        console.log('User has purchased');
+      });
+
+      Purchasely.setAttribute(Attributes.FIREBASE_APP_INSTANCE_ID, 'test0');
+    }
+
+    Purchasely.addEventListener(event => {
+      console.log('Event received');
+      console.log(event.name);
+      console.log(event.properties);
+    });
+
+    setupPurchasely();
+
+    return () => {
+      Purchasely.removeEventListener();
+    };
+  }, []);
+
+  return (
+    <NavigationContainer>
+      <Stack.Navigator>
+        <Stack.Screen
+          name="Home"
+          component={HomeScreen}
+          options={{title: 'Welcome'}}
+        />
+        <Stack.Screen name="Paywall" component={PaywallScreen} />
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
+}
+
+const HomeScreen = ({navigation}) => {
   const onPressPresentation = async () => {
     try {
       const result = await Purchasely.presentPresentationForPlacement({
@@ -196,175 +405,9 @@ function App(): React.JSX.Element {
     console.log('Synchronize done');
   };
 
-  React.useEffect(() => {
-    Purchasely.userLogout();
-
-    async function setupPurchasely() {
-      var configured = false;
-      try {
-        // ApiKey and StoreKit1 attributes are mandatory
-        configured = await Purchasely.start({
-          apiKey: 'fcb39be4-2ba4-4db7-bde3-2a5a1e20745d',
-          storeKit1: false, // false to use StoreKit 2 and true to use StoreKit 1
-          logLevel: LogLevels.DEBUG, // to force log level for debug
-          userId: 'test-user', // if you know your user id
-          runningMode: RunningMode.FULL, // to set mode manually
-          androidStores: ['Google', 'Huawei'], // Google is already set by default
-        });
-      } catch (e) {
-        console.log('Purchasely SDK configuration error', e);
-      }
-
-      if (!configured) {
-        console.log('Purchasely SDK not properly initialized');
-      }
-
-      Purchasely.userLogout();
-
-      //setAnonymousUserId(await Purchasely.getAnonymousUserId());
-
-      await Purchasely.isAnonymous().then(isAnonymous => {
-        console.log('Anonymous ? ' + isAnonymous);
-      });
-
-      /*Purchasely.userLogin("test-user");
-
-      await Purchasely.isAnonymous().then((isAnonymous) => {
-        console.log('Anonymous when connected ? ' + isAnonymous);
-      });*/
-
-      try {
-        const product = await Purchasely.productWithIdentifier(
-          'PURCHASELY_PLUS',
-        );
-        console.log('Product', product);
-
-        const subscriptions = await Purchasely.userSubscriptions();
-        console.log('Subscriptions', subscriptions);
-
-        const plan = await Purchasely.planWithIdentifier(
-          'PURCHASELY_PLUS_YEARLY',
-        );
-        console.log('Plan', plan);
-
-        await Purchasely.isEligibleForIntroOffer('PURCHASELY_PLUS_YEARLY').then(
-          (isEligible: boolean) => {
-            console.log('Is eligible for intro offer ? ' + isEligible);
-          },
-        );
-
-        Purchasely.userDidConsumeSubscriptionContent();
-
-        const products = await Purchasely.allProducts();
-        console.log('Products', products);
-      } catch (e) {
-        console.log('Purchasely SDK product fetching error', e);
-      }
-
-      Purchasely.setLogLevel(LogLevels.DEBUG);
-
-      //indicate to sdk it is safe to launch purchase flow
-      Purchasely.readyToOpenDeeplink(true);
-
-      //force your language
-      Purchasely.setLanguage('en');
-
-      //Set an attribute for each type
-      Purchasely.setUserAttributeWithString('stringKey', 'StringValue');
-      Purchasely.setUserAttributeWithNumber('intKey', 3);
-      Purchasely.setUserAttributeWithNumber('floatKey', 1.2);
-      Purchasely.setUserAttributeWithBoolean('booleanKey', true);
-      Purchasely.setUserAttributeWithDate('dateKey', new Date());
-
-      //get all attributes
-      const attributes = await Purchasely.userAttributes();
-      console.log(attributes);
-
-      //retrive a date attribute
-      const dateAttribute = await Purchasely.userAttribute('dateKey');
-      console.log(new Date(dateAttribute).getFullYear());
-
-      //remove an attribute
-      Purchasely.clearUserAttribute('dateKey');
-      console.log(await Purchasely.userAttribute('dateKey'));
-
-      //remove all attributes
-      Purchasely.clearUserAttributes();
-
-      Purchasely.setPaywallActionInterceptorCallback(result => {
-        console.log('Received action from paywall');
-        console.log(result.info);
-
-        switch (result.action) {
-          case PLYPaywallAction.NAVIGATE:
-            console.log(
-              'User wants to navigate to website ' +
-                result.parameters.title +
-                ' ' +
-                result.parameters.url,
-            );
-            Purchasely.onProcessAction(true);
-            break;
-          case PLYPaywallAction.LOGIN:
-            console.log('User wants to login');
-            //Present your own screen for user to log in
-            Purchasely.hidePresentation();
-            // Call this method to display Purchaely paywall
-            // Purchasely.showPresentation()
-            // Call this method to update Purchasely Paywall
-            // Purchasely.onProcessAction(true);
-            break;
-          case PLYPaywallAction.PURCHASE:
-            console.log('User wants to purchase');
-            Purchasely.hidePresentation();
-
-            /**
-             * If you want to intercept it, hide presentation and display your screen
-             * then call onProcessAction() to continue or stop purchasely purchase action like this
-             *
-             * First hide presentation to display your own screen
-             * Purchasely.hidePresentation()
-             *
-             * Call this method to display Purchasely paywall
-             * Purchasely.showPresentation()
-             *
-             * Call this method to update Purchasely Paywall
-             * Purchasely.onProcessAction(true|false); // true to continue, false to stop
-             *
-             * Purchasely.closePresentation(); //when you want to close the paywall (after purchase for example)
-             *
-             **/
-            break;
-          default:
-            Purchasely.onProcessAction(true);
-        }
-      });
-
-      Purchasely.addPurchasedListener(() => {
-        // User has successfully purchased a product, reload content
-        console.log('User has purchased');
-      });
-
-      Purchasely.setAttribute(Attributes.FIREBASE_APP_INSTANCE_ID, 'test0');
-    }
-
-    Purchasely.addEventListener(event => {
-      console.log('Event received');
-      console.log(event.name);
-      console.log(event.properties);
-    });
-
-    setupPurchasely();
-
-    return () => {
-      Purchasely.removeEventListener();
-    };
-  }, []);
-
   const isDarkMode = useColorScheme() === 'dark';
   const [] = React.useState<string>('');
   const [loading, setLoading] = React.useState<boolean>(false);
-
   const backgroundStyle = {
     backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
   };
@@ -380,6 +423,12 @@ function App(): React.JSX.Element {
         style={backgroundStyle}>
         <View
           style={{backgroundColor: isDarkMode ? Colors.black : Colors.white}}>
+          <TouchableHighlight
+            onPress={() => navigation.navigate('Paywall', {name: 'John'})}
+            style={loading ? styles.buttonDisabled : styles.button}>
+            <Text style={styles.text}>Open Paywall Component</Text>
+          </TouchableHighlight>
+
           <TouchableHighlight
             onPress={onPressPresentation}
             disabled={loading}
@@ -577,7 +626,61 @@ function App(): React.JSX.Element {
       </ScrollView>
     </SafeAreaView>
   );
-}
+};
+
+const createFragment = viewId =>
+  UIManager.dispatchViewManagerCommand(
+    viewId,
+    // we are calling the 'create' command
+    UIManager.PurchaselyViewManager.Commands.create.toString(),
+    [viewId],
+  );
+
+var PaywallScreen = ({navigation, route}) => {
+  const ref = useRef(null);
+  useEffect(() => {
+    const viewId = findNodeHandle(ref.current);
+    createFragment(viewId);
+  }, []);
+
+  NativeModules.PurchaselyViewManager.onPresentationClosed().then(
+    (result: PresentPresentationResult) => {
+      console.log('Paywall closed');
+      console.log('Result is ' + result.result);
+      switch (result.result) {
+        case ProductResult.PRODUCT_RESULT_PURCHASED:
+        case ProductResult.PRODUCT_RESULT_RESTORED:
+          if (result.plan != null) {
+            console.log('User purchased ' + result.plan.name);
+          }
+
+          break;
+        case ProductResult.PRODUCT_RESULT_CANCELLED:
+          console.log('User cancelled');
+          break;
+      }
+      navigation.goBack();
+    },
+  );
+
+  return (
+    <View style={{flex: 1}}>
+      <PurchaselyViewManager
+        /*style={
+          {
+            // converts dpi to px, provide desired height
+            height: PixelRatio.getPixelSizeForLayoutSize(600),
+            // converts dpi to px, provide desired width
+            width: PixelRatio.getPixelSizeForLayoutSize(400),
+          }
+        }*/
+        //placementId={'ACCOUNT'}
+        presentation={presentationForComponent}
+        ref={ref}
+      />
+    </View>
+  );
+};
 
 // purchaselyrn://ply/placements/test
 const linkingConfiguration = {
