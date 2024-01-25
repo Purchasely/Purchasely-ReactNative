@@ -32,7 +32,7 @@ import Purchasely, {
 import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 
-import {PurchaselyViewManager} from './PurchaselyViewManager.ts';
+import {PurchaselyView} from './PurchaselyView.ts';
 
 const Stack = createNativeStackNavigator();
 
@@ -424,7 +424,7 @@ const HomeScreen = ({navigation}) => {
         <View
           style={{backgroundColor: isDarkMode ? Colors.black : Colors.white}}>
           <TouchableHighlight
-            onPress={() => navigation.navigate('Paywall', {name: 'John'})}
+            onPress={() => navigation.navigate('Paywall')}
             style={loading ? styles.buttonDisabled : styles.button}>
             <Text style={styles.text}>Open Paywall Component</Text>
           </TouchableHighlight>
@@ -632,7 +632,7 @@ const createFragment = viewId =>
   UIManager.dispatchViewManagerCommand(
     viewId,
     // we are calling the 'create' command
-    UIManager.PurchaselyViewManager.Commands.create.toString(),
+    UIManager.PurchaselyView.Commands.create.toString(),
     [viewId],
   );
 
@@ -643,7 +643,7 @@ var PaywallScreen = ({navigation, route}) => {
     createFragment(viewId);
   }, []);
 
-  NativeModules.PurchaselyViewManager.onPresentationClosed().then(
+  NativeModules.PurchaselyView.onPresentationClosed().then(
     (result: PresentPresentationResult) => {
       console.log('Paywall closed');
       console.log('Result is ' + result.result);
@@ -665,7 +665,7 @@ var PaywallScreen = ({navigation, route}) => {
 
   return (
     <View style={{flex: 1}}>
-      <PurchaselyViewManager
+      <PurchaselyView
         /*style={
           {
             // converts dpi to px, provide desired height

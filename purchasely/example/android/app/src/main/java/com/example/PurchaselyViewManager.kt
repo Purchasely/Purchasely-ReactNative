@@ -37,9 +37,7 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
   private var placementId: String? = null
   private var presentation: PLYPresentation? = null
 
-  override fun getName(): String {
-    return "PurchaselyViewManager"
-  }
+  override fun getName(): String = "PurchaselyView"
 
   override fun createViewInstance(p0: ThemedReactContext): FrameLayout {
     return FrameLayout(p0).apply {
@@ -52,6 +50,7 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
   }
 
   override fun receiveCommand(root: FrameLayout, commandId: String?, args: ReadableArray?) {
+    Log.d("PurchaselyView", "Received a command having commandId=$commandId.")
     super.receiveCommand(root, commandId, args)
     val reactNativeViewId = args!!.getInt(0)
     val commandIdInt = commandId!!.toInt()
@@ -66,7 +65,7 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
     val parentView = root.findViewById(reactNativeViewId) as ViewGroup
     setupLayout(parentView)
 
-    val myFragment = MyFragment(presentation, placementId) { result, plan ->
+    val fragment = PurchaselyFragment(presentation, placementId) { result, plan ->
       val productViewResult = when(result) {
         PLYProductViewResult.PURCHASED -> PLYProductViewResult.PURCHASED.ordinal
         PLYProductViewResult.CANCELLED -> PLYProductViewResult.CANCELLED.ordinal
@@ -75,13 +74,13 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
 
       val map: MutableMap<String, Any?> = HashMap()
       map["result"] = productViewResult
-      map["plan"] = PurchaselyModule.transformPlanToMap(plan)
+//      map["plan"] = PurchaselyModule.transformPlanToMap(plan)
       promiseView?.resolve(Arguments.makeNativeMap(map)) ?: PurchaselyModule.defaultPurchasePromise?.resolve(
         Arguments.makeNativeMap(map))
     }
     (reactContext.currentActivity as? FragmentActivity)?.supportFragmentManager
       ?.beginTransaction()
-      ?.replace(reactNativeViewId, myFragment, reactNativeViewId.toString())
+      ?.replace(reactNativeViewId, fragment, reactNativeViewId.toString())
       ?.commit()
   }
 
@@ -144,7 +143,7 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
   @ReactMethod
   fun onPresentationClosed(promise: Promise) {
     promiseView = promise
-    Log.d("PurchaselyViewManager", "onPresentationClosed")
+    Log.d("PurchaselyView", "onPresentationClosed")
   }
 
   companion object {
@@ -153,7 +152,7 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
     private var promiseView: Promise? = null
   }
 
-  class MyFragment(
+  class PurchaselyFragment(
     private val presentation: PLYPresentation?,
     private val placementId: String?,
     private val callback: PLYPresentationResultHandler) : Fragment() {
