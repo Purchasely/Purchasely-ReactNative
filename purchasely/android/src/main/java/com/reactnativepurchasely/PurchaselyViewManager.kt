@@ -1,4 +1,4 @@
-package com.example
+package com.reactnativepurchasely
 
 import android.os.Bundle
 import android.util.Log
@@ -20,13 +20,11 @@ import com.facebook.react.uimanager.ThemedReactContext
 import com.facebook.react.uimanager.ViewGroupManager
 import com.facebook.react.uimanager.annotations.ReactProp
 import com.facebook.react.uimanager.annotations.ReactPropGroup
-import com.reactnativepurchasely.PurchaselyModule
 import io.purchasely.ext.PLYPresentation
 import io.purchasely.ext.PLYPresentationResultHandler
 import io.purchasely.ext.PLYPresentationViewProperties
 import io.purchasely.ext.PLYProductViewResult
 import io.purchasely.ext.Purchasely
-import io.purchasely.models.PLYPlan
 import io.purchasely.views.presentation.PLYPresentationView
 
 
@@ -74,7 +72,7 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
 
       val map: MutableMap<String, Any?> = HashMap()
       map["result"] = productViewResult
-//      map["plan"] = PurchaselyModule.transformPlanToMap(plan)
+      map["plan"] = PurchaselyModule.transformPlanToMap(plan)
       promiseView?.resolve(Arguments.makeNativeMap(map)) ?: PurchaselyModule.defaultPurchasePromise?.resolve(
         Arguments.makeNativeMap(map))
     }

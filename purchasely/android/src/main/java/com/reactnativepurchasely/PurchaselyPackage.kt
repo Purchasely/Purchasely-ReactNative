@@ -10,10 +10,13 @@ class PurchaselyPackage : ReactPackage {
   override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> {
     val modules: MutableList<NativeModule> = ArrayList()
     modules.add(PurchaselyModule(reactContext))
+    modules.add(PurchaselyViewManager(reactContext))
     return modules
   }
 
   override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> {
-    return emptyList()
+    return listOf(
+      PurchaselyViewManager(reactContext)
+    )
   }
 }
