@@ -17,5 +17,4 @@ class PurchaselyViewManager: RCTViewManager {
   override func view() -> UIView! {
     return PurchaselyView()
   }
- 
 }

@@ -8,12 +8,10 @@
 import Foundation
 import Purchasely
 
-
 class PurchaselyView: UIView {
   
   private var _view: UIView?
   private var _controller: UIViewController?
-  
   
   @objc var completionCallback: (() -> Void)?
   
@@ -25,26 +23,24 @@ class PurchaselyView: UIView {
   
   override init(frame: CGRect) {
     super.init(frame: frame)
-    setupView()
   }
  
   required init?(coder aDecoder: NSCoder) {
     super.init(coder: aDecoder)
-    setupView()
   }
- 
+  
   private func setupView() {
-      clipsToBounds = true
+    createNativeView(presentationId: nil, placementId: placementId)
+    let view = _controller?.view ?? UIView()
+    addSubview(view)
     
-      createNativeView(presentationId: nil, placementId: placementId)
-      let view = _controller?.view ?? UIView()
-      addSubview(view)
-    
-      NSLayoutConstraint.activate([
-          view.centerXAnchor.constraint(equalTo: centerXAnchor),
-          view.centerYAnchor.constraint(equalTo: centerYAnchor)
-
-      ])
+    view.translatesAutoresizingMaskIntoConstraints = false
+    view.centerXAnchor.constraint(equalTo: centerXAnchor).isActive = true
+    view.centerYAnchor.constraint(equalTo: centerYAnchor).isActive = true
+    view.trailingAnchor.constraint(equalTo: trailingAnchor).isActive = true
+    view.leadingAnchor.constraint(equalTo: leadingAnchor).isActive = true
+    view.heightAnchor.constraint(equalTo: heightAnchor).isActive = true
+    view.widthAnchor.constraint(equalTo: widthAnchor).isActive = true
   }
   
   func createNativeView(presentationId: String?, placementId: String?) {
