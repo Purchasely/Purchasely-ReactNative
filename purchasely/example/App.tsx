@@ -14,6 +14,8 @@ import {
   UIManager,
   findNodeHandle,
   NativeModules,
+  Dimensions,
+  Platform
 } from 'react-native';
 
 import {Colors} from 'react-native/Libraries/NewAppScreen';
@@ -26,13 +28,13 @@ import Purchasely, {
   PLYPaywallAction,
   PLYPresentationType,
   PurchaselyPresentation,
-  PresentPresentationResult,
+  PresentPresentationResult
 } from 'react-native-purchasely';
 
 import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 
-import {PurchaselyView} from './PurchaselyView.ts';
+import { PurchaselyView } from './PurchaselyView';
 
 const Stack = createNativeStackNavigator();
 
@@ -628,55 +630,59 @@ const HomeScreen = ({navigation}) => {
   );
 };
 
-const createFragment = viewId =>
+
+var PaywallScreen = ({navigation, route}) => {
+  const { width, height } = Dimensions.get('window');
+  const ref = useRef(null);
+  if(Platform.OS == "android") {
+    const createFragment = viewId =>
   UIManager.dispatchViewManagerCommand(
     viewId,
     // we are calling the 'create' command
     UIManager.PurchaselyView.Commands.create.toString(),
     [viewId],
   );
+  
+    useEffect(() => {
+      const viewId = findNodeHandle(ref.current);
+      createFragment(viewId);
+    }, []);
+  
+    NativeModules.PurchaselyView.onPresentationClosed().then(
+      (result: PresentPresentationResult) => {
+        console.log('Paywall closed');
+        console.log('Result is ' + result.result);
+        switch (result.result) {
+          case ProductResult.PRODUCT_RESULT_PURCHASED:
+          case ProductResult.PRODUCT_RESULT_RESTORED:
+            if (result.plan != null) {
+              console.log('User purchased ' + result.plan.name);
+            }
+  
+            break;
+          case ProductResult.PRODUCT_RESULT_CANCELLED:
+            console.log('User cancelled');
+            break;
+        }
+        navigation.goBack();
+      },
+    );
+  }
+  
 
-var PaywallScreen = ({navigation, route}) => {
-  const ref = useRef(null);
-  useEffect(() => {
-    const viewId = findNodeHandle(ref.current);
-    createFragment(viewId);
-  }, []);
-
-  NativeModules.PurchaselyView.onPresentationClosed().then(
-    (result: PresentPresentationResult) => {
-      console.log('Paywall closed');
-      console.log('Result is ' + result.result);
-      switch (result.result) {
-        case ProductResult.PRODUCT_RESULT_PURCHASED:
-        case ProductResult.PRODUCT_RESULT_RESTORED:
-          if (result.plan != null) {
-            console.log('User purchased ' + result.plan.name);
-          }
-
-          break;
-        case ProductResult.PRODUCT_RESULT_CANCELLED:
-          console.log('User cancelled');
-          break;
-      }
-      navigation.goBack();
-    },
-  );
+  const handleCompletion = () => {
+    // Handle completion callback here
+    console.log('Completion callback triggered');
+  };
 
   return (
     <View style={{flex: 1}}>
       <PurchaselyView
-        /*style={
-          {
-            // converts dpi to px, provide desired height
-            height: PixelRatio.getPixelSizeForLayoutSize(600),
-            // converts dpi to px, provide desired width
-            width: PixelRatio.getPixelSizeForLayoutSize(400),
-          }
-        }*/
-        //placementId={'ACCOUNT'}
-        presentation={presentationForComponent}
-        ref={ref}
+        style={{ height: height, width: width }}
+        completionCallback={handleCompletion}
+        placementId={'ACCOUNT'}
+        //presentation={presentationForComponent}
+        {...(Platform.OS === 'android' && { ref: ref })} // Conditionally include ref prop
       />
     </View>
   );
