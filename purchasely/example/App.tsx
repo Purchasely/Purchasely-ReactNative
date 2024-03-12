@@ -50,7 +50,7 @@ function App(): React.JSX.Element {
           placementId: 'ACCOUNT',
           contentId: null,
         });
-        console.log('presentation fetched is %s', presentationForComponent?.id);
+        console.log('### presentation fetched is %s', presentationForComponent?.id);
       } catch (e) {
         console.error(e);
       }
@@ -670,18 +670,19 @@ var PaywallScreen = ({navigation, route}) => {
   }
   
 
-  const handleCompletion = () => {
+  const handleCompletion = (result: Number) => {
     // Handle completion callback here
-    console.log('Completion callback triggered');
+    console.log('### Completion callback triggered: ' + result);
+    navigation.goBack();
   };
 
   return (
     <View style={{flex: 1}}>
       <PurchaselyView
         style={{ height: height, width: width }}
-        completionCallback={handleCompletion}
-        placementId={'ACCOUNT'}
-        //presentation={presentationForComponent}
+        onCompletionCallback={handleCompletion}
+        //placementId={'ACCOUNT'}
+        presentation={presentationForComponent?.id}
         {...(Platform.OS === 'android' && { ref: ref })} // Conditionally include ref prop
       />
     </View>

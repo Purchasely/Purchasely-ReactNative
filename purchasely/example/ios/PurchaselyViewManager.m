@@ -12,7 +12,8 @@
 @interface RCT_EXTERN_MODULE(PurchaselyViewManager, RCTViewManager)
 
 RCT_EXPORT_VIEW_PROPERTY(placementId, NSString)
-RCT_EXPORT_VIEW_PROPERTY(completionCallback, RCTBubblingEventBlock)
+RCT_EXPORT_VIEW_PROPERTY(presentation, NSString)
+RCT_EXPORT_VIEW_PROPERTY(onCompletionCallback, RCTBubblingEventBlock)
 
 @end
 

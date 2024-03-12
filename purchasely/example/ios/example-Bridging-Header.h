@@ -7,3 +7,4 @@
 #import "React/RCTViewManager.h"
 #import "React/RCTComponent.h"
 #import <react-native-purchasely/PurchaselyRN.h>
+#import <react-native-purchasely/PLYPlan+Hybrid.h>
