@@ -57,8 +57,7 @@ class PurchaselyView: UIView {
     ])
     
     if fetched {
-      _controller?.viewDidLoad()
-      _controller?.viewWillAppear(true)
+      _controller?.beginAppearanceTransition(true, animated: true)
     }
   }
   
@@ -75,7 +74,11 @@ class PurchaselyView: UIView {
             return self.createNativeViewController(placementId: placementId)
         }
     print("### Found presentation with id \(String(describing: presentation))")
+    
     self.fetched = true
+    PurchaselyRN.purchaseResolve = { result in
+      self.onCompletionCallback?(result)
+    }
     return presentationLoadedController
   }
   
@@ -87,10 +90,22 @@ class PurchaselyView: UIView {
         completion: { result, plan in
 
           if let plan = plan {
-            self.onCompletionCallback?(["result": result.rawValue,
-                                        "plan": plan.asDictionary()])
+            let swiftDictionary: [String: Any] = [
+              "result": result.rawValue,
+              "plan": plan.asDictionary()
+            ]
+            
+            let nsDictionary = swiftDictionary as NSDictionary
+            
+            self.onCompletionCallback?(nsDictionary)
           } else {
-            self.onCompletionCallback?(["result": result.rawValue])
+            
+            let swiftDictionary: [String: Any] = [
+              "result": result.rawValue
+            ]
+            
+            let nsDictionary = swiftDictionary as NSDictionary
+            self.onCompletionCallback?(nsDictionary)
           }
         }
       )

@@ -175,7 +175,8 @@ function App(): React.JSX.Element {
             break;
           case PLYPaywallAction.PURCHASE:
             console.log('User wants to purchase');
-            Purchasely.hidePresentation();
+            Purchasely.onProcessAction(true)
+            //Purchasely.hidePresentation();
 
             /**
              * If you want to intercept it, hide presentation and display your screen
@@ -671,9 +672,17 @@ var PaywallScreen = ({navigation, route}) => {
 
   console.log('### presentation fetched is %s', presentationForComponent?.id);
 
-  const handleCompletion = (result: PresentPresentationResult) => {
+  const handleCompletion = (result: Record<string, any>) => {
     // Handle completion callback here
-    console.log('### Completion callback triggered: ' + result.result);
+    console.log('### Completion callback triggered result: ' + result);
+    console.log('### Completion callback triggered result: ' + result["result"]);
+    console.log('### Completion callback triggered plan: ' + result.plan);
+
+    switch (result.result) {
+      case ProductResult.PRODUCT_RESULT_PURCHASED:
+        console.log('### Purchased');
+        break;
+    }
     navigation.goBack();
   };
 
@@ -682,8 +691,8 @@ var PaywallScreen = ({navigation, route}) => {
       <PurchaselyView
         style={{ height: height, width: width }}
         onCompletionCallback={handleCompletion}
-        //placementId={'ACCOUNT'}
-        presentation={presentationForComponent}
+        placementId={'ACCOUNT'}
+        //presentation={presentationForComponent}
         {...(Platform.OS === 'android' && { ref: ref })} // Conditionally include ref prop
       />
     </View>
