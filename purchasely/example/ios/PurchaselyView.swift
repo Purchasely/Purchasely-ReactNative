@@ -10,6 +10,8 @@ import Purchasely
 
 class PurchaselyView: UIView {
   
+  private var fetched: Bool = false
+  
   private var _view: UIView?
   private var _controller: UIViewController?
   
@@ -22,7 +24,7 @@ class PurchaselyView: UIView {
     }
   }
   
-  @objc var presentation: String? {
+  @objc var presentation: NSDictionary? {
     didSet {
       print("### presentation was properly set")
       setupView()
@@ -38,38 +40,43 @@ class PurchaselyView: UIView {
   }
   
   private func setupView() {
-    _controller = getPresentationController(presentation: presentation, placementId: placementId)
+    _controller = getPresentationController(presentation: presentation != nil ? PurchaselyPresentation(from: presentation!) : nil,
+                                            placementId: placementId)
     let view = _controller?.view ?? UIView()
-    addSubview(view)
+    self.addSubview(view)
     
     let statusBarHeight = UIApplication.shared.windows.first?.windowScene?.statusBarManager?.statusBarFrame.height
     
     view.translatesAutoresizingMaskIntoConstraints = false
     NSLayoutConstraint.activate([
-        view.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor),
-        view.bottomAnchor.constraint(equalTo: safeAreaLayoutGuide.bottomAnchor),
-        view.heightAnchor.constraint(equalTo: safeAreaLayoutGuide.heightAnchor, constant: statusBarHeight != nil ? -statusBarHeight! : 0),
-        view.widthAnchor.constraint(equalTo: safeAreaLayoutGuide.widthAnchor),
-        view.trailingAnchor.constraint(equalTo: trailingAnchor),
-        view.leadingAnchor.constraint(equalTo: leadingAnchor)
+      view.topAnchor.constraint(equalTo: self.safeAreaLayoutGuide.topAnchor),
+      view.heightAnchor.constraint(equalTo: safeAreaLayoutGuide.heightAnchor, constant: statusBarHeight != nil ? -statusBarHeight! : 0),
+      view.widthAnchor.constraint(equalTo: safeAreaLayoutGuide.widthAnchor),
+      view.trailingAnchor.constraint(equalTo: self.trailingAnchor),
+      view.leadingAnchor.constraint(equalTo: self.leadingAnchor)
     ])
+    
+    if fetched {
+      _controller?.viewDidLoad()
+      _controller?.viewWillAppear(true)
+    }
   }
   
-  private func getPresentationController(presentation: String?,
+  private func getPresentationController(presentation: PurchaselyPresentation?,
                                          placementId: String?) -> UIViewController? {
       
-        guard let presentationId = presentation,
-              //let presentationId = presentation.id,
-              //let presentationPlacementId = presentation.placementId,
+        guard let presentation = presentation,
+              let presentationPlacementId = presentation.placementId,
               let loadedPresentations = PurchaselyRN.presentationsLoaded as? [PLYPresentation],
-              let presentationLoaded = loadedPresentations.filter({ $0.id == presentationId}).first,
-              //let presentationLoaded = loadedPresentations.filter({ $0.id == presentationId && $0.placementId == presentationPlacementId }).first,
+              let presentationLoaded = loadedPresentations.filter({ $0.id == presentation.id && $0.placementId == presentationPlacementId }).first,
               let presentationLoadedController = presentationLoaded.controller else {
           print("### Didn't find presentation with id \(String(describing: presentation))")
+          self.fetched = false
             return self.createNativeViewController(placementId: placementId)
         }
     print("### Found presentation with id \(String(describing: presentation))")
-        return presentationLoadedController
+    self.fetched = true
+    return presentationLoadedController
   }
   
   private func createNativeViewController(placementId: String?) -> UIViewController? {
@@ -90,5 +97,23 @@ class PurchaselyView: UIView {
       return controller
     }
     return nil
+  }
+}
+
+private struct PurchaselyPresentation {
+    let id: String
+    let placementId: String?
+    let audienceId: String?
+    let abTestId: String?
+    let abTestVariantId: String?
+    let language: String?
+
+  init(from data: NSDictionary) {
+    self.id = data["id"] as? String ?? "--id-error--"
+    self.placementId = data["placementId"] as? String
+    self.audienceId = data["audienceId"] as? String
+    self.abTestId = data["abTestId"] as? String
+    self.abTestVariantId = data["abTestVariantId"] as? String
+    self.language = data["language"] as? String
   }
 }

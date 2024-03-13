@@ -668,11 +668,12 @@ var PaywallScreen = ({navigation, route}) => {
       },
     );
   }
-  
 
-  const handleCompletion = (result: Number) => {
+  console.log('### presentation fetched is %s', presentationForComponent?.id);
+
+  const handleCompletion = (result: PresentPresentationResult) => {
     // Handle completion callback here
-    console.log('### Completion callback triggered: ' + result);
+    console.log('### Completion callback triggered: ' + result.result);
     navigation.goBack();
   };
 
@@ -682,7 +683,7 @@ var PaywallScreen = ({navigation, route}) => {
         style={{ height: height, width: width }}
         onCompletionCallback={handleCompletion}
         //placementId={'ACCOUNT'}
-        presentation={presentationForComponent?.id}
+        presentation={presentationForComponent}
         {...(Platform.OS === 'android' && { ref: ref })} // Conditionally include ref prop
       />
     </View>
