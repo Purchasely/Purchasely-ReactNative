@@ -7,14 +7,15 @@
 
 #import <React/RCTBridgeModule.h>
 #import <React/RCTEventEmitter.h>
+@import Purchasely;
 
 @interface PurchaselyRN: RCTEventEmitter <RCTBridgeModule, PLYEventDelegate>
 
 @property (nonatomic, retain) UIViewController* presentedPresentationViewController;
 
-@property (nonatomic) RCTPromiseResolveBlock purchaseResolve;
+@property (class, nonatomic, copy) RCTPromiseResolveBlock purchaseResolve;
 
-@property (nonatomic) NSMutableArray<PLYPresentation *> *presentationsLoaded;
+@property (class, nonatomic, strong) NSMutableArray<PLYPresentation *> *presentationsLoaded;
 
 @property (nonatomic, assign) Boolean shouldReopenPaywall;
 
