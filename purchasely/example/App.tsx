@@ -50,7 +50,7 @@ function App(): React.JSX.Element {
           placementId: 'ACCOUNT',
           contentId: null,
         });
-        console.log('### presentation fetched is %s', presentationForComponent?.id);
+        console.log('presentation fetched is %s', presentationForComponent?.id);
       } catch (e) {
         console.error(e);
       }
