@@ -672,7 +672,7 @@ var PaywallScreen = ({navigation, route}) => {
 
   console.log('### presentation fetched is %s', presentationForComponent?.id);
 
-  const handleCompletion = (result: Record<string, any>) => {
+  const handleCompletion = (result) => {
     // Handle completion callback here
     console.log('### Completion callback triggered result: ' + result);
     console.log('### Completion callback triggered result: ' + result["result"]);

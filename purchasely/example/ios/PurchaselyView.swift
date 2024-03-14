@@ -15,7 +15,7 @@ class PurchaselyView: UIView {
   private var _view: UIView?
   private var _controller: UIViewController?
   
-  @objc var onCompletionCallback: RCTPromiseResolveBlock?
+  @objc var onCompletionCallback: RCTBubblingEventBlock?
   
   @objc var placementId: String? {
     didSet {
@@ -77,7 +77,7 @@ class PurchaselyView: UIView {
     
     self.fetched = true
     PurchaselyRN.purchaseResolve = { result in
-      self.onCompletionCallback?(result)
+      self.onCompletionCallback?(result as? [AnyHashable : Any])
     }
     return presentationLoadedController
   }
@@ -90,22 +90,19 @@ class PurchaselyView: UIView {
         completion: { result, plan in
 
           if let plan = plan {
-            let swiftDictionary: [String: Any] = [
+            let result: [AnyHashable : Any]? = [
               "result": result.rawValue,
               "plan": plan.asDictionary()
             ]
             
-            let nsDictionary = swiftDictionary as NSDictionary
-            
-            self.onCompletionCallback?(nsDictionary)
+            self.onCompletionCallback?(result)
           } else {
             
-            let swiftDictionary: [String: Any] = [
+            let result: [AnyHashable : Any]? = [
               "result": result.rawValue
             ]
             
-            let nsDictionary = swiftDictionary as NSDictionary
-            self.onCompletionCallback?(nsDictionary)
+            self.onCompletionCallback?(result)
           }
         }
       )
