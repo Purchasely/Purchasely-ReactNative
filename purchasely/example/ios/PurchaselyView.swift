@@ -15,21 +15,19 @@ class PurchaselyView: UIView {
   private var _view: UIView?
   private var _controller: UIViewController?
   
-  @objc var onCompletionCallback: RCTBubblingEventBlock?
-  
   @objc var placementId: String? {
     didSet {
-      print("### placementId was properly set")
       setupView()
     }
   }
   
   @objc var presentation: NSDictionary? {
     didSet {
-      print("### presentation was properly set")
       setupView()
     }
   }
+  
+  var onPresentationClosedPromise: RCTPromiseResolveBlock?
   
   override init(frame: CGRect) {
     super.init(frame: frame)
@@ -69,15 +67,13 @@ class PurchaselyView: UIView {
               let loadedPresentations = PurchaselyRN.presentationsLoaded as? [PLYPresentation],
               let presentationLoaded = loadedPresentations.filter({ $0.id == presentation.id && $0.placementId == presentationPlacementId }).first,
               let presentationLoadedController = presentationLoaded.controller else {
-          print("### Didn't find presentation with id \(String(describing: presentation))")
           self.fetched = false
-            return self.createNativeViewController(placementId: placementId)
+          return self.createNativeViewController(placementId: placementId)
         }
-    print("### Found presentation with id \(String(describing: presentation))")
     
     self.fetched = true
     PurchaselyRN.purchaseResolve = { result in
-      self.onCompletionCallback?(result as? [AnyHashable : Any])
+      self.onPresentationClosedPromise?(result)
     }
     return presentationLoadedController
   }
@@ -90,19 +86,20 @@ class PurchaselyView: UIView {
         completion: { result, plan in
 
           if let plan = plan {
-            let result: [AnyHashable : Any]? = [
+            let result: NSDictionary? = [
               "result": result.rawValue,
               "plan": plan.asDictionary()
             ]
             
-            self.onCompletionCallback?(result)
+            self.onPresentationClosedPromise?(result)
           } else {
             
-            let result: [AnyHashable : Any]? = [
-              "result": result.rawValue
+            let result: NSDictionary? = [
+              "result": result.rawValue,
+              "plan": []
             ]
             
-            self.onCompletionCallback?(result)
+            self.onPresentationClosedPromise?(result)
           }
         }
       )

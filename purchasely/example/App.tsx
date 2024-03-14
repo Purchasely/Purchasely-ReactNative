@@ -635,6 +635,7 @@ const HomeScreen = ({navigation}) => {
 var PaywallScreen = ({navigation, route}) => {
   const { width, height } = Dimensions.get('window');
   const ref = useRef(null);
+
   if(Platform.OS == "android") {
     const createFragment = viewId =>
   UIManager.dispatchViewManagerCommand(
@@ -648,8 +649,10 @@ var PaywallScreen = ({navigation, route}) => {
       const viewId = findNodeHandle(ref.current);
       createFragment(viewId);
     }, []);
+
+  }
   
-    NativeModules.PurchaselyView.onPresentationClosed().then(
+    NativeModules.PurchaselyViewManager.onPresentationClosed().then(
       (result: PresentPresentationResult) => {
         console.log('Paywall closed');
         console.log('Result is ' + result.result);
@@ -668,31 +671,14 @@ var PaywallScreen = ({navigation, route}) => {
         navigation.goBack();
       },
     );
-  }
-
-  console.log('### presentation fetched is %s', presentationForComponent?.id);
-
-  const handleCompletion = (result) => {
-    // Handle completion callback here
-    console.log('### Completion callback triggered result: ' + result);
-    console.log('### Completion callback triggered result: ' + result["result"]);
-    console.log('### Completion callback triggered plan: ' + result.plan);
-
-    switch (result.result) {
-      case ProductResult.PRODUCT_RESULT_PURCHASED:
-        console.log('### Purchased');
-        break;
-    }
-    navigation.goBack();
-  };
+  console.log('presentation fetched is %s', presentationForComponent?.id);
 
   return (
     <View style={{flex: 1}}>
       <PurchaselyView
         style={{ height: height, width: width }}
-        onCompletionCallback={handleCompletion}
-        placementId={'ACCOUNT'}
-        //presentation={presentationForComponent}
+        //placementId={'ACCOUNT'}
+        presentation={presentationForComponent}
         {...(Platform.OS === 'android' && { ref: ref })} // Conditionally include ref prop
       />
     </View>

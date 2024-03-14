@@ -13,7 +13,8 @@
 
 RCT_EXPORT_VIEW_PROPERTY(placementId, NSString)
 RCT_EXPORT_VIEW_PROPERTY(presentation, NSDictionary)
-RCT_EXPORT_VIEW_PROPERTY(onCompletionCallback, RCTBubblingEventBlock)
+
+RCT_EXTERN_METHOD(onPresentationClosed:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject);
 
 @end
 

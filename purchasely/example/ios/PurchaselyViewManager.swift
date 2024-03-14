@@ -9,12 +9,21 @@ import Foundation
 
 @objc (PurchaselyViewManager)
 class PurchaselyViewManager: RCTViewManager {
+  
+  private var purchaselyView: PurchaselyView?
+  private var resolve: RCTPromiseResolveBlock?
  
   override static func requiresMainQueueSetup() -> Bool {
     return true
   }
  
   override func view() -> UIView! {
-    return PurchaselyView()
+    self.purchaselyView = PurchaselyView()
+    self.purchaselyView?.onPresentationClosedPromise = resolve
+    return self.purchaselyView!
+  }
+  
+  @objc func onPresentationClosed(_ resolve: @escaping RCTPromiseResolveBlock, reject: RCTPromiseRejectBlock) {
+    self.resolve = resolve
   }
 }
