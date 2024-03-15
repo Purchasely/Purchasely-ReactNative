@@ -1,4 +1,4 @@
-import React, {useEffect, useRef} from 'react';
+import React from 'react';
 import {
   Linking,
   TouchableHighlight,
@@ -10,12 +10,7 @@ import {
   Text,
   useColorScheme,
   View,
-  PixelRatio,
-  UIManager,
-  findNodeHandle,
   NativeModules,
-  Dimensions,
-  Platform
 } from 'react-native';
 
 import {Colors} from 'react-native/Libraries/NewAppScreen';
@@ -34,7 +29,7 @@ import Purchasely, {
 import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 
-import { PurchaselyView } from './PurchaselyView';
+import PLYPresentationView from './PLYPresentationView';
 
 const Stack = createNativeStackNavigator();
 
@@ -47,7 +42,7 @@ function App(): React.JSX.Element {
     const fetchPresentation = async () => {
       try {
         presentationForComponent = await Purchasely.fetchPresentation({
-          placementId: 'ACCOUNT',
+          placementId: 'Settings',
           contentId: null,
         });
         console.log('presentation fetched is %s', presentationForComponent?.id);
@@ -632,26 +627,8 @@ const HomeScreen = ({navigation}) => {
 };
 
 
-var PaywallScreen = ({navigation, route}) => {
-  const { width, height } = Dimensions.get('window');
-  const ref = useRef(null);
+var PaywallScreen = ({navigation, route}) => {  
 
-  if(Platform.OS == "android") {
-    const createFragment = viewId =>
-  UIManager.dispatchViewManagerCommand(
-    viewId,
-    // we are calling the 'create' command
-    UIManager.PurchaselyView.Commands.create.toString(),
-    [viewId],
-  );
-  
-    useEffect(() => {
-      const viewId = findNodeHandle(ref.current);
-      createFragment(viewId);
-    }, []);
-
-  }
-  
     NativeModules.PurchaselyViewManager.onPresentationClosed().then(
       (result: PresentPresentationResult) => {
         console.log('Paywall closed');
@@ -671,17 +648,14 @@ var PaywallScreen = ({navigation, route}) => {
         navigation.goBack();
       },
     );
-  console.log('presentation fetched is %s', presentationForComponent?.id);
+
+  console.log('presentation already fetched is %s', presentationForComponent?.id);
 
   return (
-    <View style={{flex: 1}}>
-      <PurchaselyView
-        style={{ height: height, width: width }}
-        //placementId={'ACCOUNT'}
-        presentation={presentationForComponent}
-        {...(Platform.OS === 'android' && { ref: ref })} // Conditionally include ref prop
-      />
-    </View>
+    <PLYPresentationView 
+      //placementId="ACCOUNT"
+      presentation={presentationForComponent}
+    />
   );
 };
 
