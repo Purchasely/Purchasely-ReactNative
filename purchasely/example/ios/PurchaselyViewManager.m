@@ -9,7 +9,7 @@
 #import "React/RCTBridgeModule.h"
 #import "React/RCTViewManager.h"
 
-@interface RCT_EXTERN_MODULE(PurchaselyViewManager, RCTViewManager)
+@interface RCT_EXTERN_REMAP_MODULE(PurchaselyView, PurchaselyViewManager, RCTViewManager)
 
 RCT_EXPORT_VIEW_PROPERTY(placementId, NSString)
 RCT_EXPORT_VIEW_PROPERTY(presentation, NSDictionary)

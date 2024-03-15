@@ -23,7 +23,7 @@ import Purchasely, {
   PLYPaywallAction,
   PLYPresentationType,
   PurchaselyPresentation,
-  PresentPresentationResult
+  PresentPresentationResult,
 } from 'react-native-purchasely';
 
 import {NavigationContainer} from '@react-navigation/native';
@@ -35,21 +35,21 @@ const Stack = createNativeStackNavigator();
 
 var presentationForComponent: PurchaselyPresentation | null = null;
 
+const fetchPresentation = async () => {
+  try {
+    presentationForComponent = await Purchasely.fetchPresentation({
+      placementId: 'Settings',
+      contentId: null,
+    });
+    console.log('presentation fetched is %s', presentationForComponent?.id);
+  } catch (e) {
+    console.error(e);
+  }
+};
+
 function App(): React.JSX.Element {
   React.useEffect(() => {
     Purchasely.userLogout();
-
-    const fetchPresentation = async () => {
-      try {
-        presentationForComponent = await Purchasely.fetchPresentation({
-          placementId: 'Settings',
-          contentId: null,
-        });
-        console.log('presentation fetched is %s', presentationForComponent?.id);
-      } catch (e) {
-        console.error(e);
-      }
-    };
 
     async function setupPurchasely() {
       var configured = false;
@@ -145,7 +145,7 @@ function App(): React.JSX.Element {
       //remove all attributes
       Purchasely.clearUserAttributes();
 
-      Purchasely.setPaywallActionInterceptorCallback(result => {
+      /*Purchasely.setPaywallActionInterceptorCallback(result => {
         console.log('Received action from paywall');
         console.log(result.info);
 
@@ -170,7 +170,7 @@ function App(): React.JSX.Element {
             break;
           case PLYPaywallAction.PURCHASE:
             console.log('User wants to purchase');
-            Purchasely.onProcessAction(true)
+            Purchasely.onProcessAction(true);
             //Purchasely.hidePresentation();
 
             /**
@@ -189,11 +189,11 @@ function App(): React.JSX.Element {
              * Purchasely.closePresentation(); //when you want to close the paywall (after purchase for example)
              *
              **/
-            break;
+            /*break;
           default:
             Purchasely.onProcessAction(true);
         }
-      });
+      });*/
 
       Purchasely.addPurchasedListener(() => {
         // User has successfully purchased a product, reload content
@@ -626,35 +626,65 @@ const HomeScreen = ({navigation}) => {
   );
 };
 
+import {NavigationProp} from '@react-navigation/native';
 
-var PaywallScreen = ({navigation, route}) => {  
-
-    NativeModules.PurchaselyViewManager.onPresentationClosed().then(
-      (result: PresentPresentationResult) => {
-        console.log('Paywall closed');
-        console.log('Result is ' + result.result);
-        switch (result.result) {
-          case ProductResult.PRODUCT_RESULT_PURCHASED:
-          case ProductResult.PRODUCT_RESULT_RESTORED:
-            if (result.plan != null) {
-              console.log('User purchased ' + result.plan.name);
-            }
-  
-            break;
-          case ProductResult.PRODUCT_RESULT_CANCELLED:
-            console.log('User cancelled');
-            break;
+var PaywallScreen = ({
+  navigation,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  route,
+}: {
+  navigation: NavigationProp<any>;
+  route: any;
+}) => {
+  const callback = (result: PresentPresentationResult) => {
+    console.log('### Paywall closed');
+    console.log('### Result is ' + result.result);
+    switch (result.result) {
+      case ProductResult.PRODUCT_RESULT_PURCHASED:
+      case ProductResult.PRODUCT_RESULT_RESTORED:
+        if (result.plan != null) {
+          console.log('User purchased ' + result.plan.name);
         }
-        navigation.goBack();
-      },
-    );
 
-  console.log('presentation already fetched is %s', presentationForComponent?.id);
+        break;
+      case ProductResult.PRODUCT_RESULT_CANCELLED:
+        console.log('User cancelled');
+        break;
+    }
+    fetchPresentation();
+    navigation.goBack();
+  };
+
+  /*NativeModules.PurchaselyView.onPresentationClosed().then(
+    (result: PresentPresentationResult) => {
+      console.log('### Paywall closed');
+      console.log('### Result is ' + result.result);
+      switch (result.result) {
+        case ProductResult.PRODUCT_RESULT_PURCHASED:
+        case ProductResult.PRODUCT_RESULT_RESTORED:
+          if (result.plan != null) {
+            console.log('User purchased ' + result.plan.name);
+          }
+
+          break;
+        case ProductResult.PRODUCT_RESULT_CANCELLED:
+          console.log('User cancelled');
+          break;
+      }
+      navigation.goBack();
+    },
+  );*/
+
+  console.log(
+    'presentation already fetched is %s',
+    presentationForComponent?.id,
+  );
 
   return (
-    <PLYPresentationView 
+    <PLYPresentationView
       //placementId="ACCOUNT"
       presentation={presentationForComponent}
+      onPresentationClosed={callback}
     />
   );
 };
