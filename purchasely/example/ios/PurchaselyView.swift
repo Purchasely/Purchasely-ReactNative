@@ -67,18 +67,35 @@ class PurchaselyView: UIView {
               let loadedPresentations = PurchaselyRN.presentationsLoaded as? [PLYPresentation],
               let presentationLoaded = loadedPresentations.filter({ $0.id == presentation.id && $0.placementId == presentationPlacementId }).first,
               let presentationLoadedController = presentationLoaded.controller else {
-          self.fetched = false
           return self.createNativeViewController(placementId: placementId)
         }
-    
+    return prefetchPresentationViewController(presentation: presentation,
+                                              presentationLoadedController: presentationLoadedController)
+  }
+  
+  private func prefetchPresentationViewController(presentation: PurchaselyPresentation,
+                                                  presentationLoadedController: PLYPresentationViewController) -> UIViewController? {
     self.fetched = true
+    
+    self.removeLoadedPresentation(presentation: presentation)
+    
     PurchaselyRN.purchaseResolve = { result in
       self.onPresentationClosedPromise?(result)
     }
     return presentationLoadedController
   }
   
+  private func removeLoadedPresentation(presentation: PurchaselyPresentation) {
+    let presentationsLoaded = (PurchaselyRN.presentationsLoaded as? [PLYPresentation]) ?? []
+    for (index, loadedPresentation) in presentationsLoaded.enumerated() {
+      if loadedPresentation.id == presentation.id {
+        PurchaselyRN.presentationsLoaded.removeObject(at: index)
+      }
+    }
+  }
+  
   private func createNativeViewController(placementId: String?) -> UIViewController? {
+    self.fetched = false
     if let placementId = placementId {
       let controller = Purchasely.presentationController(
         for: placementId,
