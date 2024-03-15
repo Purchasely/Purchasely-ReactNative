@@ -145,7 +145,7 @@ function App(): React.JSX.Element {
       //remove all attributes
       Purchasely.clearUserAttributes();
 
-      /*Purchasely.setPaywallActionInterceptorCallback(result => {
+      Purchasely.setPaywallActionInterceptorCallback(result => {
         console.log('Received action from paywall');
         console.log(result.info);
 
@@ -189,11 +189,11 @@ function App(): React.JSX.Element {
              * Purchasely.closePresentation(); //when you want to close the paywall (after purchase for example)
              *
              **/
-            /*break;
+            break;
           default:
             Purchasely.onProcessAction(true);
         }
-      });*/
+      });
 
       Purchasely.addPurchasedListener(() => {
         // User has successfully purchased a product, reload content
@@ -655,37 +655,25 @@ var PaywallScreen = ({
     navigation.goBack();
   };
 
-  /*NativeModules.PurchaselyView.onPresentationClosed().then(
-    (result: PresentPresentationResult) => {
-      console.log('### Paywall closed');
-      console.log('### Result is ' + result.result);
-      switch (result.result) {
-        case ProductResult.PRODUCT_RESULT_PURCHASED:
-        case ProductResult.PRODUCT_RESULT_RESTORED:
-          if (result.plan != null) {
-            console.log('User purchased ' + result.plan.name);
-          }
-
-          break;
-        case ProductResult.PRODUCT_RESULT_CANCELLED:
-          console.log('User cancelled');
-          break;
-      }
-      navigation.goBack();
-    },
-  );*/
-
   console.log(
     'presentation already fetched is %s',
     presentationForComponent?.id,
   );
 
   return (
-    <PLYPresentationView
-      //placementId="ACCOUNT"
-      presentation={presentationForComponent}
-      onPresentationClosed={callback}
-    />
+    <View style={{ flex: 1 }}>
+      <PLYPresentationView
+        //placementId="ACCOUNT"
+        flex={7}
+        presentation={presentationForComponent}
+        onPresentationClosed={callback}
+      />
+      <View style={{ flex: 3, justifyContent: 'center', alignItems: 'center' }}>
+        <TouchableHighlight>
+          <Text>Your own React Native content</Text>
+        </TouchableHighlight>
+      </View>
+    </View>
   );
 };
 

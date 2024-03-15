@@ -21,6 +21,7 @@ const PLYPresentationView: React.FC<PLYPresentationViewProps> = ({
   placementId,
   presentation,
   onPresentationClosed,
+  flex = 1,
 }) => {
   const ref = useRef<any>(null);
 
@@ -64,14 +65,12 @@ const PLYPresentationView: React.FC<PLYPresentationViewProps> = ({
   }
 
   return (
-    <View style={{flex: 1}}>
-      <PurchaselyView
-        style={{flex: 1}}
-        placementId={placementId}
-        presentation={presentation}
-        {...(Platform.OS === 'android' && {ref: ref})}
-      />
-    </View>
+    <PurchaselyView
+      style={{flex}}
+      placementId={placementId}
+      presentation={presentation}
+      {...(Platform.OS === 'android' && {ref: ref})}
+    />
   );
 };
 
