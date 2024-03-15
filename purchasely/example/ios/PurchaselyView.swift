@@ -86,12 +86,11 @@ class PurchaselyView: UIView {
   }
   
   private func removeLoadedPresentation(presentation: PurchaselyPresentation) {
-    let presentationsLoaded = (PurchaselyRN.presentationsLoaded as? [PLYPresentation]) ?? []
-    for (index, loadedPresentation) in presentationsLoaded.enumerated() {
-      if loadedPresentation.id == presentation.id {
-        PurchaselyRN.presentationsLoaded.removeObject(at: index)
-      }
+    var presentationsLoaded = (PurchaselyRN.presentationsLoaded as? [PLYPresentation]) ?? []
+    if let indexToRemove = presentationsLoaded.firstIndex(where: { $0.id == presentation.id }) {
+        presentationsLoaded.remove(at: indexToRemove)
     }
+    PurchaselyRN.presentationsLoaded = NSMutableArray(array: presentationsLoaded)
   }
   
   private func createNativeViewController(placementId: String?) -> UIViewController? {
