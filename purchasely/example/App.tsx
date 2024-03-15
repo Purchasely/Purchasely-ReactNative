@@ -26,6 +26,8 @@ import Purchasely, {
   PresentPresentationResult,
 } from 'react-native-purchasely';
 
+import {NavigationProp} from '@react-navigation/native';
+
 import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 
@@ -626,7 +628,6 @@ const HomeScreen = ({navigation}) => {
   );
 };
 
-import {NavigationProp} from '@react-navigation/native';
 
 var PaywallScreen = ({
   navigation,
@@ -636,6 +637,8 @@ var PaywallScreen = ({
   navigation: NavigationProp<any>;
   route: any;
 }) => {
+  fetchPresentation();
+
   const callback = (result: PresentPresentationResult) => {
     console.log('### Paywall closed');
     console.log('### Result is ' + result.result);
@@ -651,7 +654,6 @@ var PaywallScreen = ({
         console.log('User cancelled');
         break;
     }
-    fetchPresentation();
     navigation.goBack();
   };
 
