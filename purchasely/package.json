@@ -1,7 +1,7 @@
 {
   "name": "react-native-purchasely",
   "title": "Purchasely React Native",
-  "version": "4.2.3",
+  "version": "4.3.0",
   "description": "Purchasely is a solution to ease the integration and boost your In-App Purchase & Subscriptions on the App Store, Google Play Store and Huawei App Gallery.",
   "main": "lib/commonjs/index",
   "module": "lib/module/index",
@@ -63,9 +63,10 @@
     "registry": "https://registry.npmjs.org/"
   },
   "devDependencies": {
-    "react-native-builder-bob": "^0.23.2",
+    "metro-react-native-babel-preset": "^0.77.0",
     "pod-install": "^0.1.39",
     "react-native": "0.73.1",
+    "react-native-builder-bob": "^0.23.2",
     "typescript": "^5.3.3"
   },
   "peerDependencies": {
