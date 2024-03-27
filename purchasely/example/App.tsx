@@ -1,4 +1,4 @@
-import React, {useEffect, useRef} from 'react';
+import React from 'react';
 import {
   Linking,
   TouchableHighlight,
@@ -10,9 +10,6 @@ import {
   Text,
   useColorScheme,
   View,
-  PixelRatio,
-  UIManager,
-  findNodeHandle,
   NativeModules,
 } from 'react-native';
 
@@ -29,30 +26,32 @@ import Purchasely, {
   PresentPresentationResult,
 } from 'react-native-purchasely';
 
+import {NavigationProp} from '@react-navigation/native';
+
 import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 
-import {PurchaselyView} from './PurchaselyView.ts';
+import PLYPresentationView from './PLYPresentationView';
 
 const Stack = createNativeStackNavigator();
 
 var presentationForComponent: PurchaselyPresentation | null = null;
 
+const fetchPresentation = async () => {
+  try {
+    presentationForComponent = await Purchasely.fetchPresentation({
+      placementId: 'Settings',
+      contentId: null,
+    });
+    console.log('presentation fetched is %s', presentationForComponent?.id);
+  } catch (e) {
+    console.error(e);
+  }
+};
+
 function App(): React.JSX.Element {
   React.useEffect(() => {
     Purchasely.userLogout();
-
-    const fetchPresentation = async () => {
-      try {
-        presentationForComponent = await Purchasely.fetchPresentation({
-          placementId: 'ACCOUNT',
-          contentId: null,
-        });
-        console.log('presentation fetched is %s', presentationForComponent?.id);
-      } catch (e) {
-        console.error(e);
-      }
-    };
 
     async function setupPurchasely() {
       var configured = false;
@@ -173,7 +172,8 @@ function App(): React.JSX.Element {
             break;
           case PLYPaywallAction.PURCHASE:
             console.log('User wants to purchase');
-            Purchasely.hidePresentation();
+            Purchasely.onProcessAction(true);
+            //Purchasely.hidePresentation();
 
             /**
              * If you want to intercept it, hide presentation and display your screen
@@ -628,56 +628,53 @@ const HomeScreen = ({navigation}) => {
   );
 };
 
-const createFragment = viewId =>
-  UIManager.dispatchViewManagerCommand(
-    viewId,
-    // we are calling the 'create' command
-    UIManager.PurchaselyView.Commands.create.toString(),
-    [viewId],
-  );
 
-var PaywallScreen = ({navigation, route}) => {
-  const ref = useRef(null);
-  useEffect(() => {
-    const viewId = findNodeHandle(ref.current);
-    createFragment(viewId);
-  }, []);
+var PaywallScreen = ({
+  navigation,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  route,
+}: {
+  navigation: NavigationProp<any>;
+  route: any;
+}) => {
+  fetchPresentation();
 
-  NativeModules.PurchaselyView.onPresentationClosed().then(
-    (result: PresentPresentationResult) => {
-      console.log('Paywall closed');
-      console.log('Result is ' + result.result);
-      switch (result.result) {
-        case ProductResult.PRODUCT_RESULT_PURCHASED:
-        case ProductResult.PRODUCT_RESULT_RESTORED:
-          if (result.plan != null) {
-            console.log('User purchased ' + result.plan.name);
-          }
+  const callback = (result: PresentPresentationResult) => {
+    console.log('### Paywall closed');
+    console.log('### Result is ' + result.result);
+    switch (result.result) {
+      case ProductResult.PRODUCT_RESULT_PURCHASED:
+      case ProductResult.PRODUCT_RESULT_RESTORED:
+        if (result.plan != null) {
+          console.log('User purchased ' + result.plan.name);
+        }
 
-          break;
-        case ProductResult.PRODUCT_RESULT_CANCELLED:
-          console.log('User cancelled');
-          break;
-      }
-      navigation.goBack();
-    },
+        break;
+      case ProductResult.PRODUCT_RESULT_CANCELLED:
+        console.log('User cancelled');
+        break;
+    }
+    navigation.goBack();
+  };
+
+  console.log(
+    'presentation already fetched is %s',
+    presentationForComponent?.id,
   );
 
   return (
-    <View style={{flex: 1}}>
-      <PurchaselyView
-        /*style={
-          {
-            // converts dpi to px, provide desired height
-            height: PixelRatio.getPixelSizeForLayoutSize(600),
-            // converts dpi to px, provide desired width
-            width: PixelRatio.getPixelSizeForLayoutSize(400),
-          }
-        }*/
-        //placementId={'ACCOUNT'}
+    <View style={{ flex: 1 }}>
+      <PLYPresentationView
+        //placementId="ACCOUNT"
+        flex={7}
         presentation={presentationForComponent}
-        ref={ref}
+        onPresentationClosed={callback}
       />
+      <View style={{ flex: 3, justifyContent: 'center', alignItems: 'center' }}>
+        <TouchableHighlight>
+          <Text>Your own React Native content</Text>
+        </TouchableHighlight>
+      </View>
     </View>
   );
 };

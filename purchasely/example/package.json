@@ -7,7 +7,11 @@
     "ios": "react-native run-ios",
     "lint": "eslint .",
     "start": "react-native start",
-    "test": "jest"
+    "test": "jest",
+    "clean": "rm -rf node_modules && yarn pod-clean",
+    "bootstrap": "npm install && yarn && yarn pods",
+    "pod-clean": "cd ios && pod deintegrate && rm -rf Podfile.lock && cd ../",
+    "pods": "pod install --quiet"
   },
   "dependencies": {
     "@purchasely/react-native-purchasely-android-player": "file:../../purchasely-android-player",
@@ -15,7 +19,7 @@
     "@react-navigation/native": "^6.1.9",
     "@react-navigation/native-stack": "^6.9.17",
     "react": "18.2.0",
-    "react-native": "0.73.2",
+    "react-native": "0.73.6",
     "react-native-purchasely": "file:../",
     "react-native-safe-area-context": "^4.8.2",
     "react-native-screens": "^3.29.0"
