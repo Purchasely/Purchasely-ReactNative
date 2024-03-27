@@ -524,6 +524,16 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   }
 
   @ReactMethod
+  fun incrementUserAttribute(key: String, value: Double) {
+    Purchasely.incrementUserAttribute(key, value.toInt())
+  }
+
+  @ReactMethod
+  fun decrementUserAttribute(key: String, value: Double) {
+    Purchasely.decrementUserAttribute(key, value.toInt())
+  }
+
+  @ReactMethod
   fun userAttribute(key: String, promise: Promise) {
     val result = getUserAttributeValueForRN(Purchasely.userAttribute(key))
     promise.resolve(result)
