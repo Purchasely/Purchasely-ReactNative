@@ -132,8 +132,16 @@ function App(): React.JSX.Element {
       Purchasely.setUserAttributeWithBoolean('booleanKey', true);
       Purchasely.setUserAttributeWithDate('dateKey', new Date());
 
+      Purchasely.incrementUserAttribute({key: 'sessions', value: 1});
+      Purchasely.incrementUserAttribute({key: 'sessions'});
+      Purchasely.incrementUserAttribute({key: 'sessions', value: null});
+      Purchasely.decrementUserAttribute({key: 'sessions'});
+
+      Purchasely.incrementUserAttribute({key: 'app_views', value: 8.4}); // will be rounded to 8
+
       //get all attributes
       const attributes = await Purchasely.userAttributes();
+      console.log("Attributes");
       console.log(attributes);
 
       //retrive a date attribute

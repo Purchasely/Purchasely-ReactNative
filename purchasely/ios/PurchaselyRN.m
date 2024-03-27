@@ -463,6 +463,14 @@ RCT_EXPORT_METHOD(setUserAttributeWithDate:(NSString * _Nonnull)key value:(NSStr
     }
 }
 
+RCT_EXPORT_METHOD(incrementUserAttribute:(NSString * _Nonnull)key value:(NSNumber * _Nonnull)value) {
+    [Purchasely incrementUserAttributeWithKey:key value:value.intValue];
+}
+
+RCT_EXPORT_METHOD(decrementUserAttribute:(NSString * _Nonnull)key value:(NSNumber * _Nonnull)value) {
+    [Purchasely decrementUserAttributeWithKey:key value:value.intValue];
+}
+
 RCT_REMAP_METHOD(userAttribute,
                  userAttribute:(NSString * _Nonnull)key
                  resolve:(RCTPromiseResolveBlock)resolve
@@ -617,7 +625,7 @@ RCT_EXPORT_METHOD(fetchPresentation:(NSString * _Nullable)placementId
                   reject:(RCTPromiseRejectBlock)reject)
 {
     dispatch_async(dispatch_get_main_queue(), ^{
-        
+
         for (PLYPresentation *presentation in PurchaselyRN.presentationsLoaded) {
             if ([presentation.id isEqualToString:presentationId]) {
                 [PurchaselyRN.presentationsLoaded removeObject:presentation];
@@ -1112,7 +1120,7 @@ RCT_EXPORT_METHOD(userSubscriptions:(RCTPromiseResolveBlock)resolve
 
 - (void)eventTriggered:(enum PLYEvent)event properties:(NSDictionary<NSString *, id> * _Nullable)properties {
     if (!self.shouldEmit) return;
-    
+
 	if (properties != nil) {
 		NSDictionary<NSString *, id> *body = @{@"name": [NSString fromPLYEvent:event], @"properties": properties};
 		[self sendEventWithName: @"PURCHASELY_EVENTS" body: body];
