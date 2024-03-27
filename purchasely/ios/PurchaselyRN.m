@@ -17,10 +17,29 @@
 
 RCT_EXPORT_MODULE(Purchasely);
 
+static NSMutableArray<PLYPresentation *> *_presentationsLoaded;
+static RCTPromiseResolveBlock _purchaseResolve;
+
++ (NSMutableArray<PLYPresentation *> *)presentationsLoaded {
+    return _presentationsLoaded;
+}
+
++ (void)setPresentationsLoaded:(NSMutableArray<PLYPresentation *> *)presentationsLoaded {
+    _presentationsLoaded = presentationsLoaded;
+}
+
++ (RCTPromiseResolveBlock)purchaseResolve {
+    return _purchaseResolve;
+}
+
++ (void)setPurchaseResolve:(RCTPromiseResolveBlock)purchaseResolve {
+    _purchaseResolve = [purchaseResolve copy];
+}
+
 - (instancetype)init {
 	self = [super init];
 
-    self.presentationsLoaded = [NSMutableArray new];
+    PurchaselyRN.presentationsLoaded = [NSMutableArray new];
     self.shouldReopenPaywall = NO;
     self.shouldEmit = NO;
 
@@ -598,17 +617,24 @@ RCT_EXPORT_METHOD(fetchPresentation:(NSString * _Nullable)placementId
                   reject:(RCTPromiseRejectBlock)reject)
 {
     dispatch_async(dispatch_get_main_queue(), ^{
+        
+        for (PLYPresentation *presentation in PurchaselyRN.presentationsLoaded) {
+            if ([presentation.id isEqualToString:presentationId]) {
+                [PurchaselyRN.presentationsLoaded removeObject:presentation];
+            }
+        }
+
         if (placementId != nil) {
             [Purchasely fetchPresentationFor:placementId contentId: contentId fetchCompletion:^(PLYPresentation * _Nullable presentation, NSError * _Nullable error) {
                 if (error != nil) {
                     [self reject: reject with: error];
                 } else if (presentation != nil) {
-                    [self.presentationsLoaded addObject:presentation];
+                    [PurchaselyRN.presentationsLoaded addObject:presentation];
                     resolve([self resultDictionaryForFetchPresentation:presentation]);
                 }
             } completion:^(enum PLYProductViewControllerResult result, PLYPlan * _Nullable plan) {
-                if (self.purchaseResolve != nil){
-                    self.purchaseResolve([self resultDictionaryForPresentationController:result plan:plan]);
+                if (PurchaselyRN.purchaseResolve != nil){
+                    PurchaselyRN.purchaseResolve([self resultDictionaryForPresentationController:result plan:plan]);
                 }
             }];
         } else {
@@ -616,12 +642,12 @@ RCT_EXPORT_METHOD(fetchPresentation:(NSString * _Nullable)placementId
                 if (error != nil) {
                     [self reject: reject with: error];
                 } else if (presentation != nil) {
-                    [self.presentationsLoaded addObject:presentation];
+                    [PurchaselyRN.presentationsLoaded addObject:presentation];
                     resolve([self resultDictionaryForFetchPresentation:presentation]);
                 }
             } completion:^(enum PLYProductViewControllerResult result, PLYPlan * _Nullable plan) {
-                if (self.purchaseResolve != nil) {
-                    self.purchaseResolve([self resultDictionaryForPresentationController:result plan:plan]);
+                if (PurchaselyRN.purchaseResolve != nil) {
+                    PurchaselyRN.purchaseResolve([self resultDictionaryForPresentationController:result plan:plan]);
                 }
             }];
         }
@@ -630,7 +656,7 @@ RCT_EXPORT_METHOD(fetchPresentation:(NSString * _Nullable)placementId
 
 - (PLYPresentation *) findPresentationLoadedFor:(NSString * _Nullable)presentationId
                                     placementId:(NSString * _Nullable)placementId {
-    for (PLYPresentation *presentationLoaded in self.presentationsLoaded) {
+    for (PLYPresentation *presentationLoaded in PurchaselyRN.presentationsLoaded) {
         if ([presentationLoaded.id isEqualToString: presentationId] && [presentationLoaded.placementId isEqualToString: placementId]) {
             return presentationLoaded;
         }
@@ -641,7 +667,7 @@ RCT_EXPORT_METHOD(fetchPresentation:(NSString * _Nullable)placementId
 - (NSInteger) findIndexPresentationLoadedFor:(NSString * _Nullable)presentationId
                                  placementId:(NSString * _Nullable)placementId {
     NSInteger index = 0;
-    for (PLYPresentation *presentationLoaded in self.presentationsLoaded) {
+    for (PLYPresentation *presentationLoaded in PurchaselyRN.presentationsLoaded) {
         if ([presentationLoaded.id isEqualToString: presentationId] && [presentationLoaded.placementId isEqualToString: placementId]) {
             return index;
         }
@@ -661,7 +687,7 @@ RCT_EXPORT_METHOD(presentPresentation:(NSDictionary<NSString *, id> * _Nullable)
         return;
     }
 
-    self.purchaseResolve = resolve;
+    PurchaselyRN.purchaseResolve = resolve;
 
     dispatch_async(dispatch_get_main_queue(), ^{
 
@@ -677,7 +703,7 @@ RCT_EXPORT_METHOD(presentPresentation:(NSDictionary<NSString *, id> * _Nullable)
             return;
         }
 
-        [self.presentationsLoaded removeObjectAtIndex:[self findIndexPresentationLoadedFor:(NSString *)[presentationDictionary objectForKey:@"id"] placementId:(NSString *)[presentationDictionary objectForKey:@"placementId"]]];
+        [PurchaselyRN.presentationsLoaded removeObjectAtIndex:[self findIndexPresentationLoadedFor:(NSString *)[presentationDictionary objectForKey:@"id"] placementId:(NSString *)[presentationDictionary objectForKey:@"placementId"]]];
 
         if (presentationLoaded.controller != nil) {
             if (backgroundColorCode != nil) {

@@ -783,7 +783,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
       purchasePromise?.resolve(Arguments.makeNativeMap(map)) ?: defaultPurchasePromise?.resolve(Arguments.makeNativeMap(map))
     }
 
-    private fun transformPlanToMap(plan: PLYPlan?): Map<String, Any?> {
+    fun transformPlanToMap(plan: PLYPlan?): Map<String, Any?> {
       if(plan == null) return emptyMap()
 
       return plan.toMap().toMutableMap().apply {
