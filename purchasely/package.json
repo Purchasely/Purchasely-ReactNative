@@ -63,14 +63,18 @@
     "registry": "https://registry.npmjs.org/"
   },
   "devDependencies": {
+    "@types/jest": "^29.5.12",
     "@types/react": "^18.2.73",
+    "@types/react-dom": "~18.2.0",
     "pod-install": "^0.1.39",
     "react-native-builder-bob": "^0.23.2",
-    "typescript": "^5.3.3"
-  },
-  "dependencies": {
+    "typescript": "^5.3.3",
     "react": "18.2.0",
     "react-native": "0.73.6"
+  },
+  "peerDependencies": {
+    "react": "*",
+    "react-native": "*"
   },
   "jest": {
     "preset": "react-native",

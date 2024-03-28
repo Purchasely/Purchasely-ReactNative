@@ -36,7 +36,6 @@ const PLYPresentationView: React.FC<PLYPresentationViewProps> = ({
 
   NativeModules.PurchaselyView.onPresentationClosed().then(
     (result: PresentPresentationResult) => {
-      console.log('### Paywall closed callback');
       handlePresentationClosed(result);
     },
   );
