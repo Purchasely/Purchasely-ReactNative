@@ -1,20 +1,20 @@
 import React, {useEffect, useRef, useCallback} from 'react';
 import {
-  View,
   Platform,
   UIManager,
   findNodeHandle,
-  requireNativeComponent,
   NativeModules,
 } from 'react-native';
-import {PresentPresentationResult} from 'react-native-purchasely';
 
-export const PurchaselyView = requireNativeComponent('PurchaselyView');
+import { PresentPresentationResult } from './index';
+
+import {PurchaselyView} from './PurchaselyViewManager';
 
 interface PLYPresentationViewProps {
   placementId?: string; // Made optional
   presentation?: any; // Made optional
   onPresentationClosed: (result: PresentPresentationResult) => void;
+  flex?: number;
 }
 
 const PLYPresentationView: React.FC<PLYPresentationViewProps> = ({
@@ -45,6 +45,7 @@ const PLYPresentationView: React.FC<PLYPresentationViewProps> = ({
     const createFragment = (viewId: number) =>
       UIManager.dispatchViewManagerCommand(
         viewId,
+        // @ts-ignore
         UIManager.PurchaselyView.Commands.create.toString(),
         [viewId],
       );
@@ -66,6 +67,7 @@ const PLYPresentationView: React.FC<PLYPresentationViewProps> = ({
 
   return (
     <PurchaselyView
+      // @ts-ignore
       style={{flex}}
       placementId={placementId}
       presentation={presentation}

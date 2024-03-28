@@ -1,4 +1,5 @@
 import { NativeModules, NativeEventEmitter } from 'react-native';
+import PLYPresentationView from './PLYPresentationView';
 
 const purchaselyVersion = '4.3.0';
 
@@ -713,3 +714,5 @@ const Purchasely = {
 };
 
 export default Purchasely;
+
+export { PLYPresentationView };
