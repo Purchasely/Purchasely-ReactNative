@@ -134,7 +134,7 @@ dependencies {
   implementation "com.facebook.react:react-native:+"
   implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
 
-  implementation 'io.purchasely:player:4.3.1'
+  implementation 'io.purchasely:player:4.3.3'
 // From node_modules
 }
 
