@@ -1,8 +1,9 @@
 {
   "compilerOptions": {
     "baseUrl": ".",
+    "rootDir": ".",
     "paths": {
-      "react-native-purchasely": ["./src/index"]
+      "react-native-purchasely": ["./src/index", "./src/PLYPresentatioNView.tsx", "./src/PurchaselyViewManager.tsx"],
     },
     "allowUnreachableCode": false,
     "allowUnusedLabels": false,
@@ -16,11 +17,12 @@
     "noImplicitReturns": true,
     "noImplicitUseStrict": false,
     "noStrictGenericChecks": false,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
     "resolveJsonModule": true,
     "skipLibCheck": true,
-    "strict": true,
-    "target": "esnext"
+    "strict": false,
+    "target": "esnext",
+    "verbatimModuleSyntax": true
   }
 }

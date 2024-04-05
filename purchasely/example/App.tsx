@@ -10,7 +10,6 @@ import {
   Text,
   useColorScheme,
   View,
-  NativeModules,
 } from 'react-native';
 
 import {Colors} from 'react-native/Libraries/NewAppScreen';
@@ -31,7 +30,8 @@ import {NavigationProp} from '@react-navigation/native';
 import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 
-import PLYPresentationView from './PLYPresentationView';
+import {PLYPresentationView} from './PLYPresentationView';
+//import {PLYPresentationViewBeta} from 'react-native-purchasely';
 
 const Stack = createNativeStackNavigator();
 
@@ -132,8 +132,16 @@ function App(): React.JSX.Element {
       Purchasely.setUserAttributeWithBoolean('booleanKey', true);
       Purchasely.setUserAttributeWithDate('dateKey', new Date());
 
+      Purchasely.incrementUserAttribute({key: 'sessions', value: 1});
+      Purchasely.incrementUserAttribute({key: 'sessions'});
+      Purchasely.incrementUserAttribute({key: 'sessions', value: null});
+      Purchasely.decrementUserAttribute({key: 'sessions'});
+
+      Purchasely.incrementUserAttribute({key: 'app_views', value: 8.4}); // will be rounded to 8
+
       //get all attributes
       const attributes = await Purchasely.userAttributes();
+      console.log('Attributes');
       console.log(attributes);
 
       //retrive a date attribute
@@ -236,7 +244,7 @@ const HomeScreen = ({navigation}) => {
   const onPressPresentation = async () => {
     try {
       const result = await Purchasely.presentPresentationForPlacement({
-        placementVendorId: 'ONBOARDING',
+        placementVendorId: 'steps',
         isFullscreen: false,
         loadingBackgroundColor: '#FFFFFFFF',
       });
@@ -262,7 +270,7 @@ const HomeScreen = ({navigation}) => {
   const onPressFetch = async () => {
     try {
       const presentation = await Purchasely.fetchPresentation({
-        placementId: 'abtest',
+        placementId: 'steps',
         contentId: null,
       });
 
@@ -628,7 +636,6 @@ const HomeScreen = ({navigation}) => {
   );
 };
 
-
 var PaywallScreen = ({
   navigation,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -663,14 +670,14 @@ var PaywallScreen = ({
   );
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{flex: 1}}>
       <PLYPresentationView
         //placementId="ACCOUNT"
         flex={7}
         presentation={presentationForComponent}
         onPresentationClosed={callback}
       />
-      <View style={{ flex: 3, justifyContent: 'center', alignItems: 'center' }}>
+      <View style={{flex: 3, justifyContent: 'center', alignItems: 'center'}}>
         <TouchableHighlight>
           <Text>Your own React Native content</Text>
         </TouchableHighlight>

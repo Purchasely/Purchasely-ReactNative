@@ -1,6 +1,8 @@
 import { NativeModules, NativeEventEmitter } from 'react-native';
+import { PLYPresentationViewBeta } from './PLYPresentationView';
+import { PurchaselyView } from './PurchaselyViewManager';
 
-const purchaselyVersion = '4.2.4';
+const purchaselyVersion = '4.3.0';
 
 interface Constants {
   logLevelDebug: number;
@@ -662,6 +664,31 @@ const showPresentation = () => {
   return NativeModules.Purchasely.showPresentation();
 };
 
+interface UserAttributesParameters {
+  key: string;
+  value?: number | null;
+}
+const incrementUserAttribute = ({
+  key,
+  value,
+}: UserAttributesParameters):void => {
+  const nonNullValue = value ?? 1;
+  return NativeModules.Purchasely.incrementUserAttribute(
+    key,
+    nonNullValue
+  );
+};
+const decrementUserAttribute = ({
+  key,
+  value,
+}: UserAttributesParameters):void => {
+  const nonNullValue = value ?? 1;
+  return NativeModules.Purchasely.decrementUserAttribute(
+    key,
+    nonNullValue
+  );
+};
+
 const Purchasely = {
   ...RNPurchasely,
   start,
@@ -683,6 +710,12 @@ const Purchasely = {
   closePresentation,
   hidePresentation,
   signPromotionalOffer,
+  incrementUserAttribute,
+  decrementUserAttribute
 };
 
 export default Purchasely;
+
+export { PLYPresentationViewBeta };
+
+export { PurchaselyView };

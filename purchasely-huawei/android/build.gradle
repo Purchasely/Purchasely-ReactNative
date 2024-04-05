@@ -132,5 +132,5 @@ dependencies {
   api 'com.facebook.react:react-native:+'
   implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
 
-  implementation 'io.purchasely:huawei-services:4.3.0'
+  implementation 'io.purchasely:huawei-services:4.3.3'
 }
