@@ -43,12 +43,17 @@ class PurchaselyView: UIView {
     let view = _controller?.view ?? UIView()
     self.addSubview(view)
     
-    let statusBarHeight = UIApplication.shared.windows.first?.windowScene?.statusBarManager?.statusBarFrame.height
+      var statusBarHeight: CGFloat = 0.0
+      if #available(iOS 13.0, *) {
+          statusBarHeight = UIApplication.shared.windows.first?.windowScene?.statusBarManager?.statusBarFrame.height ?? 0.0
+      } else {
+          statusBarHeight = UIApplication.shared.statusBarFrame.height
+      }
     
     view.translatesAutoresizingMaskIntoConstraints = false
     NSLayoutConstraint.activate([
       view.topAnchor.constraint(equalTo: self.safeAreaLayoutGuide.topAnchor),
-      view.heightAnchor.constraint(equalTo: safeAreaLayoutGuide.heightAnchor, constant: statusBarHeight != nil ? -statusBarHeight! : 0),
+      view.heightAnchor.constraint(equalTo: safeAreaLayoutGuide.heightAnchor, constant: statusBarHeight != 0.0 ? -statusBarHeight : 0.0),
       view.widthAnchor.constraint(equalTo: safeAreaLayoutGuide.widthAnchor),
       view.trailingAnchor.constraint(equalTo: self.trailingAnchor),
       view.leadingAnchor.constraint(equalTo: self.leadingAnchor)
