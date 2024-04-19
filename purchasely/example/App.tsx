@@ -21,11 +21,11 @@ import Purchasely, {
   RunningMode,
   PLYPaywallAction,
   PLYPresentationType,
-  PurchaselyPresentation,
-  PresentPresentationResult,
+  type PurchaselyPresentation,
+  type PresentPresentationResult,
 } from 'react-native-purchasely';
 
-import {NavigationProp} from '@react-navigation/native';
+import {type NavigationProp} from '@react-navigation/native';
 
 import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';

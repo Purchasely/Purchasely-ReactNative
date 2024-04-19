@@ -2,7 +2,7 @@ import {useEffect, useRef, useCallback} from 'react';
 import {Platform, UIManager, findNodeHandle, NativeModules, requireNativeComponent} from 'react-native';
 
 import {
-  PresentPresentationResult,
+  type PresentPresentationResult,
   //PurchaselyView,
 } from 'react-native-purchasely';
 

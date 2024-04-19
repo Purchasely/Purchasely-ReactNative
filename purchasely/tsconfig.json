@@ -1,7 +1,6 @@
 {
   "compilerOptions": {
     "baseUrl": ".",
-    "rootDir": ".",
     "paths": {
       "react-native-purchasely": ["./src/index", "./src/PLYPresentatioNView.tsx", "./src/PurchaselyViewManager.tsx"],
     },
@@ -9,7 +8,7 @@
     "allowUnusedLabels": false,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-    "jsx": "react",
+    "jsx": "react-jsx",
     "lib": ["esnext"],
     "module": "esnext",
     "moduleResolution": "node",
