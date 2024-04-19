@@ -16,8 +16,8 @@
   "dependencies": {
     "@react-navigation/native": "^6.1.9",
     "@react-navigation/native-stack": "^6.9.17",
-    "@types/react": "18.2.0",
-    "@types/react-dom": "18.2.0",
+    "@types/react": "18.2.79",
+    "@types/react-dom": "18.2.25",
     "react": "^18.2.0",
     "react-native": "0.73.6",
     "react-native-purchasely": "file:../",
