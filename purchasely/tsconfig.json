@@ -1,9 +1,8 @@
 {
   "compilerOptions": {
     "baseUrl": ".",
-    "rootDir": ".",
     "paths": {
-      "react-native-purchasely": ["./src/index.ts", "./src/PLYPresentatioNView.tsx", "./src/PurchaselyViewManager.tsx"],
+      "react-native-purchasely": ["./src/index", "./src/PLYPresentatioNView.tsx", "./src/PurchaselyViewManager.tsx"],
     },
     "allowUnreachableCode": false,
     "allowUnusedLabels": false,
