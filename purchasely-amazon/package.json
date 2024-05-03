@@ -53,7 +53,7 @@
     "typescript": "^5.3.3"
   },
   "peerDependencies": {
-		"react-native-purchasely": "4.3.2",
+		"react-native-purchasely": "4.3.3",
     "react": "*",
     "react-native": "*"
   },
