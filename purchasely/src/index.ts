@@ -1,8 +1,8 @@
 import { NativeModules, NativeEventEmitter } from 'react-native';
 import { PLYPresentationViewBeta } from './PLYPresentationView';
-import { PurchaselyView } from './PurchaselyViewManager';
+//import { PurchaselyView } from './PurchaselyViewManager';
 
-const purchaselyVersion = '4.3.2';
+const purchaselyVersion = '4.3.3';
 
 interface Constants {
   logLevelDebug: number;
@@ -718,4 +718,4 @@ export default Purchasely;
 
 export { PLYPresentationViewBeta };
 
-export { PurchaselyView };
+//export { PurchaselyView };

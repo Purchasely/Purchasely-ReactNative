@@ -109,8 +109,8 @@ dependencies {
     implementation("com.facebook.react:react-android")
     implementation("com.facebook.react:flipper-integration")
 
-    implementation 'io.purchasely:google-play:4.3.4'
-    implementation 'io.purchasely:player:4.3.4'
+    implementation 'io.purchasely:google-play:4.3.5'
+    implementation 'io.purchasely:player:4.3.5'
 
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
