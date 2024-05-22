@@ -39,6 +39,7 @@ class PLYProductActivity : AppCompatActivity() {
 
     if(isFullScreen) {
       WindowCompat.setDecorFitsSystemWindows(window, false)
+      hideSystemUI()
     }
 
     setContentView(R.layout.activity_ply_product_activity)
@@ -96,6 +97,15 @@ class PLYProductActivity : AppCompatActivity() {
 
 
     findViewById<FrameLayout>(R.id.container).addView(paywallView)
+  }
+
+  private fun hideSystemUI() {
+    actionBar?.hide()
+    window.decorView.systemUiVisibility = (
+      View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+        or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+        or View.SYSTEM_UI_FLAG_FULLSCREEN
+      )
   }
 
   override fun onStart() {

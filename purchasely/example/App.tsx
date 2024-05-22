@@ -245,7 +245,7 @@ const HomeScreen = ({navigation}) => {
     try {
       const result = await Purchasely.presentPresentationForPlacement({
         placementVendorId: 'steps',
-        isFullscreen: false,
+        isFullscreen: true,
         loadingBackgroundColor: '#FFFFFFFF',
       });
 
