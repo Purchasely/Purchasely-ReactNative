@@ -83,11 +83,11 @@ function App(): React.JSX.Element {
         console.log('Anonymous ? ' + isAnonymous);
       });
 
-      /*Purchasely.userLogin("test-user");
+      Purchasely.userLogin("test-user");
 
       await Purchasely.isAnonymous().then((isAnonymous) => {
         console.log('Anonymous when connected ? ' + isAnonymous);
-      });*/
+      });
 
       try {
         const product = await Purchasely.productWithIdentifier(
@@ -96,7 +96,10 @@ function App(): React.JSX.Element {
         console.log('Product', product);
 
         const subscriptions = await Purchasely.userSubscriptions();
-        console.log('Subscriptions', subscriptions);
+        console.log('Active Subscriptions:', subscriptions);
+
+        const ExpiredSubscriptions = await Purchasely.userSubscriptionsHistory();
+        console.log('Expired Subscriptions:', subscriptions);
 
         const plan = await Purchasely.planWithIdentifier(
           'PURCHASELY_PLUS_YEARLY',

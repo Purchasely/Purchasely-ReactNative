@@ -642,6 +642,36 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   }
 
   @ReactMethod
+  fun userSubscriptionsHistory(promise: Promise) {
+    GlobalScope.launch {
+      try {
+        val subscriptions = Purchasely.userSubscriptionsHistory()
+        val result = ArrayList<ReadableMap?>()
+        for (data in subscriptions) {
+          val map = data.data.toMap().toMutableMap().apply {
+            this["subscriptionSource"] = when(data.data.storeType) {
+              StoreType.GOOGLE_PLAY_STORE -> StoreType.GOOGLE_PLAY_STORE.ordinal
+              StoreType.HUAWEI_APP_GALLERY -> StoreType.HUAWEI_APP_GALLERY.ordinal
+              StoreType.AMAZON_APP_STORE -> StoreType.AMAZON_APP_STORE.ordinal
+              StoreType.APPLE_APP_STORE -> StoreType.APPLE_APP_STORE.ordinal
+              else -> null
+            }
+            if(data.data.plan == null) {
+              this["plan"] = transformPlanToMap(data.plan)
+            }
+            this["product"] = data.product.toMap()
+            remove("subscription_status") //Add in a next version
+          }
+          result.add(Arguments.makeNativeMap(map))
+        }
+        promise.resolve(Arguments.makeNativeArray(result))
+      } catch (e: Exception) {
+        promise.reject(e)
+      }
+    }
+  }
+
+  @ReactMethod
   fun presentSubscriptions() {
     val intent = Intent(reactApplicationContext.applicationContext, PLYSubscriptionsActivity::class.java)
     reactApplicationContext.currentActivity?.startActivity(intent)
