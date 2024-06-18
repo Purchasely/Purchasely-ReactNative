@@ -1101,6 +1101,23 @@ RCT_EXPORT_METHOD(userSubscriptions:(RCTPromiseResolveBlock)resolve
 	});
 }
 
+RCT_EXPORT_METHOD(userSubscriptionsHistory:(RCTPromiseResolveBlock)resolve
+				  reject:(RCTPromiseRejectBlock)reject)
+{
+	dispatch_async(dispatch_get_main_queue(), ^{
+		[Purchasely userSubscriptionsHistory:false
+                              success:^(NSArray<PLYSubscription *> * _Nullable subscriptions) {
+            NSMutableArray *result = [NSMutableArray new];
+            for (PLYSubscription *subscription in subscriptions) {
+                [result addObject:subscription.asDictionary];
+            }
+            resolve(result);
+        } failure:^(NSError * _Nonnull error) {
+            [self reject: reject with: error];
+        }];
+	});
+}
+
 // ****************************************************************************
 #pragma mark - Events
 
