@@ -132,6 +132,9 @@
   "resolutions": {
     "@types/react": "17.0.21"
   },
+  "dependencies": {
+		"react-native-purchasely": "4.4.0"
+  },
   "peerDependencies": {
     "react": "*",
     "react-native": "*"

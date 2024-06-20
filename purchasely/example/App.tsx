@@ -98,8 +98,20 @@ function App(): React.JSX.Element {
         const subscriptions = await Purchasely.userSubscriptions();
         console.log('Active Subscriptions:', subscriptions);
 
-        const ExpiredSubscriptions = await Purchasely.userSubscriptionsHistory();
-        console.log('Expired Subscriptions:', subscriptions);
+        const expiredSubscriptions = await Purchasely.userSubscriptionsHistory();
+        console.log('Expired Subscriptions:', expiredSubscriptions);
+        if(expiredSubscriptions.length > 0) {
+          console.log('cancelled date:', expiredSubscriptions[0].cancelledDate);
+          console.log('subscription source:', expiredSubscriptions[0].subscriptionSource);
+          console.log('productId:', expiredSubscriptions[0].plan.productId);
+          console.log('vendorId:', expiredSubscriptions[0].plan.vendorId);
+          console.log('vendorId:', expiredSubscriptions[0].plan.vendorId);
+          console.log('amount:', expiredSubscriptions[0].plan.amount);
+          console.log('period:', expiredSubscriptions[0].plan.period);
+          console.log('localizedAmount:', expiredSubscriptions[0].plan.localizedAmount);
+          console.log('type:', expiredSubscriptions[0].plan.type);
+          console.log('hasFreeTrial:', expiredSubscriptions[0].plan.hasFreeTrial);
+        }
 
         const plan = await Purchasely.planWithIdentifier(
           'PURCHASELY_PLUS_YEARLY',

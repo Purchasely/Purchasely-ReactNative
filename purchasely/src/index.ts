@@ -206,10 +206,10 @@ export type PurchaselySubscription = {
   cancelledDate: string;
   plan: PurchaselyPlan;
   product: PurchaselyProduct;
-  cumulatedRevenuesInUSD: number;
+  /*cumulatedRevenuesInUSD: number;
   subscriptionDurationInDays: number;
   subscriptionDurationInWeeks: number;
-  subscriptionDurationInMonths: number;
+  subscriptionDurationInMonths: number;*/
 };
 
 export type PresentPresentationResult = {
