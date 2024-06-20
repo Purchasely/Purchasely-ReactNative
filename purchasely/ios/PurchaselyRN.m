@@ -528,7 +528,7 @@ RCT_EXPORT_METHOD(showPresentation) {
         if (self.presentedPresentationViewController && self.shouldReopenPaywall) {
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.5 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
                 self.shouldReopenPaywall = NO;
-                [Purchasely showController:self.presentedPresentationViewController type:PLYUIControllerTypeProductPage];
+                [Purchasely showController:self.presentedPresentationViewController type:PLYUIControllerTypeProductPage from:nil];
             });
         }
     });
@@ -731,11 +731,11 @@ RCT_EXPORT_METHOD(presentPresentation:(NSDictionary<NSString *, id> * _Nullable)
                 [Purchasely closeDisplayedPresentation];
                 self.presentedPresentationViewController = presentationLoaded.controller;
                 dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.5 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
-                    [Purchasely showController:presentationLoaded.controller type: PLYUIControllerTypeProductPage];
+                    [Purchasely showController:presentationLoaded.controller type: PLYUIControllerTypeProductPage from:nil];
                 });
             } else {
                 self.presentedPresentationViewController = presentationLoaded.controller;
-                [Purchasely showController:presentationLoaded.controller type: PLYUIControllerTypeProductPage];
+                [Purchasely showController:presentationLoaded.controller type: PLYUIControllerTypeProductPage from:nil];
             }
         }
     });
@@ -792,11 +792,11 @@ RCT_EXPORT_METHOD(presentPresentationWithIdentifier:(NSString * _Nullable)presen
                 [Purchasely closeDisplayedPresentation];
                 self.presentedPresentationViewController = ctrl;
                 dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.5 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
-                    [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
+                    [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage from:nil];
                 });
             } else {
                 self.presentedPresentationViewController = ctrl;
-                [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
+                [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage from:nil];
             }
         }
 	});
@@ -832,11 +832,11 @@ RCT_EXPORT_METHOD(presentPresentationForPlacement:(NSString * _Nullable)placemen
                 [Purchasely closeDisplayedPresentation];
                 self.presentedPresentationViewController = ctrl;
                 dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.5 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
-                    [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
+                    [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage from:nil];
                 });
             } else {
                 self.presentedPresentationViewController = ctrl;
-                [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
+                [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage from:nil];
             }
         }
     });
@@ -873,11 +873,11 @@ RCT_EXPORT_METHOD(presentPlanWithIdentifier:(NSString * _Nonnull)planVendorId
                 [Purchasely closeDisplayedPresentation];
                 self.presentedPresentationViewController = ctrl;
                 dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.5 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
-                    [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
+                    [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage from:nil];
                 });
             } else {
                 self.presentedPresentationViewController = ctrl;
-                [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
+                [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage from:nil];
             }
         }
 	});
@@ -912,11 +912,11 @@ RCT_EXPORT_METHOD(presentProductWithIdentifier:(NSString * _Nonnull)productVendo
                 [Purchasely closeDisplayedPresentation];
                 self.presentedPresentationViewController = ctrl;
                 dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.5 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
-                    [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
+                    [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage from:nil];
                 });
             } else {
                 self.presentedPresentationViewController = ctrl;
-                [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage];
+                [Purchasely showController:ctrl type: PLYUIControllerTypeProductPage from:nil];
             }
         }
 	});
@@ -933,7 +933,7 @@ RCT_EXPORT_METHOD(presentSubscriptions)
 #else
 		ctrl.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem: UIBarButtonSystemItemDone target:navCtrl action:@selector(close)];
 #endif
-		[Purchasely showController:navCtrl type: PLYUIControllerTypeSubscriptionList];
+		[Purchasely showController:navCtrl type: PLYUIControllerTypeSubscriptionList from:nil];
 	});
 }
 
