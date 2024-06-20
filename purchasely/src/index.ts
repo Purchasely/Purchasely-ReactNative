@@ -2,7 +2,7 @@ import { NativeModules, NativeEventEmitter } from 'react-native';
 import { PLYPresentationViewBeta } from './PLYPresentationView';
 //import { PurchaselyView } from './PurchaselyViewManager';
 
-const purchaselyVersion = '4.3.3';
+const purchaselyVersion = '4.4.0';
 
 interface Constants {
   logLevelDebug: number;
@@ -206,6 +206,10 @@ export type PurchaselySubscription = {
   cancelledDate: string;
   plan: PurchaselyPlan;
   product: PurchaselyProduct;
+  /*cumulatedRevenuesInUSD: number;
+  subscriptionDurationInDays: number;
+  subscriptionDurationInWeeks: number;
+  subscriptionDurationInMonths: number;*/
 };
 
 export type PresentPresentationResult = {
@@ -245,6 +249,7 @@ type PurchaselyType = {
   restoreAllProducts(): Promise<boolean>;
   silentRestoreAllProducts(): Promise<boolean>;
   userSubscriptions(): Promise<PurchaselySubscription[]>;
+  userSubscriptionsHistory(): Promise<PurchaselySubscription[]>;
   presentSubscriptions(): void;
   isDeeplinkHandled(deeplink: string | null): Promise<boolean>;
   synchronize(): void;

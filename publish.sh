@@ -6,7 +6,7 @@ VERSION=$1
 sed -i '' "s/^.*\"version\":.*$/  \"version\": \"${VERSION}\",/" purchasely/package.json
 
 sed -i '' "s/^.*\"version\":.*$/  \"version\": \"${VERSION}\",/" purchasely-google/package.json
-sed -i '' "s/^.*\"react-native-purchasely\":.*$/\t\t\"react-native-purchasely\": \"${VERSION}\",/" purchasely-google/package.json
+sed -i '' "s/^.*\"react-native-purchasely\":.*$/\t\t\"react-native-purchasely\": \"${VERSION}\"/" purchasely-google/package.json
 
 sed -i '' "s/^.*\"version\":.*$/  \"version\": \"${VERSION}\",/" purchasely-huawei/package.json
 sed -i '' "s/^.*\"react-native-purchasely\":.*$/\t\t\"react-native-purchasely\": \"${VERSION}\",/" purchasely-huawei/package.json
