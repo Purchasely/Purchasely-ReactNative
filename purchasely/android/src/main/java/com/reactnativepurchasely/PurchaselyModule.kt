@@ -1,4 +1,3 @@
-
 package com.reactnativepurchasely
 
 import android.app.Activity
@@ -18,6 +17,8 @@ import io.purchasely.models.PLYPromoOffer
 import io.purchasely.models.PLYPresentationPlan
 import io.purchasely.views.presentation.PLYThemeMode
 import kotlinx.coroutines.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.lang.ref.WeakReference
 import java.text.SimpleDateFormat
 import java.util.*
@@ -47,6 +48,8 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   override fun getName(): String {
     return "Purchasely"
   }
+
+  val mutex = Mutex()
 
   override fun getConstants(): Map<String, Int> {
     val constants: MutableMap<String, Int> = HashMap()
@@ -264,22 +267,25 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
       presentationId = presentationId,
       contentId = contentId)
 
+
     Purchasely.fetchPresentation(properties = properties) { presentation: PLYPresentation?, error: PLYError? ->
       GlobalScope.launch {
         if(presentation != null) {
-          presentationsLoaded.removeAll { it.id == presentation.id && it.placementId == presentation.placementId }
-          presentationsLoaded.add(presentation)
-          val map = presentation.toMap().mapValues {
-            val value = it.value
-            if(value is PLYPresentationType) value.ordinal
-            else value
-          }
+          mutex.withLock {
+            presentationsLoaded.removeAll { it.id == presentation.id && it.placementId == presentation.placementId }
+            presentationsLoaded.add(presentation)
+            val map = presentation.toMap().mapValues {
+              val value = it.value
+              if(value is PLYPresentationType) value.ordinal
+              else value
+            }
 
-          val mutableMap = map.toMutableMap().apply {
-            this["metadata"] = presentation.metadata?.toMap()
-            this["plans"] = (this["plans"] as List<PLYPresentationPlan>).map { it.toMap() }
+            val mutableMap = map.toMutableMap().apply {
+              this["metadata"] = presentation.metadata?.toMap()
+              this["plans"] = (this["plans"] as List<PLYPresentationPlan>).map { it.toMap() }
+            }
+            promise.resolve(Arguments.makeNativeMap(mutableMap))
           }
-          promise.resolve(Arguments.makeNativeMap(mutableMap))
         }
         if(error != null) promise.reject(IllegalStateException(error.message ?: "Unable to fetch presentation"))
       }
@@ -606,7 +612,6 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
 
     if(presentation != null) {
       Purchasely.clientPresentationClosed(presentation)
-      presentationsLoaded.removeAll { it.id == presentation.id }
     }
 
   }
