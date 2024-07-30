@@ -129,5 +129,5 @@ dependencies {
   api 'com.facebook.react:react-native:+'
   implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
 
-  implementation 'io.purchasely:google-play:4.4.2'
+  implementation 'io.purchasely:google-play:4.5.0'
 }
