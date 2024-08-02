@@ -40,7 +40,7 @@ var presentationForComponent: PurchaselyPresentation | null = null;
 const fetchPresentation = async () => {
   try {
     presentationForComponent = await Purchasely.fetchPresentation({
-      placementId: 'Settings',
+      placementId: 'ONBOARDING',
       contentId: null,
     });
     console.log('presentation fetched is %s', presentationForComponent?.id);
@@ -285,7 +285,7 @@ const HomeScreen = ({navigation}) => {
   const onPressFetch = async () => {
     try {
       const presentation = await Purchasely.fetchPresentation({
-        placementId: 'steps',
+        placementId: 'ONBOARDING',
         contentId: null,
       });
 
