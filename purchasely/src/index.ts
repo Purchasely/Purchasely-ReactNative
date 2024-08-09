@@ -234,46 +234,6 @@ export type PaywallActionInterceptorResult = {
   };
 };
 
-type PurchaselyType = {
-  getConstants(): Constants;
-  close(): void;
-  getAnonymousUserId(): Promise<string>;
-  userLogin(userId: string): Promise<boolean>;
-  userLogout(): void;
-  setLogLevel(logLevel: LogLevels): void;
-  readyToOpenDeeplink(ready: boolean): void;
-  setAttribute(attribute: Attributes, value: string): void;
-  allProducts(): Promise<PurchaselyProduct[]>;
-  productWithIdentifier(vendorId: string): Promise<PurchaselyProduct>;
-  planWithIdentifier(vendorId: string): Promise<PurchaselyPlan>;
-  restoreAllProducts(): Promise<boolean>;
-  silentRestoreAllProducts(): Promise<boolean>;
-  userSubscriptions(): Promise<PurchaselySubscription[]>;
-  userSubscriptionsHistory(): Promise<PurchaselySubscription[]>;
-  presentSubscriptions(): void;
-  isDeeplinkHandled(deeplink: string | null): Promise<boolean>;
-  synchronize(): void;
-  setDefaultPresentationResultHandler(): Promise<PresentPresentationResult>;
-  setPaywallActionInterceptor(): Promise<PaywallActionInterceptorResult>;
-  onProcessAction(processAction: boolean): void;
-  setLanguage(language: string): void;
-  userDidConsumeSubscriptionContent(): void;
-  setUserAttributeWithString(key: string, value: string): void;
-  setUserAttributeWithNumber(key: string, value: number): void;
-  setUserAttributeWithBoolean(key: string, value: boolean): void;
-  userAttributes(): Promise<PurchaselyUserAttribute>;
-  userAttribute(key: string): Promise<any>;
-  clearUserAttribute(key: string): void;
-  clearUserAttributes(): void;
-  clientPresentationDisplayed(presentation: PurchaselyPresentation): void;
-  clientPresentationClosed(presentation: PurchaselyPresentation): void;
-  isAnonymous(): Promise<boolean>;
-  isEligibleForIntroOffer(planVendorId: String): Promise<boolean>;
-  setThemeMode(theme: PLYThemeMode): void;
-};
-
-const RNPurchasely = NativeModules.Purchasely as PurchaselyType;
-
 const PurchaselyEventEmitter = new NativeEventEmitter(NativeModules.Purchasely);
 
 type PurchaselyEventsNames =
@@ -694,8 +654,148 @@ const decrementUserAttribute = ({
   );
 };
 
+const getConstants = (): Constants => {
+  return constants;
+}
+
+const close = (): void => {
+  return NativeModules.Purchasely.close();
+}
+
+const getAnonymousUserId = (): Promise<string> => {
+  return NativeModules.Purchasely.getAnonymousUserId();
+}
+
+const userLogin = (userId: string): Promise<boolean> => {
+  return NativeModules.Purchasely.userLogin(userId);
+}
+
+const userLogout = (): void => {
+  return NativeModules.Purchasely.userLogout();
+}
+
+const setLogLevel = (logLevel: LogLevels): void => {
+  return NativeModules.Purchasely.setLogLevel(logLevel);
+}
+
+const readyToOpenDeeplink = (ready: boolean): void => {
+  return NativeModules.Purchasely.readyToOpenDeeplink(ready);
+}
+
+const setAttribute = (attribute: Attributes, value: string): void => {
+  return NativeModules.Purchasely.setAttribute(attribute, value);
+}
+
+const allProducts = (): Promise<PurchaselyProduct[]> => {
+  return NativeModules.Purchasely.allProducts();
+}
+
+const productWithIdentifier = (vendorId: string): Promise<PurchaselyProduct> => {
+  return NativeModules.Purchasely.productWithIdentifier(vendorId);
+}
+
+const planWithIdentifier = (vendorId: string): Promise<PurchaselyPlan> => {
+  return NativeModules.Purchasely.planWithIdentifier(vendorId);
+}
+
+const restoreAllProducts = (): Promise<boolean> => {
+  return NativeModules.Purchasely.restoreAllProducts();
+}
+
+const silentRestoreAllProducts = (): Promise<boolean> => {
+  return NativeModules.Purchasely.silentRestoreAllProducts();
+}
+
+const userSubscriptions = (): Promise<PurchaselySubscription[]> => {
+  return NativeModules.Purchasely.userSubscriptions();
+}
+
+const userSubscriptionsHistory = (): Promise<PurchaselySubscription[]> => {
+  return NativeModules.Purchasely.userSubscriptionsHistory();
+}
+
+const presentSubscriptions = (): void => {
+  return NativeModules.Purchasely.presentSubscriptions();
+}
+
+const isDeeplinkHandled = (deeplink: string | null): Promise<boolean> => {
+  return NativeModules.Purchasely.isDeeplinkHandled(deeplink);
+}
+
+const synchronize = (): void => {
+  return NativeModules.Purchasely.synchronize();
+}
+
+const setDefaultPresentationResultHandler = (): Promise<PresentPresentationResult> => {
+  return NativeModules.Purchasely.setDefaultPresentationResultHandler();
+}
+
+const setPaywallActionInterceptor = (): Promise<PaywallActionInterceptorResult> => {
+  return NativeModules.Purchasely.setPaywallActionInterceptor();
+}
+
+const onProcessAction = (processAction: boolean): void => {
+  return NativeModules.Purchasely.onProcessAction(processAction);
+}
+
+const setLanguage = (language: string): void => {
+  return NativeModules.Purchasely.setLanguage(language);
+}
+
+const userDidConsumeSubscriptionContent = (): void => {
+  return NativeModules.Purchasely.userDidConsumeSubscriptionContent();
+}
+
+const setUserAttributeWithString = (key: string, value: string): void => {
+  return NativeModules.Purchasely.setUserAttributeWithString(key, value);
+}
+
+const setUserAttributeWithNumber = (key: string, value: number): void => {
+  return NativeModules.Purchasely.setUserAttributeWithNumber(key, value);
+}
+
+const setUserAttributeWithBoolean = (key: string, value: boolean): void => {
+  return NativeModules.Purchasely.setUserAttributeWithBoolean(key, value);
+}
+
+const userAttributes = (): Promise<PurchaselyUserAttribute> => {
+  return NativeModules.Purchasely.userAttributes();
+}
+
+const userAttribute = (key: string): Promise<any> => {
+  return NativeModules.Purchasely.userAttribute(key);
+}
+
+const clearUserAttribute = (key: string): void => {
+  return NativeModules.Purchasely.clearUserAttribute(key);
+}
+
+const clearUserAttributes = (): void => {
+  return NativeModules.Purchasely.clearUserAttributes();
+}
+
+const clientPresentationDisplayed = (presentation: PurchaselyPresentation): void => {
+  return NativeModules.Purchasely.clientPresentationDisplayed(presentation);
+}
+
+const clientPresentationClosed = (presentation: PurchaselyPresentation): void => {
+  return NativeModules.Purchasely.clientPresentationClosed(presentation);
+}
+
+const isAnonymous = (): Promise<boolean> => {
+  return NativeModules.Purchasely.isAnonymous();
+}
+
+const isEligibleForIntroOffer = (planVendorId: String): Promise<boolean> => {
+  return NativeModules.Purchasely.isEligibleForIntroOffer(planVendorId);
+}
+
+const setThemeMode = (theme: PLYThemeMode): void => {
+  return NativeModules.Purchasely.setThemeMode(theme);
+}
+
+
 const Purchasely = {
-  ...RNPurchasely,
   start,
   addEventListener,
   removeEventListener,
@@ -716,7 +816,43 @@ const Purchasely = {
   hidePresentation,
   signPromotionalOffer,
   incrementUserAttribute,
-  decrementUserAttribute
+  decrementUserAttribute,
+  getConstants,
+  close,
+  getAnonymousUserId,
+  userLogin,
+  userLogout,
+  setLogLevel,
+  readyToOpenDeeplink,
+  setAttribute,
+  allProducts,
+  productWithIdentifier,
+  planWithIdentifier,
+  restoreAllProducts,
+  silentRestoreAllProducts,
+  userSubscriptions,
+  userSubscriptionsHistory,
+  presentSubscriptions,
+  isDeeplinkHandled,
+  synchronize,
+  setLanguage,
+  userDidConsumeSubscriptionContent,
+  setUserAttributeWithString,
+  setUserAttributeWithNumber,
+  setUserAttributeWithBoolean,
+  userAttributes,
+  userAttribute,
+  clearUserAttribute,
+  clearUserAttributes,
+  setDefaultPresentationResultHandler,
+  setPaywallActionInterceptor,
+  onProcessAction,
+  clientPresentationDisplayed,
+  clientPresentationClosed,
+  isAnonymous,
+  isEligibleForIntroOffer,
+  setThemeMode,
+
 };
 
 export default Purchasely;
