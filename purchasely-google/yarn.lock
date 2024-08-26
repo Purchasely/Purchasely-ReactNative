@@ -2434,9 +2434,9 @@ fast-glob@^3.2.9:
     micromatch "^4.0.4"
 
 fast-xml-parser@^4.0.12, fast-xml-parser@^4.2.4:
-  version "4.3.3"
-  resolved "https://registry.yarnpkg.com/fast-xml-parser/-/fast-xml-parser-4.3.3.tgz#aeaf5778392329f17168c40c51bcbfec8ff965be"
-  integrity sha512-coV/D1MhrShMvU6D0I+VAK3umz6hUaxxhL0yp/9RjfiYUfAv14rDhGQL+PLForhMdr0wq3PiV07WtkkNjJjNHg==
+  version "4.4.1"
+  resolved "https://registry.yarnpkg.com/fast-xml-parser/-/fast-xml-parser-4.4.1.tgz#86dbf3f18edf8739326447bcaac31b4ae7f6514f"
+  integrity sha512-xkjOecfnKGkSsOwtZ5Pz7Us/T6mrbPQrq0nh+aCO5V9nk5NLWmasAHumTKjiPJPWANe+kAZ84Jc8ooJkzZ88Sw==
   dependencies:
     strnum "^1.0.5"
 
@@ -3899,9 +3899,9 @@ react-native-builder-bob@^0.23.2:
     yargs "^17.5.1"
 
 react-native-purchasely@4.5.0:
-  version "4.4.1"
-  resolved "https://registry.yarnpkg.com/react-native-purchasely/-/react-native-purchasely-4.4.1.tgz#2f3b1eba9ebe51b1e4b84c1c54575000d17174dd"
-  integrity sha512-2vHYFQcaQn6QITArHNv3jorW3fbPU6a9aPn97SaQbhxIP+8vKlfBwugSCgxKCfIPy35od4si4eJSE6893+lg1A==
+  version "4.5.0"
+  resolved "https://registry.yarnpkg.com/react-native-purchasely/-/react-native-purchasely-4.5.0.tgz#549bd4efff1bae9e9fd77b05105fa68d71a0425b"
+  integrity sha512-GimcX1l6Diw7YOKZn+1+O6wxZCUBGSqofmUuK2UFxomoLJa0KAHjiJHQXsdDu7VPxR/MBI+h/jPdLnTvMikMmw==
 
 react-native@0.73.1:
   version "0.73.1"
