@@ -10,6 +10,9 @@
     "test": "jest"
   },
   "dependencies": {
+    "purchasely": "file:../purchasely",
+    "purchasely-google": "file:../purchasely-google",
+    "purchasely-player": "file:../purchasely-android-player",
     "react": "18.3.1",
     "react-native": "0.75.2"
   },

@@ -7772,6 +7772,38 @@ __metadata:
   languageName: node
   linkType: hard
 
+"purchasely-google@file:../purchasely-google::locator=sample_v2%40workspace%3A.":
+  version: 4.5.0
+  resolution: "purchasely-google@file:../purchasely-google#../purchasely-google::hash=cf6c86&locator=sample_v2%40workspace%3A."
+  dependencies:
+    react-native-purchasely: 4.5.0
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+  checksum: 0589a4b4167e2189582766ec1b1bf5e60a58b12cbf023990def4c3bd3c14e939f43c40ebb5ea4be2eba62495bb81ef96b431c8b83e2f509be5e47294c4223212
+  languageName: node
+  linkType: hard
+
+"purchasely-player@file:../purchasely-android-player::locator=sample_v2%40workspace%3A.":
+  version: 4.5.0
+  resolution: "purchasely-player@file:../purchasely-android-player#../purchasely-android-player::hash=bca9db&locator=sample_v2%40workspace%3A."
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+  checksum: 8bfc0fe41dba3ec012d074cd2b001e4c44961ccdd121dd21e3d58b7d736e570debcc9b6400b0192794f4779584c0ba2cd86ab519a1e460b64ca7b4b3111f1e67
+  languageName: node
+  linkType: hard
+
+"purchasely@file:../purchasely::locator=sample_v2%40workspace%3A.":
+  version: 4.5.0
+  resolution: "purchasely@file:../purchasely#../purchasely::hash=fb8fa7&locator=sample_v2%40workspace%3A."
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+  checksum: 8bd0a567485d40e357ecb5d636683f8a6a9f5574358848afe709e9adc0a7e6fd6ae6df5b90bd15054aea28869bf2e9318eb6793acb906dd769f8331613374c36
+  languageName: node
+  linkType: hard
+
 "pure-rand@npm:^6.0.0":
   version: 6.1.0
   resolution: "pure-rand@npm:6.1.0"
@@ -7837,6 +7869,16 @@ __metadata:
   version: 17.0.2
   resolution: "react-is@npm:17.0.2"
   checksum: 9d6d111d8990dc98bc5402c1266a808b0459b5d54830bbea24c12d908b536df7883f268a7868cfaedde3dd9d4e0d574db456f84d2e6df9c4526f99bb4b5344d8
+  languageName: node
+  linkType: hard
+
+"react-native-purchasely@npm:4.5.0":
+  version: 4.5.0
+  resolution: "react-native-purchasely@npm:4.5.0"
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+  checksum: 1fd4e7f7d1ef6fc2987e561eeb3f674ba1cdaaa07dad52779d94cc115f6381452e43a5b9b4436e6f47ae816a8a930bd575195eb248ba2f1a11823865ddff10eb
   languageName: node
   linkType: hard
 
@@ -8290,6 +8332,9 @@ __metadata:
     eslint: ^8.19.0
     jest: ^29.6.3
     prettier: 2.8.8
+    purchasely: "file:../purchasely"
+    purchasely-google: "file:../purchasely-google"
+    purchasely-player: "file:../purchasely-android-player"
     react: 18.3.1
     react-native: 0.75.2
     react-test-renderer: 18.3.1
