@@ -79,7 +79,7 @@ android {
 
     namespace "com.sample_v2"
     defaultConfig {
-        applicationId "com.sample_v2"
+      applicationId "com.purchasely.demo"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
