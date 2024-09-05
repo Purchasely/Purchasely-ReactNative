@@ -52,11 +52,10 @@ class PurchaselyView: UIView {
     
     view.translatesAutoresizingMaskIntoConstraints = false
     NSLayoutConstraint.activate([
-      view.topAnchor.constraint(equalTo: self.safeAreaLayoutGuide.topAnchor),
-      view.heightAnchor.constraint(equalTo: safeAreaLayoutGuide.heightAnchor, constant: statusBarHeight != 0.0 ? -statusBarHeight : 0.0),
-      view.widthAnchor.constraint(equalTo: safeAreaLayoutGuide.widthAnchor),
+      view.topAnchor.constraint(equalTo: self.topAnchor),
       view.trailingAnchor.constraint(equalTo: self.trailingAnchor),
-      view.leadingAnchor.constraint(equalTo: self.leadingAnchor)
+      view.leadingAnchor.constraint(equalTo: self.leadingAnchor),
+      view.bottomAnchor.constraint(equalTo: self.bottomAnchor)
     ])
     
     if fetched {
