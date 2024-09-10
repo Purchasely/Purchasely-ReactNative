@@ -73,6 +73,8 @@ function App(): React.JSX.Element {
       console.log('Purchasely SDK configuration error:', e);
     }
 
+    fetchPresentation();
+
     if (!configured) {
       console.error('Purchasely SDK initialization failed.');
     } else {
