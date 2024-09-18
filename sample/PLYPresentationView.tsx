@@ -7,6 +7,8 @@ import {
 } from 'react-native-purchasely';
 
 export const PurchaselyView = requireNativeComponent('PurchaselyView');
+  // Hold the ref for the native view
+const ref = useRef(null);
 
 //import {PurchaselyView} from './PurchaselyViewManager';
 
@@ -23,7 +25,6 @@ const PLYPresentationView: React.FC<PLYPresentationViewProps> = ({
   onPresentationClosed,
   flex = 1,
 }) => {
-  const ref = useRef<any>(null);
 
   const handlePresentationClosed = useCallback(
     (result: PresentPresentationResult) => {
@@ -70,6 +71,7 @@ const PLYPresentationView: React.FC<PLYPresentationViewProps> = ({
       style={{flex}}
       placementId={placementId}
       presentation={presentation}
+      ref={ref} // Attach the ref to PurchaselyView
       {...(Platform.OS === 'android' && {ref: ref})}
     />
   );
