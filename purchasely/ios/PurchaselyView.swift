@@ -110,16 +110,12 @@ class PurchaselyView: UIView {
               "result": result.rawValue,
               "plan": plan.asDictionary()
             ]
-            
-            self.onPresentationClosedPromise?(result)
           } else {
             
             let result: NSDictionary? = [
               "result": result.rawValue,
               "plan": []
             ]
-            
-            self.onPresentationClosedPromise?(result)
           }
         }
       )
