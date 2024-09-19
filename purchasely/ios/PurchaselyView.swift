@@ -44,7 +44,7 @@ class PurchaselyView: UIView {
     self.addSubview(view)
     
       var statusBarHeight: CGFloat = 0.0
-      if #available(iOS 13.0, *) {
+      if #available(iOS 13.0, tvOS 13.0, *) {
           statusBarHeight = UIApplication.shared.windows.first?.windowScene?.statusBarManager?.statusBarFrame.height ?? 0.0
       } else {
           statusBarHeight = UIApplication.shared.statusBarFrame.height
