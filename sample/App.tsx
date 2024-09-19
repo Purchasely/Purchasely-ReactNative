@@ -451,7 +451,7 @@ var PaywallScreen = ({
         placementId="ACCOUNT"
         flex={7}
         presentation={presentationForComponent}
-        onPresentationClosed={callback}
+        onPresentationClosed={(res) => callback(res)}
       />
       <View style={{flex: 3, justifyContent: 'center', alignItems: 'center'}}>
         <Section>
@@ -467,7 +467,7 @@ var PaywallScreen = ({
 // ----------     Button's onPress methods     -------
 // ---------------------------------------------------
 
-const onPressNestedView = (navigation) => {
+const onPressNestedView = (navigation: { navigate: (arg0: string) => void; }) => {
   navigation.navigate('Paywall')
 }
 
@@ -475,7 +475,7 @@ const onPressNestedView = (navigation) => {
 const onPressPresentation = async () => {
   try {
     const result = await Purchasely.presentPresentationForPlacement({
-      placementVendorId: 'steps',
+      placementVendorId: 'HOME',
       isFullscreen: true,
       loadingBackgroundColor: '#FFFFFFFF',
     });
@@ -501,10 +501,11 @@ const onPressPresentation = async () => {
 const onPressFetch = async () => {
   try {
     const presentation = await Purchasely.fetchPresentation({
-      presentationId: 'TF1',
+      placementId: 'ONBOARDING',
       contentId: null,
     });
 
+    console.log(presentation.placementId)
     console.log('Type = ' + presentation.type);
     console.log('Plans = ' + JSON.stringify(presentation.plans, null, 2));
     if (presentation.type === PLYPresentationType.DEACTIVATED) {
