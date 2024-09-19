@@ -19,6 +19,18 @@ RCT_EXPORT_MODULE(Purchasely);
 
 static NSMutableArray<PLYPresentation *> *_presentationsLoaded;
 static RCTPromiseResolveBlock _purchaseResolve;
+static UIViewController *_sharedViewController;
+
++ (UIViewController *)sharedViewController {
+    if (!_sharedViewController) {
+        _sharedViewController = [UIViewController new];
+    }
+    return _sharedViewController;
+}
+
++ (void)setSharedViewController:(UIViewController *)viewController {
+    _sharedViewController = viewController;
+}
 
 + (NSMutableArray<PLYPresentation *> *)presentationsLoaded {
     return _presentationsLoaded;
@@ -626,6 +638,7 @@ RCT_EXPORT_METHOD(fetchPresentation:(NSString * _Nullable)placementId
 {
     dispatch_async(dispatch_get_main_queue(), ^{
 
+        [PurchaselyRN setSharedViewController:nil];
         for (PLYPresentation *presentation in PurchaselyRN.presentationsLoaded) {
             if ([presentation.id isEqualToString:presentationId]) {
                 [PurchaselyRN.presentationsLoaded removeObject:presentation];
