@@ -1,7 +1,7 @@
 {
   "name": "react-native-purchasely",
   "title": "Purchasely React Native",
-  "version": "4.5.1",
+  "version": "4.5.2",
   "description": "Purchasely is a solution to ease the integration and boost your In-App Purchase & Subscriptions on the App Store, Google Play Store and Huawei App Gallery.",
   "main": "lib/commonjs/index",
   "module": "lib/module/index",
@@ -82,10 +82,6 @@
   "resolutions": {
     "@types/react": "18.2.79",
     "@types/react-dom": "18.2.25"
-  },
-  "peerDependencies": {
-    "react": "*",
-    "react-native": "*"
   },
   "jest": {
     "preset": "react-native",

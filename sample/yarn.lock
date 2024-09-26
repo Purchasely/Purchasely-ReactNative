@@ -5596,15 +5596,13 @@ punycode@^2.1.0:
   integrity sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==
 
 "purchasely-google@file:../purchasely-google":
-  version "4.5.0"
-  dependencies:
-    react-native-purchasely "4.5.0"
+  version "4.5.1"
 
 "purchasely-player@file:../purchasely-android-player":
-  version "4.5.0"
+  version "4.5.1"
 
 "purchasely@file:../purchasely":
-  version "4.5.0"
+  version "4.5.1"
 
 pure-rand@^6.0.0:
   version "6.1.0"
@@ -5680,11 +5678,6 @@ react-native-gesture-handler@^2.19.0:
     hoist-non-react-statics "^3.3.0"
     invariant "^2.2.4"
     prop-types "^15.7.2"
-
-react-native-purchasely@4.5.0:
-  version "4.5.0"
-  resolved "https://registry.yarnpkg.com/react-native-purchasely/-/react-native-purchasely-4.5.0.tgz#549bd4efff1bae9e9fd77b05105fa68d71a0425b"
-  integrity sha512-GimcX1l6Diw7YOKZn+1+O6wxZCUBGSqofmUuK2UFxomoLJa0KAHjiJHQXsdDu7VPxR/MBI+h/jPdLnTvMikMmw==
 
 react-native-reanimated@^3.15.1:
   version "3.15.1"
