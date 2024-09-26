@@ -126,7 +126,7 @@
   "devDependencies": {
     "react-native-builder-bob": "^0.23.2",
     "pod-install": "^0.1.39",
-    "react-native": "0.73.1",
+    "react-native": "0.73.6",
     "typescript": "^5.3.3"
   },
   "resolutions": {
@@ -134,9 +134,5 @@
   },
   "dependencies": {
 		"react-native-purchasely": "4.5.1"
-  },
-  "peerDependencies": {
-    "react": "*",
-    "react-native": "*"
   }
 }

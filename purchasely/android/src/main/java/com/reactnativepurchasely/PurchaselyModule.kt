@@ -732,7 +732,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
       try {
         val plan = Purchasely.plan(planVendorId)
         if(plan != null) {
-          promise.resolve(plan.isEligibleToIntroOffer())
+          promise.resolve(plan.isEligibleToOffer())
         } else {
           promise.reject(IllegalStateException("plan $planVendorId not found"))
         }
