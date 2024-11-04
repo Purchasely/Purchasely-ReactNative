@@ -13,6 +13,28 @@
     [self isUserEligibleForIntroductoryOfferWithCompletion:completion];
 }
 
+- (void)promoOfferPriceWithVendorId:(NSString *)vendorId completion:(void (^)(NSString * _Nullable))completion {
+    // Appel de la méthode Swift et passage de vendorId
+    NSString *price = [self promoOfferPriceWith:vendorId];
+    // Exécution du bloc de complétion avec le prix obtenu
+    if (completion) {
+        completion(price);
+    }
+}
+
+- (void)promoOfferDurationWithVendorId:(NSString *)vendorId
+                              language:(NSString * _Nullable)language
+                            completion:(void (^)(NSString * _Nullable))completion {
+    
+    // Appel de la méthode Swift en utilisant vendorId et language
+  NSString *duration = [self promoOfferDurationWith:vendorId language:language];
+    
+    // Exécution du bloc de complétion avec la durée obtenue
+    if (completion) {
+        completion(duration);
+    }
+}
+
 - (NSDictionary *)asDictionary {
 	NSMutableDictionary<NSString *, NSObject *> *dict = [NSMutableDictionary new];
 

@@ -428,6 +428,33 @@ RCT_EXPORT_METHOD(isDeeplinkHandled:(NSString * _Nullable) deeplink
     });
 }
 
+RCT_EXPORT_METHOD(getOfferPriceWithPlanVendorId:(NSString *)planVendorId
+                  offerVendorId:(nullable NSString *)offerVendorId
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
+
+    [Purchasely planWith:planVendorId
+                 success:^(PLYPlan * _Nonnull plan) {
+      NSString *price = [plan promoOfferPriceWith:offerVendorId];
+      resolve(@[price]);
+    }  failure:^(NSError * _Nullable error) {
+      [self reject: reject with: error];
+    }];
+}
+
+RCT_EXPORT_METHOD(getOfferDurationWithPlanVendorId:(NSString *)planVendorId
+                  offerVendorId:(nullable NSString *)offerVendorId
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
+      [Purchasely planWith:planVendorId
+                   success:^(PLYPlan * _Nonnull plan) {
+        NSString *duration = [plan promoOfferDurationWith:offerVendorId language:nil];
+        resolve(@[duration]);
+      }  failure:^(NSError * _Nullable error) {
+        [self reject: reject with: error];
+      }];
+}
+
 RCT_EXPORT_METHOD(userLogout) {
 	[Purchasely userLogout];
 }

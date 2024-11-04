@@ -308,6 +308,20 @@ const HomeScreen = ({navigation}) => {
 
           <Section>
             <Button
+               onPress={ () => onGetPromoOfferPrice() }
+              title="Offer price"
+            />
+          </Section>
+
+          <Section>
+            <Button
+               onPress={ () => onGetPromoOfferDuration() }
+              title="Offer duration"
+            />
+          </Section>
+
+          <Section>
+            <Button
                onPress={() => onPressFetch() }
               title="Fetch Presentation"
             />
@@ -471,6 +485,23 @@ const onPressNestedView = (navigation: { navigate: (arg0: string) => void; }) =>
   navigation.navigate('Paywall')
 }
 
+const onGetPromoOfferPrice = async () => {
+  try {
+    const price = await Purchasely.getOfferPrice('PLAN_ID', 'OFFER_ID')
+    console.log('Offer Price: ' + price)
+  } catch (e) {
+    console.error(e);
+  }
+};
+
+const onGetPromoOfferDuration = async () => {
+  try {
+    const price = await Purchasely.getOfferDuration('PLAN_ID', 'OFFER_ID')
+    console.log('Offer Duration: ' + price)
+  } catch (e) {
+    console.error(e);
+  }
+};
 
 const onPressPresentation = async () => {
   try {

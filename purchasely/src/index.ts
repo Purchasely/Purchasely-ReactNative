@@ -1,5 +1,6 @@
 import { NativeModules, NativeEventEmitter } from 'react-native';
 import { PLYPresentationViewBeta } from './PLYPresentationView';
+import type { Double } from 'react-native/Libraries/Types/CodegenTypes';
 //import { PurchaselyView } from './PurchaselyViewManager';
 
 const purchaselyVersion = '4.5.3';
@@ -698,6 +699,14 @@ const planWithIdentifier = (vendorId: string): Promise<PurchaselyPlan> => {
   return NativeModules.Purchasely.planWithIdentifier(vendorId);
 }
 
+const getOfferPrice = (planVendorId: string, offerVendorId: string): Promise<string> => {
+  return NativeModules.Purchasely.getOfferPrice(planVendorId, offerVendorId)
+}
+
+const getOfferDuration = (planVendorId: string, offerVendorId: string): Promise<string> => {
+  return NativeModules.Purchasely.getOfferDuration(planVendorId, offerVendorId)
+} 
+
 const restoreAllProducts = (): Promise<boolean> => {
   return NativeModules.Purchasely.restoreAllProducts();
 }
@@ -852,7 +861,8 @@ const Purchasely = {
   isAnonymous,
   isEligibleForIntroOffer,
   setThemeMode,
-
+  getOfferPrice,
+  getOfferDuration
 };
 
 export default Purchasely;
