@@ -487,7 +487,7 @@ const onPressNestedView = (navigation: { navigate: (arg0: string) => void; }) =>
 
 const onGetPromoOfferPrice = async () => {
   try {
-    const price = await Purchasely.getOfferPrice('PLAN_ID', 'OFFER_ID')
+    const price = await Purchasely.getOfferPrice('PURCHASELY_PLUS_YEARLY', 'com.purchasely.plus.yearly.promo')
     console.log('Offer Price: ' + price)
   } catch (e) {
     console.error(e);
@@ -496,7 +496,7 @@ const onGetPromoOfferPrice = async () => {
 
 const onGetPromoOfferDuration = async () => {
   try {
-    const price = await Purchasely.getOfferDuration('PLAN_ID', 'OFFER_ID')
+    const price = await Purchasely.getOfferDuration('PURCHASELY_PLUS_YEARLY', 'com.purchasely.plus.yearly.promo')
     console.log('Offer Duration: ' + price)
   } catch (e) {
     console.error(e);
