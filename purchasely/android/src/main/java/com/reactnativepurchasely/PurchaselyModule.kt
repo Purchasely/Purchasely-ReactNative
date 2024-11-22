@@ -66,7 +66,6 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     constants["batchInstallationId"] = Attribute.BATCH_INSTALLATION_ID.ordinal
     constants["adjustId"] = Attribute.ADJUST_ID.ordinal
     constants["appsflyerId"] = Attribute.APPSFLYER_ID.ordinal
-    constants["onesignalPlayerId"] = Attribute.ONESIGNAL_PLAYER_ID.ordinal
     constants["mixpanelDistinctId"] = Attribute.MIXPANEL_DISTINCT_ID.ordinal
     constants["clevertapId"] = Attribute.CLEVER_TAP_ID.ordinal
     constants["sendinblueUserEmail"] = Attribute.SENDINBLUE_USER_EMAIL.ordinal
@@ -262,7 +261,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
                         promise: Promise) {
 
 
-    val properties = PLYPresentationViewProperties(
+    val properties = PLYPresentationProperties(
       placementId = placementId,
       presentationId = presentationId,
       contentId = contentId)
@@ -314,7 +313,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     purchasePromise = promise
 
     reactApplicationContext.currentActivity?.let { activity ->
-      val intent = PLYProductActivity.newIntent(activity, PLYPresentationViewProperties(), isFullScreen, loadingBackgroundColor).apply {
+      val intent = PLYProductActivity.newIntent(activity, PLYPresentationProperties(), isFullScreen, loadingBackgroundColor).apply {
         putExtra("presentation", presentation)
       }
       activity.startActivity(intent)
@@ -330,7 +329,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
                                         promise: Promise) {
     purchasePromise = promise
     reactApplicationContext.currentActivity?.let {
-      val properties = PLYPresentationViewProperties(
+      val properties = PLYPresentationProperties(
         presentationId = presentationVendorId,
         contentId = contentId
       )
@@ -347,7 +346,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
                                       promise: Promise) {
     purchasePromise = promise
     reactApplicationContext.currentActivity?.let {
-      val properties = PLYPresentationViewProperties(
+      val properties = PLYPresentationProperties(
         placementId = placementVendorId,
         contentId = contentId
       )
@@ -365,7 +364,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
                                    promise: Promise) {
     purchasePromise = promise
     reactApplicationContext.currentActivity?.let {
-      val properties = PLYPresentationViewProperties(
+      val properties = PLYPresentationProperties(
         presentationId = presentationVendorId,
         productId = productVendorId,
         contentId = contentId
@@ -384,7 +383,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
                                 promise: Promise) {
     purchasePromise = promise
     reactApplicationContext.currentActivity?.let {
-      val properties = PLYPresentationViewProperties(
+      val properties = PLYPresentationProperties(
         presentationId = presentationVendorId,
         planId = planVendorId,
         contentId = contentId
@@ -873,7 +872,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
         true
       } else {
         reactApplicationContext.currentActivity?.let {
-          val properties = PLYPresentationViewProperties(
+          val properties = PLYPresentationProperties(
             presentationId = presentationId,
             placementId = placementId,
             productId = productId,
@@ -895,7 +894,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
       Pair("planVendorId", planVendorId),
       Pair("storeProductId", storeProductId),
       Pair("basePlanId", basePlanId),
-      Pair("offerId", offerId)
+      Pair("storeOfferId", storeOfferId)
     )
   }
 
