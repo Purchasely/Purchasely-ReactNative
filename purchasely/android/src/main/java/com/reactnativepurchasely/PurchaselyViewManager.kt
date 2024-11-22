@@ -22,7 +22,7 @@ import com.facebook.react.uimanager.annotations.ReactProp
 import com.facebook.react.uimanager.annotations.ReactPropGroup
 import io.purchasely.ext.PLYPresentation
 import io.purchasely.ext.PLYPresentationResultHandler
-import io.purchasely.ext.PLYPresentationViewProperties
+import io.purchasely.ext.PLYPresentationProperties
 import io.purchasely.ext.PLYProductViewResult
 import io.purchasely.ext.Purchasely
 import io.purchasely.views.presentation.PLYPresentationView
@@ -169,14 +169,14 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
       val purchaselyView: PLYPresentationView?
       if(presentation != null) {
         purchaselyView = presentation.buildView(view.context,
-          viewProperties = PLYPresentationViewProperties(
+          properties = PLYPresentationProperties(
             onClose = {
               closeCallback()
             }
           ), callback = callback)
       } else {
         purchaselyView = Purchasely.presentationView(view.context,
-          properties = PLYPresentationViewProperties(
+          properties = PLYPresentationProperties(
             placementId = placementId,
             onClose = {
               closeCallback()

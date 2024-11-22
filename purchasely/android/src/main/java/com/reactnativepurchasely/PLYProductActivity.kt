@@ -9,7 +9,7 @@ import android.widget.FrameLayout
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.WindowCompat
 import io.purchasely.ext.PLYPresentation
-import io.purchasely.ext.PLYPresentationViewProperties
+import io.purchasely.ext.PLYPresentationProperties
 import io.purchasely.ext.PLYProductViewResult
 import io.purchasely.ext.Purchasely
 import io.purchasely.models.PLYPlan
@@ -60,21 +60,21 @@ class PLYProductActivity : AppCompatActivity() {
     presentation = intent.extras?.getParcelable("presentation")
 
     paywallView = if(presentation != null) {
-      presentation?.buildView(this, viewProperties = PLYPresentationViewProperties(onClose = {
+      presentation?.buildView(this, properties = PLYPresentationProperties(onClose = {
         findViewById<FrameLayout>(R.id.container).removeAllViews()
         supportFinishAfterTransition()
       }), callback)
     } else {
       Purchasely.presentationView(
-        this@PLYProductActivity,
-        PLYPresentationViewProperties(
+        context = this@PLYProductActivity,
+        properties = PLYPresentationProperties(
           placementId = placementId,
           contentId = contentId,
           presentationId = presentationId,
           planId = planId,
           productId = productId,
           onLoaded = { isLoaded ->
-            if(!isLoaded) return@PLYPresentationViewProperties
+            if(!isLoaded) return@PLYPresentationProperties
 
             val backgroundPaywall = paywallView?.findViewById<FrameLayout>(io.purchasely.R.id.content)?.background
             if(backgroundPaywall != null) {
@@ -86,7 +86,7 @@ class PLYProductActivity : AppCompatActivity() {
             supportFinishAfterTransition()
           }
         ),
-        callback
+        callback = callback
       )
     }
 
@@ -139,7 +139,7 @@ class PLYProductActivity : AppCompatActivity() {
 
   companion object {
     fun newIntent(activity: Activity?,
-                  properties: PLYPresentationViewProperties,
+                  properties: PLYPresentationProperties,
                   isFullScreen: Boolean = false,
                   backgroundColor: String?) = Intent(activity, PLYProductActivity::class.java).apply {
       //remove old activity if still referenced to avoid issues
