@@ -1,6 +1,6 @@
 {
   "name": "@purchasely/react-native-purchasely-amazon",
-  "version": "4.5.3",
+  "version": "5.0.0-rc01",
   "description": "Purchasely Amazon In-App Purchases dependency",
   "main": "lib/commonjs/index",
   "module": "lib/module/index",
@@ -53,7 +53,7 @@
     "typescript": "^5.3.3"
   },
   "peerDependencies": {
-		"react-native-purchasely": "4.5.3",
+		"react-native-purchasely": "5.0.0-rc01",
     "react": "*",
     "react-native": "*"
   },
