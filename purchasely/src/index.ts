@@ -2,7 +2,7 @@ import { NativeModules, NativeEventEmitter } from 'react-native';
 import { PLYPresentationViewBeta } from './PLYPresentationView';
 //import { PurchaselyView } from './PurchaselyViewManager';
 
-const purchaselyVersion = '4.5.3';
+const purchaselyVersion = '4.5.4';
 
 interface Constants {
   logLevelDebug: number;
