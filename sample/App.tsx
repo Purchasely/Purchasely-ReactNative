@@ -5,8 +5,6 @@
  * @format
  */
 
-import React from 'react';
-import type {PropsWithChildren} from 'react';
 import {
   SafeAreaView,
   ScrollView,
@@ -145,6 +143,11 @@ function App(): React.JSX.Element {
     Purchasely.setUserAttributeWithNumber('floatKey', 1.2);
     Purchasely.setUserAttributeWithBoolean('booleanKey', true);
     Purchasely.setUserAttributeWithDate('dateKey', new Date());
+
+    Purchasely.setUserAttributeWithStringArray('stringArrayKey', ['StringValue', 'Test']);
+    Purchasely.setUserAttributeWithNumberArray('intArrayKey', [3, 42]);
+    Purchasely.setUserAttributeWithNumberArray('floatArrayKey', [1.2, 23.23]);
+    Purchasely.setUserAttributeWithBooleanArray('booleanArrayKey', [true, false, true]);
 
     Purchasely.incrementUserAttribute({key: 'sessions', value: 1});
     Purchasely.incrementUserAttribute({key: 'sessions'});

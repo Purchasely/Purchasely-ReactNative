@@ -10,7 +10,7 @@ buildscript {
   }
 
   dependencies {
-    classpath 'com.android.tools.build:gradle:8.2.1'
+    classpath 'com.android.tools.build:gradle:8.7.3'
     // noinspection DifferentKotlinGradleVersion
     classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
   }
@@ -28,6 +28,7 @@ def getExtOrIntegerDefault(name) {
 }
 
 android {
+  namespace = "com.reactnativepurchasely"
   compileSdkVersion getExtOrIntegerDefault('compileSdkVersion')
   defaultConfig {
     minSdkVersion 21
@@ -139,6 +140,6 @@ dependencies {
   implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.2'
   implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
 
-  api 'io.purchasely:core:5.0.0-rc01'
+  api 'io.purchasely:core:5.0.1'
   api 'androidx.lifecycle:lifecycle-common-java8:2.2.0'
 }

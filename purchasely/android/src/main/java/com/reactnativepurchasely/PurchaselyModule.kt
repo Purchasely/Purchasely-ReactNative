@@ -177,7 +177,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
 
     Purchasely.start { isConfigured, error ->
       if(isConfigured) promise.resolve(true)
-      else promise.reject(error)
+      else promise.reject(error ?: IllegalStateException("Purchasely start failed"))
     }
 
     Purchasely.purchaseListener = purchaseListener
@@ -449,7 +449,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
               promise.resolve(Arguments.makeNativeMap(transformPlanToMap(it)))
             },
             onError = {
-              promise.reject(it)
+              promise.reject(it ?: IllegalStateException("Purchase failed"))
             }
           )
         } else {
@@ -468,7 +468,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
         promise.resolve(true)
       },
       onError = {
-        promise.reject(it)
+        promise.reject(it ?: IllegalStateException("Restore failed"))
       }
     )
   }
@@ -480,7 +480,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
         promise.resolve(true)
       },
       onError = {
-        promise.reject(it)
+        promise.reject(it ?: IllegalStateException("Silent Restore failed"))
       }
     )
   }
@@ -507,6 +507,24 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   @ReactMethod
   fun setUserAttributeWithBoolean(key: String, value: Boolean) {
     Purchasely.setUserAttribute(key, value)
+  }
+
+  @ReactMethod
+  fun setUserAttributeWithStringArray(key: String, value: ReadableArray) {
+    val array = value.toArrayList().map { it.toString() }.toTypedArray()
+    Purchasely.setUserAttribute(key, array)
+  }
+
+@ReactMethod
+fun setUserAttributeWithNumberArray(key: String, value: ReadableArray) {
+    val array = value.toArrayList().map { it.toString().toFloat() }.toTypedArray()
+    Purchasely.setUserAttribute(key, array)
+}
+
+  @ReactMethod
+  fun setUserAttributeWithBooleanArray(key: String, value: ReadableArray) {
+    val array = value.toArrayList().map { it.toString().toBoolean() }.toTypedArray()
+    Purchasely.setUserAttribute(key, array)
   }
 
   @ReactMethod

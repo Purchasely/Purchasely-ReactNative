@@ -463,6 +463,40 @@ RCT_EXPORT_METHOD(setUserAttributeWithNumber:(NSString * _Nonnull)key value:(dou
     }
 }
 
+// String Array
+RCT_EXPORT_METHOD(setUserAttributeWithStringArray:(NSString * _Nonnull)key value:(NSArray<NSString *> * _Nonnull)value) {
+    [Purchasely setUserAttributeWithStringArray:value forKey:key];
+}
+
+// Boolean Array
+RCT_EXPORT_METHOD(setUserAttributeWithBooleanArray:(NSString * _Nonnull)key value:(NSArray<NSNumber *> * _Nonnull)value) {
+    [Purchasely setUserAttributeWithBoolArray:value forKey:key];
+}
+
+// Number Array
+RCT_EXPORT_METHOD(setUserAttributeWithNumberArray:(NSString * _Nonnull)key value:(NSArray<NSNumber *> * _Nonnull)value) {
+    NSMutableArray<NSNumber *> *intArray = [NSMutableArray new];
+    NSMutableArray<NSNumber *> *doubleArray = [NSMutableArray new];
+
+    for (NSNumber *numberValue in value) {
+        double number = [numberValue doubleValue];
+        if (!fmod(number, 1.0)) { // Integer check
+            [intArray addObject:@([numberValue intValue])];
+        } else {
+            [doubleArray addObject:numberValue];
+        }
+    }
+
+    // Send arrays to Purchasely if they are not empty
+    if (intArray.count > 0) {
+        [Purchasely setUserAttributeWithIntArray:intArray forKey:key];
+    }
+    if (doubleArray.count > 0) {
+        [Purchasely setUserAttributeWithDoubleArray:doubleArray forKey:key];
+    }
+}
+
+
 RCT_EXPORT_METHOD(setUserAttributeWithDate:(NSString * _Nonnull)key value:(NSString * _Nonnull)value) {
     NSDateFormatter * dateFormatter = [NSDateFormatter new];
     dateFormatter.timeZone = [NSTimeZone timeZoneWithName:@"GMT"];

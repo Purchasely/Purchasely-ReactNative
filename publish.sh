@@ -9,10 +9,10 @@ sed -i '' "s/^.*\"version\":.*$/  \"version\": \"${VERSION}\",/" purchasely-goog
 sed -i '' "s/^.*\"react-native-purchasely\":.*$/\t\t\"react-native-purchasely\": \"${VERSION}\"/" purchasely-google/package.json
 
 sed -i '' "s/^.*\"version\":.*$/  \"version\": \"${VERSION}\",/" purchasely-huawei/package.json
-sed -i '' "s/^.*\"react-native-purchasely\":.*$/\t\t\"react-native-purchasely\": \"${VERSION}\",/" purchasely-huawei/package.json
+sed -i '' "s/^.*\"react-native-purchasely\":.*$/\t\t\"react-native-purchasely\": \"${VERSION}\"/" purchasely-huawei/package.json
 
 sed -i '' "s/^.*\"version\":.*$/  \"version\": \"${VERSION}\",/" purchasely-amazon/package.json
-sed -i '' "s/^.*\"react-native-purchasely\":.*$/\t\t\"react-native-purchasely\": \"${VERSION}\",/" purchasely-amazon/package.json
+sed -i '' "s/^.*\"react-native-purchasely\":.*$/\t\t\"react-native-purchasely\": \"${VERSION}\"/" purchasely-amazon/package.json
 
 sed -i '' "s/^.*\"version\":.*$/  \"version\": \"${VERSION}\",/" purchasely-android-player/package.json
 

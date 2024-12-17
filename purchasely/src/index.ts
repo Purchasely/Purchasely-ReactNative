@@ -2,7 +2,7 @@ import { NativeModules, NativeEventEmitter } from 'react-native';
 import { PLYPresentationViewBeta } from './PLYPresentationView';
 //import { PurchaselyView } from './PurchaselyViewManager';
 
-const purchaselyVersion = '5.0.0-rc01';
+const purchaselyVersion = '5.0.1';
 
 interface Constants {
   logLevelDebug: number;
@@ -758,6 +758,18 @@ const setUserAttributeWithBoolean = (key: string, value: boolean): void => {
   return NativeModules.Purchasely.setUserAttributeWithBoolean(key, value);
 }
 
+const setUserAttributeWithStringArray = (key: string, value: string[]): void => {
+  return NativeModules.Purchasely.setUserAttributeWithStringArray(key, value);
+}
+
+const setUserAttributeWithNumberArray = (key: string, value: number[]): void => {
+  return NativeModules.Purchasely.setUserAttributeWithNumberArray(key, value);
+}
+
+const setUserAttributeWithBooleanArray = (key: string, value: boolean[]): void => {
+  return NativeModules.Purchasely.setUserAttributeWithBooleanArray(key, value);
+}
+
 const userAttributes = (): Promise<PurchaselyUserAttribute> => {
   return NativeModules.Purchasely.userAttributes();
 }
@@ -840,6 +852,9 @@ const Purchasely = {
   setUserAttributeWithString,
   setUserAttributeWithNumber,
   setUserAttributeWithBoolean,
+  setUserAttributeWithStringArray,
+  setUserAttributeWithNumberArray,
+  setUserAttributeWithBooleanArray,
   userAttributes,
   userAttribute,
   clearUserAttribute,
