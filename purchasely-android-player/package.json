@@ -1,6 +1,6 @@
 {
   "name": "@purchasely/react-native-purchasely-android-player",
-  "version": "5.0.1",
+  "version": "5.0.0",
   "description": "Purchasely Android Player with Google Exoplayer",
   "main": "lib/commonjs/index",
   "module": "lib/module/index",
@@ -46,9 +46,9 @@
     "registry": "https://registry.npmjs.org/"
   },
   "devDependencies": {
-    "react-native-builder-bob": "^0.23.2",
     "pod-install": "^0.1.39",
-    "react-native": "0.73.1",
+    "react-native": "0.76.5",
+    "react-native-builder-bob": "^0.23.2",
     "typescript": "^5.3.3"
   },
   "resolutions": {
@@ -131,5 +131,8 @@
         }
       ]
     ]
+  },
+  "dependencies": {
+    "react": "19.0.0"
   }
 }

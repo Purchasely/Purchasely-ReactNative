@@ -177,7 +177,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
 
     Purchasely.start { isConfigured, error ->
       if(isConfigured) promise.resolve(true)
-      else promise.reject(error)
+      else promise.reject(error ?: IllegalStateException("Purchasely start failed"))
     }
 
     Purchasely.purchaseListener = purchaseListener
@@ -449,7 +449,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
               promise.resolve(Arguments.makeNativeMap(transformPlanToMap(it)))
             },
             onError = {
-              promise.reject(it)
+              promise.reject(it ?: IllegalStateException("Purchase failed"))
             }
           )
         } else {
@@ -468,7 +468,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
         promise.resolve(true)
       },
       onError = {
-        promise.reject(it)
+        promise.reject(it ?: IllegalStateException("Restore failed"))
       }
     )
   }
@@ -480,7 +480,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
         promise.resolve(true)
       },
       onError = {
-        promise.reject(it)
+        promise.reject(it ?: IllegalStateException("Silent Restore failed"))
       }
     )
   }
@@ -517,13 +517,9 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
 @ReactMethod
 fun setUserAttributeWithNumberArray(key: String, value: Array<Double>) {
     val processedValues = value.map { number ->
-        if (number % 1 == 0.0) { 
-            number.toInt()
-        } else {
-            number.toFloat()
-        }
-    }
-    Purchasely.setUserAttribute(key, processedValues) 
+        number.toFloat()
+    }.toTypedArray()
+    Purchasely.setUserAttribute(key, processedValues)
 }
 
   @ReactMethod

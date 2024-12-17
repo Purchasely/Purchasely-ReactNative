@@ -1,6 +1,6 @@
 {
   "name": "@purchasely/react-native-purchasely-google",
-  "version": "5.0.1",
+  "version": "5.0.0",
   "description": "Purchasely Google Play Billing dependency",
   "main": "lib/commonjs/index",
   "module": "lib/module/index",
@@ -124,15 +124,18 @@
     "lib": "lib"
   },
   "devDependencies": {
-    "react-native-builder-bob": "^0.23.2",
     "pod-install": "^0.1.39",
-    "react-native": "0.73.6",
+    "react-native": "0.76.5",
+    "react-native-builder-bob": "^0.23.2",
     "typescript": "^5.3.3"
   },
   "resolutions": {
     "@types/react": "17.0.21"
   },
   "peerDependencies": {
-		"react-native-purchasely": "5.0.1"
+		"react-native-purchasely": "5.0.0"
+  },
+  "dependencies": {
+    "react": "19.0.0"
   }
 }
