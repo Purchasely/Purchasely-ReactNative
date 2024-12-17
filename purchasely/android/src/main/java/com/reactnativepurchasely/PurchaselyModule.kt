@@ -510,21 +510,21 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   }
 
   @ReactMethod
-  fun setUserAttributeWithStringArray(key: String, value: Array<String>) {
-    Purchasely.setUserAttribute(key, value)
+  fun setUserAttributeWithStringArray(key: String, value: ReadableArray) {
+    val array = value.toArrayList().map { it.toString() }.toTypedArray()
+    Purchasely.setUserAttribute(key, array)
   }
 
 @ReactMethod
-fun setUserAttributeWithNumberArray(key: String, value: Array<Double>) {
-    val processedValues = value.map { number ->
-        number.toFloat()
-    }.toTypedArray()
-    Purchasely.setUserAttribute(key, processedValues)
+fun setUserAttributeWithNumberArray(key: String, value: ReadableArray) {
+    val array = value.toArrayList().map { it.toString().toFloat() }.toTypedArray()
+    Purchasely.setUserAttribute(key, array)
 }
 
   @ReactMethod
-  fun setUserAttributeWithBooleanArray(key: String, value: Array<Boolean>) {
-    Purchasely.setUserAttribute(key, value)
+  fun setUserAttributeWithBooleanArray(key: String, value: ReadableArray) {
+    val array = value.toArrayList().map { it.toString().toBoolean() }.toTypedArray()
+    Purchasely.setUserAttribute(key, array)
   }
 
   @ReactMethod
