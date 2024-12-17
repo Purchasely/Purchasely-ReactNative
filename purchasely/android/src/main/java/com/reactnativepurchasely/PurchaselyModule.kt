@@ -510,6 +510,28 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   }
 
   @ReactMethod
+  fun setUserAttributeWithStringArray(key: String, value: Array<String>) {
+    Purchasely.setUserAttribute(key, value)
+  }
+
+@ReactMethod
+fun setUserAttributeWithNumberArray(key: String, value: Array<Double>) {
+    val processedValues = value.map { number ->
+        if (number % 1 == 0.0) { 
+            number.toInt()
+        } else {
+            number.toFloat()
+        }
+    }
+    Purchasely.setUserAttribute(key, processedValues) 
+}
+
+  @ReactMethod
+  fun setUserAttributeWithBooleanArray(key: String, value: Array<Boolean>) {
+    Purchasely.setUserAttribute(key, value)
+  }
+
+  @ReactMethod
   fun setUserAttributeWithDate(key: String, value: String) {
     val format = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
       SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSX", Locale.getDefault())
