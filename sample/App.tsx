@@ -223,6 +223,8 @@ function App(): React.JSX.Element {
     });
 
     // Set events listener
+    // TODO to make it work with the sample app, we have to change the react native import in node modules like this:
+    // import { NativeModules, NativeEventEmitter } from '../../react-native';
     Purchasely.addEventListener(event => {
       console.info('Event received:', event.name);
       //console.log(event.properties);
