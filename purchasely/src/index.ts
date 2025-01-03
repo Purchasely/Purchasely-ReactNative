@@ -382,7 +382,7 @@ interface StartParameters {
 
 const start = ({
   apiKey,
-  androidStores = ['Google'],
+  androidStores = [],
   storeKit1,
   userId = null,
   logLevel = LogLevels.ERROR,
