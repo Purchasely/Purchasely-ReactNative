@@ -34,7 +34,7 @@ import Purchasely, {
   PLYPresentationType,
   type PurchaselyPresentation,
   type PresentPresentationResult,
-} from 'purchasely';
+} from 'react-native-purchasely';
 
 import {type NavigationProp} from '@react-navigation/native';
 
