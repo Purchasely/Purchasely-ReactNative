@@ -27,13 +27,13 @@ import {
 
 import Purchasely, {
   LogLevels,
-  Attributes,
   ProductResult,
   RunningMode,
   PLYPaywallAction,
   PLYPresentationType,
   type PurchaselyPresentation,
   type PresentPresentationResult,
+  PurchaselyUserAttribute,
 } from 'react-native-purchasely';
 
 import {type NavigationProp} from '@react-navigation/native';
@@ -137,6 +137,14 @@ function App(): React.JSX.Element {
       console.log('\t- hasFreeTrial:', expiredSubscriptions[0].plan.hasFreeTrial);
     }
 
+    Purchasely.addUserAttributeSetListener((attribute: PurchaselyUserAttribute) => {
+      console.log('Attribute set:', attribute);
+    });
+
+    Purchasely.addUserAttributeRemovedListener(attribute => {
+      console.log('Attribute removed:', attribute);
+    });
+
     //Set an attribute for each type
     Purchasely.setUserAttributeWithString('stringKey', 'StringValue');
     Purchasely.setUserAttributeWithNumber('intKey', 3);
@@ -223,13 +231,20 @@ function App(): React.JSX.Element {
     });
 
     // Set events listener
-    // TODO to make it work with the sample app, we have to change the react native import in node modules like this:
-    // import { NativeModules, NativeEventEmitter } from '../../react-native';
+    /**
+     * Purchasely devs only
+     * It's possible that to make it work with this sample project you need to change the import in index.ts to the following:
+     * import { NativeModules, NativeEventEmitter } from '../../react-native';
+   */
     Purchasely.addEventListener(event => {
       console.info('Event received:', event.name);
       //console.log(event.properties);
     });
 
+    console.log("Add purchase listener");
+    Purchasely.addPurchasedListener(() => {
+      console.log('Purchase successful');
+    });
 
   } // end of setupPurchasely()
 

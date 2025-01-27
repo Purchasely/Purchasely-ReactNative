@@ -3,7 +3,7 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "purchasely": ["../purchasely/src"]
+      "react-native-purchasely": ["../purchasely/src"]
     }
   }
 }

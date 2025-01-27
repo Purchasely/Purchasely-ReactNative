@@ -12,12 +12,12 @@
   "dependencies": {
     "@react-navigation/native": "^7.0.14",
     "@react-navigation/native-stack": "^7.2.0",
-    "purchasely-google": "file:../purchasely-google",
-    "purchasely-player": "file:../purchasely-android-player",
     "react": "^18.3.1",
     "react-native": "^0.76.5",
+    "purchasely-google": "file:../purchasely-google",
+    "purchasely-player": "file:../purchasely-android-player",
+    "react-native-purchasely": "file:../purchasely",
     "react-native-gesture-handler": "^2.21.2",
-    "react-native-purchasely": "*",
     "react-native-reanimated": "^3.16.5",
     "react-native-safe-area-context": "^5.0.0",
     "react-native-screens": "^4.3.0"
