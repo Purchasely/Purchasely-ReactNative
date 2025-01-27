@@ -2,7 +2,7 @@ import { NativeModules, NativeEventEmitter } from 'react-native';
 import { PLYPresentationViewBeta } from './PLYPresentationView';
 //import { PurchaselyView } from './PurchaselyViewManager';
 
-const purchaselyVersion = '5.0.3';
+const purchaselyVersion = '5.0.4';
 
 interface Constants {
   logLevelDebug: number;
@@ -54,6 +54,17 @@ interface Constants {
   themeLight: number;
   themeDark: number;
   themeSystem: number;
+  userAttributeSourcePurchasely: number;
+  userAttributeSourceClient: number;
+  userAttributeString: number;
+  userAttributeBoolean: number;
+  userAttributeInt: number;
+  userAttributeFloat: number;
+  userAttributeDate: number;
+  userAttributeStringArray: number;
+  userAttributeIntArray: number;
+  userAttributeFloatArray: number;
+  userAttributeBooleanArray: number;
 }
 
 const constants = NativeModules.Purchasely.getConstants() as Constants;
@@ -140,6 +151,23 @@ export enum PLYPresentationType {
   CLIENT = constants.presentationTypeClient,
 }
 
+export enum PLYUserAttributeSource {
+  PURCHASELY = constants.userAttributeSourcePurchasely,
+  CLIENT = constants.userAttributeSourceClient
+}
+
+export enum PLYUserAttributeType {
+  STRING = constants.userAttributeString,
+  BOOLEAN = constants.userAttributeBoolean,
+  INT = constants.userAttributeInt,
+  FLOAT = constants.userAttributeFloat,
+  DATE = constants.userAttributeDate,
+  STRING_ARRAY = constants.userAttributeStringArray,
+  INT_ARRAY = constants.userAttributeIntArray,
+  FLOAT_ARRAY = constants.userAttributeFloatArray,
+  BOOLEAN_ARRAY = constants.userAttributeBooleanArray,
+}
+
 export type PLYPaywallInfo = {
   presentationId?: string;
   placementId?: string;
@@ -196,7 +224,9 @@ export type PurchaselyPromotionalOfferSignature = {
 
 export type PurchaselyUserAttribute = {
   key: string;
-  value: any;
+  value?: any | null;
+  type?: PLYUserAttributeType | null;
+  source?: PLYUserAttributeSource | null;
 };
 
 export type PurchaselySubscription = {
@@ -422,6 +452,26 @@ const addPurchasedListener = (callback: PurchaseListenerCallback) => {
 
 const removePurchasedListener = () => {
   return PurchaselyEventEmitter.removeAllListeners('PURCHASE_LISTENER');
+};
+
+type UserAttributeSetListenerCallback = (userAttribute: PurchaselyUserAttribute) => void;
+
+const addUserAttributeSetListener = (callback: UserAttributeSetListenerCallback) => {
+  return PurchaselyEventEmitter.addListener('USER_ATTRIBUTE_SET_LISTENER', callback);
+};
+
+const removeUserAttributeSetListener = () => {
+  return PurchaselyEventEmitter.removeAllListeners('USER_ATTRIBUTE_SET_LISTENER');
+};
+
+type UserAttributeRemovedListenerCallback = (userAttribute: PurchaselyUserAttribute) => void;
+
+const addUserAttributeRemovedListener = (callback: UserAttributeRemovedListenerCallback) => {
+  return PurchaselyEventEmitter.addListener('USER_ATTRIBUTE_REMOVED_LISTENER', callback);
+};
+
+const removeUserAttributeRemovedListener = () => {
+  return PurchaselyEventEmitter.removeAllListeners('USER_ATTRIBUTE_REMOVED_LISTENER');
 };
 
 type DefaultPresentationResultCallback = (
@@ -813,6 +863,10 @@ const Purchasely = {
   removeEventListener,
   addPurchasedListener,
   removePurchasedListener,
+  addUserAttributeSetListener,
+  removeUserAttributeSetListener,
+  addUserAttributeRemovedListener,
+  removeUserAttributeRemovedListener,
   setDefaultPresentationResultCallback,
   setPaywallActionInterceptorCallback,
   fetchPresentation,

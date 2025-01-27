@@ -109,6 +109,17 @@ static UIViewController *_sharedViewController;
         @"themeLight": @(PLYThemeModeLight),
         @"themeDark": @(PLYThemeModeDark),
         @"themeSystem": @(PLYThemeModeSystem),
+    @"userAttributeSourcePurchasely": @(PLYUserAttributeSourcePurchasely),
+    @"userAttributeSourceClient": @(PLYUserAttributeSourceClient),
+    @"userAttributeString": @(PLYUserAttributeTypeString),
+    @"userAttributeBoolean": @(PLYUserAttributeTypeBool),
+    @"userAttributeInt": @(PLYUserAttributeTypeInt),
+    @"userAttributeFloat": @(PLYUserAttributeTypeDouble),
+    @"userAttributeDate": @(PLYUserAttributeTypeDate),
+    @"userAttributeStringArray": @(PLYUserAttributeTypeStringArray),
+    @"userAttributeIntArray": @(PLYUserAttributeTypeIntArray),
+    @"userAttributeFloatArray": @(PLYUserAttributeTypeDoubleArray),
+    @"userAttributeBooleanArray": @(PLYUserAttributeTypeBoolArray)
 	};
 }
 
@@ -347,6 +358,8 @@ RCT_EXPORT_METHOD(start:(NSString * _Nonnull)apiKey
     }];
 
     [Purchasely setEventDelegate:self];
+
+    [Purchasely setUserAttributeDelegate: self];
 
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(purchasePerformed) name:@"ply_purchasedSubscription" object:nil];
 }
@@ -1169,7 +1182,7 @@ RCT_EXPORT_METHOD(userSubscriptionsHistory:(RCTPromiseResolveBlock)resolve
 #pragma mark - Events
 
 - (NSArray<NSString *> *)supportedEvents {
-	return @[@"PURCHASELY_EVENTS", @"PURCHASE_LISTENER"];
+  return @[@"PURCHASELY_EVENTS", @"PURCHASE_LISTENER", @"USER_ATTRIBUTE_SET_LISTENER", @"USER_ATTRIBUTE_REMOVED_LISTENER"];
 }
 
 - (void)startObserving
@@ -1194,8 +1207,40 @@ RCT_EXPORT_METHOD(userSubscriptionsHistory:(RCTPromiseResolveBlock)resolve
 	}
 }
 
+- (void)onUserAttributeSetWithKey:(NSString * _Nonnull)key
+                             type:(enum PLYUserAttributeType)type
+                            value:(id _Nullable)value
+                           source:(enum PLYUserAttributeSource)source {
+    if (!self.shouldEmit) return;
+
+    NSMutableDictionary<NSString *, id> *body = [NSMutableDictionary dictionary];
+    body[@"key"] = key;
+    body[@"type"] = @(type);
+
+    if (value != nil) {
+      body[@"value"] = [self getUserAttributeValueForRN:[Purchasely getUserAttributeFor:key]];
+    }
+
+    body[@"source"] = @(source);
+
+    [self sendEventWithName:@"USER_ATTRIBUTE_SET_LISTENER" body:body];
+}
+
+- (void)onUserAttributeRemovedWithKey:(NSString * _Nonnull)key
+                               source:(enum PLYUserAttributeSource)source {
+    if (!self.shouldEmit) return;
+
+    NSDictionary<NSString *, id> *body = @{
+        @"key": key,
+        @"source": @(source)
+    };
+
+    [self sendEventWithName:@"USER_ATTRIBUTE_REMOVED_LISTENER" body:body];
+}
+
+
 - (void)purchasePerformed {
-	[self sendEventWithName: @"PURCHASE_LISTENER" body: nil];
+  [self sendEventWithName: @"PURCHASE_LISTENER" body: @{}];
 }
 
 + (BOOL)requiresMainQueueSetup {

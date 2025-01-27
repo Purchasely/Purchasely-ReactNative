@@ -15,6 +15,8 @@ import io.purchasely.models.PLYError
 import io.purchasely.models.PLYPlan
 import io.purchasely.models.PLYPromoOffer
 import io.purchasely.models.PLYPresentationPlan
+import io.purchasely.storage.userData.PLYUserAttributeSource
+import io.purchasely.storage.userData.PLYUserAttributeType
 import io.purchasely.views.presentation.PLYThemeMode
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
@@ -42,6 +44,26 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
       if(state is State.PurchaseComplete || state is State.RestorationComplete) {
         sendEvent(reactApplicationContext, "PURCHASE_LISTENER", null)
       }
+    }
+  }
+
+  private val userAttributeListener: UserAttributeListener = object: UserAttributeListener {
+    override fun onUserAttributeSet(key: String, type: PLYUserAttributeType, value: Any, source: PLYUserAttributeSource) {
+      val params = Arguments.makeNativeMap(mapOf(
+        Pair("key", key),
+        Pair("type", type.ordinal),
+        Pair("value", getUserAttributeValueForRN(value)),
+        Pair("source", source.ordinal)
+      ))
+      sendEvent(reactApplicationContext, "USER_ATTRIBUTE_SET_LISTENER", params)
+    }
+
+    override fun onUserAttributeRemoved(key: String, source: PLYUserAttributeSource) {
+      val params = Arguments.makeNativeMap(mapOf(
+        Pair("key", key),
+        Pair("source", source.ordinal)
+      ))
+      sendEvent(reactApplicationContext, "USER_ATTRIBUTE_REMOVED_LISTENER", params)
     }
   }
 
@@ -84,8 +106,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     constants["sourcePlayStore"] = StoreType.GOOGLE_PLAY_STORE.ordinal
     constants["sourceHuaweiAppGallery"] = StoreType.HUAWEI_APP_GALLERY.ordinal
     constants["sourceAmazonAppstore"] = StoreType.AMAZON_APP_STORE.ordinal
-    constants["sourceAmazonAppstore"] = StoreType.AMAZON_APP_STORE.ordinal
-    constants["sourceAmazonAppstore"] = StoreType.NONE.ordinal
+    constants["sourceNone"] = StoreType.NONE.ordinal
     constants["consumable"] = DistributionType.CONSUMABLE.ordinal
     constants["nonConsumable"] = DistributionType.NON_CONSUMABLE.ordinal
     constants["autoRenewingSubscription"] = DistributionType.RENEWING_SUBSCRIPTION.ordinal
@@ -102,6 +123,17 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     constants["themeLight"] = PLYThemeMode.LIGHT.ordinal
     constants["themeDark"] = PLYThemeMode.DARK.ordinal
     constants["themeSystem"] = PLYThemeMode.SYSTEM.ordinal
+    constants["userAttributeSourcePurchasely"] = PLYUserAttributeSource.PURCHASELY.ordinal
+    constants["userAttributeSourceClient"] = PLYUserAttributeSource.CLIENT.ordinal
+    constants["userAttributeString"] = PLYUserAttributeType.STRING.ordinal
+    constants["userAttributeBoolean"] = PLYUserAttributeType.BOOLEAN.ordinal
+    constants["userAttributeInt"] = PLYUserAttributeType.INT.ordinal
+    constants["userAttributeFloat"] = PLYUserAttributeType.FLOAT.ordinal
+    constants["userAttributeDate"] = PLYUserAttributeType.DATE.ordinal
+    constants["userAttributeStringArray"] = PLYUserAttributeType.STRING_ARRAY.ordinal
+    constants["userAttributeIntArray"] = PLYUserAttributeType.INT_ARRAY.ordinal
+    constants["userAttributeFloatArray"] = PLYUserAttributeType.FLOAT_ARRAY.ordinal
+    constants["userAttributeBooleanArray"] = PLYUserAttributeType.BOOLEAN_ARRAY.ordinal
     return constants
   }
 
@@ -181,6 +213,8 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     }
 
     Purchasely.purchaseListener = purchaseListener
+
+    Purchasely.userAttributeListener = userAttributeListener
   }
 
   @ReactMethod
