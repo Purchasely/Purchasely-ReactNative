@@ -94,3 +94,19 @@ try {
 ## 🏁 Documentation
 
 A complete documentation is available on our website [https://docs.purchasely.com](https://docs.purchasely.com/quick-start-1/sdk-installation/react-native-sdk)
+
+## Usage with Sample project
+
+Since react-native-purchasely is resolved from the file system instead of NPM
+"react-native-purchasely": "file:../purchasely",
+
+A link is necessary between the sample project and the react-native-purchasely project.
+Do this to make it happen
+
+```sh
+cd purchasely
+yarn link
+
+cd sample
+yarn link "react-native-purchasely"
+```
