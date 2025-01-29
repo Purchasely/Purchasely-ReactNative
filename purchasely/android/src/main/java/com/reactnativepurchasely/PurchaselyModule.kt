@@ -137,7 +137,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     return constants
   }
 
-  private fun getStoresInstances(stores: java.util.ArrayList<Any>): ArrayList<Store> {
+  private fun getStoresInstances(stores: List<Any>): List<Store> {
     val result = ArrayList<Store>()
     if (stores.contains("Google")
       && Package.getPackage("io.purchasely.google") != null) {
@@ -163,7 +163,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
         Log.e("Purchasely", e.message, e)
       }
     }
-    return result
+    return result.toList()
   }
 
   @Deprecated("Should use start method", ReplaceWith("start"))
@@ -190,7 +190,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
             promise: Promise) {
     Purchasely.Builder(reactApplicationContext.applicationContext)
       .apiKey(apiKey)
-      .stores(getStoresInstances(stores.toArrayList()))
+      .stores(getStoresInstances(stores.toArrayList().filterNotNull()))
       .userId(userId)
       .logLevel(LogLevel.values()[logLevel])
       .runningMode(when(runningMode) {
@@ -545,19 +545,19 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
 
   @ReactMethod
   fun setUserAttributeWithStringArray(key: String, value: ReadableArray) {
-    val array = value.toArrayList().map { it.toString() }.toTypedArray()
+    val array = value.toArrayList().mapNotNull { it.toString() }.toTypedArray()
     Purchasely.setUserAttribute(key, array)
   }
 
 @ReactMethod
 fun setUserAttributeWithNumberArray(key: String, value: ReadableArray) {
-    val array = value.toArrayList().map { it.toString().toFloat() }.toTypedArray()
+    val array = value.toArrayList().mapNotNull { it.toString().toFloat() }.toTypedArray()
     Purchasely.setUserAttribute(key, array)
 }
 
   @ReactMethod
   fun setUserAttributeWithBooleanArray(key: String, value: ReadableArray) {
-    val array = value.toArrayList().map { it.toString().toBoolean() }.toTypedArray()
+    val array = value.toArrayList().mapNotNull { it.toString().toBoolean() }.toTypedArray()
     Purchasely.setUserAttribute(key, array)
   }
 
