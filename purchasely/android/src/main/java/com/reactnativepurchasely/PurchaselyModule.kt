@@ -190,7 +190,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
             promise: Promise) {
     Purchasely.Builder(reactApplicationContext.applicationContext)
       .apiKey(apiKey)
-      .stores(getStoresInstances(stores.toArrayList()))
+      .stores(getStoresInstances(stores.toArrayList().filterNotNull() as ArrayList<Any>))
       .userId(userId)
       .logLevel(LogLevel.values()[logLevel])
       .runningMode(when(runningMode) {
