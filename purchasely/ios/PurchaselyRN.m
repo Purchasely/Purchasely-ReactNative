@@ -1240,6 +1240,7 @@ RCT_EXPORT_METHOD(userSubscriptionsHistory:(RCTPromiseResolveBlock)resolve
 
 
 - (void)purchasePerformed {
+  if (!self.shouldEmit) return;
   [self sendEventWithName: @"PURCHASE_LISTENER" body: @{}];
 }
 
