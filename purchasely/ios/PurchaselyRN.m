@@ -130,29 +130,34 @@ static UIViewController *_sharedViewController;
 
     NSString* actionString;
 
-    switch (action) {
-        case PLYPresentationActionLogin:
-            actionString = @"login";
-            break;
-        case PLYPresentationActionPurchase:
-            actionString = @"purchase";
-            break;
-        case PLYPresentationActionClose:
-            actionString = @"close";
-            break;
-        case PLYPresentationActionRestore:
-            actionString = @"restore";
-            break;
-        case PLYPresentationActionNavigate:
-            actionString = @"navigate";
-            break;
-        case PLYPresentationActionPromoCode:
-            actionString = @"promo_code";
-            break;
-        case PLYPresentationActionOpenPresentation:
-            actionString = @"open_presentation";
-            break;
-    }
+  switch (action) {
+    case PLYPresentationActionLogin:
+      actionString = @"login";
+      break;
+    case PLYPresentationActionPurchase:
+      actionString = @"purchase";
+      break;
+    case PLYPresentationActionClose:
+      actionString = @"close";
+      break;
+    case PLYPresentationActionRestore:
+      actionString = @"restore";
+      break;
+    case PLYPresentationActionNavigate:
+      actionString = @"navigate";
+      break;
+    case PLYPresentationActionPromoCode:
+      actionString = @"promo_code";
+      break;
+    case PLYPresentationActionOpenPresentation:
+      actionString = @"open_presentation";
+      break;
+    case PLYPresentationActionOpenPlacement:
+      actionString = @"open_placement";
+      break;
+    default:
+      return actionInterceptorResult;
+  }
 
 	[actionInterceptorResult setObject:actionString forKey:@"action"];
 
