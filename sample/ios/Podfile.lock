@@ -44,6 +44,7 @@ PODS:
     - React-RCTText (= 0.76.6)
     - React-RCTVibration (= 0.76.6)
   - React-callinvoker (0.76.6)
+  - React-Codegen (0.1.0)
   - React-Core (0.76.6):
     - glog
     - hermes-engine
@@ -1243,9 +1244,16 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - react-native-purchasely (5.0.4):
+  - react-native-purchasely (5.0.5):
     - Purchasely (= 5.0.2)
     - React-Core
+  - react-native-purchasely-android-player (5.0.5):
+    - RCT-Folly
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Codegen
+    - React-Core
+    - ReactCommon/turbomodule/core
   - react-native-safe-area-context (5.1.0):
     - DoubleConversion
     - glog
@@ -1774,6 +1782,7 @@ DEPENDENCIES:
   - React-Mapbuffer (from `../node_modules/react-native/ReactCommon`)
   - React-microtasksnativemodule (from `../node_modules/react-native/ReactCommon/react/nativemodule/microtasks`)
   - react-native-purchasely (from `../node_modules/react-native-purchasely`)
+  - react-native-purchasely-android-player (from `../node_modules/purchasely-player`)
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
   - React-nativeconfig (from `../node_modules/react-native/ReactCommon`)
   - React-NativeModulesApple (from `../node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios`)
@@ -1810,6 +1819,7 @@ DEPENDENCIES:
 SPEC REPOS:
   trunk:
     - Purchasely
+    - React-Codegen
     - SocketRocket
 
 EXTERNAL SOURCES:
@@ -1886,6 +1896,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon/react/nativemodule/microtasks"
   react-native-purchasely:
     :path: "../node_modules/react-native-purchasely"
+  react-native-purchasely-android-player:
+    :path: "../node_modules/purchasely-player"
   react-native-safe-area-context:
     :path: "../node_modules/react-native-safe-area-context"
   React-nativeconfig:
@@ -1965,6 +1977,7 @@ SPEC CHECKSUMS:
   RCTTypeSafety: 0f96bf6c99efc33eb43352212703854933f22930
   React: 1d3d5bada479030961d513fb11e42659b30e97ff
   React-callinvoker: 682c610b9e9d3b93bd8d0075eacb2e6aa304d3e0
+  React-Codegen: 4b8b4817cea7a54b83851d4c1f91f79aa73de30a
   React-Core: 10420b32e62acf6b3aa0a570e45566001175c777
   React-CoreModules: aad977a7dbff83aa707c4045e5db81446a511cca
   React-cxxreact: 1bee1b97e7d537f1a33d9eb68c9426c1fc1a4e3c
@@ -1988,7 +2001,8 @@ SPEC CHECKSUMS:
   React-logger: 162c09cc432b02d4a0db31b1d98f6df5243a2679
   React-Mapbuffer: f760d2229640be48cb3c2d4832b5bbc3018123fc
   React-microtasksnativemodule: 1364ae5354f51b3ecee8eb718b5b6d1686d2ff4d
-  react-native-purchasely: 91787c236a6b0f4d6850a0a52de458fff8c4a9a3
+  react-native-purchasely: 169884b3be31d1a0aea16174bc340a53c561f6d9
+  react-native-purchasely-android-player: e942b6f7bd6ef80ea4e383ab32a8752828bc741e
   react-native-safe-area-context: cbadf383376f589bb611c8ae0280c1d4b7b447e9
   React-nativeconfig: 539ff4de6ce3b694e8e751080568c281c84903ce
   React-NativeModulesApple: 771cc40b086281b820fe455fedebbe4341fd0c90
@@ -2023,6 +2037,6 @@ SPEC CHECKSUMS:
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
   Yoga: be6f55a028e86c83ae066f018e9b5d24ffc45436
 
-PODFILE CHECKSUM: 169760bcf84d135e42cd2b6805c46a25ec7170f4
+PODFILE CHECKSUM: efdc448e03b62370a33c82ca9add9631cf99c44c
 
 COCOAPODS: 1.16.2

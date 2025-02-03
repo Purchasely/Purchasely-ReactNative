@@ -1,6 +1,6 @@
 {
   "name": "@purchasely/react-native-purchasely-huawei",
-  "version": "5.0.5",
+  "version": "5.0.6",
   "description": "Purchasely Huawei Mobile Services dependencies",
   "main": "lib/commonjs/index",
   "module": "lib/module/index",
@@ -55,7 +55,7 @@
   "peerDependencies": {
     "react": "*",
     "react-native": "*",
-		"react-native-purchasely": "5.0.5"
+		"react-native-purchasely": "5.0.6"
   },
   "jest": {
     "preset": "react-native",
