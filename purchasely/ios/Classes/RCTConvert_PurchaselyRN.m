@@ -42,7 +42,7 @@ RCT_ENUM_CONVERTER(PLYAttribute, (@{@"amplitudeUserId": @(PLYAttributeAmplitudeU
                                     @"branchUserDeveloperIdentity": @(PLYAttributeBranchUserDeveloperIdentity),
                                     @"customerIoUserEmail": @(PLYAttributeCustomerioUserEmail),
                                     @"customerIoUserId": @(PLYAttributeCustomerioUserId),
-									@"moengageUniqueId": @(PLYAttributeMoengageUniqueId)}),
+									@"moEngageUniqueId": @(PLYAttributeMoengageUniqueId)}),
 				   PLYAttributeAmplitudeUserId, integerValue)
 
 RCT_ENUM_CONVERTER(PLYSubscriptionSource, (@{ @"sourceAppStore": @(PLYSubscriptionSourceAppleAppStore),
