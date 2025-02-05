@@ -91,7 +91,7 @@ static UIViewController *_sharedViewController;
         @"customerIoUserId": @(PLYAttributeCustomerioUserId),
         @"customerIoUserEmail": @(PLYAttributeCustomerioUserEmail),
         @"branchUserDeveloperIdentity": @(PLYAttributeBranchUserDeveloperIdentity),
-        @"moengageUniqueId": @(PLYAttributeMoengageUniqueId),
+        @"moEngageUniqueId": @(PLYAttributeMoengageUniqueId),
         @"batchCustomUserId": @(PLYAttributeBatchCustomUserId),
 		@"consumable": @(PLYPlanTypeConsumable),
 		@"nonConsumable": @(PLYPlanTypeNonConsumable),
