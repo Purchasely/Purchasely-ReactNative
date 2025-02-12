@@ -155,8 +155,6 @@ static UIViewController *_sharedViewController;
     case PLYPresentationActionOpenPlacement:
       actionString = @"open_placement";
       break;
-    default:
-      return actionInterceptorResult;
   }
 
 	[actionInterceptorResult setObject:actionString forKey:@"action"];

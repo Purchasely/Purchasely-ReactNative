@@ -65,7 +65,6 @@ function App(): React.JSX.Element {
         logLevel: LogLevels.DEBUG, // to force log level for debug
         userId: 'test-user', // if you know your user id
         runningMode: RunningMode.FULL, // to set mode manually
-        androidStores: ['Google', 'Huawei'], // the list of android stores to use, empty list if you aren't providing in-app subscriptions
       });
     } catch (e) {
       console.log('Purchasely SDK configuration error:', e);
@@ -495,7 +494,7 @@ const onPressNestedView = (navigation: { navigate: (arg0: string) => void; }) =>
 const onPressPresentation = async () => {
   try {
     const result = await Purchasely.presentPresentationForPlacement({
-      placementVendorId: 'HOME',
+      placementVendorId: 'composer',
       isFullscreen: true,
       loadingBackgroundColor: '#FFFFFFFF',
     });

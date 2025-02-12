@@ -1,6 +1,6 @@
 {
   "name": "@purchasely/react-native-purchasely-android-player",
-  "version": "5.0.6",
+  "version": "5.0.7",
   "description": "Purchasely Android Player with Google Exoplayer",
   "main": "lib/commonjs/index",
   "module": "lib/module/index",
