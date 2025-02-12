@@ -2,7 +2,7 @@ import { NativeModules, NativeEventEmitter } from 'react-native';
 import { PLYPresentationViewBeta } from './PLYPresentationView';
 //import { PurchaselyView } from './PurchaselyViewManager';
 
-const purchaselyVersion = '5.0.6';
+const purchaselyVersion = '5.0.7';
 
 interface Constants {
   logLevelDebug: number;
@@ -414,7 +414,7 @@ interface StartParameters {
 
 const start = ({
   apiKey,
-  androidStores = [],
+  androidStores = ['Google'],
   storeKit1,
   userId = null,
   logLevel = LogLevels.ERROR,
