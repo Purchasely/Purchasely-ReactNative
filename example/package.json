@@ -10,14 +10,14 @@
     "test": "jest"
   },
   "dependencies": {
-    "@purchasely/react-native-purchasely-android-player": "workspace:*",
-    "@purchasely/react-native-purchasely-google": "workspace:*",
+    "@beno/react-native-purchasely": "workspace:*",
+    "@beno/react-native-purchasely-android-player": "workspace:*",
+    "@beno/react-native-purchasely-google": "workspace:*",
     "@react-navigation/native": "^7.0.14",
     "@react-navigation/native-stack": "^7.2.0",
     "react": "19.0.0",
     "react-native": "0.78.0",
     "react-native-device-info": "^14.0.4",
-    "react-native-purchasely": "workspace:*",
     "react-native-safe-area-context": "^5.2.0",
     "react-native-screens": "^4.9.1"
   },

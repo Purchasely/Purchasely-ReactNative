@@ -1,6 +1,6 @@
 {
   "name": "@purchasely/react-native-purchasely-android-player",
-  "version": "5.0.7",
+  "version": "5.0.8",
   "description": "Purchasely Android Player with Google Exoplayer",
   "source": "./src/index.tsx",
   "main": "./lib/commonjs/index.js",
@@ -29,8 +29,7 @@
     "test": "jest",
     "typecheck": "tsc",
     "lint": "eslint \"**/*.{js,ts,tsx}\"",
-    "prepare": "bob build",
-    "release": "release-it"
+    "prepare": "bob build"
   },
   "keywords": [
     "react-native",
@@ -48,12 +47,10 @@
     "registry": "https://registry.npmjs.org/"
   },
   "devDependencies": {
-    "@release-it/conventional-changelog": "^9.0.2",
     "@types/react": "^18.2.44",
     "react": "19.0.0",
     "react-native": "0.78.0",
     "react-native-builder-bob": "^0.36.0",
-    "release-it": "^17.10.0",
     "turbo": "^1.10.7",
     "typescript": "^5.2.2"
   },
@@ -64,9 +61,6 @@
     "react": "*",
     "react-native": "*"
   },
-  "workspaces": [
-    "example"
-  ],
   "packageManager": "yarn@3.6.1",
   "jest": {
     "preset": "react-native",
@@ -79,54 +73,6 @@
     "extends": [
       "@commitlint/config-conventional"
     ]
-  },
-  "release-it": {
-    "git": {
-      "commitMessage": "chore: release ${version}",
-      "tagName": "v${version}"
-    },
-    "npm": {
-      "publish": true
-    },
-    "github": {
-      "release": true
-    },
-    "plugins": {
-      "@release-it/conventional-changelog": {
-        "preset": "angular"
-      }
-    }
-  },
-  "eslintConfig": {
-    "root": true,
-    "extends": [
-      "@react-native",
-      "prettier"
-    ],
-    "rules": {
-      "react/react-in-jsx-scope": "off",
-      "prettier/prettier": [
-        "error",
-        {
-          "quoteProps": "consistent",
-          "singleQuote": true,
-          "tabWidth": 2,
-          "trailingComma": "es5",
-          "useTabs": false
-        }
-      ]
-    }
-  },
-  "eslintIgnore": [
-    "node_modules/",
-    "lib/"
-  ],
-  "prettier": {
-    "quoteProps": "consistent",
-    "singleQuote": true,
-    "tabWidth": 2,
-    "trailingComma": "es5",
-    "useTabs": false
   },
   "react-native-builder-bob": {
     "source": "src",
