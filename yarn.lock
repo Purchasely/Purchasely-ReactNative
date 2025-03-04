@@ -1525,88 +1525,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@beno/react-native-purchasely-amazon@workspace:packages/amazon":
-  version: 0.0.0-use.local
-  resolution: "@beno/react-native-purchasely-amazon@workspace:packages/amazon"
-  dependencies:
-    "@types/react": ^18.2.44
-    react: 19.0.0
-    react-native: 0.78.0
-    react-native-builder-bob: ^0.36.0
-    turbo: ^1.10.7
-    typescript: ^5.2.2
-  peerDependencies:
-    react: "*"
-    react-native: "*"
-  languageName: unknown
-  linkType: soft
-
-"@beno/react-native-purchasely-android-player@workspace:*, @beno/react-native-purchasely-android-player@workspace:packages/android-player":
-  version: 0.0.0-use.local
-  resolution: "@beno/react-native-purchasely-android-player@workspace:packages/android-player"
-  dependencies:
-    "@types/react": ^18.2.44
-    react: 19.0.0
-    react-native: 0.78.0
-    react-native-builder-bob: ^0.36.0
-    turbo: ^1.10.7
-    typescript: ^5.2.2
-  peerDependencies:
-    react: "*"
-    react-native: "*"
-  languageName: unknown
-  linkType: soft
-
-"@beno/react-native-purchasely-google@workspace:*, @beno/react-native-purchasely-google@workspace:packages/google":
-  version: 0.0.0-use.local
-  resolution: "@beno/react-native-purchasely-google@workspace:packages/google"
-  dependencies:
-    "@types/react": ^18.2.44
-    react: 19.0.0
-    react-native: 0.78.0
-    react-native-builder-bob: ^0.36.0
-    turbo: ^1.10.7
-    typescript: ^5.2.2
-  peerDependencies:
-    react: "*"
-    react-native: "*"
-  languageName: unknown
-  linkType: soft
-
-"@beno/react-native-purchasely-huawei@workspace:packages/huawei":
-  version: 0.0.0-use.local
-  resolution: "@beno/react-native-purchasely-huawei@workspace:packages/huawei"
-  dependencies:
-    "@types/react": ^18.2.44
-    react: 19.0.0
-    react-native: 0.78.0
-    react-native-builder-bob: ^0.36.0
-    turbo: ^1.10.7
-    typescript: ^5.2.2
-  peerDependencies:
-    react: "*"
-    react-native: "*"
-  languageName: unknown
-  linkType: soft
-
-"@beno/react-native-purchasely@workspace:*, @beno/react-native-purchasely@workspace:packages/purchasely":
-  version: 0.0.0-use.local
-  resolution: "@beno/react-native-purchasely@workspace:packages/purchasely"
-  dependencies:
-    "@types/react": ^18.2.44
-    jest: ^29.7.0
-    prettier: ^3.0.3
-    react: 19.0.0
-    react-native: 0.78.0
-    react-native-builder-bob: ^0.36.0
-    turbo: ^1.10.7
-    typescript: ^5.2.2
-  peerDependencies:
-    react: "*"
-    react-native: "*"
-  languageName: unknown
-  linkType: soft
-
 "@conventional-changelog/git-client@npm:^1.0.0":
   version: 1.0.1
   resolution: "@conventional-changelog/git-client@npm:1.0.1"
@@ -2398,6 +2316,70 @@ __metadata:
   checksum: 9e1e1ce5faa64719e866b02d10e28d727d809365eb3692ccfdc420ab6d2073b93abe403994691868f265e34a5601a8eee18ffff6562b27124d971418ba6bb815
   languageName: node
   linkType: hard
+
+"@purchasely/react-native-purchasely-amazon@workspace:packages/amazon":
+  version: 0.0.0-use.local
+  resolution: "@purchasely/react-native-purchasely-amazon@workspace:packages/amazon"
+  dependencies:
+    "@types/react": ^18.2.44
+    react: 19.0.0
+    react-native: 0.78.0
+    react-native-builder-bob: ^0.36.0
+    turbo: ^1.10.7
+    typescript: ^5.2.2
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+  languageName: unknown
+  linkType: soft
+
+"@purchasely/react-native-purchasely-android-player@workspace:*, @purchasely/react-native-purchasely-android-player@workspace:packages/android-player":
+  version: 0.0.0-use.local
+  resolution: "@purchasely/react-native-purchasely-android-player@workspace:packages/android-player"
+  dependencies:
+    "@types/react": ^18.2.44
+    react: 19.0.0
+    react-native: 0.78.0
+    react-native-builder-bob: ^0.36.0
+    turbo: ^1.10.7
+    typescript: ^5.2.2
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+  languageName: unknown
+  linkType: soft
+
+"@purchasely/react-native-purchasely-google@workspace:*, @purchasely/react-native-purchasely-google@workspace:packages/google":
+  version: 0.0.0-use.local
+  resolution: "@purchasely/react-native-purchasely-google@workspace:packages/google"
+  dependencies:
+    "@types/react": ^18.2.44
+    react: 19.0.0
+    react-native: 0.78.0
+    react-native-builder-bob: ^0.36.0
+    turbo: ^1.10.7
+    typescript: ^5.2.2
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+  languageName: unknown
+  linkType: soft
+
+"@purchasely/react-native-purchasely-huawei@workspace:packages/huawei":
+  version: 0.0.0-use.local
+  resolution: "@purchasely/react-native-purchasely-huawei@workspace:packages/huawei"
+  dependencies:
+    "@types/react": ^18.2.44
+    react: 19.0.0
+    react-native: 0.78.0
+    react-native-builder-bob: ^0.36.0
+    turbo: ^1.10.7
+    typescript: ^5.2.2
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+  languageName: unknown
+  linkType: soft
 
 "@react-native-community/cli-clean@npm:15.0.1":
   version: 15.0.1
@@ -3282,11 +3264,11 @@ __metadata:
   linkType: hard
 
 "@types/node@npm:*":
-  version: 22.13.8
-  resolution: "@types/node@npm:22.13.8"
+  version: 22.13.9
+  resolution: "@types/node@npm:22.13.9"
   dependencies:
     undici-types: ~6.20.0
-  checksum: 6c07f95d88f1e286ec4517b35c8b53075e6076855fc52536c1ffad0e6b9091ec9ac2a0dd681b47e57da9196868c69342711a51ef1545f157aa893b5c546b8a36
+  checksum: d36ae841fa20aa01aefecfeb9363cbc9a5d7ede711fd6bdd9e872975987d6ce2720d4196c8cc7d2c53b3353a121250f96550873f18a73477de86b4198b25bab5
   languageName: node
   linkType: hard
 
@@ -3410,14 +3392,14 @@ __metadata:
   linkType: hard
 
 "@typescript-eslint/eslint-plugin@npm:^8.25.0":
-  version: 8.25.0
-  resolution: "@typescript-eslint/eslint-plugin@npm:8.25.0"
+  version: 8.26.0
+  resolution: "@typescript-eslint/eslint-plugin@npm:8.26.0"
   dependencies:
     "@eslint-community/regexpp": ^4.10.0
-    "@typescript-eslint/scope-manager": 8.25.0
-    "@typescript-eslint/type-utils": 8.25.0
-    "@typescript-eslint/utils": 8.25.0
-    "@typescript-eslint/visitor-keys": 8.25.0
+    "@typescript-eslint/scope-manager": 8.26.0
+    "@typescript-eslint/type-utils": 8.26.0
+    "@typescript-eslint/utils": 8.26.0
+    "@typescript-eslint/visitor-keys": 8.26.0
     graphemer: ^1.4.0
     ignore: ^5.3.1
     natural-compare: ^1.4.0
@@ -3425,8 +3407,8 @@ __metadata:
   peerDependencies:
     "@typescript-eslint/parser": ^8.0.0 || ^8.0.0-alpha.0
     eslint: ^8.57.0 || ^9.0.0
-    typescript: ">=4.8.4 <5.8.0"
-  checksum: 8e6f525d9c75290fea529b218df6b9354051a306abde0aba290261972c8891382b5aedd9ec41b885582d68fd5f4bfab25f070c20767f6d1b9c2b1c13f8f6fc43
+    typescript: ">=4.8.4 <5.9.0"
+  checksum: fbfc0e65b928ce37d51cc95d78061a752b8c2fb43e91a9c34ebf44b13e4cd5a0778f9aad9b67f6dd9dc98d9d35c41686fcf4b50e9b58bfa738639cdd71016303
   languageName: node
   linkType: hard
 
@@ -3466,18 +3448,18 @@ __metadata:
   linkType: hard
 
 "@typescript-eslint/parser@npm:^8.25.0":
-  version: 8.25.0
-  resolution: "@typescript-eslint/parser@npm:8.25.0"
+  version: 8.26.0
+  resolution: "@typescript-eslint/parser@npm:8.26.0"
   dependencies:
-    "@typescript-eslint/scope-manager": 8.25.0
-    "@typescript-eslint/types": 8.25.0
-    "@typescript-eslint/typescript-estree": 8.25.0
-    "@typescript-eslint/visitor-keys": 8.25.0
+    "@typescript-eslint/scope-manager": 8.26.0
+    "@typescript-eslint/types": 8.26.0
+    "@typescript-eslint/typescript-estree": 8.26.0
+    "@typescript-eslint/visitor-keys": 8.26.0
     debug: ^4.3.4
   peerDependencies:
     eslint: ^8.57.0 || ^9.0.0
-    typescript: ">=4.8.4 <5.8.0"
-  checksum: 5de468b96be0a3ba9c265590dc7d4da6b77fd0cd45e16cbf4d54ee5e46883d5a10ad58a43dcbe768909f04dcbcc431af5e577c41dd653abb89cae64064cc880e
+    typescript: ">=4.8.4 <5.9.0"
+  checksum: 6d8a8fcca1ff823cff4a7a6ac60bd079a0ff7261f907b19eb209d7df172bc484616a826db7f501f6a2e1fa501b5735b356cb5a1053839e26b97df58d860bd739
   languageName: node
   linkType: hard
 
@@ -3501,13 +3483,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@typescript-eslint/scope-manager@npm:8.25.0":
-  version: 8.25.0
-  resolution: "@typescript-eslint/scope-manager@npm:8.25.0"
+"@typescript-eslint/scope-manager@npm:8.26.0":
+  version: 8.26.0
+  resolution: "@typescript-eslint/scope-manager@npm:8.26.0"
   dependencies:
-    "@typescript-eslint/types": 8.25.0
-    "@typescript-eslint/visitor-keys": 8.25.0
-  checksum: 07782325450b5ab23a9ca3ccc3f681f7db738d9282ede17255e8d10217fe1375f2ee6c4c320d9a03a5477ef1fc0431358e69347bc7133e68f4f14a909ffb4328
+    "@typescript-eslint/types": 8.26.0
+    "@typescript-eslint/visitor-keys": 8.26.0
+  checksum: b1d35e8b4ef8f20ee32c373b6206883253d724b07373462a9532160a46f1c125c3d08fe112c22a990f3eb010218bad851d8ee5e7834ebc046e40e2a4ec05ea59
   languageName: node
   linkType: hard
 
@@ -3545,18 +3527,18 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@typescript-eslint/type-utils@npm:8.25.0":
-  version: 8.25.0
-  resolution: "@typescript-eslint/type-utils@npm:8.25.0"
+"@typescript-eslint/type-utils@npm:8.26.0":
+  version: 8.26.0
+  resolution: "@typescript-eslint/type-utils@npm:8.26.0"
   dependencies:
-    "@typescript-eslint/typescript-estree": 8.25.0
-    "@typescript-eslint/utils": 8.25.0
+    "@typescript-eslint/typescript-estree": 8.26.0
+    "@typescript-eslint/utils": 8.26.0
     debug: ^4.3.4
     ts-api-utils: ^2.0.1
   peerDependencies:
     eslint: ^8.57.0 || ^9.0.0
-    typescript: ">=4.8.4 <5.8.0"
-  checksum: ee4bccb650b3aa82c9f735460e2c441430f66059a2ae8e10afdbd52878dd2d17f93a2e4d8e2399210622a6f91476b57d581ce75ad03e6937b7558386c9c9e448
+    typescript: ">=4.8.4 <5.9.0"
+  checksum: eab175e5be4b6fbb260a0ecc15e72f7ab04b796d53c114481105591f3ef07e651f5242ca91bf4d497090a445471fc04509774073dbb06f5ad39c5623a564cd66
   languageName: node
   linkType: hard
 
@@ -3574,10 +3556,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@typescript-eslint/types@npm:8.25.0":
-  version: 8.25.0
-  resolution: "@typescript-eslint/types@npm:8.25.0"
-  checksum: 958395fb209609beda4a57b9d52138a6f5a1941f2d39aed616e9aadad2fd453fafd5b117fe0ebf1db37aded8e21be5469634452ae7b70212f978db1799d907bf
+"@typescript-eslint/types@npm:8.26.0":
+  version: 8.26.0
+  resolution: "@typescript-eslint/types@npm:8.26.0"
+  checksum: dea8535575d5bbc5f4d9b5a677a098e356db550b833e9c9a84204337c0a4302be3c328baa417b9cabdd4f6f4feb4921304f610e23cc31a9ab6faae9a8b921b5f
   languageName: node
   linkType: hard
 
@@ -3618,12 +3600,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@typescript-eslint/typescript-estree@npm:8.25.0":
-  version: 8.25.0
-  resolution: "@typescript-eslint/typescript-estree@npm:8.25.0"
+"@typescript-eslint/typescript-estree@npm:8.26.0":
+  version: 8.26.0
+  resolution: "@typescript-eslint/typescript-estree@npm:8.26.0"
   dependencies:
-    "@typescript-eslint/types": 8.25.0
-    "@typescript-eslint/visitor-keys": 8.25.0
+    "@typescript-eslint/types": 8.26.0
+    "@typescript-eslint/visitor-keys": 8.26.0
     debug: ^4.3.4
     fast-glob: ^3.3.2
     is-glob: ^4.0.3
@@ -3631,8 +3613,8 @@ __metadata:
     semver: ^7.6.0
     ts-api-utils: ^2.0.1
   peerDependencies:
-    typescript: ">=4.8.4 <5.8.0"
-  checksum: b103847df242dc9de3b046dd4aa33840732e17964388969110e13627f7e20fdc10801eb4718a4efd0ead470c411fdf96df791e43d2d28cf617ae416905897129
+    typescript: ">=4.8.4 <5.9.0"
+  checksum: 492ad542c1105111f67d83a3fa1acf9353d491dee059cc81890cd4c2bec58c7bfa6b6fdd1b3909d4b3be54044d7912f0c3d78a7d21dd2b902b99e79b5e33af6e
   languageName: node
   linkType: hard
 
@@ -3668,18 +3650,18 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@typescript-eslint/utils@npm:8.25.0":
-  version: 8.25.0
-  resolution: "@typescript-eslint/utils@npm:8.25.0"
+"@typescript-eslint/utils@npm:8.26.0":
+  version: 8.26.0
+  resolution: "@typescript-eslint/utils@npm:8.26.0"
   dependencies:
     "@eslint-community/eslint-utils": ^4.4.0
-    "@typescript-eslint/scope-manager": 8.25.0
-    "@typescript-eslint/types": 8.25.0
-    "@typescript-eslint/typescript-estree": 8.25.0
+    "@typescript-eslint/scope-manager": 8.26.0
+    "@typescript-eslint/types": 8.26.0
+    "@typescript-eslint/typescript-estree": 8.26.0
   peerDependencies:
     eslint: ^8.57.0 || ^9.0.0
-    typescript: ">=4.8.4 <5.8.0"
-  checksum: 60572c88805c0b3eb0d41ee9fe736931554db22e1a4ad4d274bb515894f622605109cbf0b8742fbf895eb956366df981e1700776e6c56381b4528f71643a6460
+    typescript: ">=4.8.4 <5.9.0"
+  checksum: 6bb6e7c9bd532b09d4776cfc8fd94876cd8ff5698642993ea5b900d5202d73b958483e75e8066b9ad57382ef697f48188d219425695f50b3d92b774aefbb492e
   languageName: node
   linkType: hard
 
@@ -3703,13 +3685,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@typescript-eslint/visitor-keys@npm:8.25.0":
-  version: 8.25.0
-  resolution: "@typescript-eslint/visitor-keys@npm:8.25.0"
+"@typescript-eslint/visitor-keys@npm:8.26.0":
+  version: 8.26.0
+  resolution: "@typescript-eslint/visitor-keys@npm:8.26.0"
   dependencies:
-    "@typescript-eslint/types": 8.25.0
+    "@typescript-eslint/types": 8.26.0
     eslint-visitor-keys: ^4.2.0
-  checksum: e9570dd2ff84d10994af8906720e4e19e6a5c180b88b933c1b21b7ce1752a083dd5e513f9aa0d0dc6a17160eced893e55e7d3b2a3a2ae47d930e3f012fa23ef9
+  checksum: 4209794bbdecbebb4105b00d42794bec30cffc2f4e6e6fd91b0be42fd97c73374c43ad2bb4ff1f7dcf97f7edde52b6137b8f98eb720d84f10ec03925fc5104c2
   languageName: node
   linkType: hard
 
@@ -4489,12 +4471,12 @@ __metadata:
   linkType: hard
 
 "call-bound@npm:^1.0.2, call-bound@npm:^1.0.3":
-  version: 1.0.3
-  resolution: "call-bound@npm:1.0.3"
+  version: 1.0.4
+  resolution: "call-bound@npm:1.0.4"
   dependencies:
-    call-bind-apply-helpers: ^1.0.1
-    get-intrinsic: ^1.2.6
-  checksum: a93bbe0f2d0a2d6c144a4349ccd0593d5d0d5d9309b69101710644af8964286420062f2cc3114dca120b9bc8cc07507952d4b1b3ea7672e0d7f6f1675efedb32
+    call-bind-apply-helpers: ^1.0.2
+    get-intrinsic: ^1.3.0
+  checksum: 2f6399488d1c272f56306ca60ff696575e2b7f31daf23bc11574798c84d9f2759dceb0cb1f471a85b77f28962a7ac6411f51d283ea2e45319009a19b6ccab3b2
   languageName: node
   linkType: hard
 
@@ -4552,9 +4534,9 @@ __metadata:
   linkType: hard
 
 "caniuse-lite@npm:^1.0.30001688":
-  version: 1.0.30001701
-  resolution: "caniuse-lite@npm:1.0.30001701"
-  checksum: 1abcb27ea3296dacdaa669cfe8e094432165f0541bf49ef7a88c2758d0cec5f9a839ea948f7f48c0c63c633d98f6f6c55ccf97ffebea2caaf465389500df5422
+  version: 1.0.30001702
+  resolution: "caniuse-lite@npm:1.0.30001702"
+  checksum: ba8e88f0ef09a16f36de805c9491c3047986ab6bb1e0dc66f03067dce5e197be1c98cfaed21867bad851985f775b8d4fa50e7e37537c116a5fe1ae623dfd400c
   languageName: node
   linkType: hard
 
@@ -5625,9 +5607,9 @@ __metadata:
   linkType: hard
 
 "electron-to-chromium@npm:^1.5.73":
-  version: 1.5.109
-  resolution: "electron-to-chromium@npm:1.5.109"
-  checksum: 46f71d384f46ead83550027358a45b58370fb243459c347910557ee8d2530637157b54192c702b9adf2bc5c436a8ec2bd3f2da4b3f8e1810aca1becd38c26ba3
+  version: 1.5.112
+  resolution: "electron-to-chromium@npm:1.5.112"
+  checksum: 626e9e0d919d2e23cb37b20ea9ff916be1b2ef96a4955bdfc18f8203a2c98e66fd9cc62a9d1969291538f4c962201add11cc124ca2cab6cde99360ed7802ef58
   languageName: node
   linkType: hard
 
@@ -6475,9 +6457,8 @@ __metadata:
     "@babel/core": ^7.25.2
     "@babel/preset-env": ^7.25.3
     "@babel/runtime": ^7.25.0
-    "@beno/react-native-purchasely": "workspace:*"
-    "@beno/react-native-purchasely-android-player": "workspace:*"
-    "@beno/react-native-purchasely-google": "workspace:*"
+    "@purchasely/react-native-purchasely-android-player": "workspace:*"
+    "@purchasely/react-native-purchasely-google": "workspace:*"
     "@react-native-community/cli": 15.0.1
     "@react-native-community/cli-platform-android": 15.0.1
     "@react-native-community/cli-platform-ios": 15.0.1
@@ -6499,6 +6480,7 @@ __metadata:
     react: 19.0.0
     react-native: 0.78.0
     react-native-device-info: ^14.0.4
+    react-native-purchasely: "workspace:*"
     react-native-safe-area-context: ^5.2.0
     react-native-screens: ^4.9.1
     react-test-renderer: 19.0.0
@@ -6958,7 +6940,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"get-intrinsic@npm:^1.2.4, get-intrinsic@npm:^1.2.5, get-intrinsic@npm:^1.2.6, get-intrinsic@npm:^1.2.7":
+"get-intrinsic@npm:^1.2.4, get-intrinsic@npm:^1.2.5, get-intrinsic@npm:^1.2.6, get-intrinsic@npm:^1.2.7, get-intrinsic@npm:^1.3.0":
   version: 1.3.0
   resolution: "get-intrinsic@npm:1.3.0"
   dependencies:
@@ -11140,13 +11122,31 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-safe-area-context@npm:^5.2.0":
-  version: 5.2.0
-  resolution: "react-native-safe-area-context@npm:5.2.0"
+"react-native-purchasely@workspace:*, react-native-purchasely@workspace:packages/purchasely":
+  version: 0.0.0-use.local
+  resolution: "react-native-purchasely@workspace:packages/purchasely"
+  dependencies:
+    "@types/react": ^18.2.44
+    jest: ^29.7.0
+    prettier: ^3.0.3
+    react: 19.0.0
+    react-native: 0.78.0
+    react-native-builder-bob: ^0.36.0
+    turbo: ^1.10.7
+    typescript: ^5.2.2
   peerDependencies:
     react: "*"
     react-native: "*"
-  checksum: 88d4267b49dde42de1e4d277a4cc07b94afc05c0704ac75db62a8a79da2965e826c6444c0dd0149355b761c64cce7a8cb7e04f6555ed9e3dac069a23efd3f061
+  languageName: unknown
+  linkType: soft
+
+"react-native-safe-area-context@npm:^5.2.0":
+  version: 5.3.0
+  resolution: "react-native-safe-area-context@npm:5.3.0"
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+  checksum: 21f18b1286fc7bc6f38f864b7468848c16c58106ae429633e8f655dabb80571beba19ac8aa8bc5e1b2e926d75afddd7ded919a56450aa00c36d56f7fb421f782
   languageName: node
   linkType: hard
 
@@ -12757,9 +12757,9 @@ __metadata:
   linkType: hard
 
 "type-fest@npm:^4.18.2, type-fest@npm:^4.21.0, type-fest@npm:^4.6.0, type-fest@npm:^4.7.1":
-  version: 4.36.0
-  resolution: "type-fest@npm:4.36.0"
-  checksum: 9d01b057ed66ac7ea360bf05b6052040c68fd0fe21140ffd1c8570629583d9176669d09212c55c6ce8eccbe214d6b6c8b5a9f784adac04d321d0c73539145986
+  version: 4.37.0
+  resolution: "type-fest@npm:4.37.0"
+  checksum: 303f34778e675054fe0d300afaa1ded7985c16c72630d9946c1cb3c949f6dc0b014196a5473f248597d9edb6778788e4c47966f9dcbfce324a31d9845c282a74
   languageName: node
   linkType: hard
 
