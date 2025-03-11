@@ -417,7 +417,7 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.purchasely.demo;
+				PRODUCT_BUNDLE_IDENTIFIER = com.runbuddy.staging;
 				PRODUCT_NAME = sample;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -444,7 +444,7 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.purchasely.demo;
+				PRODUCT_BUNDLE_IDENTIFIER = com.runbuddy.staging;
 				PRODUCT_NAME = sample;
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";

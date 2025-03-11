@@ -1147,11 +1147,12 @@ RCT_EXPORT_METHOD(planWithIdentifier:(NSString * _Nonnull)planVendorId
 	});
 }
 
-RCT_EXPORT_METHOD(userSubscriptions:(RCTPromiseResolveBlock)resolve
+RCT_EXPORT_METHOD(userSubscriptions:invalidate: (BOOL) invalidate
+                 (RCTPromiseResolveBlock)resolve
 				  reject:(RCTPromiseRejectBlock)reject)
 {
 	dispatch_async(dispatch_get_main_queue(), ^{
-		[Purchasely userSubscriptions:false
+		[Purchasely userSubscriptions:invalidate
                               success:^(NSArray<PLYSubscription *> * _Nullable subscriptions) {
             NSMutableArray *result = [NSMutableArray new];
             for (PLYSubscription *subscription in subscriptions) {

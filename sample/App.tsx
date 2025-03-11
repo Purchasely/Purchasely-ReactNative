@@ -79,7 +79,7 @@ function App(): React.JSX.Element {
     }
 
     // logout the user
-    Purchasely.userLogout();
+    //Purchasely.userLogout();
 
    //indicate to sdk it is safe to launch purchase flow
     Purchasely.readyToOpenDeeplink(true);
@@ -118,6 +118,20 @@ function App(): React.JSX.Element {
     // Fetch user's active subscriptions
     const subscriptions = await Purchasely.userSubscriptions();
     console.log('Active Subscriptions:', subscriptions.length, 'subscriptions');
+    if(subscriptions.length > 0) {
+      console.log('\t- cancelled date:', subscriptions[0].cancelledDate);
+      console.log('\t- next renewal date:', subscriptions[0].nextRenewalDate);
+      console.log('\t- subscription source:', subscriptions[0].subscriptionSource);
+      console.log('\t- productId:', subscriptions[0].plan.productId);
+      console.log('\t- vendorId:', subscriptions[0].plan.vendorId);
+      console.log('\t- endorId:', subscriptions[0].plan.vendorId);
+      console.log('\t- amount:', subscriptions[0].plan.amount);
+      console.log('\t- period:', subscriptions[0].plan.period);
+      console.log('\t- price:', subscriptions[0].plan.price);
+      console.log('\t- localizedAmount:', subscriptions[0].plan.localizedAmount);
+      console.log('\t- type:', subscriptions[0].plan.type);
+      console.log('\t- hasFreeTrial:', subscriptions[0].plan.hasFreeTrial);
+    }
 
     // Fetch user's expired subscriptions
     const expiredSubscriptions = await Purchasely.userSubscriptionsHistory();
@@ -165,7 +179,7 @@ function App(): React.JSX.Element {
 
     //get all attributes
     const attributes = await Purchasely.userAttributes();
-    console.log('Attributes:', attributes);
+    //console.log('Attributes:', attributes);
 
     //retrive a date attribute
     const dateAttribute = await Purchasely.userAttribute('dateKey');
@@ -494,7 +508,7 @@ const onPressNestedView = (navigation: { navigate: (arg0: string) => void; }) =>
 const onPressPresentation = async () => {
   try {
     const result = await Purchasely.presentPresentationForPlacement({
-      placementVendorId: 'composer',
+      placementVendorId: 'premium_support',
       isFullscreen: true,
       loadingBackgroundColor: '#FFFFFFFF',
     });
