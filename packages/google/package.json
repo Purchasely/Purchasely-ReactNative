@@ -1,6 +1,6 @@
 {
   "name": "@purchasely/react-native-purchasely-google",
-  "version": "5.0.7",
+  "version": "5.1.0",
   "description": "Purchasely Google Play Billing dependency",
   "source": "./src/index.tsx",
   "main": "./lib/commonjs/index.js",
