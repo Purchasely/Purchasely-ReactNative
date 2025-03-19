@@ -10,7 +10,7 @@
     "test": "jest"
   },
   "dependencies": {
-    "@purchasely/react-native-purchasely-android-player2": "workspace:*",
+    "@purchasely/react-native-purchasely-android-player": "workspace:*",
     "@purchasely/react-native-purchasely-google": "workspace:*",
     "@react-navigation/native": "^7.0.14",
     "@react-navigation/native-stack": "^7.2.0",

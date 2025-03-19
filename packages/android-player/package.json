@@ -1,5 +1,5 @@
 {
-  "name": "@purchasely/react-native-purchasely-android-player2",
+  "name": "@purchasely/react-native-purchasely-android-player",
   "version": "5.0.7",
   "description": "Player Android",
   "source": "./src/index.tsx",
