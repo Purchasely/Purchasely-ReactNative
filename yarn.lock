@@ -2340,7 +2340,23 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@purchasely/react-native-purchasely-android-player@workspace:*, @purchasely/react-native-purchasely-android-player@workspace:packages/player":
+"@purchasely/react-native-purchasely-android-player2@workspace:*, @purchasely/react-native-purchasely-android-player2@workspace:packages/android-player":
+  version: 0.0.0-use.local
+  resolution: "@purchasely/react-native-purchasely-android-player2@workspace:packages/android-player"
+  dependencies:
+    "@types/react": ^18.2.44
+    react: 19.0.0
+    react-native: 0.78.0
+    react-native-builder-bob: ^0.36.0
+    turbo: ^1.10.7
+    typescript: ^5.2.2
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+  languageName: unknown
+  linkType: soft
+
+"@purchasely/react-native-purchasely-android-player@workspace:packages/player":
   version: 0.0.0-use.local
   resolution: "@purchasely/react-native-purchasely-android-player@workspace:packages/player"
   dependencies:
@@ -6456,7 +6472,7 @@ __metadata:
     "@babel/core": ^7.25.2
     "@babel/preset-env": ^7.25.3
     "@babel/runtime": ^7.25.0
-    "@purchasely/react-native-purchasely-android-player": "workspace:*"
+    "@purchasely/react-native-purchasely-android-player2": "workspace:*"
     "@purchasely/react-native-purchasely-google": "workspace:*"
     "@react-native-community/cli": 15.0.1
     "@react-native-community/cli-platform-android": 15.0.1
