@@ -78,12 +78,21 @@ function App(): React.JSX.Element {
         )
 
         // Fetch user's active subscriptions
-        const subscriptions = await Purchasely.userSubscriptions({invalidateCache: true})
-        console.log(
-            'Active Subscriptions:',
-            subscriptions.length,
-            'subscriptions'
-        )
+        const subscriptions = await Purchasely.userSubscriptions()
+        if(subscriptions.length > 0) {
+            console.log('\t- cancelled date:', subscriptions[0].cancelledDate);
+            console.log('\t- next renewal date:', subscriptions[0].nextRenewalDate);
+            console.log('\t- subscription source:', subscriptions[0].subscriptionSource);
+            console.log('\t- productId:', subscriptions[0].plan.productId);
+            console.log('\t- vendorId:', subscriptions[0].plan.vendorId);
+            console.log('\t- endorId:', subscriptions[0].plan.vendorId);
+            console.log('\t- amount:', subscriptions[0].plan.amount);
+            console.log('\t- period:', subscriptions[0].plan.period);
+            console.log('\t- price:', subscriptions[0].plan.price);
+            console.log('\t- localizedAmount:', subscriptions[0].plan.localizedAmount);
+            console.log('\t- type:', subscriptions[0].plan.type);
+            console.log('\t- hasFreeTrial:', subscriptions[0].plan.hasFreeTrial);
+          }
 
         // Fetch user's expired subscriptions
         const expiredSubscriptions = await Purchasely.userSubscriptionsHistory()

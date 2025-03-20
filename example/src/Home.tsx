@@ -63,7 +63,7 @@ export const HomeScreen: React.FC<NativeStackScreenProps<any>> = ({
     const onPressPresentation = async () => {
         try {
             const result = await Purchasely.presentPresentationForPlacement({
-                placementVendorId: 'composer',
+                placementVendorId: 'premium_support',
                 // isFullscreen: true,
                 loadingBackgroundColor: '#FFFFFFFF',
             })
