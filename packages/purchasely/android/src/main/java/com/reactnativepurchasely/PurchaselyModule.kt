@@ -668,10 +668,10 @@ fun setUserAttributeWithNumberArray(key: String, value: ReadableArray) {
   }
 
   @ReactMethod
-  fun userSubscriptions(promise: Promise) {
+  fun userSubscriptions(invalidate: Boolean = false, promise: Promise) {
     GlobalScope.launch {
       try {
-        val subscriptions = Purchasely.userSubscriptions()
+        val subscriptions = Purchasely.userSubscriptions(invalidate)
         val result = ArrayList<ReadableMap?>()
         for (data in subscriptions) {
           val map = data.data.toMap().toMutableMap().apply {

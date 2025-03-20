@@ -78,7 +78,7 @@ function App(): React.JSX.Element {
         )
 
         // Fetch user's active subscriptions
-        const subscriptions = await Purchasely.userSubscriptions()
+        const subscriptions = await Purchasely.userSubscriptions({invalidateCache: true})
         console.log(
             'Active Subscriptions:',
             subscriptions.length,

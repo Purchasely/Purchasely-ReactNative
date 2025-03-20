@@ -1151,11 +1151,12 @@ RCT_EXPORT_METHOD(planWithIdentifier:(NSString * _Nonnull)planVendorId
 	});
 }
 
-RCT_EXPORT_METHOD(userSubscriptions:(RCTPromiseResolveBlock)resolve
-				  reject:(RCTPromiseRejectBlock)reject)
+RCT_EXPORT_METHOD(userSubscriptions:(BOOL) invalidate
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
 {
-	dispatch_async(dispatch_get_main_queue(), ^{
-		[Purchasely userSubscriptions:false
+  dispatch_async(dispatch_get_main_queue(), ^{
+    [Purchasely userSubscriptions:invalidate
                               success:^(NSArray<PLYSubscription *> * _Nullable subscriptions) {
             NSMutableArray *result = [NSMutableArray new];
             for (PLYSubscription *subscription in subscriptions) {
@@ -1165,8 +1166,9 @@ RCT_EXPORT_METHOD(userSubscriptions:(RCTPromiseResolveBlock)resolve
         } failure:^(NSError * _Nonnull error) {
             [self reject: reject with: error];
         }];
-	});
+  });
 }
+
 
 RCT_EXPORT_METHOD(userSubscriptionsHistory:(RCTPromiseResolveBlock)resolve
 				  reject:(RCTPromiseRejectBlock)reject)

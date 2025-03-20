@@ -338,8 +338,8 @@ const silentRestoreAllProducts = (): Promise<boolean> => {
   return NativeModules.Purchasely.silentRestoreAllProducts();
 };
 
-const userSubscriptions = (): Promise<PurchaselySubscription[]> => {
-  return NativeModules.Purchasely.userSubscriptions();
+const userSubscriptions = ({ invalidateCache = false }: { invalidateCache?: boolean | null } = {}): Promise<PurchaselySubscription[]> => {
+  return NativeModules.Purchasely.userSubscriptions(invalidateCache);
 };
 
 const userSubscriptionsHistory = (): Promise<PurchaselySubscription[]> => {
