@@ -175,6 +175,9 @@ function App(): React.JSX.Element {
         //remove all attributes
         Purchasely.clearUserAttributes()
 
+        //remove all Purchasley built-in attributes
+        Purchasely.clearBuiltInAttributes()
+
         // Set paywall action interceptor callback
         Purchasely.setPaywallActionInterceptorCallback((result) => {
             console.log('Received action from paywall')

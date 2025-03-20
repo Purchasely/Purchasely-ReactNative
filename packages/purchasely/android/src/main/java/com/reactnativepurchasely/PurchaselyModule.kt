@@ -852,6 +852,11 @@ fun setUserAttributeWithNumberArray(key: String, value: ReadableArray) {
       .emit(eventName, params)
   }
 
+  @ReactMethod
+  fun clearBuiltInAttributes() {
+    Purchasely.clearBuiltInAttributes()
+  }
+
   companion object {
     private const val runningModeTransactionOnly = 0
     private const val runningModeObserver = 1

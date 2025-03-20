@@ -579,6 +579,9 @@ RCT_EXPORT_METHOD(clearUserAttributes) {
     [Purchasely clearUserAttributes];
 }
 
+RCT_EXPORT_METHOD(clearBuiltInAttributes) {
+    [Purchasely clearBuiltInAttributes];
+}
 
 RCT_EXPORT_METHOD(setLanguage:(NSString * _Nonnull) language) {
     NSLocale *locale = [NSLocale localeWithLocaleIdentifier:language];

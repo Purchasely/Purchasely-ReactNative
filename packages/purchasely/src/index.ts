@@ -453,6 +453,10 @@ const setThemeMode = (theme: PLYThemeMode): void => {
   return NativeModules.Purchasely.setThemeMode(theme);
 };
 
+const clearBuiltInAttributes = (): void => {
+  return NativeModules.Purchasely.clearBuiltInAttributes();
+};
+
 const Purchasely = {
   start,
   addEventListener,
@@ -517,6 +521,7 @@ const Purchasely = {
   isAnonymous,
   isEligibleForIntroOffer,
   setThemeMode,
+  clearBuiltInAttributes,
 };
 
 export * from './types';
