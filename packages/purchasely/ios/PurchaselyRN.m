@@ -445,7 +445,7 @@ RCT_EXPORT_METHOD(isDeeplinkHandled:(NSString * _Nullable) deeplink
 }
 
 RCT_EXPORT_METHOD(userLogout) {
-	[Purchasely userLogout];
+  [Purchasely userLogout:YES];
 }
 
 RCT_REMAP_METHOD(isAnonymous,
@@ -699,7 +699,8 @@ RCT_EXPORT_METHOD(fetchPresentation:(NSString * _Nullable)placementId
         }
 
         if (placementId != nil) {
-            [Purchasely fetchPresentationFor:placementId contentId: contentId fetchCompletion:^(PLYPresentation * _Nullable presentation, NSError * _Nullable error) {
+            [Purchasely fetchPresentationFor:placementId contentId: contentId fetchCompletion:^(PLYPresentation * _Nullable presentation, NSError * _Nullable error)
+             {
                 if (error != nil) {
                     [self reject: reject with: error];
                 } else if (presentation != nil) {
@@ -710,7 +711,7 @@ RCT_EXPORT_METHOD(fetchPresentation:(NSString * _Nullable)placementId
                 if (PurchaselyRN.purchaseResolve != nil){
                     PurchaselyRN.purchaseResolve([self resultDictionaryForPresentationController:result plan:plan]);
                 }
-            }];
+            } loadedCompletion:nil];
         } else {
             [Purchasely fetchPresentationWith:presentationId contentId: contentId fetchCompletion:^(PLYPresentation * _Nullable presentation, NSError * _Nullable error) {
                 if (error != nil) {
@@ -723,7 +724,7 @@ RCT_EXPORT_METHOD(fetchPresentation:(NSString * _Nullable)placementId
                 if (PurchaselyRN.purchaseResolve != nil) {
                     PurchaselyRN.purchaseResolve([self resultDictionaryForPresentationController:result plan:plan]);
                 }
-            }];
+            } loadedCompletion:nil];
         }
     });
 }
