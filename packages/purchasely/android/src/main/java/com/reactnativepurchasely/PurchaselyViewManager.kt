@@ -47,11 +47,11 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
     return MapBuilder.of<String, Int>("create", COMMAND_CREATE)
   }
 
-  override fun receiveCommand(root: FrameLayout, commandId: String?, args: ReadableArray?) {
+  override fun receiveCommand(root: FrameLayout, commandId: Int, args: ReadableArray?) {
     Log.d("PurchaselyView", "Received a command having commandId=$commandId.")
     super.receiveCommand(root, commandId, args)
     val reactNativeViewId = args!!.getInt(0)
-    val commandIdInt = commandId!!.toInt()
+    val commandIdInt = commandId
 
     when (commandIdInt) {
       COMMAND_CREATE -> createFragment(root, reactNativeViewId)

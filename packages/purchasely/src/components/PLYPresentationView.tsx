@@ -50,12 +50,14 @@ export const PLYPresentationView: React.FC<PLYPresentationViewProps> = ({
           [viewId]
         );
 
-      const viewId = findNodeHandle(ref.current);
-      if (viewId) {
-        createFragment(viewId);
-      }
-    }
-  }, []);
+       const viewId = findNodeHandle(ref.current);
+       console.log('### viewId', viewId);
+       if (viewId) {
+         console.log('### creating Fragment');
+         createFragment(viewId);
+       }
+     }
+   }, []);
 
   return (
     <PurchaselyView

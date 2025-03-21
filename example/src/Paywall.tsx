@@ -63,8 +63,6 @@ export const PaywallScreen: React.FC<NativeStackScreenProps<any>> = ({
 
     return (
         <View style={{ flex: 1 }}>
-            <Header />
-
             <PLYPresentationView
                 placementId="ACCOUNT"
                 flex={7}
