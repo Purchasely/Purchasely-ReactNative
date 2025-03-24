@@ -21,7 +21,7 @@ sed -i '' "s/^.*const purchaselyVersion.*$/const purchaselyVersion = '${VERSION}
 
 #publish
 cd packages/purchasely && npm publish --access public
-cd packages/google && npm publish --access public
-cd packages/huawei && npm publish --access public
-cd packages/amazon && npm publish --access public
-cd packages/android-player && npm publish --access public
+cd ../../packages/google && npm publish --access public
+cd ../../packages/huawei && npm publish --access public
+cd ../../packages/amazon && npm publish --access public
+cd ../../packages/android-player && npm publish --access public

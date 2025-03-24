@@ -64,7 +64,7 @@ export const PaywallScreen: React.FC<NativeStackScreenProps<any>> = ({
     return (
         <View style={{ flex: 1 }}>
             <PLYPresentationView
-                placementId="ACCOUNT"
+                //placementId="ACCOUNT"
                 flex={7}
                 presentation={purchaselyPresentation}
                 onPresentationClosed={(res: PresentPresentationResult) =>
