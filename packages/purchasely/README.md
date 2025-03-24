@@ -13,28 +13,28 @@ npm install react-native-purchasely
 Add the following code in the root of your project (typically `App.tsx` in a React Native project):
 
 ```ts
-import Purchasely, { LogLevels, RunningMode } from 'react-native-purchasely'
+import Purchasely, { LogLevels, RunningMode } from 'react-native-purchasely';
 
 Purchasely.startWithAPIKey(
-    'afa96c76-1d8e-4e3c-a48f-204a3cd93a15',
-    ['Google'], // List of stores for Android, accepted values: Google, Huawei, and Amazon
-    null, // Your user ID
-    LogLevels.DEBUG, // Log level, should be warning or error in production
-    RunningMode.FULL // Running mode
+  'afa96c76-1d8e-4e3c-a48f-204a3cd93a15',
+  ['Google'], // List of stores for Android, accepted values: Google, Huawei, and Amazon
+  null, // Your user ID
+  LogLevels.DEBUG, // Log level, should be warning or error in production
+  RunningMode.FULL // Running mode
 ).then(
-    (configured) => {
-        if (!configured) {
-            console.log('Purchasely SDK not properly initialized')
-            return
-        }
-
-        console.log('Purchasely SDK is initialized')
-        setupPurchasely()
-    },
-    (error) => {
-        console.log('Purchasely SDK initialization error', error)
+  (configured) => {
+    if (!configured) {
+      console.log('Purchasely SDK not properly initialized');
+      return;
     }
-)
+
+    console.log('Purchasely SDK is initialized');
+    setupPurchasely();
+  },
+  (error) => {
+    console.log('Purchasely SDK initialization error', error);
+  }
+);
 ```
 
 ## 🎬 Usage
@@ -42,32 +42,44 @@ Purchasely.startWithAPIKey(
 ### 1️⃣ Full Screen Paywall
 
 ```ts
-import Purchasely, {
-    PLYPresentationType,
-    ProductResult,
-} from 'react-native-purchasely'
+import React from 'react';
+import { Button, View } from 'react-native';
+import Purchasely, { ProductResult } from 'react-native-purchasely';
 
-try {
-    const result = await Purchasely.presentPresentationForPlacement({
+const FullScreenPaywall = () => {
+  const showPaywall = async () => {
+    try {
+      const result = await Purchasely.presentPresentationForPlacement({
         placementVendorId: 'composer',
         loadingBackgroundColor: '#FFFFFFFF',
-    })
+      });
 
-    console.log('Result is ' + result.result)
+      console.log('Result is ' + result.result);
 
-    switch (result.result) {
+      switch (result.result) {
         case ProductResult.PRODUCT_RESULT_PURCHASED:
         case ProductResult.PRODUCT_RESULT_RESTORED:
-            if (result.plan != null) {
-                console.log('User purchased ' + result.plan.name)
-            }
-            break
+          if (result.plan != null) {
+            console.log('User purchased ' + result.plan.name);
+          }
+          break;
         case ProductResult.PRODUCT_RESULT_CANCELLED:
-            break
+          console.log('User cancelled');
+          break;
+      }
+    } catch (e) {
+      console.error(e);
     }
-} catch (e) {
-    console.error(e)
-}
+  };
+
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <Button title="Show Paywall" onPress={showPaywall} />
+    </View>
+  );
+};
+
+export default FullScreenPaywall;
 ```
 
 ### 2️⃣ Nested View Paywall
@@ -153,32 +165,3 @@ export const PaywallScreen: React.FC<NativeStackScreenProps<any>> = ({ navigatio
 
 A complete documentation is available on our website: [Purchasely Docs](https://docs.purchasely.com/quick-start/sdk-installation/react-native-sdk).
 
-## 🛠️ Developer Guide
-
-### 1️⃣ Clone the Repository
-
-```sh
-git clone https://github.com/Purchasely/Purchasely-ReactNative.git
-cd repo
-```
-
-### 2️⃣ Install Dependencies
-
-```sh
-yarn install
-```
-
-### 3️⃣ Prepare all the packages
-
-```sh
-yarn all:prepare
-```
-
-### 4️⃣ Run the Example App
-
-```sh
-yarn example:android
-
-# after example:android is done building run:
-yarn example:start
-```

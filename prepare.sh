@@ -20,8 +20,4 @@ sed -i '' "s/^.*\"version\":.*$/  \"version\": \"${VERSION}\",/" packages/androi
 sed -i '' "s/^.*const purchaselyVersion.*$/const purchaselyVersion = '${VERSION}';/" packages/purchasely/src/index.ts
 
 #publish
-cd packages/purchasely && npm publish --access public
-cd ../../packages/google && npm publish --access public
-cd ../../packages/huawei && npm publish --access public
-cd ../../packages/amazon && npm publish --access public
-cd ../../packages/android-player && npm publish --access public
+yarn all:prepare
