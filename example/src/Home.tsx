@@ -89,7 +89,7 @@ export const HomeScreen: React.FC<NativeStackScreenProps<any>> = ({
     const onPressFetch = async () => {
         try {
             const presentation = await Purchasely.fetchPresentation({
-                placementId: 'ONBOARDING',
+                presentationId: 'JAN_ST',
                 contentId: null,
             })
 

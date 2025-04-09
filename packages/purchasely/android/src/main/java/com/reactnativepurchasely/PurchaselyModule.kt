@@ -823,8 +823,7 @@ fun setUserAttributeWithNumberArray(key: String, value: ReadableArray) {
 
   @ReactMethod
   fun closePresentation() {
-    val openedPaywall = productActivity?.activity?.get()
-    openedPaywall?.finish()
+    Purchasely.closeAllScreens()
     productActivity = null
   }
 
