@@ -68,8 +68,8 @@ export interface StartParameters {
   androidStores?: string[] | null;
   storeKit1: boolean;
   userId?: string | null;
-  logLevel?: number | null;
-  runningMode?: number | null;
+  logLevel: number;
+  runningMode: number;
 }
 
 export interface FetchPresentationParameters {
