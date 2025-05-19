@@ -316,6 +316,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
             val mutableMap = map.toMutableMap().apply {
               this["metadata"] = presentation.metadata?.toMap()
               this["plans"] = (this["plans"] as List<PLYPresentationPlan>).map { it.toMap() }
+              this["height"] = presentation.height ?: 0
             }
             promise.resolve(Arguments.makeNativeMap(mutableMap))
           }

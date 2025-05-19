@@ -241,7 +241,6 @@ static UIViewController *_sharedViewController;
 - (NSDictionary<NSString *, NSObject *> *) resultDictionaryForFetchPresentation:(PLYPresentation * _Nullable) presentation {
     NSMutableDictionary<NSString *, NSObject *> *presentationResult = [NSMutableDictionary new];
 
-    // TODO: fill all parameters.
     if (presentation != nil) {
 
         if (presentation.id != nil) {
@@ -328,6 +327,8 @@ static UIViewController *_sharedViewController;
         }
 
         [presentationResult setObject:[NSNumber numberWithInt:resultString] forKey:@"type"];
+      
+        [presentationResult setObject:[NSNumber numberWithInt:presentation.height] forKey:@"height"];
 
     }
 
