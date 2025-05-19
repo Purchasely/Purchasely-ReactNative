@@ -50,8 +50,21 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
   override fun receiveCommand(root: FrameLayout, commandId: Int, args: ReadableArray?) {
     Log.d("PurchaselyView", "Received a command having commandId=$commandId.")
     super.receiveCommand(root, commandId, args)
-    val reactNativeViewId = args!!.getInt(0)
-    val commandIdInt = commandId
+    val reactNativeViewId = args?.getInt(0) ?: return
+
+    when (commandId) {
+      COMMAND_CREATE -> createFragment(root, reactNativeViewId)
+      else -> {}
+    }
+  }
+
+  override fun receiveCommand(root: FrameLayout, commandId: String?, args: ReadableArray?) {
+    super.receiveCommand(root, commandId, args)
+
+    Log.d("PurchaselyView", "Received a command having commandId=$commandId.")
+    super.receiveCommand(root, commandId, args)
+    val reactNativeViewId = args?.getInt(0) ?: return
+    val commandIdInt = commandId?.toIntOrNull() ?: return
 
     when (commandIdInt) {
       COMMAND_CREATE -> createFragment(root, reactNativeViewId)
