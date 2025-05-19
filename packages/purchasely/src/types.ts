@@ -239,4 +239,5 @@ export type PurchaselyPresentation = {
   type?: PLYPresentationType | null;
   plans?: PLYPresentationPlan[] | null;
   metadata: PLYPresentationMetadata;
+  height: number | null;
 };
