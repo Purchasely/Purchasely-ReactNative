@@ -24,7 +24,7 @@ export const PaywallScreen: React.FC<NativeStackScreenProps<any>> = ({
         try {
             setPurchaselyPresentation(
                 await Purchasely.fetchPresentation({
-                    placementId: 'ONBOARDING',
+                    placementId: 'nested',
                     contentId: null,
                 })
             )
@@ -33,7 +33,9 @@ export const PaywallScreen: React.FC<NativeStackScreenProps<any>> = ({
         }
     }
 
-    console.log('PRES', purchaselyPresentation)
+    console.log('### Paywall screen')
+    console.log('presentation', purchaselyPresentation)
+    console.log('presentation height : ', purchaselyPresentation?.height)
 
     const callback = (result: PresentPresentationResult) => {
         console.log('### Paywall closed')
