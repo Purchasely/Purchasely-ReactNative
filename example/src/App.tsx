@@ -21,7 +21,6 @@ function App(): React.JSX.Element {
                 apiKey: 'fcb39be4-2ba4-4db7-bde3-2a5a1e20745d',
                 storeKit1: false, // false to use StoreKit 2 and true to use StoreKit 1
                 logLevel: LogLevels.DEBUG, // to force log level for debug
-                userId: 'test-user', // if you know your user id
                 runningMode: RunningMode.FULL, // to set mode manually
             })
         } catch (e) {
