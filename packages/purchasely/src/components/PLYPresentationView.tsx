@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, {useEffect, useRef } from 'react';
 import {
   findNodeHandle,
   NativeModules,
@@ -13,7 +13,7 @@ const PurchaselyView = requireNativeComponent('PurchaselyView');
 interface PLYPresentationViewProps {
   placementId?: string; // Made optional
   presentation?: any; // Made optional
-  onPresentationClosed: (result: PresentPresentationResult) => void;
+  onPresentationClosed?: (result: PresentPresentationResult) => void;
   flex?: number;
 }
 
@@ -25,20 +25,16 @@ export const PLYPresentationView: React.FC<PLYPresentationViewProps> = ({
 }) => {
   const ref = useRef<any>(null);
 
-  const handlePresentationClosed = useCallback(
-    (result: PresentPresentationResult) => {
-      if (onPresentationClosed) {
-        onPresentationClosed(result);
-      }
-    },
-    [onPresentationClosed]
-  );
+  useEffect(() => {
+    if (!onPresentationClosed) return;
 
-  NativeModules.PurchaselyView.onPresentationClosed().then(
-    (result: PresentPresentationResult) => {
-      handlePresentationClosed(result);
-    }
-  );
+    const handleClose = async () => {
+      const result: PresentPresentationResult = await NativeModules.PurchaselyView.onPresentationClosed();
+      onPresentationClosed(result);
+    };
+
+    handleClose();
+  }, [onPresentationClosed]);
 
   useEffect(() => {
     if (Platform.OS === 'android') {
