@@ -3,6 +3,7 @@ import { NavigationContainer } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { HomeScreen } from './Home.tsx'
 import Purchasely, {
+    DynamicOffering,
     LogLevels,
     PLYPaywallAction,
     PurchaselyUserAttribute,
@@ -186,6 +187,40 @@ function App(): React.JSX.Element {
 
         //remove all Purchasley built-in attributes
         Purchasely.clearBuiltInAttributes()
+
+        //set a dynamic offering
+        const p1yOffer = await Purchasely.setDynamicOffering({
+            reference: 'p1yOffer',
+            planVendorId: 'PURCHASELY_PLUS_YEARLY',
+            offerVendorId: 'Winback',
+        })
+        console.log('Dynamic offering p1yOffer:', p1yOffer)
+
+        const p1m = await Purchasely.setDynamicOffering({
+            reference: 'p1m',
+            planVendorId: 'PURCHASELY_PLUS_MONTHLY',
+            offerVendorId: 'NON_EXISTING_OFFER',
+        })
+        console.log('Dynamic offering p1mError:', p1m)
+
+        const p1y = await Purchasely.setDynamicOffering({
+            reference: 'p1y',
+            planVendorId: 'PURCHASELY_PLUS_YEARLY'
+        })
+        console.log('Dynamic offering p1y:', p1y)
+
+        //get dynamic offerings
+        const offerings: DynamicOffering[] = await Purchasely.getDynamicOfferings()
+        console.log('Dynamic offerings:', offerings)
+
+        //remove a dynamic offering
+        Purchasely.removeDynamicOffering('p1yOffer')
+
+        //clear all dynamic offerings
+        Purchasely.clearDynamicOfferings()
+
+        const offeringsEmpty: DynamicOffering[] = await Purchasely.getDynamicOfferings()
+        console.log('Dynamic offerings:', offeringsEmpty)
 
         // Set paywall action interceptor callback
         Purchasely.setPaywallActionInterceptorCallback((result) => {

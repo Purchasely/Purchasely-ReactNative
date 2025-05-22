@@ -3,6 +3,7 @@ import { NativeEventEmitter, NativeModules } from 'react-native';
 import { PLYPresentationView } from './components/PLYPresentationView';
 import type {
   Constants,
+  DynamicOffering,
   FetchPresentationParameters,
   PresentPlanParameters,
   PresentPresentationParameters,
@@ -457,6 +458,22 @@ const clearBuiltInAttributes = (): void => {
   return NativeModules.Purchasely.clearBuiltInAttributes();
 };
 
+const setDynamicOffering = (offering: DynamicOffering): Promise<boolean> => {
+  return NativeModules.Purchasely.setDynamicOffering(offering.reference, offering.planVendorId, offering.offerVendorId);
+};
+
+const getDynamicOfferings = (): Promise<DynamicOffering[]> => {
+  return NativeModules.Purchasely.getDynamicOfferings();
+};
+
+const removeDynamicOffering = (reference: string): void => {
+  return NativeModules.Purchasely.removeDynamicOffering(reference);
+};
+
+const clearDynamicOfferings = (): void => {
+  return NativeModules.Purchasely.clearDynamicOfferings();
+};
+
 const Purchasely = {
   start,
   addEventListener,
@@ -522,6 +539,10 @@ const Purchasely = {
   isEligibleForIntroOffer,
   setThemeMode,
   clearBuiltInAttributes,
+  setDynamicOffering,
+  getDynamicOfferings,
+  removeDynamicOffering,
+  clearDynamicOfferings,
 };
 
 export * from './types';

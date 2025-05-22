@@ -129,3 +129,9 @@ export interface UserAttributesParameters {
   key: string;
   value?: number | null;
 }
+
+export interface DynamicOffering {
+  reference: string;
+  planVendorId: string;
+  offerVendorId?: string | null;
+}

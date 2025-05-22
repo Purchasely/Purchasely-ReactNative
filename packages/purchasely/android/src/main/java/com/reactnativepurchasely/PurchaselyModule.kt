@@ -857,6 +857,38 @@ fun setUserAttributeWithNumberArray(key: String, value: ReadableArray) {
     Purchasely.clearBuiltInAttributes()
   }
 
+  @ReactMethod
+  fun setDynamicOffering(reference: String, planVendorId: String, offerId: String?, promise: Promise) {
+     Purchasely.setDynamicOffering(reference, planVendorId, offerId) {
+       promise.resolve(it)
+     }
+  }
+
+  @ReactMethod
+  fun getDynamicOfferings(promise: Promise) {
+    Purchasely.getDynamicOfferings { offerings ->
+      val result = ArrayList<ReadableMap?>()
+      for (offering in offerings) {
+        val map = mutableMapOf<String, String>()
+        map["reference"] = offering.reference
+        map["planVendorId"] = offering.planId
+        if (offering.offerId != null) map["offerVendorId"] = offering.offerId!!
+        result.add(Arguments.makeNativeMap(map.toMap()))
+      }
+      promise.resolve(Arguments.makeNativeArray(result))
+    }
+  }
+
+  @ReactMethod
+  fun removeDynamicOffering(reference: String) {
+    Purchasely.removeDynamicOffering(reference)
+  }
+
+  @ReactMethod
+  fun clearDynamicOfferings() {
+    Purchasely.clearDynamicOfferings()
+  }
+
   companion object {
     private const val runningModeTransactionOnly = 0
     private const val runningModeObserver = 1

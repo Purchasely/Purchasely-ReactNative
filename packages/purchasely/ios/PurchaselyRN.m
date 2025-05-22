@@ -361,7 +361,10 @@ RCT_EXPORT_METHOD(start:(NSString * _Nonnull)apiKey
         }
     }];
 
-    [Purchasely setEventDelegate:self];
+  
+    [Purchasely setEventDelegate:^(enum PLYEvent event, NSDictionary<NSString *, id> * _Nullable properties) {
+        [self eventTriggered:event properties:properties];
+    }];
 
     [Purchasely setUserAttributeDelegate: self];
 
@@ -393,7 +396,9 @@ RCT_EXPORT_METHOD(startWithAPIKey:(NSString * _Nonnull)apiKey
         }
     }];
 
-    [Purchasely setEventDelegate:self];
+    [Purchasely setEventDelegate:^(enum PLYEvent event, NSDictionary<NSString *, id> * _Nullable properties) {
+        [self eventTriggered:event properties:properties];
+    }];
 
 	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(purchasePerformed) name:@"ply_purchasedSubscription" object:nil];
 }
@@ -1187,6 +1192,55 @@ RCT_EXPORT_METHOD(userSubscriptionsHistory:(RCTPromiseResolveBlock)resolve
         }];
 	});
 }
+
+RCT_EXPORT_METHOD(setDynamicOffering:(NSString *)reference
+                  planVendorId:(NSString *)planVendorId
+                  offerId:(nullable NSString *)offerId
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+{
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [Purchasely setDynamicOfferingWithReference:reference planVendorId:planVendorId offerVendorId:offerId completion:^(BOOL result) {
+        resolve(@(result));
+      }];
+    });
+}
+
+RCT_EXPORT_METHOD(getDynamicOfferings:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+{
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [Purchasely getDynamicOfferingsWithCompletion:^(NSArray<PLYOffering *> * _Nonnull offerings) {
+            NSMutableArray *result = [NSMutableArray new];
+            
+            for (PLYOffering *offering in offerings) {
+                NSMutableDictionary *map = [NSMutableDictionary new];
+                map[@"reference"] = offering.reference;
+                map[@"planVendorId"] = offering.planId;
+                if (offering.offerId != nil) {
+                    map[@"offerVendorId"] = offering.offerId;
+                }
+                [result addObject:map];
+            }
+            resolve(result);
+        }];
+    });
+}
+
+RCT_EXPORT_METHOD(removeDynamicOffering:(NSString *)reference)
+{
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [Purchasely removeDynamicOfferingWithReference:reference];
+    });
+}
+
+RCT_EXPORT_METHOD(clearDynamicOfferings)
+{
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [Purchasely clearDynamicOfferings];
+    });
+}
+
 
 // ****************************************************************************
 #pragma mark - Events
