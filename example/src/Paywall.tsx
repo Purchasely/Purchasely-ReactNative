@@ -65,6 +65,18 @@ export const PaywallScreen: React.FC<NativeStackScreenProps<any>> = ({
 
     return (
         <View style={{ flex: 1 }}>
+            <View
+                style={{
+                    flex: 3,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    backgroundColor: '#f0f0f0',
+                }}
+            >
+                <Section>
+                    <Text>Top content</Text>
+                </Section>
+            </View>
             <PLYPresentationView
                 //placementId="ACCOUNT"
                 flex={7}

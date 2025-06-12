@@ -362,9 +362,7 @@ RCT_EXPORT_METHOD(start:(NSString * _Nonnull)apiKey
     }];
 
   
-    [Purchasely setEventDelegate:^(enum PLYEvent event, NSDictionary<NSString *, id> * _Nullable properties) {
-        [self eventTriggered:event properties:properties];
-    }];
+    [Purchasely setEventDelegate: self];
 
     [Purchasely setUserAttributeDelegate: self];
 
@@ -396,9 +394,7 @@ RCT_EXPORT_METHOD(startWithAPIKey:(NSString * _Nonnull)apiKey
         }
     }];
 
-    [Purchasely setEventDelegate:^(enum PLYEvent event, NSDictionary<NSString *, id> * _Nullable properties) {
-        [self eventTriggered:event properties:properties];
-    }];
+    [Purchasely setEventDelegate: self];
 
 	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(purchasePerformed) name:@"ply_purchasedSubscription" object:nil];
 }

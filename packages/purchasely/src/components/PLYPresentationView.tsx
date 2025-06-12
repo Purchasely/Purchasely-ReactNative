@@ -21,7 +21,7 @@ export const PLYPresentationView: React.FC<PLYPresentationViewProps> = ({
   placementId,
   presentation,
   onPresentationClosed,
-  flex = 1,
+  flex = 1, // Default to 1 if not provided
 }) => {
   const ref = useRef<any>(null);
 

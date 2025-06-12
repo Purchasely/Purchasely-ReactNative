@@ -110,22 +110,23 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
    */
   fun manuallyLayoutChildren(view: View) {
     // propWidth and propHeight coming from react-native props
-    val width: Int = propWidth ?: when {
-      view.width > 0 -> view.width
-      (((view.parent as? View)?.width) ?: 0) > 0 -> (view.parent as View).width
-      else -> 0
+    for (i in 0 until (view as ViewGroup).childCount) {
+      val child = view.getChildAt(i)
+      val width: Int = propWidth ?: when {
+        child.measuredWidth > 0 -> child.measuredWidth
+        (((child.parent as? View)?.measuredWidth) ?: 0) > 0 -> (child.parent as View).measuredWidth
+        else -> 0
+      }
+      val height: Int = propHeight ?: when {
+        child.measuredHeight > 0 -> child.measuredHeight
+        (((child.parent as? View)?.measuredHeight) ?: 0) > 0 -> (child.parent as View).measuredHeight
+        else -> 0
+      }
+      child.measure(
+        View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+        View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY))
+      child.layout(0, 0, width, height)
     }
-    val height: Int = propHeight ?: when {
-      view.height > 0 -> view.height
-      (((view.parent as? View)?.height) ?: 0) > 0 -> (view.parent as View).height
-      else -> 0
-    }
-
-    view.measure(
-      View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
-      View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY)
-    )
-    view.layout(0, 0, width, height)
   }
 
   @ReactPropGroup(names = ["width", "height"], customType = "Style")
