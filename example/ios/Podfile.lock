@@ -8,7 +8,7 @@ PODS:
   - hermes-engine (0.79.2):
     - hermes-engine/Pre-built (= 0.79.2)
   - hermes-engine/Pre-built (0.79.2)
-  - Purchasely (5.2.1)
+  - Purchasely (5.2.2)
   - RCT-Folly (2024.11.18.00):
     - boost
     - DoubleConversion
@@ -1334,7 +1334,7 @@ PODS:
     - React-RCTFBReactNativeSpec
     - ReactCommon/turbomodule/core
   - react-native-purchasely (5.2.0):
-    - Purchasely (= 5.2.1)
+    - Purchasely (= 5.2.2)
     - React-Core
   - react-native-safe-area-context (5.4.0):
     - DoubleConversion
@@ -2031,7 +2031,7 @@ SPEC CHECKSUMS:
   fmt: a40bb5bd0294ea969aaaba240a927bd33d878cdd
   glog: 5683914934d5b6e4240e497e0f4a3b42d1854183
   hermes-engine: 314be5250afa5692b57b4dd1705959e1973a8ebe
-  Purchasely: eddf158444a79da3477c3c1566c74bc6d57547fb
+  Purchasely: 95bf8829c0507b77e279613cdbc5166459225a5e
   RCT-Folly: 36fe2295e44b10d831836cc0d1daec5f8abcf809
   RCTDeprecation: 83ffb90c23ee5cea353bd32008a7bca100908f8c
   RCTRequired: eb7c0aba998009f47a540bec9e9d69a54f68136e
@@ -2063,7 +2063,7 @@ SPEC CHECKSUMS:
   React-logger: 368570a253f00879a1e4fea24ed4047e72e7bbf3
   React-Mapbuffer: c04fcda1c6281fc0a6824c7dcc1633dd217ac1ec
   React-microtasksnativemodule: ca2804a25fdcefffa0aa942aa23ab53b99614a34
-  react-native-purchasely: ac29ca4484d0a65fa4ab48754eeed88194f0405e
+  react-native-purchasely: 60e5e0063f18eead6bb6dfd9ffe7554ef741cb25
   react-native-safe-area-context: 00d03dc688ba86664be66f9e3f203fc7d747d899
   React-NativeModulesApple: 452b86b29fae99ed0a4015dca3ad9cd222f88abf
   React-oscompat: ef5df1c734f19b8003e149317d041b8ce1f7d29c
