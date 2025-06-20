@@ -28,7 +28,7 @@ import type {
   PurchaselyUserAttribute,
 } from './types';
 
-const purchaselyVersion = '5.2.0';
+const purchaselyVersion = '5.2.1';
 
 const constants = NativeModules.Purchasely.getConstants() as Constants;
 
