@@ -18,6 +18,7 @@ import io.purchasely.models.PLYPresentationPlan
 import io.purchasely.storage.userData.PLYUserAttributeSource
 import io.purchasely.storage.userData.PLYUserAttributeType
 import io.purchasely.views.presentation.PLYThemeMode
+import io.purchasely.views.presentation.models.PLYTransitionType
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -309,8 +310,11 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
             presentationsLoaded.add(presentation)
             val map = presentation.toMap().mapValues {
               val value = it.value
-              if(value is PLYPresentationType) value.ordinal
-              else value
+              when(value) {
+                is PLYPresentationType -> value.ordinal
+                is PLYTransitionType -> value.ordinal
+                else -> value
+              }
             }
 
             val mutableMap = map.toMutableMap().apply {
