@@ -331,7 +331,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   }
 
   @ReactMethod
-  fun display(presentation: ReadableMap?,
+  fun display(presentationMap: ReadableMap?,
                           promise: Promise) {
     if (presentationMap == null) {
       promise.reject(NullPointerException("presentation cannot be null"))
