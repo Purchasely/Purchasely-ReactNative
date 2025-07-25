@@ -113,12 +113,9 @@ export const HomeScreen: React.FC<NativeStackScreenProps<any>> = ({
             }
 
             //Display Purchasely paywall
-//             const result = await Purchasely.presentPresentation({
-//                 presentation: presentation,
-//             })
-
-            // display using the new API
-            const result = await Purchasely.display(presentation)
+             const result = await Purchasely.presentPresentation({
+                 presentation: presentation,
+             })
 
             console.log('---- Paywall Closed ----')
             console.log('Result is ' + result.result)

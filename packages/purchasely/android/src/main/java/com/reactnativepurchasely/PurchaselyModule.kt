@@ -331,30 +331,6 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   }
 
   @ReactMethod
-  fun display(presentationMap: ReadableMap?,
-                          promise: Promise) {
-    if (presentationMap == null) {
-      promise.reject(NullPointerException("presentation cannot be null"))
-      return
-    }
-
-    val presentation = presentationsLoaded.lastOrNull {
-      it.id == presentationMap.getString("id")
-      && it.placementId == presentationMap.getString("placementId")
-    }
-    if(presentation == null) {
-      promise.reject(NullPointerException("presentation not fond"))
-      return
-    }
-
-    purchasePromise = promise
-
-    reactApplicationContext.currentActivity?.let { activity ->
-      presentation.display(activity)
-    }
-  }
-
-  @ReactMethod
   fun presentPresentation(presentationMap: ReadableMap?,
                           isFullScreen: Boolean,
                           loadingBackgroundColor: String?,
@@ -376,12 +352,8 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     purchasePromise = promise
 
     reactApplicationContext.currentActivity?.let { activity ->
-      val intent = PLYProductActivity.newIntent(activity, PLYPresentationProperties(), isFullScreen, loadingBackgroundColor).apply {
-        putExtra("presentation", presentation)
-      }
-      activity.startActivity(intent)
+      presentation.display(activity)
     }
-
   }
 
   @ReactMethod

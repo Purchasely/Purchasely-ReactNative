@@ -177,10 +177,6 @@ const presentPresentation = ({
   );
 };
 
-const display = (presentation: PurchaselyPresentation) => {
-  return NativeModules.Purchasely.display(presentation);
-};
-
 const presentPresentationWithIdentifier = ({
   presentationVendorId = null,
   contentId = null,
@@ -492,7 +488,6 @@ const Purchasely = {
   setPaywallActionInterceptorCallback,
   fetchPresentation,
   presentPresentation,
-  display,
   presentPresentationWithIdentifier,
   presentPresentationForPlacement,
   presentProductWithIdentifier,

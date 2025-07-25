@@ -460,51 +460,6 @@ RCT_REMAP_METHOD(isAnonymous,
     return resolve(@([Purchasely isAnonymous]));
 }
 
-RCT_EXPORT_METHOD(display:(NSDictionary<NSString *, id> * _Nullable) presentationDictionary
-                  resolve:(RCTPromiseResolveBlock)resolve
-                  reject:(RCTPromiseRejectBlock)reject)
-{
-    if (presentationDictionary == nil) {
-        [self reject:reject with:[NSError errorWithDomain:@"io.purchasely" code:1 userInfo:@{@"Error reason": @"Presentation cannot be null"}]];
-        return;
-    }
-
-    PurchaselyRN.purchaseResolve = resolve;
-
-    dispatch_async(dispatch_get_main_queue(), ^{
-
-        PLYPresentation *presentationLoaded = [self findPresentationLoadedFor:(NSString *)[presentationDictionary objectForKey:@"id"] placementId:(NSString *)[presentationDictionary objectForKey:@"placementId"]];
-
-        if (presentationLoaded == nil) {
-            reject(@"presentation_failure", [NSString stringWithFormat:@"No presentation found for this placement %@", [presentationDictionary objectForKey:@"placementId"]], nil);
-            return;
-        }
-
-        if (presentationLoaded.controller == nil) {
-            reject(@"presentation_failure", [NSString stringWithFormat:@"No Purchasely presentation attached to this placement %@", [presentationDictionary objectForKey:@"placementId"]], nil);
-            return;
-        }
-
-        [PurchaselyRN.presentationsLoaded removeObjectAtIndex:[self findIndexPresentationLoadedFor:(NSString *)[presentationDictionary objectForKey:@"id"] placementId:(NSString *)[presentationDictionary objectForKey:@"placementId"]]];
-
-        if (presentationLoaded.controller != nil) {
-
-            self.shouldReopenPaywall = NO;
-
-            if (self.presentedPresentationViewController != nil) {
-                [Purchasely closeDisplayedPresentation];
-                self.presentedPresentationViewController = presentationLoaded.controller;
-                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.5 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
-                  [presentationLoaded displayFrom:nil];
-                });
-            } else {
-                self.presentedPresentationViewController = presentationLoaded.controller;
-                [presentationLoaded displayFrom:nil];
-            }
-        }
-    });
-}
-
 RCT_EXPORT_METHOD(setThemeMode:(NSInteger)mode) {
     [Purchasely setThemeMode: mode];
 }
@@ -848,11 +803,11 @@ RCT_EXPORT_METHOD(presentPresentation:(NSDictionary<NSString *, id> * _Nullable)
                 [Purchasely closeDisplayedPresentation];
                 self.presentedPresentationViewController = presentationLoaded.controller;
                 dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.5 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
-                    [Purchasely showController:presentationLoaded.controller type: PLYUIControllerTypeProductPage from:nil];
+                  [presentationLoaded displayFrom:nil];
                 });
             } else {
                 self.presentedPresentationViewController = presentationLoaded.controller;
-                [Purchasely showController:presentationLoaded.controller type: PLYUIControllerTypeProductPage from:nil];
+                [presentationLoaded displayFrom:nil];
             }
         }
     });
