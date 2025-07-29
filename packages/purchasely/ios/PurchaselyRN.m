@@ -803,11 +803,20 @@ RCT_EXPORT_METHOD(presentPresentation:(NSDictionary<NSString *, id> * _Nullable)
                 [Purchasely closeDisplayedPresentation];
                 self.presentedPresentationViewController = presentationLoaded.controller;
                 dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.5 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
-                  [presentationLoaded displayFrom:nil];
+                  // if presentationLoaded flowId is not nil then display
+                  if (presentationLoaded.isFlow) {
+                    [presentationLoaded displayFrom:nil];
+                  } else {
+                    [Purchasely showController:presentationLoaded.controller type: PLYUIControllerTypeProductPage from:nil];
+                  }
                 });
             } else {
                 self.presentedPresentationViewController = presentationLoaded.controller;
-                [presentationLoaded displayFrom:nil];
+                if (presentationLoaded.isFlow) {
+                  [presentationLoaded displayFrom:nil];
+                } else {
+                  [Purchasely showController:presentationLoaded.controller type: PLYUIControllerTypeProductPage from:nil];
+                }
             }
         }
     });

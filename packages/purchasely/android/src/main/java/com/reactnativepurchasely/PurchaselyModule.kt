@@ -18,6 +18,7 @@ import io.purchasely.models.PLYPresentationPlan
 import io.purchasely.storage.userData.PLYUserAttributeSource
 import io.purchasely.storage.userData.PLYUserAttributeType
 import io.purchasely.views.presentation.PLYThemeMode
+import io.purchasely.views.presentation.models.PLYTransition
 import io.purchasely.views.presentation.models.PLYTransitionType
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
@@ -352,7 +353,16 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     purchasePromise = promise
 
     reactApplicationContext.currentActivity?.let { activity ->
-      presentation.display(activity)
+      if (presentation.flowId != null) {
+        presentation.display(activity) { result, plan ->
+          sendPurchaseResult(result, plan)
+        }
+      } else {
+        val intent = PLYProductActivity.newIntent(activity, PLYPresentationProperties(), isFullScreen, loadingBackgroundColor).apply {
+          putExtra("presentation", presentation)
+        }
+        activity.startActivity(intent)
+      }
     }
   }
 

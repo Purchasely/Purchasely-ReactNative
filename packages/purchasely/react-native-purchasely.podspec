@@ -20,5 +20,5 @@ Pod::Spec.new do |s|
   s.requires_arc = true
 
   s.dependency "React-Core"
-  s.dependency "Purchasely", '5.3.4'
+  s.dependency "Purchasely", '5.3.5'
 end
