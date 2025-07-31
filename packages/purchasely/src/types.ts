@@ -6,6 +6,7 @@ import {
   PLYUserAttributeType,
   ProductResult,
   SubscriptionSource,
+  PLYWebCheckoutProvider
 } from './enums';
 
 export type PLYPaywallInfo = {
@@ -95,12 +96,15 @@ export type PaywallActionInterceptorResult = {
   info: PLYPaywallInfo;
   action: PLYPaywallAction;
   parameters: {
+    clientReferenceId: String;
     url: String;
     title: String;
     plan: PurchaselyPlan;
     offer: PurchaselyOffer | null;
     subscriptionOffer: PurchaselySubscriptionOffer | null;
     presentation: String;
+    queryParameterKey: String;
+    webCheckoutProvider: PLYWebCheckoutProvider
   };
 };
 
