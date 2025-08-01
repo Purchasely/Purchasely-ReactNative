@@ -182,3 +182,24 @@ yarn example:android
 # after example:android is done building run:
 yarn example:start
 ```
+
+
+### Troubleshooting
+
+If you encounter issues with the example app, ensure that you have the latest version of Android Studio and that your Android SDK is up to date. You may also need to run `yarn android:clean` to clear any cached builds.
+
+If it's about Hermes engine and node, check if you have a file `.xcode.env.local` in example/ios
+If you do, remove it:
+```sh
+rm -rf example/ios/.xcode.env.local
+```
+
+You can also check the node link in /user/local/bin to ensure it points to the correct version of your node installation:
+```sh
+ls -l /usr/local/bin/node
+```
+If not, do the following:
+```sh
+rm -rf /usr/local/bin/node
+ln -s $(which node) /usr/local/bin/node
+```

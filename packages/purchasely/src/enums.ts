@@ -70,12 +70,16 @@ export enum PLYThemeMode {
 
 export enum PLYPaywallAction {
   CLOSE = 'close',
+  CLOSE_ALL = 'closeAll',
   LOGIN = 'login',
   NAVIGATE = 'navigate',
   PURCHASE = 'purchase',
   RESTORE = 'restore',
   OPEN_PRESENTATION = 'open_presentation',
+  OPEN_PLACEMENT = 'open_placement',
   PROMO_CODE = 'promo_code',
+  OPEN_FLOW_STEP = 'open_flow_step',
+  WEB_CHECKOUT = 'web_checkout',
 }
 
 export enum PLYPresentationType {
@@ -100,4 +104,9 @@ export enum PLYUserAttributeType {
   INT_ARRAY = constants.userAttributeIntArray,
   FLOAT_ARRAY = constants.userAttributeFloatArray,
   BOOLEAN_ARRAY = constants.userAttributeBooleanArray,
+}
+
+export enum PLYWebCheckoutProvider {
+  STRIPE = 'stripe',
+  OTHER = 'other'
 }

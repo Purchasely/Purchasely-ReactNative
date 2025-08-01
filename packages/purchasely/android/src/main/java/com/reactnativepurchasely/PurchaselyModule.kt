@@ -18,6 +18,8 @@ import io.purchasely.models.PLYPresentationPlan
 import io.purchasely.storage.userData.PLYUserAttributeSource
 import io.purchasely.storage.userData.PLYUserAttributeType
 import io.purchasely.views.presentation.PLYThemeMode
+import io.purchasely.views.presentation.models.PLYTransition
+import io.purchasely.views.presentation.models.PLYTransitionType
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -309,8 +311,11 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
             presentationsLoaded.add(presentation)
             val map = presentation.toMap().mapValues {
               val value = it.value
-              if(value is PLYPresentationType) value.ordinal
-              else value
+              when(value) {
+                is PLYPresentationType -> value.ordinal
+                is PLYTransitionType -> value.ordinal
+                else -> value
+              }
             }
 
             val mutableMap = map.toMutableMap().apply {
@@ -348,12 +353,17 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     purchasePromise = promise
 
     reactApplicationContext.currentActivity?.let { activity ->
-      val intent = PLYProductActivity.newIntent(activity, PLYPresentationProperties(), isFullScreen, loadingBackgroundColor).apply {
-        putExtra("presentation", presentation)
+      if (presentation.flowId != null) {
+        presentation.display(activity) { result, plan ->
+          sendPurchaseResult(result, plan)
+        }
+      } else {
+        val intent = PLYProductActivity.newIntent(activity, PLYPresentationProperties(), isFullScreen, loadingBackgroundColor).apply {
+          putExtra("presentation", presentation)
+        }
+        activity.startActivity(intent)
       }
-      activity.startActivity(intent)
     }
-
   }
 
   @ReactMethod

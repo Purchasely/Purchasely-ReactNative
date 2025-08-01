@@ -89,7 +89,7 @@ export const HomeScreen: React.FC<NativeStackScreenProps<any>> = ({
     const onPressFetch = async () => {
         try {
             const presentation = await Purchasely.fetchPresentation({
-                placementId: 'ONBOARDING',
+                placementId: 'FLOW',
                 contentId: null,
             })
 
@@ -113,9 +113,9 @@ export const HomeScreen: React.FC<NativeStackScreenProps<any>> = ({
             }
 
             //Display Purchasely paywall
-            const result = await Purchasely.presentPresentation({
-                presentation: presentation,
-            })
+             const result = await Purchasely.presentPresentation({
+                 presentation: presentation,
+             })
 
             console.log('---- Paywall Closed ----')
             console.log('Result is ' + result.result)
