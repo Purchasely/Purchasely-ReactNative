@@ -754,38 +754,23 @@ fun setUserAttributeWithNumberArray(key: String, value: ReadableArray) {
     promise.resolve(Purchasely.isDeeplinkHandled(uri))
   }
 
-  private fun webCheckoutProviderToString(provider: WebCheckoutProvider): String {
-    return when (provider) {
-        WebCheckoutProvider.stripe -> "stripe"
-        WebCheckoutProvider.other -> "other"
-        else -> "unknown"
-    }
-}
-
   @ReactMethod
   fun setPaywallActionInterceptor(promise: Promise) {
     Purchasely.setPaywallActionsInterceptor { info, action, parameters, processAction ->
       paywallActionHandler = processAction
       paywallAction = action
 
-      val parametersForReact = hashMapOf<String, Any?>()
-
-      parametersForReact["clientReferenceId"] = parameters.clientReferenceId
-      parametersForReact["url"] = parameters.url?.toString()
+      val parametersForReact = hashMapOf<String, Any?>();
       parametersForReact["title"] = parameters.title
+      parametersForReact["url"] = parameters.url?.toString()
       parametersForReact["plan"] = transformPlanToMap(parameters.plan)
-
-      parametersForReact["offer"] = parameters.promoOffer?.let { offer ->
-          mapOf(
-              "vendorId" to offer.vendorId,
-              "storeOfferId" to offer.storeOfferId
-          )
-      }
-
+      parametersForReact["offer"] = mapOf(
+        "vendorId" to parameters.offer?.vendorId,
+        "storeOfferId" to parameters.offer?.storeOfferId
+      )
+      parametersForReact["subscriptionOffer"] = parameters.subscriptionOffer?.toMap()
       parametersForReact["presentation"] = parameters.presentation
       parametersForReact["placement"] = parameters.placement
-      parametersForReact["queryParameterKey"] = parameters.queryParameterKey
-      parametersForReact["webCheckoutProvider"] = webCheckoutProviderToString(parameters.webCheckoutProvider)
 
       promise.resolve(Arguments.makeNativeMap(
         mapOf(
