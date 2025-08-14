@@ -123,6 +123,17 @@ static UIViewController *_sharedViewController;
 	};
 }
 
+static NSString * PLYWebCheckoutProviderToString(PLYWebCheckoutProvider provider) {
+    switch (provider) {
+        case PLYWebCheckoutProviderStripe:
+            return @"stripe";
+        case PLYWebCheckoutProviderOther:
+            return @"other";
+        default:
+            return @"unknown";
+    }
+}
+
 - (NSDictionary<NSString *, NSObject *> *) resultDictionaryForActionInterceptor:(PLYPresentationAction) action
                                                                      parameters: (PLYPresentationActionParameters * _Nullable) params
                                                               presentationInfos: (PLYPresentationInfo * _Nullable) infos {
@@ -187,26 +198,51 @@ static UIViewController *_sharedViewController;
     }
     if (params != nil) {
         NSMutableDictionary<NSString *, NSObject *> *paramsResult = [NSMutableDictionary new];
+
+        if (params.clientReferenceId != nil) {
+            [paramsResult setObject:params.clientReferenceId forKey:@"clientReferenceId"];
+        }
+
         if (params.url != nil) {
             [paramsResult setObject:params.url.absoluteString forKey:@"url"];
         }
-        if (params.plan != nil) {
-            [paramsResult setObject:[params.plan asDictionary] forKey:@"plan"];
-        }
+
         if (params.title != nil) {
             [paramsResult setObject:params.title forKey:@"title"];
         }
-        if (params.presentation != nil) {
-            [paramsResult setObject:params.presentation forKey:@"presentation"];
+
+        if (params.plan != nil) {
+            [paramsResult setObject:[params.plan asDictionary] forKey:@"plan"];
         }
+
         if (params.promoOffer != nil) {
             NSMutableDictionary<NSString *, NSObject *> *promoOffer = [NSMutableDictionary new];
-            [promoOffer setObject:params.promoOffer.vendorId forKey:@"vendorId"];
-            [promoOffer setObject:params.promoOffer.storeOfferId forKey:@"storeOfferId"];
+            if (params.promoOffer.vendorId != nil) {
+                [promoOffer setObject:params.promoOffer.vendorId forKey:@"vendorId"];
+            }
+            if (params.promoOffer.storeOfferId != nil) {
+                [promoOffer setObject:params.promoOffer.storeOfferId forKey:@"storeOfferId"];
+            }
             [paramsResult setObject:promoOffer forKey:@"offer"];
         }
 
+        if (params.presentation != nil) {
+            [paramsResult setObject:params.presentation forKey:@"presentation"];
+        }
+
+        if (params.placement != nil) {
+            [paramsResult setObject:params.placement forKey:@"placement"];
+        }
+
+        if (params.queryParameterKey != nil) {
+            [paramsResult setObject:params.queryParameterKey forKey:@"queryParameterKey"];
+        }
+
+        NSString *webCheckoutProviderString = PLYWebCheckoutProviderToString(params.webCheckoutProvider);
+        [paramsResult setObject:webCheckoutProviderString forKey:@"webCheckoutProvider"];
+
         [actionInterceptorResult setObject:paramsResult forKey:@"parameters"];
+
     }
 
 	return actionInterceptorResult;
