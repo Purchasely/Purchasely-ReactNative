@@ -381,37 +381,40 @@ const userDidConsumeSubscriptionContent = (): void => {
   return NativeModules.Purchasely.userDidConsumeSubscriptionContent();
 };
 
-const setUserAttributeWithString = (key: string, value: string): void => {
+const setUserAttributeWithString = (key: string, value: string, legalBasis: string): void => {
   return NativeModules.Purchasely.setUserAttributeWithString(key, value);
 };
 
-const setUserAttributeWithNumber = (key: string, value: number): void => {
-  return NativeModules.Purchasely.setUserAttributeWithNumber(key, value);
+const setUserAttributeWithNumber = (key: string, value: number, legalBasis: string): void => {
+  return NativeModules.Purchasely.setUserAttributeWithNumber(key, value, legalBasis);
 };
 
-const setUserAttributeWithBoolean = (key: string, value: boolean): void => {
-  return NativeModules.Purchasely.setUserAttributeWithBoolean(key, value);
+const setUserAttributeWithBoolean = (key: string, value: boolean, legalBasis: string): void => {
+  return NativeModules.Purchasely.setUserAttributeWithBoolean(key, value, legalBasis);
 };
 
 const setUserAttributeWithStringArray = (
   key: string,
-  value: string[]
+  value: string[], 
+  legalBasis: string
 ): void => {
-  return NativeModules.Purchasely.setUserAttributeWithStringArray(key, value);
+  return NativeModules.Purchasely.setUserAttributeWithStringArray(key, value, legalBasis);
 };
 
 const setUserAttributeWithNumberArray = (
   key: string,
-  value: number[]
+  value: number[],
+  legalBasis: string
 ): void => {
-  return NativeModules.Purchasely.setUserAttributeWithNumberArray(key, value);
+  return NativeModules.Purchasely.setUserAttributeWithNumberArray(key, value, legalBasis);
 };
 
 const setUserAttributeWithBooleanArray = (
   key: string,
-  value: boolean[]
+  value: boolean[], 
+  legalBasis: string
 ): void => {
-  return NativeModules.Purchasely.setUserAttributeWithBooleanArray(key, value);
+  return NativeModules.Purchasely.setUserAttributeWithBooleanArray(key, value, legalBasis);
 };
 
 const userAttributes = (): Promise<PurchaselyUserAttribute> => {

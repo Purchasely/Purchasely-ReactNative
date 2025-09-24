@@ -142,9 +142,9 @@ function App(): React.JSX.Element {
         })
 
         //Set an attribute for each type
-        Purchasely.setUserAttributeWithString('stringKey', 'StringValue')
-        Purchasely.setUserAttributeWithNumber('intKey', 3)
-        Purchasely.setUserAttributeWithNumber('floatKey', 1.2)
+        Purchasely.setUserAttributeWithString('stringKey', 'StringValue', 'ESSENTIAL')
+        Purchasely.setUserAttributeWithNumber('intKey', 3, 'ESSENTIAL')
+        Purchasely.setUserAttributeWithNumber('floatKey', 1.2, 'OPTIONAL')
         Purchasely.setUserAttributeWithBoolean('booleanKey', true)
         Purchasely.setUserAttributeWithDate('dateKey', new Date())
 

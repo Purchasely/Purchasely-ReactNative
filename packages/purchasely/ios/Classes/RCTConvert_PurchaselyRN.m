@@ -12,11 +12,11 @@
 
 @implementation RCTConvert (PurchaselyRN)
 
-RCT_ENUM_CONVERTER(LogLevel, (@{ @"logLevelDebug": @(LogLevelDebug),
-                                 @"logLevelInfo": @(LogLevelInfo),
-                                 @"logLevelWarn": @(LogLevelWarn),
-                                 @"logLevelError": @(LogLevelError)}),
-                   LogLevelError, integerValue)
+RCT_ENUM_CONVERTER(PLYLogLevel, (@{ @"logLevelDebug": @(PLYLogLevelDebug),
+                                 @"logLevelInfo": @(PLYLogLevelInfo),
+                                 @"logLevelWarn": @(PLYLogLevelWarn),
+                                 @"logLevelError": @(PLYLogLevelError)}),
+                   PLYLogLevelError, integerValue)
 
 RCT_ENUM_CONVERTER(PLYProductViewControllerResult, (@{ @"productResultPurchased": @(PLYProductViewControllerResultPurchased),
                                                        @"productResultCancelled": @(PLYProductViewControllerResultCancelled),
