@@ -26,6 +26,7 @@ import io.purchasely.ext.PLYPresentationProperties
 import io.purchasely.ext.PLYProductViewResult
 import io.purchasely.ext.Purchasely
 import io.purchasely.views.presentation.PLYPresentationView
+import android.content.res.Configuration
 
 class PurchaselyViewManager(private val reactContext: ReactApplicationContext) : ViewGroupManager<FrameLayout>() {
 
@@ -188,6 +189,18 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
     Log.d("PurchaselyView", "onPresentationClosed")
   }
 
+  override fun onDropViewInstance(view: FrameLayout) {
+    super.onDropViewInstance(view)
+    val activity = (reactContext.currentActivity as? FragmentActivity) ?: return
+    val fm = activity.supportFragmentManager
+    val tag = view.id.toString()
+    fm.findFragmentByTag(tag)?.let { frag ->
+      fm.beginTransaction()
+        .remove(frag)
+        .commitAllowingStateLoss()
+    }
+  }
+
   companion object {
     const val COMMAND_CREATE = 1
 
@@ -209,35 +222,35 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
 
     private fun closeCallback() {
       (view as ViewGroup).removeAllViews()
-      activity?.supportFragmentManager
-        ?.beginTransaction()
-        ?.remove(this)
-        ?.commitAllowingStateLoss()
+      parentFragmentManager
+        .beginTransaction()
+        .remove(this)
+        .commitAllowingStateLoss()
+    }
+
+
+    private fun buildPurchaselyView(view: View): PLYPresentationView? {
+      val props = PLYPresentationProperties(
+        placementId = placementId,
+        onClose = { closeCallback() }
+      )
+      return if (presentation != null) {
+        presentation.buildView(view.context, properties = props, callback = callback)
+      } else {
+        Purchasely.presentationView(view.context, properties = props, callback = callback)
+      }
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
       super.onViewCreated(view, savedInstanceState)
+      (view as ViewGroup).addView(buildPurchaselyView(view))
+    }
 
-      val purchaselyView: PLYPresentationView? = if (presentation != null) {
-        presentation.buildView(
-          view.context,
-          properties = PLYPresentationProperties(
-            onClose = { closeCallback() }
-          ),
-          callback = callback
-        )
-      } else {
-        Purchasely.presentationView(
-          view.context,
-          properties = PLYPresentationProperties(
-            placementId = placementId,
-            onClose = { closeCallback() }
-          ),
-          callback = callback
-        )
-      }
-
-      (view as ViewGroup).addView(purchaselyView)
+    override fun onConfigurationChanged(newConfig: Configuration) {
+      super.onConfigurationChanged(newConfig)
+      val host = view as? ViewGroup ?: return
+      host.removeAllViews()
+      buildPurchaselyView(host)?.let { host.addView(it) }
     }
   }
 }
