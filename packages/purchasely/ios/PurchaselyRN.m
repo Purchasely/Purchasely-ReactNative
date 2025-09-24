@@ -503,11 +503,11 @@ RCT_EXPORT_METHOD(setThemeMode:(NSInteger)mode) {
 #pragma mark - Legal basis mapper
 
 - (PLYDataProcessingLegalBasis)legalBasisFromString:(NSString * _Nullable)basis {
-    if (![basis isKindOfClass:NSString.class]) { return PLYDataProcessingLegalBasisEssential; }
+    if (![basis isKindOfClass:NSString.class]) { return PLYDataProcessingLegalBasisOptional; }
     NSString *b = basis.uppercaseString;
-    if ([b isEqualToString:@"OPTIONAL"]) { return PLYDataProcessingLegalBasisOptional; }
+    if ([b isEqualToString:@"ESSENTIAL"]) { return PLYDataProcessingLegalBasisEssential; }
     // default/fallback
-    return PLYDataProcessingLegalBasisEssential;
+    return PLYDataProcessingLegalBasisOptional;
 }
 
 RCT_EXPORT_METHOD(setAttribute:(NSInteger)attribute value:(NSString * _Nonnull)value) {
@@ -1374,7 +1374,8 @@ RCT_EXPORT_METHOD(clearDynamicOfferings)
 - (void)onUserAttributeSetWithKey:(NSString * _Nonnull)key
                              type:(enum PLYUserAttributeType)type
                             value:(id _Nullable)value
-                           source:(enum PLYUserAttributeSource)source {
+                           source:(enum PLYUserAttributeSource)source
+             processingLegalBasis:(enum PLYDataProcessingLegalBasis) processingLegalBasis{
     if (!self.shouldEmit) return;
 
     NSMutableDictionary<NSString *, id> *body = [NSMutableDictionary dictionary];
@@ -1386,6 +1387,7 @@ RCT_EXPORT_METHOD(clearDynamicOfferings)
     }
 
     body[@"source"] = @(source);
+    body[@"processingLegalBasis"] = @(processingLegalBasis);
 
     [self sendEventWithName:@"USER_ATTRIBUTE_SET_LISTENER" body:body];
 }

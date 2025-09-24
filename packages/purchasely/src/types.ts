@@ -68,6 +68,7 @@ export type PurchaselyUserAttribute = {
   value?: any | null;
   type?: PLYUserAttributeType | null;
   source?: PLYUserAttributeSource | null;
+  legalBasis?: PurchaselyLegalBasis;
 };
 
 export type PurchaselySubscription = {
