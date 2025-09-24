@@ -1,4 +1,4 @@
-import type { PurchaselyPresentation } from './types';
+import type { PurchaselyLegalBasis, PurchaselyPresentation } from './types';
 
 export interface Constants {
   logLevelDebug: number;
@@ -128,6 +128,7 @@ export interface SignPromotionalOfferParameters {
 export interface UserAttributesParameters {
   key: string;
   value?: number | null;
+  legalBasis?: PurchaselyLegalBasis
 }
 
 export interface DynamicOffering {

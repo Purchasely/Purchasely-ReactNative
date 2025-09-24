@@ -20,6 +20,7 @@ import type {
   PaywallActionInterceptorResult,
   PresentPresentationResult,
   PurchaselyEvent,
+  PurchaselyLegalBasis,
   PurchaselyPlan,
   PurchaselyPresentation,
   PurchaselyProduct,
@@ -28,7 +29,7 @@ import type {
   PurchaselyUserAttribute,
 } from './types';
 
-const purchaselyVersion = '5.3.2';
+const purchaselyVersion = '5.4.0';
 
 const constants = NativeModules.Purchasely.getConstants() as Constants;
 
@@ -53,9 +54,9 @@ const start = ({
   );
 };
 
-function setUserAttributeWithDate(key: string, value: Date): void {
+function setUserAttributeWithDate(key: string, value: Date, legalBasis?: PurchaselyLegalBasis): void {
   const dateAsString = value.toISOString();
-  return NativeModules.Purchasely.setUserAttributeWithDate(key, dateAsString);
+  return NativeModules.Purchasely.setUserAttributeWithDate(key, dateAsString, legalBasis);
 }
 
 type EventListenerCallback = (event: PurchaselyEvent) => void;
@@ -273,16 +274,18 @@ const showPresentation = () => {
 const incrementUserAttribute = ({
   key,
   value,
+  legalBasis
 }: UserAttributesParameters): void => {
   const nonNullValue = value ?? 1;
-  return NativeModules.Purchasely.incrementUserAttribute(key, nonNullValue);
+  return NativeModules.Purchasely.incrementUserAttribute(key, nonNullValue, legalBasis);
 };
 const decrementUserAttribute = ({
   key,
   value,
+  legalBasis
 }: UserAttributesParameters): void => {
   const nonNullValue = value ?? 1;
-  return NativeModules.Purchasely.decrementUserAttribute(key, nonNullValue);
+  return NativeModules.Purchasely.decrementUserAttribute(key, nonNullValue, legalBasis);
 };
 
 const getConstants = (): Constants => {
@@ -381,22 +384,22 @@ const userDidConsumeSubscriptionContent = (): void => {
   return NativeModules.Purchasely.userDidConsumeSubscriptionContent();
 };
 
-const setUserAttributeWithString = (key: string, value: string, legalBasis: string): void => {
-  return NativeModules.Purchasely.setUserAttributeWithString(key, value);
+const setUserAttributeWithString = (key: string, value: string, legalBasis?: PurchaselyLegalBasis): void => {
+  return NativeModules.Purchasely.setUserAttributeWithString(key, value, legalBasis);
 };
 
-const setUserAttributeWithNumber = (key: string, value: number, legalBasis: string): void => {
+const setUserAttributeWithNumber = (key: string, value: number, legalBasis?: PurchaselyLegalBasis): void => {
   return NativeModules.Purchasely.setUserAttributeWithNumber(key, value, legalBasis);
 };
 
-const setUserAttributeWithBoolean = (key: string, value: boolean, legalBasis: string): void => {
+const setUserAttributeWithBoolean = (key: string, value: boolean, legalBasis?: PurchaselyLegalBasis): void => {
   return NativeModules.Purchasely.setUserAttributeWithBoolean(key, value, legalBasis);
 };
 
 const setUserAttributeWithStringArray = (
   key: string,
   value: string[], 
-  legalBasis: string
+  legalBasis?: PurchaselyLegalBasis
 ): void => {
   return NativeModules.Purchasely.setUserAttributeWithStringArray(key, value, legalBasis);
 };
@@ -404,7 +407,7 @@ const setUserAttributeWithStringArray = (
 const setUserAttributeWithNumberArray = (
   key: string,
   value: number[],
-  legalBasis: string
+  legalBasis?: PurchaselyLegalBasis
 ): void => {
   return NativeModules.Purchasely.setUserAttributeWithNumberArray(key, value, legalBasis);
 };
@@ -412,7 +415,7 @@ const setUserAttributeWithNumberArray = (
 const setUserAttributeWithBooleanArray = (
   key: string,
   value: boolean[], 
-  legalBasis: string
+  legalBasis?: PurchaselyLegalBasis
 ): void => {
   return NativeModules.Purchasely.setUserAttributeWithBooleanArray(key, value, legalBasis);
 };

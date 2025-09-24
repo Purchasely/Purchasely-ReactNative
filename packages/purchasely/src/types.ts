@@ -245,3 +245,5 @@ export type PurchaselyPresentation = {
   metadata: PLYPresentationMetadata;
   height: number | null;
 };
+
+export type PurchaselyLegalBasis = 'OPTIONAL' | 'ESSENTIAL';
