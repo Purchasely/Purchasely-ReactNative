@@ -535,71 +535,88 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     Purchasely.displaySubscriptionCancellationInstruction(reactApplicationContext.currentActivity as FragmentActivity, 0)
   }
 
-  @ReactMethod
-  fun setUserAttributeWithString(key: String, value: String) {
-    Purchasely.setUserAttribute(key, value)
+  private fun legalBasisFromString(basis: String?): PLYDataProcessingLegalBasis {
+  return when (basis?.uppercase(Locale.ROOT)) {
+    "ESSENTIAL" -> PLYDataProcessingLegalBasis.ESSENTIAL
+    else -> PLYDataProcessingLegalBasis.OPTIONAL
   }
-
-  @ReactMethod
-  fun setUserAttributeWithNumber(key: String, value: Double) {
-   if(value.compareTo(value.toInt()) == 0) {
-     Purchasely.setUserAttribute(key, value.toInt())
-   } else {
-     Purchasely.setUserAttribute(key, value.toFloat())
-   }
-  }
-
-  @ReactMethod
-  fun setUserAttributeWithBoolean(key: String, value: Boolean) {
-    Purchasely.setUserAttribute(key, value)
-  }
-
-  @ReactMethod
-  fun setUserAttributeWithStringArray(key: String, value: ReadableArray) {
-    val array = value.toArrayList().mapNotNull { it.toString() }.toTypedArray()
-    Purchasely.setUserAttribute(key, array)
-  }
-
-@ReactMethod
-fun setUserAttributeWithNumberArray(key: String, value: ReadableArray) {
-    val array = value.toArrayList().mapNotNull { it.toString().toFloat() }.toTypedArray()
-    Purchasely.setUserAttribute(key, array)
 }
 
-  @ReactMethod
-  fun setUserAttributeWithBooleanArray(key: String, value: ReadableArray) {
-    val array = value.toArrayList().mapNotNull { it.toString().toBoolean() }.toTypedArray()
-    Purchasely.setUserAttribute(key, array)
-  }
+@ReactMethod
+fun setUserAttributeWithString(key: String, value: String, legalBasis: String?) {
+  Purchasely.setUserAttribute(key, value, legalBasisFromString(legalBasis))
+}
 
-  @ReactMethod
-  fun setUserAttributeWithDate(key: String, value: String) {
-    val format = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-      SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSX", Locale.getDefault())
-    } else {
-      SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
-    }
-    format.timeZone = TimeZone.getTimeZone("GMT")
-    val calendar = Calendar.getInstance()
-    try {
-      format.parse(value)?.let {
-        calendar.time = it
+@ReactMethod
+fun setUserAttributeWithNumber(key: String, value: Double, legalBasis: String?) {
+  val lb = legalBasisFromString(legalBasis)
+  if (value.compareTo(value.toInt()) == 0) {
+    Purchasely.setUserAttribute(key, value.toInt(), lb)
+  } else {
+    Purchasely.setUserAttribute(key, value.toFloat(), lb)
+  }
+}
+
+@ReactMethod
+fun setUserAttributeWithBoolean(key: String, value: Boolean, legalBasis: String?) {
+  Purchasely.setUserAttribute(key, value, legalBasisFromString(legalBasis))
+}
+
+@ReactMethod
+fun setUserAttributeWithDate(key: String, value: String, legalBasis: String?) {
+  val format = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+    SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSX", Locale.getDefault())
+  } else {
+    SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+  }
+  format.timeZone = TimeZone.getTimeZone("GMT")
+  val calendar = Calendar.getInstance()
+  try {
+    format.parse(value)?.let { calendar.time = it }
+    Purchasely.setUserAttribute(key, calendar.time, legalBasisFromString(legalBasis))
+  } catch (e: Exception) {
+    Log.e("Purchasely", "Cannot save date attribute $key", e)
+  }
+}
+
+@ReactMethod
+fun setUserAttributeWithStringArray(key: String, value: ReadableArray, legalBasis: String?) {
+  val array = value.toArrayList().mapNotNull { it?.toString() }.toTypedArray()
+  Purchasely.setUserAttribute(key, array, legalBasisFromString(legalBasis))
+}
+
+@ReactMethod
+fun setUserAttributeWithNumberArray(key: String, value: ReadableArray, legalBasis: String?) {
+  val array = value.toArrayList()
+    .mapNotNull { it?.toString()?.toFloatOrNull() }
+    .toTypedArray()
+  Purchasely.setUserAttribute(key, array, legalBasisFromString(legalBasis))
+}
+
+@ReactMethod
+fun setUserAttributeWithBooleanArray(key: String, value: ReadableArray, legalBasis: String?) {
+  val array = value.toArrayList()
+    .mapNotNull {
+      when (it) {
+        is Boolean -> it
+        is String -> it.equals("true", ignoreCase = true) || it == "1"
+        is Number -> it.toInt() != 0
+        else -> null
       }
-      Purchasely.setUserAttribute(key, calendar.time)
-    } catch (e: Exception) {
-      Log.e("Purchasely", "Cannot save date attribute $key", e)
     }
-  }
+    .toTypedArray()
+  Purchasely.setUserAttribute(key, array, legalBasisFromString(legalBasis))
+}
 
-  @ReactMethod
-  fun incrementUserAttribute(key: String, value: Double) {
-    Purchasely.incrementUserAttribute(key, value.toInt())
-  }
+@ReactMethod
+fun incrementUserAttribute(key: String, value: Double, legalBasis: String?) {
+  Purchasely.incrementUserAttribute(key, value.toInt(), legalBasisFromString(legalBasis))
+}
 
-  @ReactMethod
-  fun decrementUserAttribute(key: String, value: Double) {
-    Purchasely.decrementUserAttribute(key, value.toInt())
-  }
+@ReactMethod
+fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
+  Purchasely.decrementUserAttribute(key, value.toInt(), legalBasisFromString(legalBasis))
+}
 
   @ReactMethod
   fun userAttribute(key: String, promise: Promise) {
@@ -1011,4 +1028,31 @@ fun setUserAttributeWithNumberArray(key: String, value: ReadableArray) {
 
     return metadata
   }
+}
+
+@ReactMethod
+fun revokeDataProcessingConsent(purposes: ReadableArray) {
+  val mapped = mapPurposesFromReadableArray(purposes)
+  if (mapped.isEmpty()) {
+    Log.w("Purchasely", "revokeDataProcessingConsent called with no valid purposes: $purposes")
+    return
+  }
+  // SDK call — adjust if your signature differs
+  Purchasely.revokeDataProcessingConsent(mapped)
+}
+
+private fun mapPurposesFromReadableArray(purposes: ReadableArray): Set<PLYDataProcessingPurpose> {
+  val result = mutableSetOf<PLYDataProcessingPurpose>()
+  purposes.toArrayList().forEach { any ->
+    val s = (any as? String)?.lowercase(Locale.ROOT) ?: return@forEach
+    when (s) {
+      "analytics" -> result.add(PLYDataProcessingPurpose.ANALYTICS)
+      "identified-analytics" -> result.add(PLYDataProcessingPurpose.IDENTIFIED_ANALYTICS)
+      "campaigns" -> result.add(PLYDataProcessingPurpose.CAMPAIGNS)
+      "personalization" -> result.add(PLYDataProcessingPurpose.PERSONALIZATION)
+      "third-party-integration" -> result.add(PLYDataProcessingPurpose.THIRD_PARTY_INTEGRATION)
+      // silently ignore unknown strings
+    }
+  }
+  return result
 }
