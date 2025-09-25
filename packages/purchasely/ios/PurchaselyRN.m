@@ -1341,7 +1341,7 @@ RCT_EXPORT_METHOD(clearDynamicOfferings)
     });
 }
 
-- (NSSet<PLYDataProcessingPurpose *> *)mapPurposesFromStrings:(NSArray<PLYDataProcessingPurpose *> *)strings {
+- (NSSet<PLYDataProcessingPurpose *> *)mapPurposesFromStrings:(NSArray<NSString *> *)strings {
     NSMutableSet<PLYDataProcessingPurpose *> *result = [NSMutableSet set];
 
     for (NSString *purpose in strings) {
