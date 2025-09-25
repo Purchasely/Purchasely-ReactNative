@@ -1,4 +1,5 @@
-import type { PurchaselyLegalBasis, PurchaselyPresentation } from './types';
+import type { PLYDataProcessingLegalBasis } from './enums';
+import type { PurchaselyPresentation } from './types';
 
 export interface Constants {
   logLevelDebug: number;
@@ -128,7 +129,7 @@ export interface SignPromotionalOfferParameters {
 export interface UserAttributesParameters {
   key: string;
   value?: number | null;
-  legalBasis?: PurchaselyLegalBasis
+  legalBasis?: PLYDataProcessingLegalBasis
 }
 
 export interface DynamicOffering {

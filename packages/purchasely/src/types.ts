@@ -6,7 +6,8 @@ import {
   PLYUserAttributeType,
   ProductResult,
   SubscriptionSource,
-  PLYWebCheckoutProvider
+  PLYWebCheckoutProvider,
+  PLYDataProcessingLegalBasis
 } from './enums';
 
 export type PLYPaywallInfo = {
@@ -68,7 +69,7 @@ export type PurchaselyUserAttribute = {
   value?: any | null;
   type?: PLYUserAttributeType | null;
   source?: PLYUserAttributeSource | null;
-  legalBasis?: PurchaselyLegalBasis;
+  legalBasis?: PLYDataProcessingLegalBasis;
 };
 
 export type PurchaselySubscription = {
@@ -246,5 +247,3 @@ export type PurchaselyPresentation = {
   metadata: PLYPresentationMetadata;
   height: number | null;
 };
-
-export type PurchaselyLegalBasis = 'OPTIONAL' | 'ESSENTIAL';

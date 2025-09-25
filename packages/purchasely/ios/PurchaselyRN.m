@@ -8,7 +8,7 @@
 #import <React/RCTBridgeModule.h>
 
 #import <React/RCTLog.h>
-#import <Purchasely/Purchasely-Swift.h>
+//#import <Purchasely/Purchasely-Swift.h>
 #import "PurchaselyRN.h"
 #import "Purchasely_Hybrid.h"
 #import "UIColor+PLYHelper.h"
@@ -1340,6 +1340,37 @@ RCT_EXPORT_METHOD(clearDynamicOfferings)
         [Purchasely clearDynamicOfferings];
     });
 }
+
+- (NSSet<PLYDataProcessingPurpose *> *)mapPurposesFromStrings:(NSArray<PLYDataProcessingPurpose *> *)strings {
+    NSMutableSet<PLYDataProcessingPurpose *> *result = [NSMutableSet set];
+
+    for (NSString *purpose in strings) {
+        NSString *p = purpose.lowercaseString;
+        if ([p isEqualToString:@"analytics"]) {
+            [result addObject:PLYDataProcessingPurpose.analytics];
+        } else if ([p isEqualToString:@"identified-analytics"]) {
+            [result addObject:PLYDataProcessingPurpose.identifiedAnalytics];
+        } else if ([p isEqualToString:@"campaigns"]) {
+            [result addObject:PLYDataProcessingPurpose.campaigns];
+        } else if ([p isEqualToString:@"personalization"]) {
+            [result addObject:PLYDataProcessingPurpose.personalization];
+        } else if ([p isEqualToString:@"third-party-integration"]) {
+            [result addObject:PLYDataProcessingPurpose.thirdPartyIntegrations];
+        }
+    }
+
+    return result;
+}
+
+RCT_EXPORT_METHOD(revokeDataProcessingConsent:(NSArray<NSString *> * _Nonnull)purposes) {
+    NSSet<PLYDataProcessingPurpose *> *mapped = [self mapPurposesFromStrings:purposes];
+    if (mapped.count > 0) {
+        [Purchasely revokeDataProcessingConsentFor:mapped];
+    } else {
+        NSLog(@"[Purchasely] revokeDataProcessingConsent called with no valid purposes: %@", purposes);
+    }
+}
+
 
 
 // ****************************************************************************

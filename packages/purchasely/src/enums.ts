@@ -82,6 +82,19 @@ export enum PLYPaywallAction {
   WEB_CHECKOUT = 'web_checkout',
 }
 
+export enum PLYDataProcessingLegalBasis {
+  ESSENTIAL = 'ESSENTIAL',
+  OPTIONAL = 'OPTIONAL'
+}
+
+export enum PLYDataProcessingPurpose {
+  ANALYTICS = 'analytics',
+  IDENTIFIED_ANALYTICS = 'identified-analytics',
+  CAMPAIGNS = 'campaigns',
+  PERSONALIZATION = 'persnalization',
+  THIRD_PARTY_INTEGRATION = 'third-party-integration'
+}
+
 export enum PLYPresentationType {
   NORMAL = constants.presentationTypeNormal,
   FALLBACK = constants.presentationTypeFallback,

@@ -5,6 +5,8 @@ import { HomeScreen } from './Home.tsx'
 import Purchasely, {
     DynamicOffering,
     LogLevels,
+    PLYDataProcessingLegalBasis,
+    PLYDataProcessingPurpose,
     PLYPaywallAction,
     PurchaselyUserAttribute,
     RunningMode,
@@ -142,9 +144,9 @@ function App(): React.JSX.Element {
         })
 
         //Set an attribute for each type
-        Purchasely.setUserAttributeWithString('stringKey', 'StringValue', 'ESSENTIAL')
-        Purchasely.setUserAttributeWithNumber('intKey', 3, 'ESSENTIAL')
-        Purchasely.setUserAttributeWithNumber('floatKey', 1.2, 'OPTIONAL')
+        Purchasely.setUserAttributeWithString('stringKey', 'StringValue', PLYDataProcessingLegalBasis.ESSENTIAL)
+        Purchasely.setUserAttributeWithNumber('intKey', 3, PLYDataProcessingLegalBasis.ESSENTIAL)
+        Purchasely.setUserAttributeWithNumber('floatKey', 1.2, PLYDataProcessingLegalBasis.OPTIONAL)
         Purchasely.setUserAttributeWithBoolean('booleanKey', true)
         Purchasely.setUserAttributeWithDate('dateKey', new Date())
 
@@ -218,6 +220,8 @@ function App(): React.JSX.Element {
 
         //clear all dynamic offerings
         Purchasely.clearDynamicOfferings()
+
+        Purchasely.revokeDataProcessingConsent([PLYDataProcessingPurpose.CAMPAIGNS])
 
         const offeringsEmpty: DynamicOffering[] = await Purchasely.getDynamicOfferings()
         console.log('Dynamic offerings:', offeringsEmpty)
