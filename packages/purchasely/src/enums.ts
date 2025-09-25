@@ -92,7 +92,8 @@ export enum PLYDataProcessingPurpose {
   IDENTIFIED_ANALYTICS = 'identified-analytics',
   CAMPAIGNS = 'campaigns',
   PERSONALIZATION = 'persnalization',
-  THIRD_PARTY_INTEGRATION = 'third-party-integration'
+  THIRD_PARTY_INTEGRATION = 'third-party-integration',
+  ALL_NON_ESSENTIALS = 'all-non-essentials'
 }
 
 export enum PLYPresentationType {

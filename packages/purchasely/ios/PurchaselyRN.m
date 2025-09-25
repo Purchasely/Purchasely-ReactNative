@@ -1342,36 +1342,42 @@ RCT_EXPORT_METHOD(clearDynamicOfferings)
 }
 
 - (NSSet<PLYDataProcessingPurpose *> *)mapPurposesFromStrings:(NSArray<NSString *> *)strings {
-    NSMutableSet<PLYDataProcessingPurpose *> *result = [NSMutableSet set];
-
-    for (NSString *purpose in strings) {
-        NSString *p = purpose.lowercaseString;
-        if ([p isEqualToString:@"analytics"]) {
-            [result addObject:PLYDataProcessingPurpose.analytics];
-        } else if ([p isEqualToString:@"identified-analytics"]) {
-            [result addObject:PLYDataProcessingPurpose.identifiedAnalytics];
-        } else if ([p isEqualToString:@"campaigns"]) {
-            [result addObject:PLYDataProcessingPurpose.campaigns];
-        } else if ([p isEqualToString:@"personalization"]) {
-            [result addObject:PLYDataProcessingPurpose.personalization];
-        } else if ([p isEqualToString:@"third-party-integration"]) {
-            [result addObject:PLYDataProcessingPurpose.thirdPartyIntegrations];
-        }
+  NSMutableSet<PLYDataProcessingPurpose *> *result = [NSMutableSet set];
+  
+  if ([strings containsObject:@"all-non-essentials"]) {
+      [result addObject:PLYDataProcessingPurpose.allNonEssentials];
+      return result;
+  }
+  
+  for (NSString *purpose in strings) {
+    NSString *p = purpose.lowercaseString;
+    if ([p isEqualToString:@"analytics"]) {
+      [result addObject:PLYDataProcessingPurpose.analytics];
+    } else if ([p isEqualToString:@"identified-analytics"]) {
+      [result addObject:PLYDataProcessingPurpose.identifiedAnalytics];
+    } else if ([p isEqualToString:@"campaigns"]) {
+      [result addObject:PLYDataProcessingPurpose.campaigns];
+    } else if ([p isEqualToString:@"personalization"]) {
+      [result addObject:PLYDataProcessingPurpose.personalization];
+    } else if ([p isEqualToString:@"third-party-integration"]) {
+      [result addObject:PLYDataProcessingPurpose.thirdPartyIntegrations];
+    } else if ([p isEqualToString:@"all-non-essentials"]) {
+      [result addObject:PLYDataProcessingPurpose.allNonEssentials];
     }
-
-    return result;
+  }
+  
+  return result;
 }
 
 RCT_EXPORT_METHOD(revokeDataProcessingConsent:(NSArray<NSString *> * _Nonnull)purposes) {
     NSSet<PLYDataProcessingPurpose *> *mapped = [self mapPurposesFromStrings:purposes];
+  
     if (mapped.count > 0) {
         [Purchasely revokeDataProcessingConsentFor:mapped];
     } else {
         NSLog(@"[Purchasely] revokeDataProcessingConsent called with no valid purposes: %@", purposes);
     }
 }
-
-
 
 // ****************************************************************************
 #pragma mark - Events

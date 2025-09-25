@@ -221,7 +221,7 @@ function App(): React.JSX.Element {
         //clear all dynamic offerings
         Purchasely.clearDynamicOfferings()
 
-        Purchasely.revokeDataProcessingConsent([PLYDataProcessingPurpose.CAMPAIGNS])
+        Purchasely.revokeDataProcessingConsent([PLYDataProcessingPurpose.ALL_NON_ESSENTIALS])
 
         const offeringsEmpty: DynamicOffering[] = await Purchasely.getDynamicOfferings()
         console.log('Dynamic offerings:', offeringsEmpty)

@@ -20,6 +20,8 @@ import io.purchasely.storage.userData.PLYUserAttributeType
 import io.purchasely.views.presentation.PLYThemeMode
 import io.purchasely.views.presentation.models.PLYTransition
 import io.purchasely.views.presentation.models.PLYTransitionType
+import io.purchasely.ext.PLYDataProcessingLegalBasis
+import io.purchasely.ext.PLYDataProcessingPurpose
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -55,7 +57,8 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
         Pair("key", key),
         Pair("type", type.ordinal),
         Pair("value", getUserAttributeValueForRN(value)),
-        Pair("source", source.ordinal)
+        Pair("source", source.ordinal),
+        Pair("processingLegalBasis", source.processingLegalBasis)
       ))
       sendEvent(reactApplicationContext, "USER_ATTRIBUTE_SET_LISTENER", params)
     }
@@ -1033,24 +1036,36 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
 @ReactMethod
 fun revokeDataProcessingConsent(purposes: ReadableArray) {
   val mapped = mapPurposesFromReadableArray(purposes)
+
   if (mapped.isEmpty()) {
     Log.w("Purchasely", "revokeDataProcessingConsent called with no valid purposes: $purposes")
     return
   }
+
   // SDK call — adjust if your signature differs
   Purchasely.revokeDataProcessingConsent(mapped)
 }
 
 private fun mapPurposesFromReadableArray(purposes: ReadableArray): Set<PLYDataProcessingPurpose> {
   val result = mutableSetOf<PLYDataProcessingPurpose>()
+
+    // Check if any element equals "all-non-essentials"
+    for (i in 0 until purposes.size()) {
+        if (purposes.getString(i) == "all-non-essentials") {
+            result.add(PLYDataProcessingPurpose.AllNonEssentials)
+            return result
+        }
+    }
+
   purposes.toArrayList().forEach { any ->
     val s = (any as? String)?.lowercase(Locale.ROOT) ?: return@forEach
     when (s) {
-      "analytics" -> result.add(PLYDataProcessingPurpose.ANALYTICS)
-      "identified-analytics" -> result.add(PLYDataProcessingPurpose.IDENTIFIED_ANALYTICS)
-      "campaigns" -> result.add(PLYDataProcessingPurpose.CAMPAIGNS)
-      "personalization" -> result.add(PLYDataProcessingPurpose.PERSONALIZATION)
-      "third-party-integration" -> result.add(PLYDataProcessingPurpose.THIRD_PARTY_INTEGRATION)
+      "all-non-essentials" -> result.add(PLYDataProcessingPurpose.AllNonEssentials)
+      "analytics" -> result.add(PLYDataProcessingPurpose.Analytics)
+      "identified-analytics" -> result.add(PLYDataProcessingPurpose.IdentifiedAnalytics)
+      "campaigns" -> result.add(PLYDataProcessingPurpose.Campaigns)
+      "personalization" -> result.add(PLYDataProcessingPurpose.Personalization)
+      "third-party-integration" -> result.add(PLYDataProcessingPurpose.ThirdPartyIntegrations)
       // silently ignore unknown strings
     }
   }
