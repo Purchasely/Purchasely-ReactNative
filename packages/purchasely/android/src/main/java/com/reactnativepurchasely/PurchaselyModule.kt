@@ -58,7 +58,6 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
         Pair("type", type.ordinal),
         Pair("value", getUserAttributeValueForRN(value)),
         Pair("source", source.ordinal),
-        Pair("processingLegalBasis", source.processingLegalBasis)
       ))
       sendEvent(reactApplicationContext, "USER_ATTRIBUTE_SET_LISTENER", params)
     }
@@ -919,6 +918,45 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
     Purchasely.clearDynamicOfferings()
   }
 
+  @ReactMethod
+  fun revokeDataProcessingConsent(purposes: ReadableArray) {
+    val mapped = mapPurposesFromReadableArray(purposes)
+
+    if (mapped.isEmpty()) {
+      Log.w("Purchasely", "revokeDataProcessingConsent called with no valid purposes: $purposes")
+      return
+    }
+
+    // SDK call — adjust if your signature differs
+    Purchasely.revokeDataProcessingConsent(mapped)
+  }
+
+  private fun mapPurposesFromReadableArray(purposes: ReadableArray): Set<PLYDataProcessingPurpose> {
+    val result = mutableSetOf<PLYDataProcessingPurpose>()
+
+    // Check if any element equals "all-non-essentials"
+    for (i in 0 until purposes.size()) {
+      if (purposes.getString(i) == "all-non-essentials") {
+        result.add(PLYDataProcessingPurpose.AllNonEssentials)
+        return result
+      }
+    }
+
+    purposes.toArrayList().forEach { any ->
+      val s = (any as? String)?.lowercase(Locale.ROOT) ?: return@forEach
+      when (s) {
+        "all-non-essentials" -> result.add(PLYDataProcessingPurpose.AllNonEssentials)
+        "analytics" -> result.add(PLYDataProcessingPurpose.Analytics)
+        "identified-analytics" -> result.add(PLYDataProcessingPurpose.IdentifiedAnalytics)
+        "campaigns" -> result.add(PLYDataProcessingPurpose.Campaigns)
+        "personalization" -> result.add(PLYDataProcessingPurpose.Personalization)
+        "third-party-integration" -> result.add(PLYDataProcessingPurpose.ThirdPartyIntegrations)
+        // silently ignore unknown strings
+      }
+    }
+    return result
+  }
+
   companion object {
     private const val runningModeTransactionOnly = 0
     private const val runningModeObserver = 1
@@ -1031,43 +1069,4 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
 
     return metadata
   }
-}
-
-@ReactMethod
-fun revokeDataProcessingConsent(purposes: ReadableArray) {
-  val mapped = mapPurposesFromReadableArray(purposes)
-
-  if (mapped.isEmpty()) {
-    Log.w("Purchasely", "revokeDataProcessingConsent called with no valid purposes: $purposes")
-    return
-  }
-
-  // SDK call — adjust if your signature differs
-  Purchasely.revokeDataProcessingConsent(mapped)
-}
-
-private fun mapPurposesFromReadableArray(purposes: ReadableArray): Set<PLYDataProcessingPurpose> {
-  val result = mutableSetOf<PLYDataProcessingPurpose>()
-
-    // Check if any element equals "all-non-essentials"
-    for (i in 0 until purposes.size()) {
-        if (purposes.getString(i) == "all-non-essentials") {
-            result.add(PLYDataProcessingPurpose.AllNonEssentials)
-            return result
-        }
-    }
-
-  purposes.toArrayList().forEach { any ->
-    val s = (any as? String)?.lowercase(Locale.ROOT) ?: return@forEach
-    when (s) {
-      "all-non-essentials" -> result.add(PLYDataProcessingPurpose.AllNonEssentials)
-      "analytics" -> result.add(PLYDataProcessingPurpose.Analytics)
-      "identified-analytics" -> result.add(PLYDataProcessingPurpose.IdentifiedAnalytics)
-      "campaigns" -> result.add(PLYDataProcessingPurpose.Campaigns)
-      "personalization" -> result.add(PLYDataProcessingPurpose.Personalization)
-      "third-party-integration" -> result.add(PLYDataProcessingPurpose.ThirdPartyIntegrations)
-      // silently ignore unknown strings
-    }
-  }
-  return result
 }
