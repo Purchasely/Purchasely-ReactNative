@@ -790,6 +790,7 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
       parametersForReact["subscriptionOffer"] = parameters.subscriptionOffer?.toMap()
       parametersForReact["presentation"] = parameters.presentation
       parametersForReact["placement"] = parameters.placement
+      parametersForReact["closeReason"] = parameters.closeReason?.name
 
       promise.resolve(Arguments.makeNativeMap(
         mapOf(
