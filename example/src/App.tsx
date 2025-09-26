@@ -5,6 +5,8 @@ import { HomeScreen } from './Home.tsx'
 import Purchasely, {
     DynamicOffering,
     LogLevels,
+    PLYDataProcessingLegalBasis,
+    PLYDataProcessingPurpose,
     PLYPaywallAction,
     PurchaselyUserAttribute,
     RunningMode,
@@ -142,9 +144,9 @@ function App(): React.JSX.Element {
         })
 
         //Set an attribute for each type
-        Purchasely.setUserAttributeWithString('stringKey', 'StringValue')
-        Purchasely.setUserAttributeWithNumber('intKey', 3)
-        Purchasely.setUserAttributeWithNumber('floatKey', 1.2)
+        Purchasely.setUserAttributeWithString('stringKey', 'StringValue', PLYDataProcessingLegalBasis.ESSENTIAL)
+        Purchasely.setUserAttributeWithNumber('intKey', 3, PLYDataProcessingLegalBasis.ESSENTIAL)
+        Purchasely.setUserAttributeWithNumber('floatKey', 1.2, PLYDataProcessingLegalBasis.OPTIONAL)
         Purchasely.setUserAttributeWithBoolean('booleanKey', true)
         Purchasely.setUserAttributeWithDate('dateKey', new Date())
 
@@ -219,13 +221,18 @@ function App(): React.JSX.Element {
         //clear all dynamic offerings
         Purchasely.clearDynamicOfferings()
 
+        Purchasely.revokeDataProcessingConsent([PLYDataProcessingPurpose.ALL_NON_ESSENTIALS])
+
         const offeringsEmpty: DynamicOffering[] = await Purchasely.getDynamicOfferings()
         console.log('Dynamic offerings:', offeringsEmpty)
 
         // Set paywall action interceptor callback
         Purchasely.setPaywallActionInterceptorCallback((result) => {
             console.log('Received action from paywall')
-            console.log(result.info)
+            console.log('Action:', result.action)
+            console.log('Parameters:', result.parameters)
+            console.log('Info:', result.info)
+
 
             switch (result.action) {
                 case PLYPaywallAction.NAVIGATE:

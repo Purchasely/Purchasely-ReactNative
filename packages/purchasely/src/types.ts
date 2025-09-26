@@ -6,7 +6,8 @@ import {
   PLYUserAttributeType,
   ProductResult,
   SubscriptionSource,
-  PLYWebCheckoutProvider
+  PLYWebCheckoutProvider,
+  PLYDataProcessingLegalBasis
 } from './enums';
 
 export type PLYPaywallInfo = {
@@ -68,6 +69,7 @@ export type PurchaselyUserAttribute = {
   value?: any | null;
   type?: PLYUserAttributeType | null;
   source?: PLYUserAttributeSource | null;
+  legalBasis?: PLYDataProcessingLegalBasis;
 };
 
 export type PurchaselySubscription = {

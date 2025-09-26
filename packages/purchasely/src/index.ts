@@ -15,7 +15,7 @@ import type {
   StartParameters,
   UserAttributesParameters,
 } from './interfaces';
-import { Attributes, LogLevels, PLYThemeMode, RunningMode } from './enums';
+import { Attributes, LogLevels, PLYDataProcessingLegalBasis, PLYDataProcessingPurpose, PLYThemeMode, RunningMode } from './enums';
 import type {
   PaywallActionInterceptorResult,
   PresentPresentationResult,
@@ -28,7 +28,7 @@ import type {
   PurchaselyUserAttribute,
 } from './types';
 
-const purchaselyVersion = '5.3.2';
+const purchaselyVersion = '5.4.0';
 
 const constants = NativeModules.Purchasely.getConstants() as Constants;
 
@@ -53,9 +53,9 @@ const start = ({
   );
 };
 
-function setUserAttributeWithDate(key: string, value: Date): void {
+function setUserAttributeWithDate(key: string, value: Date, legalBasis?: PLYDataProcessingLegalBasis): void {
   const dateAsString = value.toISOString();
-  return NativeModules.Purchasely.setUserAttributeWithDate(key, dateAsString);
+  return NativeModules.Purchasely.setUserAttributeWithDate(key, dateAsString, legalBasis);
 }
 
 type EventListenerCallback = (event: PurchaselyEvent) => void;
@@ -273,16 +273,18 @@ const showPresentation = () => {
 const incrementUserAttribute = ({
   key,
   value,
+  legalBasis
 }: UserAttributesParameters): void => {
   const nonNullValue = value ?? 1;
-  return NativeModules.Purchasely.incrementUserAttribute(key, nonNullValue);
+  return NativeModules.Purchasely.incrementUserAttribute(key, nonNullValue, legalBasis);
 };
 const decrementUserAttribute = ({
   key,
   value,
+  legalBasis
 }: UserAttributesParameters): void => {
   const nonNullValue = value ?? 1;
-  return NativeModules.Purchasely.decrementUserAttribute(key, nonNullValue);
+  return NativeModules.Purchasely.decrementUserAttribute(key, nonNullValue, legalBasis);
 };
 
 const getConstants = (): Constants => {
@@ -381,37 +383,40 @@ const userDidConsumeSubscriptionContent = (): void => {
   return NativeModules.Purchasely.userDidConsumeSubscriptionContent();
 };
 
-const setUserAttributeWithString = (key: string, value: string): void => {
-  return NativeModules.Purchasely.setUserAttributeWithString(key, value);
+const setUserAttributeWithString = (key: string, value: string, legalBasis?: PLYDataProcessingLegalBasis): void => {
+  return NativeModules.Purchasely.setUserAttributeWithString(key, value, legalBasis);
 };
 
-const setUserAttributeWithNumber = (key: string, value: number): void => {
-  return NativeModules.Purchasely.setUserAttributeWithNumber(key, value);
+const setUserAttributeWithNumber = (key: string, value: number, legalBasis?: PLYDataProcessingLegalBasis): void => {
+  return NativeModules.Purchasely.setUserAttributeWithNumber(key, value, legalBasis);
 };
 
-const setUserAttributeWithBoolean = (key: string, value: boolean): void => {
-  return NativeModules.Purchasely.setUserAttributeWithBoolean(key, value);
+const setUserAttributeWithBoolean = (key: string, value: boolean, legalBasis?: PLYDataProcessingLegalBasis): void => {
+  return NativeModules.Purchasely.setUserAttributeWithBoolean(key, value, legalBasis);
 };
 
 const setUserAttributeWithStringArray = (
   key: string,
-  value: string[]
+  value: string[], 
+  legalBasis?: PLYDataProcessingLegalBasis
 ): void => {
-  return NativeModules.Purchasely.setUserAttributeWithStringArray(key, value);
+  return NativeModules.Purchasely.setUserAttributeWithStringArray(key, value, legalBasis);
 };
 
 const setUserAttributeWithNumberArray = (
   key: string,
-  value: number[]
+  value: number[],
+  legalBasis?: PLYDataProcessingLegalBasis
 ): void => {
-  return NativeModules.Purchasely.setUserAttributeWithNumberArray(key, value);
+  return NativeModules.Purchasely.setUserAttributeWithNumberArray(key, value, legalBasis);
 };
 
 const setUserAttributeWithBooleanArray = (
   key: string,
-  value: boolean[]
+  value: boolean[], 
+  legalBasis?: PLYDataProcessingLegalBasis
 ): void => {
-  return NativeModules.Purchasely.setUserAttributeWithBooleanArray(key, value);
+  return NativeModules.Purchasely.setUserAttributeWithBooleanArray(key, value, legalBasis);
 };
 
 const userAttributes = (): Promise<PurchaselyUserAttribute> => {
@@ -473,6 +478,11 @@ const removeDynamicOffering = (reference: string): void => {
 const clearDynamicOfferings = (): void => {
   return NativeModules.Purchasely.clearDynamicOfferings();
 };
+
+const revokeDataProcessingConsent = (purposes: PLYDataProcessingPurpose[]): void => {
+  const stringPurposes = purposes.map(p => p as string);
+  return NativeModules.Purchasely.revokeDataProcessingConsent(stringPurposes);
+}
 
 const Purchasely = {
   start,
@@ -543,6 +553,7 @@ const Purchasely = {
   getDynamicOfferings,
   removeDynamicOffering,
   clearDynamicOfferings,
+  revokeDataProcessingConsent
 };
 
 export * from './types';

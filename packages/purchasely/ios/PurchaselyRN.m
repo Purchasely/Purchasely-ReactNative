@@ -8,7 +8,7 @@
 #import <React/RCTBridgeModule.h>
 
 #import <React/RCTLog.h>
-#import <Purchasely/Purchasely-Swift.h>
+//#import <Purchasely/Purchasely-Swift.h>
 #import "PurchaselyRN.h"
 #import "Purchasely_Hybrid.h"
 #import "UIColor+PLYHelper.h"
@@ -61,10 +61,10 @@ static UIViewController *_sharedViewController;
 
 - (NSDictionary *)constantsToExport {
 	return @{
-		@"logLevelDebug": @(LogLevelDebug),
-		@"logLevelInfo": @(LogLevelInfo),
-		@"logLevelWarn": @(LogLevelWarn),
-		@"logLevelError": @(LogLevelError),
+    @"logLevelDebug": @(PLYLogLevelDebug),
+		@"logLevelInfo": @(PLYLogLevelInfo),
+    @"logLevelWarn": @(PLYLogLevelWarn),
+		@"logLevelError": @(PLYLogLevelError),
 		@"productResultPurchased": @(PLYProductViewControllerResultPurchased),
 		@"productResultCancelled": @(PLYProductViewControllerResultCancelled),
 		@"productResultRestored": @(PLYProductViewControllerResultRestored),
@@ -500,78 +500,134 @@ RCT_EXPORT_METHOD(setThemeMode:(NSInteger)mode) {
     [Purchasely setThemeMode: mode];
 }
 
+#pragma mark - Legal basis mapper
+
+- (PLYDataProcessingLegalBasis)legalBasisFromString:(NSString * _Nullable)basis {
+    if (![basis isKindOfClass:NSString.class]) { return PLYDataProcessingLegalBasisOptional; }
+    NSString *b = basis.uppercaseString;
+    if ([b isEqualToString:@"ESSENTIAL"]) { return PLYDataProcessingLegalBasisEssential; }
+    // default/fallback
+    return PLYDataProcessingLegalBasisOptional;
+}
+
 RCT_EXPORT_METHOD(setAttribute:(NSInteger)attribute value:(NSString * _Nonnull)value) {
 	[Purchasely setAttribute:attribute value:value];
 }
 
-RCT_EXPORT_METHOD(setUserAttributeWithString:(NSString * _Nonnull)key value:(NSString * _Nonnull)value) {
-    [Purchasely setUserAttributeWithStringValue:value forKey:key];
+RCT_EXPORT_METHOD(setUserAttributeWithString:(NSString * _Nonnull)key
+                  value:(NSString * _Nonnull)value
+                  legalBasis:(NSString * _Nullable)legalBasis) {
+    [Purchasely setUserAttributeWithStringValue:value
+                                         forKey:key
+                         processingLegalBasis:[self legalBasisFromString:legalBasis]];
 }
 
-RCT_EXPORT_METHOD(setUserAttributeWithBoolean:(NSString * _Nonnull)key value:(BOOL)value) {
-    [Purchasely setUserAttributeWithBoolValue:value forKey:key];
+RCT_EXPORT_METHOD(setUserAttributeWithBoolean:(NSString * _Nonnull)key
+                  value:(BOOL)value
+                  legalBasis:(NSString * _Nullable)legalBasis) {
+    [Purchasely setUserAttributeWithBoolValue:value
+                                       forKey:key
+                       processingLegalBasis:[self legalBasisFromString:legalBasis]];
 }
 
-RCT_EXPORT_METHOD(setUserAttributeWithNumber:(NSString * _Nonnull)key value:(double)value) {
+RCT_EXPORT_METHOD(setUserAttributeWithNumber:(NSString * _Nonnull)key
+                  value:(double)value
+                  legalBasis:(NSString * _Nullable)legalBasis) {
+    PLYDataProcessingLegalBasis lb = [self legalBasisFromString:legalBasis];
     if (!fmod(value, 1.0)) {
-        [Purchasely setUserAttributeWithIntValue:value forKey:key];
+        [Purchasely setUserAttributeWithIntValue:(NSInteger)value
+                                          forKey:key
+                          processingLegalBasis:lb];
     } else {
-        [Purchasely setUserAttributeWithDoubleValue:value forKey:key];
+        [Purchasely setUserAttributeWithDoubleValue:value
+                                             forKey:key
+                             processingLegalBasis:lb];
+    }
+}
+
+RCT_EXPORT_METHOD(setUserAttributeWithDate:(NSString * _Nonnull)key
+                  value:(NSString * _Nonnull)value
+                  legalBasis:(NSString * _Nullable)legalBasis) {
+    NSDateFormatter *dateFormatter = [NSDateFormatter new];
+    dateFormatter.timeZone = [NSTimeZone timeZoneWithName:@"GMT"];
+    dateFormatter.dateFormat = @"yyyy-MM-dd'T'HH:mm:ss.SSS'Z'";
+    NSDate *date = [dateFormatter dateFromString:value];
+
+    if (date != nil) {
+        [Purchasely setUserAttributeWithDateValue:date
+                                           forKey:key
+                           processingLegalBasis:[self legalBasisFromString:legalBasis]];
+    } else {
+        NSLog(@"[Purchasely] Cannot save date attribute %@: invalid ISO-8601 string %@", key, value);
     }
 }
 
 // String Array
-RCT_EXPORT_METHOD(setUserAttributeWithStringArray:(NSString * _Nonnull)key value:(NSArray<NSString *> * _Nonnull)value) {
-    [Purchasely setUserAttributeWithStringArray:value forKey:key];
+RCT_EXPORT_METHOD(setUserAttributeWithStringArray:(NSString * _Nonnull)key
+                  value:(NSArray<NSString *> * _Nonnull)value
+                  legalBasis:(NSString * _Nullable)legalBasis) {
+    [Purchasely setUserAttributeWithStringArray:value
+                                         forKey:key
+                         processingLegalBasis:[self legalBasisFromString:legalBasis]];
 }
 
 // Boolean Array
-RCT_EXPORT_METHOD(setUserAttributeWithBooleanArray:(NSString * _Nonnull)key value:(NSArray<NSNumber *> * _Nonnull)value) {
-    [Purchasely setUserAttributeWithBoolArray:value forKey:key];
+RCT_EXPORT_METHOD(setUserAttributeWithBooleanArray:(NSString * _Nonnull)key
+                  value:(NSArray<NSNumber *> * _Nonnull)value
+                  legalBasis:(NSString * _Nullable)legalBasis) {
+    // Normalize to pure BOOL array to avoid NSDecimalNumber surprises from JS
+    NSMutableArray<NSNumber *> *bools = [NSMutableArray arrayWithCapacity:value.count];
+    for (NSNumber *n in value) { [bools addObject:@(n.boolValue)]; }
+
+    [Purchasely setUserAttributeWithBoolArray:bools
+                                       forKey:key
+                       processingLegalBasis:[self legalBasisFromString:legalBasis]];
 }
 
 // Number Array
-RCT_EXPORT_METHOD(setUserAttributeWithNumberArray:(NSString * _Nonnull)key value:(NSArray<NSNumber *> * _Nonnull)value) {
+RCT_EXPORT_METHOD(setUserAttributeWithNumberArray:(NSString * _Nonnull)key
+                  value:(NSArray<NSNumber *> * _Nonnull)value
+                  legalBasis:(NSString * _Nullable)legalBasis) {
+    PLYDataProcessingLegalBasis lb = [self legalBasisFromString:legalBasis];
+
     NSMutableArray<NSNumber *> *intArray = [NSMutableArray new];
     NSMutableArray<NSNumber *> *doubleArray = [NSMutableArray new];
 
     for (NSNumber *numberValue in value) {
-        double number = [numberValue doubleValue];
-        if (!fmod(number, 1.0)) { // Integer check
-            [intArray addObject:@([numberValue intValue])];
-        } else {
-            [doubleArray addObject:numberValue];
+        double number = numberValue.doubleValue;
+        if (!fmod(number, 1.0)) {         // integer
+            [intArray addObject:@(numberValue.integerValue)];
+        } else {                          // double
+            [doubleArray addObject:@(number)];
         }
     }
 
-    // Send arrays to Purchasely if they are not empty
     if (intArray.count > 0) {
-        [Purchasely setUserAttributeWithIntArray:intArray forKey:key];
+        [Purchasely setUserAttributeWithIntArray:intArray
+                                          forKey:key
+                          processingLegalBasis:lb];
     }
     if (doubleArray.count > 0) {
-        [Purchasely setUserAttributeWithDoubleArray:doubleArray forKey:key];
+        [Purchasely setUserAttributeWithDoubleArray:doubleArray
+                                            forKey:key
+                            processingLegalBasis:lb];
     }
 }
 
-
-RCT_EXPORT_METHOD(setUserAttributeWithDate:(NSString * _Nonnull)key value:(NSString * _Nonnull)value) {
-    NSDateFormatter * dateFormatter = [NSDateFormatter new];
-    dateFormatter.timeZone = [NSTimeZone timeZoneWithName:@"GMT"];
-    [dateFormatter setDateFormat:@"yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"];
-    NSDate *date = [dateFormatter dateFromString:value];
-    if (date != nil) {
-        [Purchasely setUserAttributeWithDateValue:date forKey:key];
-    } else {
-        NSLog(@"[Purchasely] Cannot save date attribute %@", key);
-    }
+RCT_EXPORT_METHOD(incrementUserAttribute:(NSString * _Nonnull)key
+                  value:(NSNumber * _Nonnull)value
+                  legalBasis:(NSString * _Nullable)legalBasis) {
+    [Purchasely incrementUserAttributeWithKey:key
+                                        value:value.intValue
+                        processingLegalBasis:[self legalBasisFromString:legalBasis]];
 }
 
-RCT_EXPORT_METHOD(incrementUserAttribute:(NSString * _Nonnull)key value:(NSNumber * _Nonnull)value) {
-    [Purchasely incrementUserAttributeWithKey:key value:value.intValue];
-}
-
-RCT_EXPORT_METHOD(decrementUserAttribute:(NSString * _Nonnull)key value:(NSNumber * _Nonnull)value) {
-    [Purchasely decrementUserAttributeWithKey:key value:value.intValue];
+RCT_EXPORT_METHOD(decrementUserAttribute:(NSString * _Nonnull)key
+                  value:(NSNumber * _Nonnull)value
+                  legalBasis:(NSString * _Nullable)legalBasis) {
+    [Purchasely decrementUserAttributeWithKey:key
+                                        value:value.intValue
+                        processingLegalBasis:[self legalBasisFromString:legalBasis]];
 }
 
 RCT_REMAP_METHOD(userAttribute,
@@ -1285,6 +1341,43 @@ RCT_EXPORT_METHOD(clearDynamicOfferings)
     });
 }
 
+- (NSSet<PLYDataProcessingPurpose *> *)mapPurposesFromStrings:(NSArray<NSString *> *)strings {
+  NSMutableSet<PLYDataProcessingPurpose *> *result = [NSMutableSet set];
+  
+  if ([strings containsObject:@"all-non-essentials"]) {
+      [result addObject:PLYDataProcessingPurpose.allNonEssentials];
+      return result;
+  }
+  
+  for (NSString *purpose in strings) {
+    NSString *p = purpose.lowercaseString;
+    if ([p isEqualToString:@"analytics"]) {
+      [result addObject:PLYDataProcessingPurpose.analytics];
+    } else if ([p isEqualToString:@"identified-analytics"]) {
+      [result addObject:PLYDataProcessingPurpose.identifiedAnalytics];
+    } else if ([p isEqualToString:@"campaigns"]) {
+      [result addObject:PLYDataProcessingPurpose.campaigns];
+    } else if ([p isEqualToString:@"personalization"]) {
+      [result addObject:PLYDataProcessingPurpose.personalization];
+    } else if ([p isEqualToString:@"third-party-integration"]) {
+      [result addObject:PLYDataProcessingPurpose.thirdPartyIntegrations];
+    } else if ([p isEqualToString:@"all-non-essentials"]) {
+      [result addObject:PLYDataProcessingPurpose.allNonEssentials];
+    }
+  }
+  
+  return result;
+}
+
+RCT_EXPORT_METHOD(revokeDataProcessingConsent:(NSArray<NSString *> * _Nonnull)purposes) {
+    NSSet<PLYDataProcessingPurpose *> *mapped = [self mapPurposesFromStrings:purposes];
+  
+    if (mapped.count > 0) {
+        [Purchasely revokeDataProcessingConsentFor:mapped];
+    } else {
+        NSLog(@"[Purchasely] revokeDataProcessingConsent called with no valid purposes: %@", purposes);
+    }
+}
 
 // ****************************************************************************
 #pragma mark - Events
@@ -1318,7 +1411,8 @@ RCT_EXPORT_METHOD(clearDynamicOfferings)
 - (void)onUserAttributeSetWithKey:(NSString * _Nonnull)key
                              type:(enum PLYUserAttributeType)type
                             value:(id _Nullable)value
-                           source:(enum PLYUserAttributeSource)source {
+                           source:(enum PLYUserAttributeSource)source
+             processingLegalBasis:(enum PLYDataProcessingLegalBasis) processingLegalBasis{
     if (!self.shouldEmit) return;
 
     NSMutableDictionary<NSString *, id> *body = [NSMutableDictionary dictionary];
@@ -1330,6 +1424,7 @@ RCT_EXPORT_METHOD(clearDynamicOfferings)
     }
 
     body[@"source"] = @(source);
+    body[@"processingLegalBasis"] = @(processingLegalBasis);
 
     [self sendEventWithName:@"USER_ATTRIBUTE_SET_LISTENER" body:body];
 }
@@ -1364,3 +1459,5 @@ RCT_EXPORT_METHOD(clearDynamicOfferings)
 }
 
 @end
+
+

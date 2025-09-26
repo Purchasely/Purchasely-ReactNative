@@ -15,6 +15,7 @@ import io.purchasely.ext.Purchasely
 import io.purchasely.models.PLYPlan
 import io.purchasely.views.parseColor
 import java.lang.ref.WeakReference
+import android.view.WindowManager
 
 class PLYProductActivity : AppCompatActivity() {
 
@@ -39,7 +40,7 @@ class PLYProductActivity : AppCompatActivity() {
 
     if(isFullScreen) {
       WindowCompat.setDecorFitsSystemWindows(window, false)
-      hideSystemUI()
+      window.setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
     }
 
     setContentView(R.layout.activity_ply_product_activity)

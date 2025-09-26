@@ -20,6 +20,8 @@ import io.purchasely.storage.userData.PLYUserAttributeType
 import io.purchasely.views.presentation.PLYThemeMode
 import io.purchasely.views.presentation.models.PLYTransition
 import io.purchasely.views.presentation.models.PLYTransitionType
+import io.purchasely.ext.PLYDataProcessingLegalBasis
+import io.purchasely.ext.PLYDataProcessingPurpose
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -55,7 +57,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
         Pair("key", key),
         Pair("type", type.ordinal),
         Pair("value", getUserAttributeValueForRN(value)),
-        Pair("source", source.ordinal)
+        Pair("source", source.ordinal),
       ))
       sendEvent(reactApplicationContext, "USER_ATTRIBUTE_SET_LISTENER", params)
     }
@@ -535,71 +537,88 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     Purchasely.displaySubscriptionCancellationInstruction(reactApplicationContext.currentActivity as FragmentActivity, 0)
   }
 
-  @ReactMethod
-  fun setUserAttributeWithString(key: String, value: String) {
-    Purchasely.setUserAttribute(key, value)
+  private fun legalBasisFromString(basis: String?): PLYDataProcessingLegalBasis {
+  return when (basis?.uppercase(Locale.ROOT)) {
+    "ESSENTIAL" -> PLYDataProcessingLegalBasis.ESSENTIAL
+    else -> PLYDataProcessingLegalBasis.OPTIONAL
   }
-
-  @ReactMethod
-  fun setUserAttributeWithNumber(key: String, value: Double) {
-   if(value.compareTo(value.toInt()) == 0) {
-     Purchasely.setUserAttribute(key, value.toInt())
-   } else {
-     Purchasely.setUserAttribute(key, value.toFloat())
-   }
-  }
-
-  @ReactMethod
-  fun setUserAttributeWithBoolean(key: String, value: Boolean) {
-    Purchasely.setUserAttribute(key, value)
-  }
-
-  @ReactMethod
-  fun setUserAttributeWithStringArray(key: String, value: ReadableArray) {
-    val array = value.toArrayList().mapNotNull { it.toString() }.toTypedArray()
-    Purchasely.setUserAttribute(key, array)
-  }
-
-@ReactMethod
-fun setUserAttributeWithNumberArray(key: String, value: ReadableArray) {
-    val array = value.toArrayList().mapNotNull { it.toString().toFloat() }.toTypedArray()
-    Purchasely.setUserAttribute(key, array)
 }
 
-  @ReactMethod
-  fun setUserAttributeWithBooleanArray(key: String, value: ReadableArray) {
-    val array = value.toArrayList().mapNotNull { it.toString().toBoolean() }.toTypedArray()
-    Purchasely.setUserAttribute(key, array)
-  }
+@ReactMethod
+fun setUserAttributeWithString(key: String, value: String, legalBasis: String?) {
+  Purchasely.setUserAttribute(key, value, legalBasisFromString(legalBasis))
+}
 
-  @ReactMethod
-  fun setUserAttributeWithDate(key: String, value: String) {
-    val format = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-      SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSX", Locale.getDefault())
-    } else {
-      SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
-    }
-    format.timeZone = TimeZone.getTimeZone("GMT")
-    val calendar = Calendar.getInstance()
-    try {
-      format.parse(value)?.let {
-        calendar.time = it
+@ReactMethod
+fun setUserAttributeWithNumber(key: String, value: Double, legalBasis: String?) {
+  val lb = legalBasisFromString(legalBasis)
+  if (value.compareTo(value.toInt()) == 0) {
+    Purchasely.setUserAttribute(key, value.toInt(), lb)
+  } else {
+    Purchasely.setUserAttribute(key, value.toFloat(), lb)
+  }
+}
+
+@ReactMethod
+fun setUserAttributeWithBoolean(key: String, value: Boolean, legalBasis: String?) {
+  Purchasely.setUserAttribute(key, value, legalBasisFromString(legalBasis))
+}
+
+@ReactMethod
+fun setUserAttributeWithDate(key: String, value: String, legalBasis: String?) {
+  val format = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+    SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSX", Locale.getDefault())
+  } else {
+    SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+  }
+  format.timeZone = TimeZone.getTimeZone("GMT")
+  val calendar = Calendar.getInstance()
+  try {
+    format.parse(value)?.let { calendar.time = it }
+    Purchasely.setUserAttribute(key, calendar.time, legalBasisFromString(legalBasis))
+  } catch (e: Exception) {
+    Log.e("Purchasely", "Cannot save date attribute $key", e)
+  }
+}
+
+@ReactMethod
+fun setUserAttributeWithStringArray(key: String, value: ReadableArray, legalBasis: String?) {
+  val array = value.toArrayList().mapNotNull { it?.toString() }.toTypedArray()
+  Purchasely.setUserAttribute(key, array, legalBasisFromString(legalBasis))
+}
+
+@ReactMethod
+fun setUserAttributeWithNumberArray(key: String, value: ReadableArray, legalBasis: String?) {
+  val array = value.toArrayList()
+    .mapNotNull { it?.toString()?.toFloatOrNull() }
+    .toTypedArray()
+  Purchasely.setUserAttribute(key, array, legalBasisFromString(legalBasis))
+}
+
+@ReactMethod
+fun setUserAttributeWithBooleanArray(key: String, value: ReadableArray, legalBasis: String?) {
+  val array = value.toArrayList()
+    .mapNotNull {
+      when (it) {
+        is Boolean -> it
+        is String -> it.equals("true", ignoreCase = true) || it == "1"
+        is Number -> it.toInt() != 0
+        else -> null
       }
-      Purchasely.setUserAttribute(key, calendar.time)
-    } catch (e: Exception) {
-      Log.e("Purchasely", "Cannot save date attribute $key", e)
     }
-  }
+    .toTypedArray()
+  Purchasely.setUserAttribute(key, array, legalBasisFromString(legalBasis))
+}
 
-  @ReactMethod
-  fun incrementUserAttribute(key: String, value: Double) {
-    Purchasely.incrementUserAttribute(key, value.toInt())
-  }
+@ReactMethod
+fun incrementUserAttribute(key: String, value: Double, legalBasis: String?) {
+  Purchasely.incrementUserAttribute(key, value.toInt(), legalBasisFromString(legalBasis))
+}
 
-  @ReactMethod
-  fun decrementUserAttribute(key: String, value: Double) {
-    Purchasely.decrementUserAttribute(key, value.toInt())
-  }
+@ReactMethod
+fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
+  Purchasely.decrementUserAttribute(key, value.toInt(), legalBasisFromString(legalBasis))
+}
 
   @ReactMethod
   fun userAttribute(key: String, promise: Promise) {
@@ -771,6 +790,7 @@ fun setUserAttributeWithNumberArray(key: String, value: ReadableArray) {
       parametersForReact["subscriptionOffer"] = parameters.subscriptionOffer?.toMap()
       parametersForReact["presentation"] = parameters.presentation
       parametersForReact["placement"] = parameters.placement
+      parametersForReact["closeReason"] = parameters.closeReason?.name
 
       promise.resolve(Arguments.makeNativeMap(
         mapOf(
@@ -897,6 +917,45 @@ fun setUserAttributeWithNumberArray(key: String, value: ReadableArray) {
   @ReactMethod
   fun clearDynamicOfferings() {
     Purchasely.clearDynamicOfferings()
+  }
+
+  @ReactMethod
+  fun revokeDataProcessingConsent(purposes: ReadableArray) {
+    val mapped = mapPurposesFromReadableArray(purposes)
+
+    if (mapped.isEmpty()) {
+      Log.w("Purchasely", "revokeDataProcessingConsent called with no valid purposes: $purposes")
+      return
+    }
+
+    // SDK call — adjust if your signature differs
+    Purchasely.revokeDataProcessingConsent(mapped)
+  }
+
+  private fun mapPurposesFromReadableArray(purposes: ReadableArray): Set<PLYDataProcessingPurpose> {
+    val result = mutableSetOf<PLYDataProcessingPurpose>()
+
+    // Check if any element equals "all-non-essentials"
+    for (i in 0 until purposes.size()) {
+      if (purposes.getString(i) == "all-non-essentials") {
+        result.add(PLYDataProcessingPurpose.AllNonEssentials)
+        return result
+      }
+    }
+
+    purposes.toArrayList().forEach { any ->
+      val s = (any as? String)?.lowercase(Locale.ROOT) ?: return@forEach
+      when (s) {
+        "all-non-essentials" -> result.add(PLYDataProcessingPurpose.AllNonEssentials)
+        "analytics" -> result.add(PLYDataProcessingPurpose.Analytics)
+        "identified-analytics" -> result.add(PLYDataProcessingPurpose.IdentifiedAnalytics)
+        "campaigns" -> result.add(PLYDataProcessingPurpose.Campaigns)
+        "personalization" -> result.add(PLYDataProcessingPurpose.Personalization)
+        "third-party-integration" -> result.add(PLYDataProcessingPurpose.ThirdPartyIntegrations)
+        // silently ignore unknown strings
+      }
+    }
+    return result
   }
 
   companion object {
