@@ -229,7 +229,10 @@ function App(): React.JSX.Element {
         // Set paywall action interceptor callback
         Purchasely.setPaywallActionInterceptorCallback((result) => {
             console.log('Received action from paywall')
-            console.log(result.info)
+            console.log('Action:', result.action)
+            console.log('Parameters:', result.parameters)
+            console.log('Info:', result.info)
+
 
             switch (result.action) {
                 case PLYPaywallAction.NAVIGATE:
