@@ -144,21 +144,21 @@ function App(): React.JSX.Element {
         })
 
         //Set an attribute for each type
-        Purchasely.setUserAttributeWithString('stringKey', 'StringValue', PLYDataProcessingLegalBasis.ESSENTIAL)
+        Purchasely.setUserAttributeWithString('stringKey', 'StringValue', PLYDataProcessingLegalBasis.OPTIONAL)
         Purchasely.setUserAttributeWithNumber('intKey', 3, PLYDataProcessingLegalBasis.ESSENTIAL)
-        Purchasely.setUserAttributeWithNumber('floatKey', 1.2, PLYDataProcessingLegalBasis.OPTIONAL)
-        Purchasely.setUserAttributeWithBoolean('booleanKey', true)
-        Purchasely.setUserAttributeWithDate('dateKey', new Date())
+        Purchasely.setUserAttributeWithNumber('floatKey', 1.2, PLYDataProcessingLegalBasis.ESSENTIAL)
+        Purchasely.setUserAttributeWithBoolean('booleanKey', true, PLYDataProcessingLegalBasis.ESSENTIAL)
+        Purchasely.setUserAttributeWithDate('dateKey', new Date(), PLYDataProcessingLegalBasis.ESSENTIAL)
 
         Purchasely.setUserAttributeWithStringArray('stringArrayKey', [
             'StringValue',
             'Test',
-        ])
+        ], PLYDataProcessingLegalBasis.ESSENTIAL)
         Purchasely.setUserAttributeWithNumberArray('intArrayKey', [3, 42])
         Purchasely.setUserAttributeWithNumberArray(
             'floatArrayKey',
             [1.2, 23.23]
-        )
+        , PLYDataProcessingLegalBasis.OPTIONAL)
         Purchasely.setUserAttributeWithBooleanArray('booleanArrayKey', [
             true,
             false,
@@ -221,7 +221,7 @@ function App(): React.JSX.Element {
         //clear all dynamic offerings
         Purchasely.clearDynamicOfferings()
 
-        Purchasely.revokeDataProcessingConsent([PLYDataProcessingPurpose.ALL_NON_ESSENTIALS])
+        //Purchasely.revokeDataProcessingConsent([PLYDataProcessingPurpose.ALL_NON_ESSENTIALS])
 
         const offeringsEmpty: DynamicOffering[] = await Purchasely.getDynamicOfferings()
         console.log('Dynamic offerings:', offeringsEmpty)
