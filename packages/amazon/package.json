@@ -1,6 +1,6 @@
 {
   "name": "@purchasely/react-native-purchasely-amazon",
-  "version": "5.4.0",
+  "version": "5.4.1",
   "description": "Purchasely Amazon In-App Purchases dependency",
   "source": "./src/index.tsx",
   "main": "./lib/commonjs/index.js",
