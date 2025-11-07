@@ -1,6 +1,6 @@
 {
   "name": "@purchasely/react-native-purchasely-huawei",
-  "version": "5.4.1",
+  "version": "5.5.0",
   "description": "Purchasely Huawei Mobile Services dependencies",
   "source": "./src/index.tsx",
   "main": "./lib/commonjs/index.js",

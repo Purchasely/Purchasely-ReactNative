@@ -63,6 +63,7 @@ repositories {
   mavenCentral()
   jcenter()
   google()
+  mavenLocal()
 
   def found = false
   def defaultDir = null
@@ -137,7 +138,7 @@ dependencies {
   api 'com.facebook.react:react-native:+'
   implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
 
-  implementation 'io.purchasely:player:5.4.0'
+  implementation 'io.purchasely:player:5.5.0'
 }
 
 
