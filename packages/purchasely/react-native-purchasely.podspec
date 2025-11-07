@@ -10,15 +10,15 @@ Pod::Spec.new do |s|
   s.license      = package["license"]
   s.authors      = package["author"]
 
-  s.platforms    = { :ios => "11.0" }
+  s.platforms    = { :ios => "13.4" }
   s.source       = { :git => "https://github.com/Purchasely/Purchasely-ReactNative.git", :tag => "#{s.version}" }
 
-  s.ios.deployment_target = '11.0'
-  s.tvos.deployment_target = '11.0'
+  s.ios.deployment_target = '13.4'
+  s.tvos.deployment_target = '13.4'
 
   s.source_files = "ios/**/*.{h,m,mm,swift}"
   s.requires_arc = true
 
   s.dependency "React-Core"
-  s.dependency "Purchasely", '5.4.2'
+  s.dependency "Purchasely", '5.5.0'
 end
