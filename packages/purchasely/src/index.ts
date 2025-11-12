@@ -28,7 +28,7 @@ import type {
   PurchaselyUserAttribute,
 } from './types';
 
-const purchaselyVersion = '5.5.0';
+const purchaselyVersion = '5.5.1';
 
 const constants = NativeModules.Purchasely.getConstants() as Constants;
 
@@ -397,7 +397,7 @@ const setUserAttributeWithBoolean = (key: string, value: boolean, legalBasis?: P
 
 const setUserAttributeWithStringArray = (
   key: string,
-  value: string[], 
+  value: string[],
   legalBasis?: PLYDataProcessingLegalBasis
 ): void => {
   return NativeModules.Purchasely.setUserAttributeWithStringArray(key, value, legalBasis);
@@ -413,7 +413,7 @@ const setUserAttributeWithNumberArray = (
 
 const setUserAttributeWithBooleanArray = (
   key: string,
-  value: boolean[], 
+  value: boolean[],
   legalBasis?: PLYDataProcessingLegalBasis
 ): void => {
   return NativeModules.Purchasely.setUserAttributeWithBooleanArray(key, value, legalBasis);
