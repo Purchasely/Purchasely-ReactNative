@@ -152,7 +152,7 @@ static NSString * PLYWebCheckoutProviderToString(PLYWebCheckoutProvider provider
       actionString = @"close";
       break;
     case PLYPresentationActionCloseAll:
-      actionString = @"closeAll";
+      actionString = @"close_all";
       break;
     case PLYPresentationActionRestore:
       actionString = @"restore";
