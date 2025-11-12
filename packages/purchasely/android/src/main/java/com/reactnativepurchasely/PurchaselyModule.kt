@@ -791,6 +791,9 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
       parametersForReact["presentation"] = parameters.presentation
       parametersForReact["placement"] = parameters.placement
       parametersForReact["closeReason"] = parameters.closeReason?.name
+      parametersForReact["clientReferenceId"] = parameters?.clientReferenceId
+      parametersForReact["queryParameterKey"] = parameters?.queryParameterKey
+      parametersForReact["webCheckoutProvider"] = parameters?.webCheckoutProvider?.name
 
       promise.resolve(Arguments.makeNativeMap(
         mapOf(
