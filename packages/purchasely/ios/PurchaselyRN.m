@@ -8,7 +8,7 @@
 #import <React/RCTBridgeModule.h>
 
 #import <React/RCTLog.h>
-//#import <Purchasely/Purchasely-Swift.h>
+#import <Purchasely/Purchasely-Swift.h>
 #import "PurchaselyRN.h"
 #import "Purchasely_Hybrid.h"
 #import "UIColor+PLYHelper.h"
