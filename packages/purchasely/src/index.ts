@@ -488,10 +488,6 @@ const setDebugMode = (debugMode: boolean): void => {
   return NativeModules.Purchasely.setDebugMode(debugMode);
 };
 
-const isDebugModeEnabled = (): Promise<boolean> => {
-  return NativeModules.Purchasely.isDebugModeEnabled();
-}
-
 const Purchasely = {
   start,
   addEventListener,
@@ -562,8 +558,7 @@ const Purchasely = {
   removeDynamicOffering,
   clearDynamicOfferings,
   revokeDataProcessingConsent,
-  setDebugMode,
-  isDebugModeEnabled
+  setDebugMode
 };
 
 export * from './types';
