@@ -28,7 +28,7 @@ import type {
   PurchaselyUserAttribute,
 } from './types';
 
-const purchaselyVersion = '5.5.1';
+const purchaselyVersion = '5.6.0';
 
 const constants = NativeModules.Purchasely.getConstants() as Constants;
 
@@ -484,6 +484,14 @@ const revokeDataProcessingConsent = (purposes: PLYDataProcessingPurpose[]): void
   return NativeModules.Purchasely.revokeDataProcessingConsent(stringPurposes);
 }
 
+const setDebugMode = (debugMode: boolean): void => {
+  return NativeModules.Purchasely.setDebugMode(debugMode);
+};
+
+const isDebugModeEnabled = (): Promise<boolean> => {
+  return NativeModules.Purchasely.isDebugModeEnabled();
+}
+
 const Purchasely = {
   start,
   addEventListener,
@@ -553,7 +561,9 @@ const Purchasely = {
   getDynamicOfferings,
   removeDynamicOffering,
   clearDynamicOfferings,
-  revokeDataProcessingConsent
+  revokeDataProcessingConsent,
+  setDebugMode,
+  isDebugModeEnabled
 };
 
 export * from './types';

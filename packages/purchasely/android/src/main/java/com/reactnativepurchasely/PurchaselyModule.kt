@@ -935,6 +935,16 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
     Purchasely.revokeDataProcessingConsent(mapped)
   }
 
+  @ReactMethod
+  fun setDebugMode(enabled: Boolean) {
+    Purchasely.debugMode = enabled
+  }
+
+  @ReactMethod
+  fun isDebugModeEnabled(promise: Promise) {
+    promise.resolve(Purchasely.debugMode)
+  }
+
   private fun mapPurposesFromReadableArray(purposes: ReadableArray): Set<PLYDataProcessingPurpose> {
     val result = mutableSetOf<PLYDataProcessingPurpose>()
 
