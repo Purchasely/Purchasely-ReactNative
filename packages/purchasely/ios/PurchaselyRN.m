@@ -1384,7 +1384,7 @@ RCT_EXPORT_METHOD(revokeDataProcessingConsent:(NSArray<NSString *> * _Nonnull)pu
 
 RCT_EXPORT_METHOD(setDebugMode:(BOOL)enabled) {
     dispatch_async(dispatch_get_main_queue(), ^{
-        [Purchasely setDebugMode: enabled];
+        [Purchasely setDebugModeWithEnabled: enabled];
     });
 }
 
