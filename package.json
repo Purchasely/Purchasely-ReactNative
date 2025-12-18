@@ -22,7 +22,8 @@
   },
   "resolutions": {
     "@types/react": "^18.2.12",
-    "@types/react-native": "^0.70.14"
+    "@types/react-native": "^0.70.14",
+    "cacache/glob": "^10.5.0"
   },
   "workspaces": [
     "packages/*",
