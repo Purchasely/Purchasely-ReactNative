@@ -11,6 +11,7 @@
 		52FE1C0E4D55F1A8D6288A6D /* libPods-RNPurchaselyTest.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 07B56B2BE148068A8E3C79A2 /* libPods-RNPurchaselyTest.a */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
+		DB66C6C37B434B9ECF32D0F6 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = ABEEEE279F297CF1DF799FB4 /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -22,6 +23,7 @@
 		8164D1BE083B6D958B5C8073 /* Pods-RNPurchaselyTest.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RNPurchaselyTest.debug.xcconfig"; path = "Target Support Files/Pods-RNPurchaselyTest/Pods-RNPurchaselyTest.debug.xcconfig"; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = RNPurchaselyTest/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		A477A50FDDCC99A180D8D85E /* Pods-RNPurchaselyTest.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RNPurchaselyTest.release.xcconfig"; path = "Target Support Files/Pods-RNPurchaselyTest/Pods-RNPurchaselyTest.release.xcconfig"; sourceTree = "<group>"; };
+		ABEEEE279F297CF1DF799FB4 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = RNPurchaselyTest/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
@@ -44,6 +46,7 @@
 				761780EC2CA45674006654EE /* AppDelegate.swift */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
+				ABEEEE279F297CF1DF799FB4 /* PrivacyInfo.xcprivacy */,
 			);
 			name = RNPurchaselyTest;
 			sourceTree = "<group>";
@@ -157,6 +160,7 @@
 			files = (
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
+				DB66C6C37B434B9ECF32D0F6 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
