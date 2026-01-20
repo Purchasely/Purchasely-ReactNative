@@ -510,10 +510,8 @@ GitHub Actions workflow (`.github/workflows/ci.yml`):
 1. **lint** (ubuntu-latest) - TypeScript + ESLint checks, type checking
 2. **test** (ubuntu-latest) - TypeScript/Jest unit tests with coverage
 3. **build-library** (ubuntu-latest) - Build TypeScript package with Builder Bob
-4. **build-android** (ubuntu-latest) - Build Android example app
-5. **build-ios** (macos-latest) - Build iOS example app with CocoaPods
-
-All jobs use caching (Turbo, Gradle, CocoaPods, Yarn) for faster incremental builds.
+4. **build-android** (ubuntu-latest) - Build Android example app with Gradle caching
+5. **build-ios** (macos-latest) - Build iOS example app with CocoaPods caching
 
 **Note:** Native tests (Android JUnit and iOS XCTest) are not included in CI as they require React Native dependencies from the example app context. Run these tests locally during development.
 
