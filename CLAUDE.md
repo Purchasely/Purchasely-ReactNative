@@ -4,6 +4,10 @@
 
 **Purchasely React Native SDK** is a comprehensive In-App Purchase and Subscription management solution for React Native applications. It provides a bridge between React Native and native Purchasely SDKs for iOS and Android, supporting multiple app stores.
 
+**📚 Documentation:**
+- **For SDK Users:** See [`sdk_public_doc.md`](../sdk_public_doc.md) - Complete SDK integration and usage guide
+- **For Contributors/AI:** This file (CLAUDE.md) - Codebase architecture, development, and contribution guide
+
 | Property | Value |
 |----------|-------|
 | Current Version | 5.6.1 |
@@ -213,6 +217,18 @@ chore: description   # Tooling/config changes
 ---
 
 ## Public API Overview
+
+> **📖 Complete SDK Documentation:** For full integration guide, API reference, and usage examples, see [`sdk_public_doc.md`](../sdk_public_doc.md)
+
+The following sections provide quick API examples. For comprehensive documentation including:
+- Installation & setup instructions
+- Complete API reference
+- Platform-specific features
+- Event listeners & callbacks
+- Deeplinks management
+- And more...
+
+Refer to the [SDK Public Documentation](../sdk_public_doc.md).
 
 ### Initialization
 
@@ -632,6 +648,12 @@ See `VERSIONS.md` for native SDK version mapping:
 ## Quick Reference Paths
 
 ```
+# Documentation
+sdk_public_doc.md                    # SDK user documentation (integration & usage)
+claude.md                            # This file (codebase context for AI/developers)
+CONTRIBUTING.md                      # Contribution guidelines
+VERSIONS.md                          # SDK version compatibility matrix
+
 # Main source
 packages/purchasely/src/index.ts
 
