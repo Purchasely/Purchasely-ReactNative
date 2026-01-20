@@ -1,4 +1,3 @@
-
 # Purchasely React Native SDK Documentation
 
 This document provides comprehensive documentation for integrating and using the Purchasely React Native SDK with JavaScript/TypeScript.
@@ -84,32 +83,73 @@ allprojects {
 }
 ```
 
-### Google Play Billing (Android)
+### Android Dependencies
 
-To add Google as a store, install the Google dependency:
+> ⚠️ **Important**: The main Purchasely SDK (`react-native-purchasely`) does **NOT** include store implementations by default. This modular architecture allows you to include only the stores you need and avoid dependency conflicts.
+
+With Android, you can choose to use Google Play Store and/or Huawei AppGallery and/or Amazon Appstore. **You must install the corresponding dependency for each store you want to support.**
+
+#### Google Play Billing (Required for Google Play Store)
+
+If your app is distributed on the **Google Play Store**, you **must** install the Google Play Billing dependency:
 
 ```shell
 npm install @purchasely/react-native-purchasely-google --save
 ```
 
-### Video Player (Android)
+**Why is this required?**
+- The Purchasely core SDK does not include the Google Play Billing library
+- When you specify `androidStores: ['Google']` in initialization, the SDK looks for this dependency at runtime
+- Without this dependency, purchases will not work on Android devices using Google Play Store
+- The app may crash or fail to initialize properly on Android
 
-For video support in paywalls, add the player dependency:
+#### Video Player (Required for Video Paywalls)
+
+If your paywalls contain videos, you **must** install the Android video player dependency:
 
 ```shell
 npm install @purchasely/react-native-purchasely-android-player --save
 ```
 
-> **Note**: All your Purchasely dependencies **must** always be at the **same version**:
->
-> ```json
-> // package.json
-> "dependencies": {
->   "react-native-purchasely": "5.0.0",
->   "@purchasely/react-native-purchasely-google": "5.0.0",
->   "@purchasely/react-native-purchasely-android-player": "5.0.0"
-> }
-> ```
+**Why is this required?**
+- The core SDK does not include a video player to avoid conflicts with other media libraries you may have (e.g., Media3/ExoPlayer)
+- Without this dependency, videos in paywalls will not play on Android
+- If you already have your own video player that supports HLS, you can provide your own player view instead
+
+#### Version Matching (Critical)
+
+> ⚠️ **All Purchasely packages must be at the exact same version.** Mismatched versions will cause runtime errors or unexpected behavior.
+
+```json
+// package.json
+"dependencies": {
+  "react-native-purchasely": "5.0.0",
+  "@purchasely/react-native-purchasely-google": "5.0.0",
+  "@purchasely/react-native-purchasely-android-player": "5.0.0"
+}
+```
+
+#### Complete Android Installation Example
+
+For a typical app distributed on Google Play Store with video paywalls:
+
+```shell
+# Install all required dependencies
+npm install react-native-purchasely --save
+npm install @purchasely/react-native-purchasely-google --save
+npm install @purchasely/react-native-purchasely-android-player --save
+```
+
+Then initialize with the Google store:
+
+```typescript
+await Purchasely.start({
+    apiKey: 'YOUR_API_KEY',
+    androidStores: ['Google'], // Requires @purchasely/react-native-purchasely-google
+    storeKit1: false,
+    // ...
+});
+```
 
 ---
 
