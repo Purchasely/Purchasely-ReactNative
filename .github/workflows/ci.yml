@@ -40,6 +40,8 @@ jobs:
 
   build-android:
     runs-on: ubuntu-latest
+    env:
+      GRADLE_FLAGS: "--build-cache --parallel --configuration-cache --configuration-cache-problems=warn"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -56,26 +58,31 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Finalize Android SDK
-        run: |
-          /bin/bash -c "yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null"
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
 
-      - name: Cache Gradle
+      - name: Accept Android SDK licenses
+        run: yes | sdkmanager --licenses
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+        with:
+          gradle-version: wrapper
+          cache-read-only: false
+
+      - name: Cache Android build cache
         uses: actions/cache@v4
         with:
-          path: |
-            ~/.gradle/wrapper
-            ~/.gradle/caches
-          key: ${{ runner.os }}-gradle-${{ hashFiles('example/android/gradle/wrapper/gradle-wrapper.properties') }}
+          path: ~/.android/build-cache
+          key: android-build-cache-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', '**/gradle/libs.versions.toml', '**/settings.gradle*') }}
           restore-keys: |
-            ${{ runner.os }}-gradle-
+            android-build-cache-${{ runner.os }}-
 
       - name: Build example for Android
         env:
           JAVA_OPTS: "-XX:MaxHeapSize=6g"
         run: |
           cd example/android
-          ./gradlew assembleDebug
+          ./gradlew :app:assembleDebug $GRADLE_FLAGS
 
   build-ios:
     runs-on: macos-latest
@@ -93,10 +100,20 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            **/ios/Pods
+            example/ios/Pods
+            ~/.cocoapods
+            ~/Library/Caches/CocoaPods
           key: ${{ runner.os }}-cocoapods-${{ hashFiles('example/ios/Podfile.lock') }}
           restore-keys: |
             ${{ runner.os }}-cocoapods-
+
+      - name: Cache Xcode DerivedData
+        uses: actions/cache@v4
+        with:
+          path: example/ios/DerivedData
+          key: ${{ runner.os }}-derived-data-${{ hashFiles('example/ios/Podfile.lock', 'example/ios/*.xcodeproj/project.pbxproj') }}
+          restore-keys: |
+            ${{ runner.os }}-derived-data-
 
       - name: Install CocoaPods
         run: |
@@ -105,6 +122,17 @@ jobs:
         env:
           NO_FLIPPER: 1
 
+      - name: Prebuild CocoaPods targets
+        run: |
+          xcodebuild \
+            -workspace example/ios/example.xcworkspace \
+            -scheme Pods-example \
+            -configuration Debug \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath example/ios/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
       - name: Build example for iOS
         run: |
           xcodebuild \
@@ -112,5 +140,6 @@ jobs:
             -scheme example \
             -configuration Debug \
             -destination 'generic/platform=iOS' \
+            -derivedDataPath example/ios/DerivedData \
             CODE_SIGNING_ALLOWED=NO \
             build
