@@ -82,6 +82,19 @@ ReactNative_SDK/
 | `packages/purchasely/android/.../PLYProductActivity.kt` | Product presentation activity |
 | `packages/purchasely/android/.../PLYSubscriptionsActivity.kt` | Subscriptions activity |
 
+### Test Files
+
+| File | Purpose | Lines |
+|------|---------|-------|
+| `packages/purchasely/src/__tests__/index.test.ts` | Main API method tests | ~823 |
+| `packages/purchasely/src/__tests__/types.test.ts` | Type validation tests | ~503 |
+| `packages/purchasely/src/__tests__/enums.test.ts` | Enumeration tests | ~306 |
+| `packages/purchasely/src/__tests__/PLYPresentationView.test.tsx` | Component tests | ~266 |
+| `packages/purchasely/src/__mocks__/testUtils.ts` | Shared test utilities | - |
+| `packages/purchasely/ios/PurchaselyTests/PurchaselyRNTests.m` | iOS bridge tests | ~330 |
+| `packages/purchasely/ios/PurchaselyTests/PurchaselyViewTests.swift` | iOS view tests | ~265 |
+| `packages/purchasely/android/src/test/.../PurchaselyModuleTest.kt` | Android module tests | ~508 |
+
 ### Configuration Files
 
 | File | Purpose |
@@ -371,6 +384,47 @@ Build orchestration with caching:
 
 ## Testing
 
+The SDK includes comprehensive test coverage across TypeScript, iOS, and Android platforms.
+
+### Test Structure
+
+**TypeScript/Jest Tests** (`packages/purchasely/src/__tests__/`)
+
+| Test File | Purpose | Lines |
+|-----------|---------|-------|
+| `index.test.ts` | Main API tests for all public methods | ~823 |
+| `types.test.ts` | Type definition validation tests | ~503 |
+| `enums.test.ts` | Enumeration value tests | ~306 |
+| `PLYPresentationView.test.tsx` | React component tests | ~266 |
+
+- **Mocks & Utilities:** `packages/purchasely/src/__mocks__/testUtils.ts`
+- **Framework:** Jest with React Native preset
+- **Total Test Coverage:** ~1,900 lines of TypeScript tests
+
+**iOS Tests (XCTest)** (`packages/purchasely/ios/PurchaselyTests/`)
+
+| Test File | Purpose | Lines | Language |
+|-----------|---------|-------|----------|
+| `PurchaselyRNTests.m` | Bridge module integration tests | ~330 | Objective-C |
+| `PurchaselyViewTests.swift` | View component tests | ~265 | Swift |
+
+- **Framework:** XCTest (built-in iOS testing framework)
+- **Test Target:** Configured in `Info.plist`
+- **Coverage:** Native bridge methods, view lifecycle, event handling
+
+**Android Tests (JUnit)** (`packages/purchasely/android/src/test/`)
+
+| Test File | Purpose | Lines |
+|-----------|---------|-------|
+| `PurchaselyModuleTest.kt` | Bridge module unit tests | ~508 |
+
+- **Framework:** JUnit 4.13.2
+- **Testing Dependencies:**
+  - Mockito 5.11.0 (mocking framework)
+  - Mockito Kotlin 5.2.1 (Kotlin extensions)
+  - Kotlinx Coroutines Test 1.7.3 (async testing)
+- **Coverage:** React Native bridge methods, async operations, error handling
+
 ### Jest Configuration
 
 ```json
@@ -386,10 +440,45 @@ Build orchestration with caching:
 ### Running Tests
 
 ```bash
+# TypeScript/Jest tests
 yarn test                    # All tests
 yarn test --coverage         # With coverage
 yarn test --watch           # Watch mode
+
+# iOS tests (XCTest)
+# Run from Xcode or via xcodebuild
+cd packages/purchasely/ios
+xcodebuild test -workspace Purchasely.xcworkspace -scheme Purchasely -destination 'platform=iOS Simulator,name=iPhone 15'
+
+# Android tests (JUnit)
+cd packages/purchasely/android
+./gradlew test              # Run unit tests
+./gradlew testDebugUnitTest # Run debug variant tests
 ```
+
+### Test Guidelines
+
+When adding new features:
+
+1. **TypeScript Tests** - Add tests in `src/__tests__/` for:
+   - New public API methods
+   - Type definitions and interfaces
+   - Component behavior
+   - Event listeners
+
+2. **iOS Tests** - Add tests in `ios/PurchaselyTests/` for:
+   - Native bridge method implementations
+   - View component lifecycle
+   - Platform-specific behavior
+   - Error handling and edge cases
+
+3. **Android Tests** - Add tests in `android/src/test/` for:
+   - Native module method implementations
+   - Async operations and promises
+   - Platform-specific behavior
+   - Error handling and edge cases
+
+4. **Cross-Platform Parity** - Ensure tests verify consistent behavior across iOS and Android
 
 ---
 
@@ -397,12 +486,43 @@ yarn test --watch           # Watch mode
 
 GitHub Actions workflow (`.github/workflows/ci.yml`):
 
-1. **Lint Job** - TypeScript + ESLint checks
-2. **Test Job** - Jest with coverage reporting
-3. **Android Build** - Ubuntu runner
-4. **iOS Build** - macOS runner
+### Test Jobs
 
-All jobs use Turbo caching for faster incremental builds.
+1. **lint** (ubuntu-latest) - TypeScript + ESLint checks, type checking
+2. **test** (ubuntu-latest) - TypeScript/Jest unit tests with coverage
+3. **test-android** (ubuntu-latest) - Android JUnit tests via Gradle
+4. **test-ios** (macos-latest) - iOS XCTest tests via xcodebuild
+
+### Build Jobs
+
+5. **build-library** (ubuntu-latest) - Build TypeScript package with Builder Bob
+6. **build-android** (ubuntu-latest) - Build Android example app
+7. **build-ios** (macos-latest) - Build iOS example app with CocoaPods
+
+All jobs use caching (Turbo, Gradle, CocoaPods, Yarn) for faster incremental builds.
+
+### CI Commands Reference
+
+```yaml
+# Lint & Type Check
+yarn lint
+yarn typecheck
+
+# TypeScript Tests
+yarn test --maxWorkers=2 --coverage
+
+# Android Tests
+cd packages/purchasely/android
+./gradlew test --no-daemon
+
+# iOS Tests
+cd packages/purchasely/ios
+xcodebuild test \
+  -project Purchasely.xcodeproj \
+  -scheme Purchasely \
+  -destination 'platform=iOS Simulator,name=iPhone 15,OS=latest' \
+  -enableCodeCoverage YES
+```
 
 ---
 
@@ -434,6 +554,27 @@ All jobs use Turbo caching for faster incremental builds.
 - Edit `PurchaselyModule.kt`
 - Use `@ReactMethod` annotation
 - Use `Promise` parameter for async
+
+### Adding Tests
+
+**TypeScript Tests:**
+1. Create test file in `packages/purchasely/src/__tests__/`
+2. Use Jest and React Native Testing Library
+3. Mock native modules using `src/__mocks__/testUtils.ts`
+4. Test both success and error cases
+5. Run `yarn test` to verify
+
+**iOS Tests (XCTest):**
+1. Add test methods to `PurchaselyRNTests.m` or `PurchaselyViewTests.swift`
+2. Use XCTestCase and XCTestExpectation for async tests
+3. Test native bridge methods and view lifecycle
+4. Run tests from Xcode or via xcodebuild
+
+**Android Tests (JUnit):**
+1. Add test methods to `PurchaselyModuleTest.kt`
+2. Use JUnit 4 annotations (@Test, @Before, @After)
+3. Use Mockito for mocking React Native bridge
+4. Test with `./gradlew test` from android directory
 
 ---
 
@@ -504,6 +645,20 @@ packages/purchasely/ios/PurchaselyRN.m
 
 # Android native
 packages/purchasely/android/src/main/java/com/reactnativepurchasely/PurchaselyModule.kt
+
+# TypeScript tests
+packages/purchasely/src/__tests__/index.test.ts
+packages/purchasely/src/__tests__/types.test.ts
+packages/purchasely/src/__tests__/enums.test.ts
+packages/purchasely/src/__tests__/PLYPresentationView.test.tsx
+packages/purchasely/src/__mocks__/testUtils.ts
+
+# iOS tests
+packages/purchasely/ios/PurchaselyTests/PurchaselyRNTests.m
+packages/purchasely/ios/PurchaselyTests/PurchaselyViewTests.swift
+
+# Android tests
+packages/purchasely/android/src/test/java/com/reactnativepurchasely/PurchaselyModuleTest.kt
 
 # Example app
 example/src/App.tsx
