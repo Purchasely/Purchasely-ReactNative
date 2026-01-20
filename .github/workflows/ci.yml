@@ -38,47 +38,6 @@ jobs:
       - name: Run TypeScript unit tests
         run: yarn test --maxWorkers=2 --coverage
 
-  test-android:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup
-        uses: ./.github/actions/setup
-
-      - name: Install JDK
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'zulu'
-          java-version: '17'
-
-      - name: Run Android unit tests
-        run: |
-          cd packages/purchasely/android
-          ./gradlew test --no-daemon
-
-  test-ios:
-    runs-on: macos-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup
-        uses: ./.github/actions/setup
-
-      - name: Run iOS unit tests
-        run: |
-          cd packages/purchasely/ios
-          xcodebuild test \
-            -project Purchasely.xcodeproj \
-            -scheme Purchasely \
-            -destination 'platform=iOS Simulator,name=iPhone 15,OS=latest' \
-            -enableCodeCoverage YES \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            ONLY_ACTIVE_ARCH=NO
-
   build-library:
     runs-on: ubuntu-latest
     steps:

@@ -456,21 +456,24 @@ The SDK includes comprehensive test coverage across TypeScript, iOS, and Android
 ### Running Tests
 
 ```bash
-# TypeScript/Jest tests
+# TypeScript/Jest tests (CI-enabled)
 yarn test                    # All tests
 yarn test --coverage         # With coverage
 yarn test --watch           # Watch mode
 
-# iOS tests (XCTest)
-# Run from Xcode or via xcodebuild
+# iOS tests (XCTest) - Run locally or in example app context
+# Native tests require React Native dependencies from the example app
 cd packages/purchasely/ios
 xcodebuild test -workspace Purchasely.xcworkspace -scheme Purchasely -destination 'platform=iOS Simulator,name=iPhone 15'
 
-# Android tests (JUnit)
+# Android tests (JUnit) - Run locally or in example app context
+# Native tests require React Native dependencies from the example app
 cd packages/purchasely/android
 ./gradlew test              # Run unit tests
 ./gradlew testDebugUnitTest # Run debug variant tests
 ```
+
+**Note:** Native tests (iOS XCTest and Android JUnit) require React Native dependencies and should be run locally or within the example app context. They cannot run in CI as standalone jobs. TypeScript tests run in CI automatically.
 
 ### Test Guidelines
 
@@ -502,20 +505,17 @@ When adding new features:
 
 GitHub Actions workflow (`.github/workflows/ci.yml`):
 
-### Test Jobs
+### CI Jobs
 
 1. **lint** (ubuntu-latest) - TypeScript + ESLint checks, type checking
 2. **test** (ubuntu-latest) - TypeScript/Jest unit tests with coverage
-3. **test-android** (ubuntu-latest) - Android JUnit tests via Gradle
-4. **test-ios** (macos-latest) - iOS XCTest tests via xcodebuild
-
-### Build Jobs
-
-5. **build-library** (ubuntu-latest) - Build TypeScript package with Builder Bob
-6. **build-android** (ubuntu-latest) - Build Android example app
-7. **build-ios** (macos-latest) - Build iOS example app with CocoaPods
+3. **build-library** (ubuntu-latest) - Build TypeScript package with Builder Bob
+4. **build-android** (ubuntu-latest) - Build Android example app
+5. **build-ios** (macos-latest) - Build iOS example app with CocoaPods
 
 All jobs use caching (Turbo, Gradle, CocoaPods, Yarn) for faster incremental builds.
+
+**Note:** Native tests (Android JUnit and iOS XCTest) are not included in CI as they require React Native dependencies from the example app context. Run these tests locally during development.
 
 ### CI Commands Reference
 
@@ -524,20 +524,11 @@ All jobs use caching (Turbo, Gradle, CocoaPods, Yarn) for faster incremental bui
 yarn lint
 yarn typecheck
 
-# TypeScript Tests
+# TypeScript Tests (CI-enabled)
 yarn test --maxWorkers=2 --coverage
 
-# Android Tests
-cd packages/purchasely/android
-./gradlew test --no-daemon
-
-# iOS Tests
-cd packages/purchasely/ios
-xcodebuild test \
-  -project Purchasely.xcodeproj \
-  -scheme Purchasely \
-  -destination 'platform=iOS Simulator,name=iPhone 15,OS=latest' \
-  -enableCodeCoverage YES
+# Build Library
+yarn prepare
 ```
 
 ---
