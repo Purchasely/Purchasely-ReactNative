@@ -49,7 +49,6 @@ jest.mock('react-native', () => {
     }
 })
 
-import React from 'react'
 import { act, create } from 'react-test-renderer'
 import { NativeModules, findNodeHandle, UIManager } from 'react-native'
 

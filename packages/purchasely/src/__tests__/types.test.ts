@@ -21,10 +21,8 @@ import type {
     PurchaselyPromotionalOfferSignature,
     PurchaselyUserAttribute,
     PresentPresentationResult,
-    FetchPresentationResult,
     PaywallActionInterceptorResult,
     PurchaselyEvent,
-    PurchaselyEventProperties,
     PurchaselyPresentation,
     PLYPaywallInfo,
     PLYPresentationPlan,
@@ -125,7 +123,7 @@ describe('Purchasely Types', () => {
 
             expect(product.name).toBe('Premium Subscription')
             expect(product.plans).toHaveLength(1)
-            expect(product.plans[0].hasFreeTrial).toBe(true)
+            expect(product.plans?.[0]?.hasFreeTrial).toBe(true)
         })
 
         it('should handle product with empty plans array', () => {

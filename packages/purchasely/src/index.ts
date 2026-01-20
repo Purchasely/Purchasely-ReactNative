@@ -451,7 +451,7 @@ const isAnonymous = (): Promise<boolean> => {
   return NativeModules.Purchasely.isAnonymous();
 };
 
-const isEligibleForIntroOffer = (planVendorId: String): Promise<boolean> => {
+const isEligibleForIntroOffer = (planVendorId: string): Promise<boolean> => {
   return NativeModules.Purchasely.isEligibleForIntroOffer(planVendorId);
 };
 

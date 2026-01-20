@@ -9,7 +9,8 @@ import {
 } from '../__mocks__/testUtils'
 
 // Create mock functions for all native methods
-const mockPurchaselyModule = createMockPurchaselyModule()
+// mockPurchaselyModule is created but not used directly - it sets up the mocks
+createMockPurchaselyModule()
 
 // Mock react-native before importing Purchasely
 jest.mock('react-native', () => ({
