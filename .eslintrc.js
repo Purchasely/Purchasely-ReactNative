@@ -5,7 +5,14 @@ module.exports = {
     'plugin:@typescript-eslint/recommended',
     'prettier',
   ],
-  ignorePatterns: ['**/.next/**.**'],
+  ignorePatterns: [
+    '**/.next/**.**',
+    '**/lib/**',
+    '**/node_modules/**',
+    '**/build/**',
+    '**/__tests__/**',
+    '**/__mocks__/**',
+  ],
   rules: {
     '@typescript-eslint/no-unused-vars': 'off',
     '@typescript-eslint/no-explicit-any': 'off',

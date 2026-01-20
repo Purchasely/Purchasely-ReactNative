@@ -16,9 +16,14 @@ Pod::Spec.new do |s|
   s.ios.deployment_target = '13.4'
   s.tvos.deployment_target = '13.4'
 
-  s.source_files = "ios/**/*.{h,m,mm,swift}"
+  s.source_files = "ios/*.{h,m,mm,swift}", "ios/Classes/**/*.{h,m,mm,swift}"
   s.requires_arc = true
 
   s.dependency "React-Core"
   s.dependency "Purchasely", '5.6.2'
+
+  s.test_spec 'Tests' do |test_spec|
+    test_spec.source_files = 'ios/PurchaselyTests/**/*.{h,m,mm,swift}'
+    test_spec.frameworks = 'XCTest'
+  end
 end
