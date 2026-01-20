@@ -6,6 +6,7 @@
     "lint": "yarn workspace react-native-purchasely lint",
     "typecheck": "yarn workspace react-native-purchasely typecheck",
     "test": "yarn workspace react-native-purchasely test",
+    "prepare": "yarn workspace react-native-purchasely prepare",
     "purchasely:prepare": "yarn workspace react-native-purchasely prepare",
     "purchasely:clean": "yarn workspace react-native-purchasely clean",
     "google:prepare": "yarn workspace @purchasely/react-native-purchasely-google prepare",
