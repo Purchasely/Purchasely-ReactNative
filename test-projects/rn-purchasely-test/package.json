@@ -13,7 +13,7 @@
     "@purchasely/react-native-purchasely-android-player": "^5.6.1",
     "@purchasely/react-native-purchasely-google": "^5.6.1",
     "react": "19.0.0",
-    "react-native": "0.79.2",
+    "react-native": "0.83.1",
     "react-native-purchasely": "^5.6.1",
     "react-native-safe-area-context": "^5.4.0"
   },
@@ -21,13 +21,13 @@
     "@babel/core": "^7.25.2",
     "@babel/preset-env": "^7.25.3",
     "@babel/runtime": "^7.25.0",
-    "@react-native-community/cli": "^15.0.1",
-    "@react-native-community/cli-platform-android": "^15.0.1",
-    "@react-native-community/cli-platform-ios": "^15.0.1",
-    "@react-native/babel-preset": "0.79.2",
-    "@react-native/eslint-config": "0.79.2",
-    "@react-native/metro-config": "0.79.2",
-    "@react-native/typescript-config": "0.79.2",
+    "@react-native-community/cli": "^18.0.0",
+    "@react-native-community/cli-platform-android": "^18.0.0",
+    "@react-native-community/cli-platform-ios": "^18.0.0",
+    "@react-native/babel-preset": "0.83.1",
+    "@react-native/eslint-config": "0.83.1",
+    "@react-native/metro-config": "0.83.1",
+    "@react-native/typescript-config": "0.83.1",
     "@types/react": "^19.0.0",
     "eslint": "^8.19.0",
     "metro-react-native-babel-preset": "^0.77.0",
@@ -35,6 +35,6 @@
     "typescript": "^5.0.4"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   }
 }

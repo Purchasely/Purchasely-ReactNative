@@ -11,9 +11,9 @@
 | Property | Value |
 |----------|-------|
 | Current Version | 5.6.1 |
-| React Native | 0.79.2 |
+| React Native | 0.83.1 |
 | TypeScript | 5.2.2 (strict mode) |
-| Node.js | v20 (see `.nvmrc`) |
+| Node.js | v20.19.4 (see `.nvmrc`) |
 | Package Manager | Yarn 3.6.1 (workspaces) |
 | Native iOS SDK | 5.6.2 |
 | Native Android SDK | 5.6.0 |
@@ -393,8 +393,9 @@ Build orchestration with caching:
 **Android (Gradle):**
 - io.purchasely:core:5.6.0
 - Min SDK: 21
-- Kotlin: 1.9+
-- Java: 11
+- Kotlin: 2.1+
+- Java: 17
+- Gradle: 8.14
 
 ---
 
@@ -642,6 +643,7 @@ sdk_public_doc.md                    # SDK user documentation (integration & usa
 claude.md                            # This file (codebase context for AI/developers)
 CONTRIBUTING.md                      # Contribution guidelines
 VERSIONS.md                          # SDK version compatibility matrix
+docs/react-native-upgrade-best-practices.md  # RN upgrade guide for future migrations
 
 # Main source
 packages/purchasely/src/index.ts

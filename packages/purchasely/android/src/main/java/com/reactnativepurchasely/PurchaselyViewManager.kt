@@ -35,6 +35,11 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
   private var placementId: String? = null
   private var presentation: PLYPresentation? = null
 
+  // Frame callback tracking to prevent infinite loop (memory leak fix)
+  private var frameCallback: Choreographer.FrameCallback? = null
+  private var layoutFrameCount = 0
+  private val MAX_LAYOUT_FRAMES = 10 // Layout stabilizes quickly
+
   override fun getName(): String = "PurchaselyView"
 
   override fun createViewInstance(p0: ThemedReactContext): FrameLayout {
@@ -131,13 +136,23 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
   }
 
   fun setupLayout(view: View) {
-    Choreographer.getInstance().postFrameCallback(object : Choreographer.FrameCallback {
+    // Cancel any existing callback before starting new one
+    frameCallback?.let { Choreographer.getInstance().removeFrameCallback(it) }
+    layoutFrameCount = 0
+
+    frameCallback = object : Choreographer.FrameCallback {
       override fun doFrame(frameTimeNanos: Long) {
         manuallyLayoutChildren(view)
         view.viewTreeObserver.dispatchOnGlobalLayout()
-        Choreographer.getInstance().postFrameCallback(this)
+        layoutFrameCount++
+        if (layoutFrameCount < MAX_LAYOUT_FRAMES) {
+          Choreographer.getInstance().postFrameCallback(this)
+        } else {
+          frameCallback = null
+        }
       }
-    })
+    }
+    Choreographer.getInstance().postFrameCallback(frameCallback!!)
   }
 
   /**
@@ -190,6 +205,10 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
   }
 
   override fun onDropViewInstance(view: FrameLayout) {
+    // Cancel any pending frame callbacks to prevent memory leaks
+    frameCallback?.let { Choreographer.getInstance().removeFrameCallback(it) }
+    frameCallback = null
+
     super.onDropViewInstance(view)
     val activity = (reactContext.currentActivity as? FragmentActivity) ?: return
     val fm = activity.supportFragmentManager
