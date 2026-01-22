@@ -381,9 +381,9 @@ jest.mock('./NativeYourModule', () => ({
 
 | Era | Key Characteristics |
 |-----|---------------------|
-| Pre-0.68 | Bridge-only architecture |
-| 0.68-0.81 | New Architecture optional |
-| 0.82+ | New Architecture mandatory |
+| Pre-0.68  | Bridge-only architecture         |
+| 0.68-0.73 | New Architecture optional (opt-in)  |
+| 0.74+     | New Architecture default (opt-out) |
 
 ---
 
