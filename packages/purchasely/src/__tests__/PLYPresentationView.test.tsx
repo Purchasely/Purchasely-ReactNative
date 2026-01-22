@@ -238,9 +238,10 @@ describe('PLYPresentationView - Android Platform', () => {
         })
 
         expect(mockedFindNodeHandle).toHaveBeenCalled()
+        // Command ID is now numeric (1) instead of string ('1') for New Architecture compatibility
         expect(mockedDispatchViewManagerCommand).toHaveBeenCalledWith(
             123,
-            '1',
+            1,
             [123]
         )
     })

@@ -8,13 +8,18 @@ import {
     View,
 } from 'react-native'
 import { NativeStackScreenProps } from '@react-navigation/native-stack'
-import { Colors } from 'react-native/Libraries/NewAppScreen'
 import Purchasely, {
     PLYPresentationType,
     ProductResult,
 } from 'react-native-purchasely'
 
 import DeviceInfo from 'react-native-device-info'
+
+// Colors removed from react-native/Libraries/NewAppScreen in RN 0.75+
+const Colors = {
+    darker: '#121212',
+    lighter: '#F3F3F3',
+}
 
 export const HomeScreen: React.FC<NativeStackScreenProps<any>> = ({
     navigation,

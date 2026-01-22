@@ -1,6 +1,5 @@
 import { Text, View } from 'react-native'
 import { NativeStackScreenProps } from '@react-navigation/native-stack'
-import { Header } from 'react-native/Libraries/NewAppScreen'
 import { Section } from './Section.tsx'
 import Purchasely, {
     PLYPresentationView,

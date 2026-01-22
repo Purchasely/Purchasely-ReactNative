@@ -61,6 +61,9 @@
       "requireCleanWorkingDir": false
     }
   },
+  "engines": {
+    "node": ">=20.19.4 <21"
+  },
   "npm": {
     "publish": false
   }
