@@ -118,7 +118,7 @@ jobs:
       - name: Install CocoaPods
         run: |
           cd example/ios
-          pod install
+          pod install --repo-update
         env:
           NO_FLIPPER: 1
 
