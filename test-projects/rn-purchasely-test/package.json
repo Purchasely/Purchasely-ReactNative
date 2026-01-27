@@ -10,11 +10,11 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "@purchasely/react-native-purchasely-android-player": "^5.6.1",
-    "@purchasely/react-native-purchasely-google": "^5.6.1",
+    "@purchasely/react-native-purchasely-android-player": "^5.6.2",
+    "@purchasely/react-native-purchasely-google": "^5.6.2",
     "react": "19.0.0",
     "react-native": "0.79.2",
-    "react-native-purchasely": "^5.6.1",
+    "react-native-purchasely": "^5.6.2",
     "react-native-safe-area-context": "^5.4.0"
   },
   "devDependencies": {

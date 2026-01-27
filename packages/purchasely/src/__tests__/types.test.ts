@@ -328,7 +328,7 @@ describe('Purchasely Types', () => {
             const event: PurchaselyEvent = {
                 name: 'PURCHASE_TAPPED',
                 properties: {
-                    sdk_version: '5.6.1',
+                    sdk_version: '5.6.2',
                     event_name: 'PURCHASE_TAPPED',
                     event_created_at_ms: 1705315200000,
                     event_created_at: '2024-01-15T12:00:00Z',
@@ -339,7 +339,7 @@ describe('Purchasely Types', () => {
             }
 
             expect(event.name).toBe('PURCHASE_TAPPED')
-            expect(event.properties.sdk_version).toBe('5.6.1')
+            expect(event.properties.sdk_version).toBe('5.6.2')
         })
     })
 
