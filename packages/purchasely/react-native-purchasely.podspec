@@ -20,7 +20,7 @@ Pod::Spec.new do |s|
   s.requires_arc = true
 
   s.dependency "React-Core"
-  s.dependency "Purchasely", '5.6.2'
+  s.dependency "Purchasely", '5.6.4'
 
   s.test_spec 'Tests' do |test_spec|
     test_spec.source_files = 'ios/PurchaselyTests/**/*.{h,m,mm,swift}'

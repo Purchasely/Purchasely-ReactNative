@@ -8,7 +8,7 @@ PODS:
   - hermes-engine (0.79.2):
     - hermes-engine/Pre-built (= 0.79.2)
   - hermes-engine/Pre-built (0.79.2)
-  - Purchasely (5.6.2)
+  - Purchasely (5.6.4)
   - RCT-Folly (2024.11.18.00):
     - boost
     - DoubleConversion
@@ -1333,8 +1333,8 @@ PODS:
     - React-jsiexecutor
     - React-RCTFBReactNativeSpec
     - ReactCommon/turbomodule/core
-  - react-native-purchasely (5.6.1):
-    - Purchasely (= 5.6.2)
+  - react-native-purchasely (5.6.2):
+    - Purchasely (= 5.6.4)
     - React-Core
   - react-native-safe-area-context (5.5.2):
     - DoubleConversion
@@ -1797,6 +1797,7 @@ DEPENDENCIES:
   - fmt (from `../node_modules/react-native/third-party-podspecs/fmt.podspec`)
   - glog (from `../node_modules/react-native/third-party-podspecs/glog.podspec`)
   - hermes-engine (from `../node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec`)
+  - Purchasely (= 5.6.4)
   - RCT-Folly (from `../node_modules/react-native/third-party-podspecs/RCT-Folly.podspec`)
   - RCT-Folly/Fabric (from `../node_modules/react-native/third-party-podspecs/RCT-Folly.podspec`)
   - RCTDeprecation (from `../node_modules/react-native/ReactApple/Libraries/RCTFoundation/RCTDeprecation`)
@@ -2031,7 +2032,7 @@ SPEC CHECKSUMS:
   fmt: a40bb5bd0294ea969aaaba240a927bd33d878cdd
   glog: 5683914934d5b6e4240e497e0f4a3b42d1854183
   hermes-engine: 314be5250afa5692b57b4dd1705959e1973a8ebe
-  Purchasely: d159c2b47561d3babf21096e1f14d90523d2ae3b
+  Purchasely: f7640277e49e305c5d625d2142b060893d1001de
   RCT-Folly: e78785aa9ba2ed998ea4151e314036f6c49e6d82
   RCTDeprecation: 83ffb90c23ee5cea353bd32008a7bca100908f8c
   RCTRequired: eb7c0aba998009f47a540bec9e9d69a54f68136e
@@ -2063,7 +2064,7 @@ SPEC CHECKSUMS:
   React-logger: 8edfcedc100544791cd82692ca5a574240a16219
   React-Mapbuffer: c3f4b608e4a59dd2f6a416ef4d47a14400194468
   React-microtasksnativemodule: 054f34e9b82f02bd40f09cebd4083828b5b2beb6
-  react-native-purchasely: a0d81ca50a2bfc6b2c41b4ebba8e8e0ad461a436
+  react-native-purchasely: e179ad7376654b00d4513798a8355d0ec0ac0358
   react-native-safe-area-context: 7e926a200d4bc9c56562275743705c6b56176455
   React-NativeModulesApple: 2c4377e139522c3d73f5df582e4f051a838ff25e
   React-oscompat: ef5df1c734f19b8003e149317d041b8ce1f7d29c
@@ -2101,6 +2102,6 @@ SPEC CHECKSUMS:
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
   Yoga: c758bfb934100bb4bf9cbaccb52557cee35e8bdf
 
-PODFILE CHECKSUM: a5de45e2350a9515567a6e18ca8ceea718b48523
+PODFILE CHECKSUM: ad5c1b94b2f3b7ad8ec49773eced65507277f8a7
 
 COCOAPODS: 1.16.2
