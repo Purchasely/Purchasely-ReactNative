@@ -7,15 +7,16 @@
 **📚 Documentation:**
 - **For SDK Users:** See [`sdk_public_doc.md`](../sdk_public_doc.md) - Complete SDK integration and usage guide
 - **For Contributors/AI:** This file (CLAUDE.md) - Codebase architecture, development, and contribution guide
+- **For Releases:** See [`RELEASE.md`](./RELEASE.md) - Step-by-step version update and release process
 
 | Property | Value |
 |----------|-------|
-| Current Version | 5.6.1 |
+| Current Version | 5.6.2 |
 | React Native | 0.79.2 |
 | TypeScript | 5.2.2 (strict mode) |
 | Node.js | v20 (see `.nvmrc`) |
 | Package Manager | Yarn 3.6.1 (workspaces) |
-| Native iOS SDK | 5.6.2 |
+| Native iOS SDK | 5.6.4 |
 | Native Android SDK | 5.6.0 |
 
 ### Supported App Stores
@@ -642,6 +643,7 @@ sdk_public_doc.md                    # SDK user documentation (integration & usa
 claude.md                            # This file (codebase context for AI/developers)
 CONTRIBUTING.md                      # Contribution guidelines
 VERSIONS.md                          # SDK version compatibility matrix
+RELEASE.md                           # Release process and version update steps
 
 # Main source
 packages/purchasely/src/index.ts
