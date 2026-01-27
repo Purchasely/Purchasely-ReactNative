@@ -24,16 +24,11 @@ git checkout -b version/{VERSION}
 
 #### iOS SDK Version
 
-Update the Purchasely iOS SDK version in two files:
+Update the Purchasely iOS SDK version in:
 
 **`packages/purchasely/react-native-purchasely.podspec`** (line ~23):
 ```ruby
 s.dependency "Purchasely", '{IOS_VERSION}'
-```
-
-**`example/ios/Podfile`** (line ~26):
-```ruby
-pod 'Purchasely', '{IOS_VERSION}'
 ```
 
 #### Android SDK Version
@@ -43,6 +38,26 @@ Update the Purchasely Android SDK version in:
 **`packages/purchasely/android/build.gradle`** (line ~143):
 ```groovy
 api 'io.purchasely:core:{ANDROID_VERSION}'
+```
+
+**`packages/google/android/build.gradle`** (line ~133):
+```groovy
+implementation 'io.purchasely:google-play:{ANDROID_VERSION}'
+```
+
+**`packages/amazon/android/build.gradle`** (line ~131):
+```groovy
+implementation 'io.purchasely:amazon:{ANDROID_VERSION}'
+```
+
+**`packages/huawei/android/build.gradle`** (line ~135):
+```groovy
+implementation 'io.purchasely:huawei-services:{ANDROID_VERSION}'
+```
+
+**`packages/android-player/android/build.gradle`** (line ~141):
+```groovy
+implementation 'io.purchasely:player:{ANDROID_VERSION}'
 ```
 
 ### 3. Run the Prepare Script
@@ -163,6 +178,10 @@ This publishes all packages:
 | `packages/android-player/package.json` | Version number |
 | `packages/purchasely/react-native-purchasely.podspec` | iOS SDK version (if updated) |
 | `packages/purchasely/android/build.gradle` | Android SDK version (if updated) |
+| `packages/google/android/build.gradle` | Android SDK version (if updated) |
+| `packages/amazon/android/build.gradle` | Android SDK version (if updated) |
+| `packages/huawei/android/build.gradle` | Android SDK version (if updated) |
+| `packages/android-player/android/build.gradle` | Android SDK version (if updated) |
 | `example/ios/Podfile` | iOS SDK version (if updated) |
 | `VERSIONS.md` | Version mapping table |
 | `packages/purchasely/src/__tests__/index.test.ts` | Test version expectations |
