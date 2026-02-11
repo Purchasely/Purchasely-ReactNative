@@ -35,25 +35,13 @@ jobs:
       - name: Setup
         uses: ./.github/actions/setup
 
-      - name: Run unit tests
+      - name: Run TypeScript unit tests
         run: yarn test --maxWorkers=2 --coverage
-
-  build-library:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup
-        uses: ./.github/actions/setup
-
-      - name: Build package
-        run: yarn prepare
 
   build-android:
     runs-on: ubuntu-latest
     env:
-      TURBO_CACHE_DIR: .turbo/android
+      GRADLE_FLAGS: "--build-cache --parallel --configuration-cache --configuration-cache-problems=warn"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -61,55 +49,43 @@ jobs:
       - name: Setup
         uses: ./.github/actions/setup
 
-      - name: Cache turborepo for Android
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.TURBO_CACHE_DIR }}
-          key: ${{ runner.os }}-turborepo-android-${{ hashFiles('yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-turborepo-android-
-
-      - name: Check turborepo cache for Android
-        run: |
-          TURBO_CACHE_STATUS=$(node -p "($(yarn turbo run build:android --cache-dir="${{ env.TURBO_CACHE_DIR }}" --dry=json)).tasks.find(t => t.task === 'build:android').cache.status")
-
-          if [[ $TURBO_CACHE_STATUS == "HIT" ]]; then
-            echo "turbo_cache_hit=1" >> $GITHUB_ENV
-          fi
+      - name: Build library
+        run: yarn prepare
 
       - name: Install JDK
-        if: env.turbo_cache_hit != 1
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Finalize Android SDK
-        if: env.turbo_cache_hit != 1
-        run: |
-          /bin/bash -c "yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null"
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
 
-      - name: Cache Gradle
-        if: env.turbo_cache_hit != 1
+      - name: Accept Android SDK licenses
+        run: yes | sdkmanager --licenses
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+        with:
+          gradle-version: wrapper
+          cache-read-only: false
+
+      - name: Cache Android build cache
         uses: actions/cache@v4
         with:
-          path: |
-            ~/.gradle/wrapper
-            ~/.gradle/caches
-          key: ${{ runner.os }}-gradle-${{ hashFiles('example/android/gradle/wrapper/gradle-wrapper.properties') }}
+          path: ~/.android/build-cache
+          key: android-build-cache-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', '**/gradle/libs.versions.toml', '**/settings.gradle*') }}
           restore-keys: |
-            ${{ runner.os }}-gradle-
+            android-build-cache-${{ runner.os }}-
 
       - name: Build example for Android
         env:
           JAVA_OPTS: "-XX:MaxHeapSize=6g"
         run: |
-          yarn turbo run build:android --cache-dir="${{ env.TURBO_CACHE_DIR }}"
+          cd example/android
+          ./gradlew :app:assembleDebug $GRADLE_FLAGS
 
   build-ios:
     runs-on: macos-latest
-    env:
-      TURBO_CACHE_DIR: .turbo/ios
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -117,49 +93,53 @@ jobs:
       - name: Setup
         uses: ./.github/actions/setup
 
-      - name: Cache turborepo for iOS
+      - name: Build library
+        run: yarn prepare
+
+      - name: Cache CocoaPods
         uses: actions/cache@v4
         with:
-          path: ${{ env.TURBO_CACHE_DIR }}
-          key: ${{ runner.os }}-turborepo-ios-${{ hashFiles('yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-turborepo-ios-
-
-      - name: Check turborepo cache for iOS
-        run: |
-          TURBO_CACHE_STATUS=$(node -p "($(yarn turbo run build:ios --cache-dir="${{ env.TURBO_CACHE_DIR }}" --dry=json)).tasks.find(t => t.task === 'build:ios').cache.status")
-
-          if [[ $TURBO_CACHE_STATUS == "HIT" ]]; then
-            echo "turbo_cache_hit=1" >> $GITHUB_ENV
-          fi
-
-      - name: Restore cocoapods
-        if: env.turbo_cache_hit != 1
-        id: cocoapods-cache
-        uses: actions/cache/restore@v4
-        with:
           path: |
-            **/ios/Pods
+            example/ios/Pods
+            ~/.cocoapods
+            ~/Library/Caches/CocoaPods
           key: ${{ runner.os }}-cocoapods-${{ hashFiles('example/ios/Podfile.lock') }}
           restore-keys: |
             ${{ runner.os }}-cocoapods-
 
-      - name: Install cocoapods
-        if: env.turbo_cache_hit != 1 && steps.cocoapods-cache.outputs.cache-hit != 'true'
+      - name: Cache Xcode DerivedData
+        uses: actions/cache@v4
+        with:
+          path: example/ios/DerivedData
+          key: ${{ runner.os }}-derived-data-${{ hashFiles('example/ios/Podfile.lock', 'example/ios/*.xcodeproj/project.pbxproj') }}
+          restore-keys: |
+            ${{ runner.os }}-derived-data-
+
+      - name: Install CocoaPods
         run: |
           cd example/ios
-          pod install
+          pod install --repo-update
         env:
           NO_FLIPPER: 1
 
-      - name: Cache cocoapods
-        if: env.turbo_cache_hit != 1 && steps.cocoapods-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: |
-            **/ios/Pods
-          key: ${{ steps.cocoapods-cache.outputs.cache-key }}
+      - name: Prebuild CocoaPods targets
+        run: |
+          xcodebuild \
+            -workspace example/ios/example.xcworkspace \
+            -scheme Pods-example \
+            -configuration Debug \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath example/ios/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            build
 
       - name: Build example for iOS
         run: |
-          yarn turbo run build:ios --cache-dir="${{ env.TURBO_CACHE_DIR }}"
+          xcodebuild \
+            -workspace example/ios/example.xcworkspace \
+            -scheme example \
+            -configuration Debug \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath example/ios/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            build

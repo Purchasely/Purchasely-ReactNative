@@ -1,0 +1,64 @@
+# OSX
+.DS_Store
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+yarn-debug.log
+
+# iOS
+ios/Pods/
+ios/Podfile.lock
+ios/build/
+ios/*.xcworkspace/xcuserdata/
+ios/*.xcodeproj/xcuserdata/
+ios/*.xcodeproj/project.xcworkspace/xcuserdata/
+ios/DerivedData/
+*.hmap
+*.ipa
+*.xcuserstate
+*.xccheckout
+ios/.xcode.env.local
+
+# Android
+android/build/
+android/app/build/
+android/.gradle/
+android/app/release/
+android/local.properties
+android/app/debug/
+android/.idea/
+android/.cxx/
+*.apk
+*.aab
+*.keystore
+!debug.keystore
+
+# Metro Bundler
+.metro-health-check*
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
+
+# Bundle artifacts
+*.jsbundle
+
+# CocoaPods
+Pods/
+
+# Expo (if applicable)
+.expo/
+
+# Debug
+.vscode/
+.idea/
+
+# Misc
+*.log
+*.lock
+.env.local
+.env.*.local

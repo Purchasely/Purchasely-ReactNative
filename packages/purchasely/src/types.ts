@@ -56,11 +56,11 @@ export type PurchaselyProduct = {
 };
 
 export type PurchaselyPromotionalOfferSignature = {
-  planVendorId: String;
-  identifier: String;
-  signature: String;
+  planVendorId: string;
+  identifier: string;
+  signature: string;
   nonce: any;
-  keyIdentifier: String;
+  keyIdentifier: string;
   timestamp: number;
 };
 
@@ -98,14 +98,14 @@ export type PaywallActionInterceptorResult = {
   info: PLYPaywallInfo;
   action: PLYPaywallAction;
   parameters: {
-    clientReferenceId: String;
-    url: String;
-    title: String;
+    clientReferenceId: string;
+    url: string;
+    title: string;
     plan: PurchaselyPlan;
     offer: PurchaselyOffer | null;
     subscriptionOffer: PurchaselySubscriptionOffer | null;
-    presentation: String;
-    queryParameterKey: String;
+    presentation: string;
+    queryParameterKey: string;
     webCheckoutProvider: PLYWebCheckoutProvider
   };
 };
@@ -185,8 +185,8 @@ export type PurchaselyEventPropertyCarousel = {
 };
 
 export type PurchaselyEventPropertySubscription = {
-  plan?: String;
-  product?: String;
+  plan?: string;
+  product?: string;
 };
 
 export type PurchaselyEvent = {
