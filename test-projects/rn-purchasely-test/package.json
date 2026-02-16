@@ -36,5 +36,8 @@
   },
   "engines": {
     "node": ">=18"
+  },
+  "overrides": {
+    "lodash": ">=4.17.23"
   }
 }
