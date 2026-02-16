@@ -103,7 +103,7 @@ jobs:
             example/ios/Pods
             ~/.cocoapods
             ~/Library/Caches/CocoaPods
-          key: ${{ runner.os }}-cocoapods-${{ hashFiles('example/ios/Podfile.lock') }}
+          key: ${{ runner.os }}-cocoapods-${{ hashFiles('example/ios/Podfile', 'packages/purchasely/react-native-purchasely.podspec') }}
           restore-keys: |
             ${{ runner.os }}-cocoapods-
 
@@ -111,7 +111,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: example/ios/DerivedData
-          key: ${{ runner.os }}-derived-data-${{ hashFiles('example/ios/Podfile.lock', 'example/ios/*.xcodeproj/project.pbxproj') }}
+          key: ${{ runner.os }}-derived-data-${{ hashFiles('example/ios/Podfile', 'packages/purchasely/react-native-purchasely.podspec', 'example/ios/*.xcodeproj/project.pbxproj') }}
           restore-keys: |
             ${{ runner.os }}-derived-data-
 
