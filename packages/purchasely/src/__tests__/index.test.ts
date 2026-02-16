@@ -182,7 +182,7 @@ describe('Purchasely SDK', () => {
                 'test-user',
                 mockConstants.logLevelDebug,
                 mockConstants.runningModeFull,
-                '5.6.2'
+                '5.7.0'
             )
         })
 
@@ -203,7 +203,7 @@ describe('Purchasely SDK', () => {
                 null,
                 mockConstants.logLevelError,
                 mockConstants.runningModeFull,
-                '5.6.2'
+                '5.7.0'
             )
         })
 
