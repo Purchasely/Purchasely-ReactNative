@@ -361,7 +361,9 @@ static NSString * PLYWebCheckoutProviderToString(PLYWebCheckoutProvider provider
                     dispatch_group_leave(group);
                 }];
             } else {
-                [resultDict setObject:value forKey:key];
+                dispatch_sync(dictQueue, ^{
+                    [resultDict setObject:value forKey:key];
+                });
             }
         }
 
@@ -373,7 +375,9 @@ static NSString * PLYWebCheckoutProviderToString(PLYWebCheckoutProvider provider
             });
         });
     } else {
-        finalize();
+        dispatch_async(dispatch_get_main_queue(), ^{
+            finalize();
+        });
     }
 }
 

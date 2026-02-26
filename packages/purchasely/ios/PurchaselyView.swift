@@ -114,7 +114,7 @@ class PurchaselyView: UIView {
         if let plan = plan {
           resultDict = ["result": result.rawValue, "plan": plan.asDictionary()]
         } else {
-          resultDict = ["result": result.rawValue, "plan": [] as [String]]
+          resultDict = ["result": result.rawValue, "plan": NSNull()]
         }
         DispatchQueue.main.async {
           self.onPresentationClosedPromise?(resultDict)
