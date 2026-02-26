@@ -273,7 +273,7 @@ static NSString * PLYWebCheckoutProviderToString(PLYWebCheckoutProvider provider
         [productViewResult setObject:[plan asDictionary] forKey:@"plan"];
     }
 
-    if (result == PLYProductViewControllerResultPurchased || PLYProductViewControllerResultRestored) {
+    if (result == PLYProductViewControllerResultPurchased || result == PLYProductViewControllerResultRestored) {
         [self hidePresentation];
         self.shouldReopenPaywall = NO;
     }
@@ -345,6 +345,8 @@ static NSString * PLYWebCheckoutProviderToString(PLYWebCheckoutProvider provider
         NSMutableDictionary<NSString *,id> *resultDict = [NSMutableDictionary dictionary];
 
         dispatch_group_t group = dispatch_group_create();
+        // Serial queue to serialize concurrent writes to resultDict from SDK callbacks
+        dispatch_queue_t dictQueue = dispatch_queue_create("io.purchasely.metadata.dict", DISPATCH_QUEUE_SERIAL);
 
         for (NSString *key in rawMetadata) {
             id value = rawMetadata[key];
@@ -352,7 +354,9 @@ static NSString * PLYWebCheckoutProviderToString(PLYWebCheckoutProvider provider
                 dispatch_group_enter(group);
                 [presentation.metadata getStringWith:key completion:^(NSString * _Nullable result) {
                     if (result != nil) {
-                        [resultDict setObject:result forKey:key];
+                        dispatch_sync(dictQueue, ^{
+                            [resultDict setObject:result forKey:key];
+                        });
                     }
                     dispatch_group_leave(group);
                 }];
@@ -361,10 +365,12 @@ static NSString * PLYWebCheckoutProviderToString(PLYWebCheckoutProvider provider
             }
         }
 
-        // Fire completion on a background queue — no blocking semaphore, no deadlock risk
+        // Collect all async string values, then dispatch to main queue before calling resolve
         dispatch_group_notify(group, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-            [presentationResult setObject:resultDict forKey:@"metadata"];
-            finalize();
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [presentationResult setObject:resultDict forKey:@"metadata"];
+                finalize();
+            });
         });
     } else {
         finalize();
