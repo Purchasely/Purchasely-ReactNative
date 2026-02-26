@@ -40,8 +40,6 @@ class PurchaselyView: UIView {
   private func setupView() {
     // Clean up previous view/controller before setting up new ones
     _view?.removeFromSuperview()
-    _controller?.willMove(toParent: nil)
-    _controller?.removeFromParent()
     _view = nil
     _controller = nil
 

@@ -36,8 +36,11 @@ export const PLYPresentationView: React.FC<PLYPresentationViewProps> = ({
         if (!cancelled) {
           onPresentationClosed(result);
         }
-      } catch (_) {
-        // Ignore errors when the effect is cancelled (component unmounted or prop changed)
+      } catch (e) {
+        // Only log unexpected errors — ignore if the effect was cancelled
+        if (!cancelled) {
+          console.warn('[PLYPresentationView] onPresentationClosed error:', e)
+        }
       }
     };
 

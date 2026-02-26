@@ -31,7 +31,6 @@ export const HomeScreen: React.FC<NativeStackScreenProps<any>> = ({
         })
             .then((p) => {
                 cachedPresentation.current = p
-                console.log('### Home: presentation fetched and cached', p.id)
             })
             .catch(console.error)
     }, [])
