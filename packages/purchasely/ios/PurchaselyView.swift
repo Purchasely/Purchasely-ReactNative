@@ -66,13 +66,17 @@ class PurchaselyView: UIView {
   
   private func getPresentationController(presentation: PurchaselyPresentation?,
                                          placementId: String?) -> UIViewController? {
-      
-        guard let presentation = presentation,
+      // Capture effective placement id before guard bindings are lost in the else branch.
+      // When only the `presentation` prop is set (placementId prop is nil), we still need
+      // the placement id to recreate the view controller on subsequent visits.
+      let effectivePlacementId = placementId ?? presentation?.placementId
+
+      guard let presentation = presentation,
               let presentationPlacementId = presentation.placementId,
               let loadedPresentations = PurchaselyRN.presentationsLoaded as? [PLYPresentation],
               let presentationLoaded = loadedPresentations.filter({ $0.id == presentation.id && $0.placementId == presentationPlacementId }).first,
               let presentationLoadedController = presentationLoaded.controller else {
-          return self.createNativeViewController(placementId: placementId)
+          return self.createNativeViewController(placementId: effectivePlacementId)
         }
     return prefetchPresentationViewController(presentation: presentation,
                                               presentationLoadedController: presentationLoadedController)
