@@ -11473,6 +11473,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "react-native-purchasely@workspace:packages/purchasely"
   dependencies:
+    "@react-native/babel-preset": 0.83.1
     "@types/jest": ^29.5.14
     "@types/react": ^18.2.44
     "@types/react-test-renderer": ^19.0.0
