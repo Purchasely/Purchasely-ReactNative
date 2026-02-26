@@ -12,14 +12,29 @@ import { Colors } from 'react-native/Libraries/NewAppScreen'
 import Purchasely, {
     PLYPresentationType,
     ProductResult,
+    PurchaselyPresentation,
 } from 'react-native-purchasely'
 
 import DeviceInfo from 'react-native-device-info'
+import { useEffect, useRef } from 'react'
 
 export const HomeScreen: React.FC<NativeStackScreenProps<any>> = ({
     navigation,
 }) => {
     const isDarkMode = useColorScheme() === 'dark'
+    const cachedPresentation = useRef<PurchaselyPresentation | null>(null)
+
+    useEffect(() => {
+        Purchasely.fetchPresentation({
+            placementId: 'nested',
+            contentId: null,
+        })
+            .then((p) => {
+                cachedPresentation.current = p
+                console.log('### Home: presentation fetched and cached', p.id)
+            })
+            .catch(console.error)
+    }, [])
     const backgroundStyle = {
         backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
     }
@@ -138,7 +153,9 @@ export const HomeScreen: React.FC<NativeStackScreenProps<any>> = ({
     }
 
     const onPressNestedView = () => {
-        navigation.navigate('Paywall')
+        navigation.navigate('Paywall', {
+            presentation: cachedPresentation.current,
+        })
     }
 
     const onPressShowPresentation = () => {
