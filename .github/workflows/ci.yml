@@ -81,6 +81,8 @@ jobs:
         env:
           JAVA_OPTS: "-XX:MaxHeapSize=6g"
         run: |
+          # Ensure node/npx are in PATH for React Native autolinking in settings.gradle
+          export PATH="$(dirname $(which node)):$PATH"
           cd example/android
           ./gradlew :app:assembleDebug $GRADLE_FLAGS
 
