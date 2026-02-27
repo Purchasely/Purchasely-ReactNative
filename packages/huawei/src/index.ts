@@ -1,21 +1,3 @@
-import { NativeModules } from 'react-native';
-
-const LINKING_ERROR =
-  `The package 'react-native-purchasely-google' doesn't seem to be linked. Make sure: \n\n` +
-  '- You rebuilt the app after installing the package\n' +
-  '- You are not using Expo managed workflow\n';
-
-const PurchaselyGoogle = NativeModules.PurchaselyGoogle
-  ? NativeModules.PurchaselyGoogle
-  : new Proxy(
-      {},
-      {
-        get() {
-          throw new Error(LINKING_ERROR);
-        },
-      }
-    );
-
-export function multiply(a: number, b: number): Promise<number> {
-  return PurchaselyGoogle.multiply(a, b);
-}
+// This package provides the Purchasely Huawei Mobile Services SDK as a native dependency.
+// No JavaScript API is exposed by this package.
+export {}
