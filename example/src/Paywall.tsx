@@ -1,37 +1,19 @@
-import { Text, View } from 'react-native'
+import { Button, Text, View } from 'react-native'
 import { NativeStackScreenProps } from '@react-navigation/native-stack'
-import { Header } from 'react-native/Libraries/NewAppScreen'
 import { Section } from './Section.tsx'
-import Purchasely, {
+import {
     PLYPresentationView,
     PresentPresentationResult,
     ProductResult,
     PurchaselyPresentation,
 } from 'react-native-purchasely'
-import { useEffect, useState } from 'react'
 
 export const PaywallScreen: React.FC<NativeStackScreenProps<any>> = ({
     navigation,
+    route,
 }) => {
-    const [purchaselyPresentation, setPurchaselyPresentation] =
-        useState<PurchaselyPresentation>()
-
-    useEffect(() => {
-        fetchPresentation()
-    }, [])
-
-    const fetchPresentation = async () => {
-        try {
-            setPurchaselyPresentation(
-                await Purchasely.fetchPresentation({
-                    placementId: 'nested',
-                    contentId: null,
-                })
-            )
-        } catch (e) {
-            console.error(e)
-        }
-    }
+    const purchaselyPresentation: PurchaselyPresentation | null =
+        (route.params as any)?.presentation ?? null
 
     console.log('### Paywall screen')
     console.log('presentation', purchaselyPresentation)
@@ -55,10 +37,10 @@ export const PaywallScreen: React.FC<NativeStackScreenProps<any>> = ({
         navigation.goBack()
     }
 
-    if (purchaselyPresentation == null) {
+    if (purchaselyPresentation === null) {
         return (
             <View>
-                <Text>Loading ...</Text>
+                <Text>No presentation (not fetched yet)</Text>
             </View>
         )
     }
@@ -76,6 +58,7 @@ export const PaywallScreen: React.FC<NativeStackScreenProps<any>> = ({
                 <Section>
                     <Text>Top content</Text>
                 </Section>
+                <Button title="← Back" onPress={() => navigation.goBack()} />
             </View>
             <PLYPresentationView
                 //placementId="ACCOUNT"

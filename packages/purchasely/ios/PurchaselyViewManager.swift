@@ -25,5 +25,8 @@ class PurchaselyViewManager: RCTViewManager {
   
   @objc func onPresentationClosed(_ resolve: @escaping RCTPromiseResolveBlock, reject: RCTPromiseRejectBlock) {
     self.resolve = resolve
+    // Forward resolve to the current view — view() is called before this useEffect fires,
+    // so we must update onPresentationClosedPromise after the fact.
+    self.purchaselyView?.onPresentationClosedPromise = resolve
   }
 }

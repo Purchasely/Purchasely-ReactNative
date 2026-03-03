@@ -38,18 +38,17 @@ class PurchaselyView: UIView {
   }
   
   private func setupView() {
+    // Clean up previous view/controller before setting up new ones
+    _view?.removeFromSuperview()
+    _view = nil
+    _controller = nil
+
     _controller = getPresentationController(presentation: presentation != nil ? PurchaselyPresentation(from: presentation!) : nil,
                                             placementId: placementId)
     let view = _controller?.view ?? UIView()
+    _view = view
     self.addSubview(view)
-    
-      var statusBarHeight: CGFloat = 0.0
-      if #available(iOS 13.0, tvOS 13.0, *) {
-          statusBarHeight = UIApplication.shared.windows.first?.windowScene?.statusBarManager?.statusBarFrame.height ?? 0.0
-      } else {
-          statusBarHeight = UIApplication.shared.statusBarFrame.height
-      }
-    
+
     view.translatesAutoresizingMaskIntoConstraints = false
     NSLayoutConstraint.activate([
       view.topAnchor.constraint(equalTo: self.topAnchor),
@@ -57,7 +56,7 @@ class PurchaselyView: UIView {
       view.leadingAnchor.constraint(equalTo: self.leadingAnchor),
       view.bottomAnchor.constraint(equalTo: self.bottomAnchor)
     ])
-    
+
     if fetched {
       _controller?.beginAppearanceTransition(true, animated: true)
     }
@@ -65,13 +64,17 @@ class PurchaselyView: UIView {
   
   private func getPresentationController(presentation: PurchaselyPresentation?,
                                          placementId: String?) -> UIViewController? {
-      
-        guard let presentation = presentation,
+      // Capture effective placement id before guard bindings are lost in the else branch.
+      // When only the `presentation` prop is set (placementId prop is nil), we still need
+      // the placement id to recreate the view controller on subsequent visits.
+      let effectivePlacementId = placementId ?? presentation?.placementId
+
+      guard let presentation = presentation,
               let presentationPlacementId = presentation.placementId,
               let loadedPresentations = PurchaselyRN.presentationsLoaded as? [PLYPresentation],
               let presentationLoaded = loadedPresentations.filter({ $0.id == presentation.id && $0.placementId == presentationPlacementId }).first,
               let presentationLoadedController = presentationLoaded.controller else {
-          return self.createNativeViewController(placementId: placementId)
+          return self.createNativeViewController(placementId: effectivePlacementId)
         }
     return prefetchPresentationViewController(presentation: presentation,
                                               presentationLoadedController: presentationLoadedController)
@@ -80,11 +83,11 @@ class PurchaselyView: UIView {
   private func prefetchPresentationViewController(presentation: PurchaselyPresentation,
                                                   presentationLoadedController: PLYPresentationViewController) -> UIViewController? {
     self.fetched = true
-    
+
     self.removeLoadedPresentation(presentation: presentation)
-    
-    PurchaselyRN.purchaseResolve = { result in
-      self.onPresentationClosedPromise?(result)
+
+    PurchaselyRN.purchaseResolve = { [weak self] result in
+      self?.onPresentationClosedPromise?(result)
     }
     return presentationLoadedController
   }
@@ -99,29 +102,24 @@ class PurchaselyView: UIView {
   
   private func createNativeViewController(placementId: String?) -> UIViewController? {
     self.fetched = false
-    if let placementId = placementId {
-      let controller = Purchasely.presentationController(
-        for: placementId,
-        loaded: nil,
-        completion: { result, plan in
-
-          if let plan = plan {
-            let result: NSDictionary? = [
-              "result": result.rawValue,
-              "plan": plan.asDictionary()
-            ]
-          } else {
-            
-            let result: NSDictionary? = [
-              "result": result.rawValue,
-              "plan": []
-            ]
-          }
+    guard let placementId = placementId else { return nil }
+    let controller = Purchasely.presentationController(
+      for: placementId,
+      loaded: nil,
+      completion: { [weak self] result, plan in
+        guard let self = self else { return }
+        let resultDict: NSDictionary
+        if let plan = plan {
+          resultDict = ["result": result.rawValue, "plan": plan.asDictionary()]
+        } else {
+          resultDict = ["result": result.rawValue, "plan": NSNull()]
         }
-      )
-      return controller
-    }
-    return nil
+        DispatchQueue.main.async {
+          self.onPresentationClosedPromise?(resultDict)
+        }
+      }
+    )
+    return controller
   }
 }
 

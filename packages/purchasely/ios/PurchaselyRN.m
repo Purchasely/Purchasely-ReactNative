@@ -273,86 +273,51 @@ static NSString * PLYWebCheckoutProviderToString(PLYWebCheckoutProvider provider
         [productViewResult setObject:[plan asDictionary] forKey:@"plan"];
     }
 
-    if (result == PLYProductViewControllerResultPurchased || PLYProductViewControllerResultRestored) {
+    if (result == PLYProductViewControllerResultPurchased || result == PLYProductViewControllerResultRestored) {
         [self hidePresentation];
         self.shouldReopenPaywall = NO;
     }
     return productViewResult;
 }
 
-- (NSDictionary<NSString *, NSObject *> *) resultDictionaryForFetchPresentation:(PLYPresentation * _Nullable) presentation {
+- (void)buildResultForFetchPresentation:(PLYPresentation * _Nullable)presentation
+                             completion:(void (^)(NSDictionary<NSString *, NSObject *> *))completion {
     NSMutableDictionary<NSString *, NSObject *> *presentationResult = [NSMutableDictionary new];
 
-    if (presentation != nil) {
+    if (presentation == nil) {
+        completion(presentationResult);
+        return;
+    }
 
-        if (presentation.id != nil) {
-            [presentationResult setObject:presentation.id forKey:@"id"];
+    if (presentation.id != nil) {
+        [presentationResult setObject:presentation.id forKey:@"id"];
+    }
+    if (presentation.placementId != nil) {
+        [presentationResult setObject:presentation.placementId forKey:@"placementId"];
+    }
+    if (presentation.audienceId != nil) {
+        [presentationResult setObject:presentation.audienceId forKey:@"audienceId"];
+    }
+    if (presentation.abTestId != nil) {
+        [presentationResult setObject:presentation.abTestId forKey:@"abTestId"];
+    }
+    if (presentation.abTestVariantId != nil) {
+        [presentationResult setObject:presentation.abTestVariantId forKey:@"abTestVariantId"];
+    }
+    if (presentation.language != nil) {
+        [presentationResult setObject:presentation.language forKey:@"language"];
+    }
+    if (presentation.plans != nil) {
+        NSMutableArray *plans = [NSMutableArray new];
+        for (PLYPresentationPlan *plan in presentation.plans) {
+            [plans addObject:plan.asDictionary];
         }
+        [presentationResult setObject:plans forKey:@"plans"];
+    }
 
-        if (presentation.placementId != nil) {
-            [presentationResult setObject:presentation.placementId forKey:@"placementId"];
-        }
-
-        if (presentation.audienceId != nil) {
-            [presentationResult setObject:presentation.audienceId forKey:@"audienceId"];
-        }
-
-        if (presentation.abTestId != nil) {
-            [presentationResult setObject:presentation.abTestId forKey:@"abTestId"];
-        }
-
-        if (presentation.abTestVariantId != nil) {
-            [presentationResult setObject:presentation.abTestVariantId forKey:@"abTestVariantId"];
-        }
-
-        if (presentation.language != nil) {
-            [presentationResult setObject:presentation.language forKey:@"language"];
-        }
-
-        if (presentation.plans != nil) {
-            NSMutableArray *plans = [NSMutableArray new];
-
-            for (PLYPresentationPlan *plan in presentation.plans) {
-                [plans addObject:plan.asDictionary];
-            }
-            [presentationResult setObject:plans forKey:@"plans"];
-        }
-
-        if (presentation.metadata != nil) {
-
-            NSDictionary<NSString *,id> *rawMetadata = [presentation.metadata getRawMetadata];
-            NSMutableDictionary<NSString *,id> *resultDict = [NSMutableDictionary dictionary];
-
-            dispatch_group_t group = dispatch_group_create();
-            dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
-            dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
-
-            for (NSString *key in rawMetadata)  {
-                id value = rawMetadata[key];
-
-                if ([value isKindOfClass: [NSString class]]) {
-                    dispatch_group_enter(group); // Enter the dispatch group before making the async call
-                    [presentation.metadata getStringWith:key completion:^(NSString * _Nullable result) {
-                        [resultDict setObject:result forKey:key];
-                        dispatch_group_leave(group); // Leave the dispatch group after the async call is completed
-                    }];
-                } else {
-                    [resultDict setObject:value forKey:key];
-                }
-            }
-
-            dispatch_group_notify(group, queue, ^{
-                // Code to execute after all async calls are completed
-                [presentationResult setObject:resultDict forKey:@"metadata"];
-                dispatch_semaphore_signal(semaphore);
-            });
-
-            // Wait until all async calls are completed
-            dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
-        }
-
+    // Captures the shared mutable dict and calls completion once all async work is done
+    void (^finalize)(void) = ^{
         int resultString;
-
         switch (presentation.type) {
             case PLYPresentationTypeNormal:
                 resultString = PLYPresentationTypeNormal;
@@ -366,15 +331,54 @@ static NSString * PLYWebCheckoutProviderToString(PLYWebCheckoutProvider provider
             case PLYPresentationTypeDeactivated:
                 resultString = PLYPresentationTypeDeactivated;
                 break;
+            default:
+                resultString = PLYPresentationTypeNormal;
+                break;
+        }
+        [presentationResult setObject:[NSNumber numberWithInt:resultString] forKey:@"type"];
+        [presentationResult setObject:[NSNumber numberWithInt:presentation.height] forKey:@"height"];
+        completion(presentationResult);
+    };
+
+    if (presentation.metadata != nil) {
+        NSDictionary<NSString *,id> *rawMetadata = [presentation.metadata getRawMetadata];
+        NSMutableDictionary<NSString *,id> *resultDict = [NSMutableDictionary dictionary];
+
+        dispatch_group_t group = dispatch_group_create();
+        // Serial queue to serialize concurrent writes to resultDict from SDK callbacks
+        dispatch_queue_t dictQueue = dispatch_queue_create("io.purchasely.metadata.dict", DISPATCH_QUEUE_SERIAL);
+
+        for (NSString *key in rawMetadata) {
+            id value = rawMetadata[key];
+            if ([value isKindOfClass:[NSString class]]) {
+                dispatch_group_enter(group);
+                [presentation.metadata getStringWith:key completion:^(NSString * _Nullable result) {
+                    if (result != nil) {
+                        dispatch_sync(dictQueue, ^{
+                            [resultDict setObject:result forKey:key];
+                        });
+                    }
+                    dispatch_group_leave(group);
+                }];
+            } else {
+                dispatch_sync(dictQueue, ^{
+                    [resultDict setObject:value forKey:key];
+                });
+            }
         }
 
-        [presentationResult setObject:[NSNumber numberWithInt:resultString] forKey:@"type"];
-      
-        [presentationResult setObject:[NSNumber numberWithInt:presentation.height] forKey:@"height"];
-
+        // Collect all async string values, then dispatch to main queue before calling resolve
+        dispatch_group_notify(group, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [presentationResult setObject:resultDict forKey:@"metadata"];
+                finalize();
+            });
+        });
+    } else {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            finalize();
+        });
     }
-
-    return presentationResult;
 }
 
 RCT_EXPORT_METHOD(start:(NSString * _Nonnull)apiKey
@@ -805,7 +809,9 @@ RCT_EXPORT_METHOD(fetchPresentation:(NSString * _Nullable)placementId
                     [self reject: reject with: error];
                 } else if (presentation != nil) {
                     [PurchaselyRN.presentationsLoaded addObject:presentation];
-                    resolve([self resultDictionaryForFetchPresentation:presentation]);
+                    [self buildResultForFetchPresentation:presentation completion:^(NSDictionary *result) {
+                        resolve(result);
+                    }];
                 }
             } completion:^(enum PLYProductViewControllerResult result, PLYPlan * _Nullable plan) {
                 if (PurchaselyRN.purchaseResolve != nil){
@@ -818,7 +824,9 @@ RCT_EXPORT_METHOD(fetchPresentation:(NSString * _Nullable)placementId
                     [self reject: reject with: error];
                 } else if (presentation != nil) {
                     [PurchaselyRN.presentationsLoaded addObject:presentation];
-                    resolve([self resultDictionaryForFetchPresentation:presentation]);
+                    [self buildResultForFetchPresentation:presentation completion:^(NSDictionary *result) {
+                        resolve(result);
+                    }];
                 }
             } completion:^(enum PLYProductViewControllerResult result, PLYPlan * _Nullable plan) {
                 if (PurchaselyRN.purchaseResolve != nil) {

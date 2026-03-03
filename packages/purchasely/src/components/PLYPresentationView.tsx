@@ -28,12 +28,27 @@ export const PLYPresentationView: React.FC<PLYPresentationViewProps> = ({
   useEffect(() => {
     if (!onPresentationClosed) return;
 
+    let cancelled = false;
+
     const handleClose = async () => {
-      const result: PresentPresentationResult = await NativeModules.PurchaselyView.onPresentationClosed();
-      onPresentationClosed(result);
+      try {
+        const result: PresentPresentationResult = await NativeModules.PurchaselyView.onPresentationClosed();
+        if (!cancelled) {
+          onPresentationClosed(result);
+        }
+      } catch (e) {
+        // Only log unexpected errors — ignore if the effect was cancelled
+        if (!cancelled) {
+          console.warn('[PLYPresentationView] onPresentationClosed error:', e)
+        }
+      }
     };
 
     handleClose();
+
+    return () => {
+      cancelled = true;
+    };
   }, [onPresentationClosed]);
 
   useEffect(() => {
