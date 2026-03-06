@@ -59,7 +59,6 @@ export const PLYPresentationView: React.FC<PLYPresentationViewProps> = ({
             cancelled = true;
         };
     }, [onPresentationClosed]);
->>>>>>> 4c5c03e (chore: migrate to React Native 0.83)
 
     useEffect(() => {
         if (Platform.OS === 'android') {
