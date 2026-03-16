@@ -1,82 +1,86 @@
-import React, {useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
-  findNodeHandle,
-  NativeModules,
-  Platform,
-  requireNativeComponent,
-  UIManager,
+    findNodeHandle,
+    NativeModules,
+    Platform,
+    requireNativeComponent,
+    UIManager,
+    type ViewProps,
 } from 'react-native';
 import type { PresentPresentationResult } from '../';
 
-const PurchaselyView = requireNativeComponent('PurchaselyView');
+const PurchaselyNativeView = requireNativeComponent<
+    ViewProps & { placementId?: string; presentation?: unknown }
+>('PurchaselyView');
+
+// Commands interface for type safety
+// Must match COMMAND_CREATE in PurchaselyViewManager.kt
+const Commands = {
+    create: 1,
+};
 
 interface PLYPresentationViewProps {
-  placementId?: string; // Made optional
-  presentation?: any; // Made optional
-  onPresentationClosed?: (result: PresentPresentationResult) => void;
-  flex?: number;
+    placementId?: string;
+    presentation?: unknown;
+    onPresentationClosed?: (result: PresentPresentationResult) => void;
+    flex?: number;
 }
 
 export const PLYPresentationView: React.FC<PLYPresentationViewProps> = ({
-  placementId,
-  presentation,
-  onPresentationClosed,
-  flex = 1, // Default to 1 if not provided
+    placementId,
+    presentation,
+    onPresentationClosed,
+    flex = 1,
 }) => {
-  const ref = useRef<any>(null);
+    const ref = useRef<React.ElementRef<typeof PurchaselyNativeView>>(null);
 
-  useEffect(() => {
-    if (!onPresentationClosed) return;
+    useEffect(() => {
+        if (!onPresentationClosed) return;
 
-    let cancelled = false;
+        let cancelled = false;
 
-    const handleClose = async () => {
-      try {
-        const result: PresentPresentationResult = await NativeModules.PurchaselyView.onPresentationClosed();
-        if (!cancelled) {
-          onPresentationClosed(result);
+        const handleClose = async () => {
+            try {
+                const result: PresentPresentationResult = await NativeModules.PurchaselyView.onPresentationClosed();
+                if (!cancelled) {
+                    onPresentationClosed(result);
+                }
+            } catch (e) {
+                // Only log unexpected errors — ignore if the effect was cancelled
+                if (!cancelled) {
+                    console.warn('[PLYPresentationView] onPresentationClosed error:', e)
+                }
+            }
+        };
+
+        handleClose();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [onPresentationClosed]);
+
+    useEffect(() => {
+        if (Platform.OS === 'android') {
+            const viewId = findNodeHandle(ref.current);
+            if (viewId) {
+                // Use numeric command ID directly for New Architecture compatibility
+                // This pattern works with both Legacy and New Architecture via interop
+                UIManager.dispatchViewManagerCommand(
+                    viewId,
+                    Commands.create,
+                    [viewId]
+                );
+            }
         }
-      } catch (e) {
-        // Only log unexpected errors — ignore if the effect was cancelled
-        if (!cancelled) {
-          console.warn('[PLYPresentationView] onPresentationClosed error:', e)
-        }
-      }
-    };
+    }, []);
 
-    handleClose();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [onPresentationClosed]);
-
-  useEffect(() => {
-    if (Platform.OS === 'android') {
-      const createFragment = (viewId: number) =>
-        UIManager.dispatchViewManagerCommand(
-          viewId,
-          // @ts-ignore
-          UIManager.PurchaselyView.Commands.create.toString(),
-          [viewId]
-        );
-
-       const viewId = findNodeHandle(ref.current);
-       console.log('### viewId', viewId);
-       if (viewId) {
-         console.log('### creating Fragment');
-         createFragment(viewId);
-       }
-     }
-   }, []);
-
-  return (
-    <PurchaselyView
-      // @ts-ignore
-      style={{ flex }}
-      placementId={placementId}
-      presentation={presentation}
-      {...(Platform.OS === 'android' && { ref: ref })}
-    />
-  );
+    return (
+        <PurchaselyNativeView
+            style={{ flex }}
+            placementId={placementId}
+            presentation={presentation}
+            ref={Platform.OS === 'android' ? ref : undefined}
+        />
+    );
 };
