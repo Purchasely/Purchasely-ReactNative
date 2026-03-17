@@ -1,14 +1,13 @@
 # Release Process for Purchasely React Native SDK
 
-This document describes the step-by-step process for releasing a new version of the Purchasely React Native SDK.
+This document describes the step-by-step process for releasing a new version of the Purchasely React Native SDK. Publishing to npm is **automated via CI** — creating a GitHub release triggers the publish workflow.
 
 ## Prerequisites
 
 - Node.js v20+ (see `.nvmrc`)
 - Yarn 3.6.1+
-- macOS with Xcode 15+ (for iOS builds)
-- Android Studio with SDK 24+ (for Android builds)
-- npm publishing access to `react-native-purchasely` and `@purchasely/*` packages
+- `gh` CLI authenticated with push access to the repository
+- npm Trusted Publishers configured (see [npm Setup](#npm-trusted-publisher-setup) — one-time only)
 
 ## Version Update Steps
 
@@ -33,32 +32,15 @@ s.dependency "Purchasely", '{IOS_VERSION}'
 
 #### Android SDK Version
 
-Update the Purchasely Android SDK version in:
+Update the Purchasely Android SDK version in all 5 build.gradle files:
 
-**`packages/purchasely/android/build.gradle`** (line ~143):
-```groovy
-api 'io.purchasely:core:{ANDROID_VERSION}'
-```
-
-**`packages/google/android/build.gradle`** (line ~133):
-```groovy
-implementation 'io.purchasely:google-play:{ANDROID_VERSION}'
-```
-
-**`packages/amazon/android/build.gradle`** (line ~131):
-```groovy
-implementation 'io.purchasely:amazon:{ANDROID_VERSION}'
-```
-
-**`packages/huawei/android/build.gradle`** (line ~135):
-```groovy
-implementation 'io.purchasely:huawei-services:{ANDROID_VERSION}'
-```
-
-**`packages/android-player/android/build.gradle`** (line ~141):
-```groovy
-implementation 'io.purchasely:player:{ANDROID_VERSION}'
-```
+| File | Dependency |
+|------|-----------|
+| `packages/purchasely/android/build.gradle` | `api 'io.purchasely:core:{ANDROID_VERSION}'` |
+| `packages/google/android/build.gradle` | `implementation 'io.purchasely:google-play:{ANDROID_VERSION}'` |
+| `packages/amazon/android/build.gradle` | `implementation 'io.purchasely:amazon:{ANDROID_VERSION}'` |
+| `packages/huawei/android/build.gradle` | `implementation 'io.purchasely:huawei-services:{ANDROID_VERSION}'` |
+| `packages/android-player/android/build.gradle` | `implementation 'io.purchasely:player:{ANDROID_VERSION}'` |
 
 ### 3. Run the Prepare Script
 
@@ -82,42 +64,25 @@ Add a new row to **`VERSIONS.md`**:
 
 ### 5. Update Test Files
 
-Update the SDK version expectations in test files:
+Replace all occurrences of the old version string with `{VERSION}` in:
 
-**`packages/purchasely/src/__tests__/index.test.ts`** (~lines 185, 206):
-```typescript
-'{VERSION}'  // Update version string in start() tests
-```
+- **`packages/purchasely/src/__tests__/index.test.ts`** (~lines 185, 206)
+- **`packages/purchasely/src/__tests__/types.test.ts`** (~lines 331, 342)
 
-**`packages/purchasely/src/__tests__/types.test.ts`** (~lines 331, 342):
-```typescript
-sdk_version: '{VERSION}',
-// ...
-expect(event.properties.sdk_version).toBe('{VERSION}')
-```
+### 6. Update Documentation
 
-### 6. Update the Yarn Lock File
+Update version references in **`CLAUDE.md`**:
+- Properties table (Current Version, Native iOS SDK, Native Android SDK)
+- Native Dependencies section (iOS SDK version, Android core version)
+- Version Compatibility table
+
+### 7. Update the Yarn Lock File
 
 ```bash
 yarn install
 ```
 
 This ensures `yarn.lock` reflects any dependency changes.
-
-### 7. Verify iOS Builds Locally
-
-```bash
-cd example/ios
-rm -rf Pods Podfile.lock
-pod install --repo-update
-cd ../..
-```
-
-Build the example app to verify compilation:
-```bash
-cd example/ios
-xcodebuild -workspace example.xcworkspace -scheme example -configuration Debug -destination 'generic/platform=iOS' build
-```
 
 ### 8. Run Tests
 
@@ -132,39 +97,67 @@ yarn typecheck
 ```bash
 git add .
 git commit -m "chore: Bump package versions to {VERSION}"
-git push origin version/{VERSION}
+git push -u origin version/{VERSION}
 ```
 
 ### 10. Create Pull Request
 
-Create a PR targeting `main` and wait for all CI checks to pass:
+```bash
+gh pr create --base main --title "Version {VERSION}" --body "..."
+```
+
+Wait for all CI checks to pass:
 - lint
 - test
 - build-android
 - build-ios
 
-### 11. Merge and Tag
+### 11. Merge the PR
 
-After PR approval and merge:
+After CI passes and PR is approved:
+```bash
+gh pr merge --merge
+```
+
+### 12. Create GitHub Release (triggers automated npm publish)
+
 ```bash
 git checkout main
 git pull origin main
-git tag v{VERSION}
-git push origin v{VERSION}
+gh release create {VERSION} --target main --title "{VERSION}" --notes "## React Native SDK {VERSION}
+
+### Native SDK updates
+- **iOS SDK:** {OLD_IOS} → {IOS_VERSION}
+- **Android SDK:** {OLD_ANDROID} → {ANDROID_VERSION}
+"
 ```
 
-### 12. Publish to npm
+This automatically triggers `.github/workflows/publish.yml` which:
+1. Runs the full CI pipeline (lint, test, build-android, build-ios)
+2. Verifies all package.json versions match the release tag
+3. Publishes all 5 packages to npm with OIDC provenance
+
+### 13. Verify Publication
 
 ```bash
-./publish.sh {VERSION} true
+npm view react-native-purchasely version
+npm view @purchasely/react-native-purchasely-google version
+npm view @purchasely/react-native-purchasely-amazon version
+npm view @purchasely/react-native-purchasely-huawei version
+npm view @purchasely/react-native-purchasely-android-player version
 ```
 
-This publishes all packages:
-- `react-native-purchasely`
-- `@purchasely/react-native-purchasely-google`
-- `@purchasely/react-native-purchasely-huawei`
-- `@purchasely/react-native-purchasely-amazon`
-- `@purchasely/react-native-purchasely-android-player`
+All should return `{VERSION}`.
+
+## Published Packages
+
+| Package | npm |
+|---------|-----|
+| `react-native-purchasely` | [npmjs.com](https://www.npmjs.com/package/react-native-purchasely) |
+| `@purchasely/react-native-purchasely-google` | [npmjs.com](https://www.npmjs.com/package/@purchasely/react-native-purchasely-google) |
+| `@purchasely/react-native-purchasely-amazon` | [npmjs.com](https://www.npmjs.com/package/@purchasely/react-native-purchasely-amazon) |
+| `@purchasely/react-native-purchasely-huawei` | [npmjs.com](https://www.npmjs.com/package/@purchasely/react-native-purchasely-huawei) |
+| `@purchasely/react-native-purchasely-android-player` | [npmjs.com](https://www.npmjs.com/package/@purchasely/react-native-purchasely-android-player) |
 
 ## Files Changed During Version Update
 
@@ -182,11 +175,22 @@ This publishes all packages:
 | `packages/amazon/android/build.gradle` | Android SDK version (if updated) |
 | `packages/huawei/android/build.gradle` | Android SDK version (if updated) |
 | `packages/android-player/android/build.gradle` | Android SDK version (if updated) |
-| `example/ios/Podfile` | iOS SDK version (if updated) |
 | `VERSIONS.md` | Version mapping table |
+| `CLAUDE.md` | Version references in properties and docs |
 | `packages/purchasely/src/__tests__/index.test.ts` | Test version expectations |
 | `packages/purchasely/src/__tests__/types.test.ts` | Test version expectations |
 | `yarn.lock` | Dependency lock file |
+
+## npm Trusted Publisher Setup
+
+> One-time setup per package. Already configured — only needed if adding a new package.
+
+For each package, go to `https://www.npmjs.com/package/<PACKAGE_NAME>/access`:
+1. Section **Trusted Publishers** → **GitHub Actions**
+2. Repository owner: `Purchasely`
+3. Repository name: `Purchasely-ReactNative`
+4. Workflow filename: `publish.yml`
+5. Environment: *(leave empty)*
 
 ## Common Issues
 
@@ -212,11 +216,21 @@ pod install --repo-update
 
 Update the hardcoded version strings in the test files (see Step 5).
 
+### Publish Fails with "forbidden" or OIDC error
+
+- Verify Trusted Publisher is configured on npmjs.com for the failing package
+- Ensure the workflow filename matches exactly: `publish.yml`
+- Ensure the repository name matches: `Purchasely/Purchasely-ReactNative`
+
+### Publish Fails with Version Mismatch
+
+The release tag must match exactly the version in all `package.json` files. Release tags should be bare versions (e.g., `5.7.2`), not prefixed with `v`.
+
 ## Recommendations
 
 1. **Always update tests** when bumping versions to avoid CI failures
 2. **Run full test suite locally** before pushing to catch issues early
-3. **Verify iOS builds** with `pod install --repo-update` before pushing
+3. **Update CLAUDE.md** alongside version bumps to keep docs in sync
 4. **Update VERSIONS.md** to maintain the version history for documentation
 5. **Use semantic versioning**:
    - MAJOR: Breaking API changes

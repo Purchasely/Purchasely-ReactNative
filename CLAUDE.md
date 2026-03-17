@@ -504,17 +504,31 @@ When adding new features:
 
 ## CI/CD Pipeline
 
-GitHub Actions workflow (`.github/workflows/ci.yml`):
+### Workflows
 
-### CI Jobs
+| Workflow | Trigger | Purpose |
+|----------|---------|---------|
+| `.github/workflows/ci.yml` | `pull_request`, `merge_group`, `workflow_call` | Lint, test, build Android & iOS |
+| `.github/workflows/publish.yml` | `release` (published) | Run CI then publish all 5 packages to npm |
+
+### CI Jobs (ci.yml)
 
 1. **lint** (ubuntu-latest) - TypeScript + ESLint checks, type checking
 2. **test** (ubuntu-latest) - TypeScript/Jest unit tests with coverage
-3. **build-library** (ubuntu-latest) - Build TypeScript package with Builder Bob
-4. **build-android** (ubuntu-latest) - Build Android example app with Gradle caching
-5. **build-ios** (macos-latest) - Build iOS example app with CocoaPods caching
+3. **build-android** (ubuntu-latest) - Build Android example app with Gradle caching
+4. **build-ios** (macos-latest) - Build iOS example app with CocoaPods caching
 
 **Note:** Native tests (Android JUnit and iOS XCTest) are not included in CI as they require React Native dependencies from the example app context. Run these tests locally during development.
+
+### Publish (publish.yml)
+
+Triggered automatically when a GitHub release is created. Uses npm Trusted Publishing (OIDC) — no secrets or tokens needed.
+
+1. Calls `ci.yml` via `workflow_call` (full CI runs first)
+2. Verifies all `package.json` versions match the release tag
+3. Publishes all 5 packages with `--provenance`
+
+**Release tags must be bare versions** (e.g., `5.7.2`), not prefixed with `v`.
 
 ### CI Commands Reference
 
