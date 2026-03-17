@@ -34,7 +34,11 @@
     "ios",
     "android"
   ],
-  "repository": "https://github.com/Purchasely/Purchasely-ReactNative/packages/amazon",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Purchasely/Purchasely-ReactNative.git",
+    "directory": "packages/amazon"
+  },
   "author": "Purchasely <kevin@purchasely.com> (https://github.com/Purchasely/Purchasely-ReactNative)",
   "license": "MIT",
   "bugs": {

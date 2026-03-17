@@ -35,7 +35,11 @@
     "ios",
     "android"
   ],
-  "repository": "https://github.com/Purchasely/Purchasely-ReactNative/packages/huawei",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Purchasely/Purchasely-ReactNative.git",
+    "directory": "packages/huawei"
+  },
   "author": "Purchasely <kevin@purchasely.com> (https://github.com/Purchasely/Purchasely-ReactNative)",
   "license": "MIT",
   "bugs": {
