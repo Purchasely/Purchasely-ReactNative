@@ -1,6 +1,6 @@
 {
   "name": "@purchasely/react-native-purchasely-android-player",
-  "version": "5.7.1",
+  "version": "5.7.2",
   "description": "Player Android",
   "source": "./src/index.ts",
   "main": "./lib/commonjs/index.js",
