@@ -25,7 +25,7 @@
   "private": true,
   "overrides": {
     "@isaacs/brace-expansion": ">=5.0.1",
-    "@xmldom/xmldom": ">=0.8.12",
+    "@xmldom/xmldom": ">=0.9.10",
     "brace-expansion": "~1.1.13",
     "fast-xml-parser": ">=4.5.4",
     "flatted": ">=3.3.4",
