@@ -3,6 +3,12 @@ name: Publish to npm
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to publish (e.g. 5.7.3)"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -25,15 +31,23 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "24"
           registry-url: "https://registry.npmjs.org"
 
-      - name: Ensure npm >= 11.5.1 (required for trusted publishing)
-        run: npm install -g npm@latest
+      - name: Verify npm version (>= 11.5.1 required for trusted publishing)
+        run: |
+          NPM_VERSION="$(npm --version)"
+          echo "npm version: $NPM_VERSION"
+          if [ "$(printf '%s\n%s\n' "11.5.1" "$NPM_VERSION" | sort -V | head -n1)" != "11.5.1" ]; then
+            echo "::error::npm $NPM_VERSION is below required 11.5.1"
+            exit 1
+          fi
 
       - name: Build all packages
         run: |
@@ -43,7 +57,7 @@ jobs:
 
       - name: Verify versions match release tag
         run: |
-          TAG="${GITHUB_REF_NAME}"
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
           for PKG in packages/purchasely packages/google packages/amazon packages/huawei packages/android-player; do
             VERSION=$(node -p "require('./$PKG/package.json').version")
             if [ "$VERSION" != "$TAG" ]; then
