@@ -11,13 +11,13 @@
 
 | Property | Value |
 |----------|-------|
-| Current Version | 5.7.2 |
+| Current Version | 5.7.3 |
 | React Native | 0.79.2 |
 | TypeScript | 5.2.2 (strict mode) |
 | Node.js | v20 (see `.nvmrc`) |
 | Package Manager | Yarn 3.6.1 (workspaces) |
-| Native iOS SDK | 5.7.2 |
-| Native Android SDK | 5.7.3 |
+| Native iOS SDK | 5.7.4 |
+| Native Android SDK | 5.7.4 |
 
 ### Supported App Stores
 - Apple App Store (iOS)
@@ -388,11 +388,11 @@ Build orchestration with caching:
 ### Native Dependencies
 
 **iOS (CocoaPods):**
-- Purchasely SDK v5.7.2
+- Purchasely SDK v5.7.4
 - Deployment target: iOS 13.4
 
 **Android (Gradle):**
-- io.purchasely:core:5.7.3
+- io.purchasely:core:5.7.4
 - Min SDK: 21
 - Kotlin: 1.9+
 - Java: 11
@@ -630,6 +630,7 @@ See `VERSIONS.md` for native SDK version mapping:
 
 | React Native SDK | iOS SDK | Android SDK |
 |------------------|---------|-------------|
+| 5.7.3 | 5.7.4 | 5.7.4 |
 | 5.7.2 | 5.7.2 | 5.7.3 |
 | 5.7.1 | 5.7.1 | 5.7.1 |
 | 5.7.0 | 5.7.0 | 5.7.0 |
