@@ -42,15 +42,12 @@ jobs:
 
       - name: Verify npm version (>= 11.5.1 required for trusted publishing)
         run: |
-          NPM_VERSION=$(npm --version)
+          NPM_VERSION="$(npm --version)"
           echo "npm version: $NPM_VERSION"
-          node -e "
-            const [maj, min, patch] = process.argv[1].split('.').map(Number);
-            if (maj < 11 || (maj === 11 && (min < 5 || (min === 5 && patch < 1)))) {
-              console.error('npm ' + process.argv[1] + ' is below required 11.5.1');
-              process.exit(1);
-            }
-          " "$NPM_VERSION"
+          if [ "$(printf '%s\n%s\n' "11.5.1" "$NPM_VERSION" | sort -V | head -n1)" != "11.5.1" ]; then
+            echo "::error::npm $NPM_VERSION is below required 11.5.1"
+            exit 1
+          fi
 
       - name: Build all packages
         run: |
