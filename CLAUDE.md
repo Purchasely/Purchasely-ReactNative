@@ -11,7 +11,7 @@
 
 | Property | Value |
 |----------|-------|
-| Current Version | 5.7.3 |
+| Current Version | 5.7.4 |
 | React Native | 0.79.2 |
 | TypeScript | 5.2.2 (strict mode) |
 | Node.js | v20 (see `.nvmrc`) |
@@ -630,6 +630,7 @@ See `VERSIONS.md` for native SDK version mapping:
 
 | React Native SDK | iOS SDK | Android SDK |
 |------------------|---------|-------------|
+| 5.7.4 | 5.7.4 | 5.7.4 |
 | 5.7.3 | 5.7.4 | 5.7.4 |
 | 5.7.2 | 5.7.2 | 5.7.3 |
 | 5.7.1 | 5.7.1 | 5.7.1 |
