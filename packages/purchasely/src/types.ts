@@ -200,6 +200,7 @@ export type PurchaselyEventProperties = {
   event_created_at_ms: number;
   event_created_at: string;
   displayed_presentation?: string;
+  placement_id?: string;
   user_id?: string;
   anonymous_user_id?: string;
   purchasable_plans?: PurchaselyEventPropertyPlan[];
