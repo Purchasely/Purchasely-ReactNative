@@ -48,6 +48,11 @@ static NSMutableDictionary<NSString *, void (^)(NSString *)> *kV6InterceptorCall
 /// interceptor itself is global (`setPaywallActionsInterceptor`) — we only fire
 /// the JS event when the action kind matches a registered one.
 static NSMutableSet<NSString *> *kV6InterceptorKinds;
+/// Serialises every access to the three mutable collections above. RN bridge
+/// methods run on a background queue while the interceptor block / completions
+/// run on the main queue; `NSMutable*` is not thread-safe, so all reads and
+/// writes are guarded by `@synchronized(kV6StateLock)`.
+static NSObject *kV6StateLock;
 
 static void V6EnsureInternalState(void) {
     static dispatch_once_t onceToken;
@@ -55,6 +60,7 @@ static void V6EnsureInternalState(void) {
         kV6PresentationsByRequest = [NSMutableDictionary new];
         kV6InterceptorCallbacks = [NSMutableDictionary new];
         kV6InterceptorKinds = [NSMutableSet new];
+        kV6StateLock = [NSObject new];
     });
 }
 
@@ -181,7 +187,8 @@ static NSNumber *V6PurchaseResultOrdinal(PLYProductViewControllerResult result) 
 - (void)v6ExtractTargetsFromPayload:(NSDictionary *)payload
                        toPlacement:(NSString * __autoreleasing *)placementId
                     toPresentation:(NSString * __autoreleasing *)presentationId
-                       toContentId:(NSString * __autoreleasing *)contentId {
+                       toContentId:(NSString * __autoreleasing *)contentId
+                       toIsDefault:(BOOL *)isDefault {
     if (payload[@"placementId"] != [NSNull null]) {
         *placementId = payload[@"placementId"];
     }
@@ -191,6 +198,13 @@ static NSNumber *V6PurchaseResultOrdinal(PLYProductViewControllerResult result) 
     }
     if (payload[@"contentId"] != [NSNull null]) {
         *contentId = payload[@"contentId"];
+    }
+    // `PresentationBuilder.default()` sends `isDefault: true` with no placement /
+    // screen — route it to the SDK's default presentation (cf. legacy
+    // `fetchPresentation` which falls back to `fetchPresentationWith:nil`).
+    id isDefaultValue = payload[@"isDefault"];
+    if ([isDefaultValue isKindOfClass:[NSNumber class]]) {
+        *isDefault = [isDefaultValue boolValue];
     }
 }
 
@@ -205,10 +219,12 @@ RCT_EXPORT_METHOD(v6Preload:(NSString *)requestId
     NSString *placementId = nil;
     NSString *presentationId = nil;
     NSString *contentId = nil;
+    BOOL isDefault = NO;
     [self v6ExtractTargetsFromPayload:payload
                           toPlacement:&placementId
                        toPresentation:&presentationId
-                          toContentId:&contentId];
+                          toContentId:&contentId
+                          toIsDefault:&isDefault];
 
     __weak PurchaselyRN *weakSelf = self;
     void (^onFetchCompletion)(PLYPresentation * _Nullable, NSError * _Nullable) =
@@ -221,7 +237,9 @@ RCT_EXPORT_METHOD(v6Preload:(NSString *)requestId
         if (presentation != nil) {
             event[@"presentation"] = V6PresentationToMap(presentation);
             [PurchaselyRN.presentationsLoaded addObject:presentation];
-            kV6PresentationsByRequest[requestId] = presentation;
+            @synchronized (kV6StateLock) {
+                kV6PresentationsByRequest[requestId] = presentation;
+            }
         }
         if (error != nil) {
             event[@"error"] = V6ErrorToMap(error);
@@ -239,6 +257,14 @@ RCT_EXPORT_METHOD(v6Preload:(NSString *)requestId
         } else if (presentationId != nil) {
             // P1.1: `screenId` → `fetchPresentationWith:` on iOS.
             [Purchasely fetchPresentationWith:presentationId
+                                    contentId:contentId
+                             fetchCompletion:onFetchCompletion
+                                    completion:nil
+                             loadedCompletion:nil];
+        } else if (isDefault) {
+            // Default presentation: iOS resolves it via `fetchPresentationWith:nil`
+            // (mirrors the legacy `fetchPresentation` fallback path).
+            [Purchasely fetchPresentationWith:nil
                                     contentId:contentId
                              fetchCompletion:onFetchCompletion
                                     completion:nil
@@ -265,10 +291,12 @@ RCT_EXPORT_METHOD(v6Display:(NSString *)requestId
     NSString *placementId = nil;
     NSString *presentationId = nil;
     NSString *contentId = nil;
+    BOOL isDefault = NO;
     [self v6ExtractTargetsFromPayload:payload
                           toPlacement:&placementId
                        toPresentation:&presentationId
-                          toContentId:&contentId];
+                          toContentId:&contentId
+                          toIsDefault:&isDefault];
 
     __weak PurchaselyRN *weakSelf = self;
 
@@ -301,7 +329,9 @@ RCT_EXPORT_METHOD(v6Display:(NSString *)requestId
         }
         // closeReason stays absent on iOS until native exposes it (cf. P0.2).
         [strongSelf v6EmitEvent:kV6EventDismissed body:body];
-        [kV6PresentationsByRequest removeObjectForKey:requestId];
+        @synchronized (kV6StateLock) {
+            [kV6PresentationsByRequest removeObjectForKey:requestId];
+        }
     };
 
     void (^onFetchCompletion)(PLYPresentation * _Nullable, NSError * _Nullable) =
@@ -347,7 +377,9 @@ RCT_EXPORT_METHOD(v6Display:(NSString *)requestId
         }
 
         capturedPresentation = presentation;
-        kV6PresentationsByRequest[requestId] = presentation;
+        @synchronized (kV6StateLock) {
+            kV6PresentationsByRequest[requestId] = presentation;
+        }
 
         // Emit onPresented (no native callback for it yet — we fire after the
         // controller becomes available).
@@ -398,6 +430,14 @@ RCT_EXPORT_METHOD(v6Display:(NSString *)requestId
                              fetchCompletion:onFetchCompletion
                                     completion:onResultCompletion
                              loadedCompletion:nil];
+        } else if (isDefault) {
+            // Default presentation: iOS resolves it via `fetchPresentationWith:nil`
+            // (mirrors the legacy `fetchPresentation` fallback path).
+            [Purchasely fetchPresentationWith:nil
+                                    contentId:contentId
+                             fetchCompletion:onFetchCompletion
+                                    completion:onResultCompletion
+                             loadedCompletion:nil];
         } else {
             NSError *error = [NSError errorWithDomain:@"io.purchasely.v6"
                                                  code:400
@@ -417,7 +457,9 @@ RCT_EXPORT_METHOD(v6Close:(NSString *)requestId) {
         [self v6EmitEvent:kV6EventCloseRequested body:@{ @"requestId": requestId ?: @"" }];
         self.presentedPresentationViewController = nil;
         [Purchasely closeDisplayedPresentation];
-        [kV6PresentationsByRequest removeObjectForKey:requestId];
+        @synchronized (kV6StateLock) {
+            [kV6PresentationsByRequest removeObjectForKey:requestId];
+        }
     });
 }
 
@@ -431,7 +473,9 @@ RCT_EXPORT_METHOD(v6Back:(NSString *)requestId) {
 
 RCT_EXPORT_METHOD(v6RegisterInterceptor:(NSString *)kind) {
     V6EnsureInternalState();
-    [kV6InterceptorKinds addObject:kind];
+    @synchronized (kV6StateLock) {
+        [kV6InterceptorKinds addObject:kind];
+    }
 
     // The iOS SDK exposes a single global interceptor — we wire it once and
     // dispatch to JS only for the registered kinds. Re-installing the same
@@ -449,20 +493,26 @@ RCT_EXPORT_METHOD(v6RegisterInterceptor:(NSString *)kind) {
             }
 
             NSString *actionKind = V6StringFromAction(action);
-            if (![kV6InterceptorKinds containsObject:actionKind]) {
+            BOOL kindRegistered;
+            @synchronized (kV6StateLock) {
+                kindRegistered = [kV6InterceptorKinds containsObject:actionKind];
+            }
+            if (!kindRegistered) {
                 // JS did not register this kind — fall through to native default.
                 onProcessActionHandler(YES);
                 return;
             }
 
             NSString *callbackId = [[NSUUID UUID] UUIDString];
-            kV6InterceptorCallbacks[callbackId] = ^(NSString *result) {
-                // Map InterceptResult → bool the native interceptor expects.
-                //   - success / failed → JS handled the action: don't proceed natively.
-                //   - notHandled       → let the SDK perform its default behavior.
-                BOOL proceed = [result isEqualToString:@"notHandled"];
-                onProcessActionHandler(proceed);
-            };
+            @synchronized (kV6StateLock) {
+                kV6InterceptorCallbacks[callbackId] = ^(NSString *result) {
+                    // Map InterceptResult → bool the native interceptor expects.
+                    //   - success / failed → JS handled the action: don't proceed natively.
+                    //   - notHandled       → let the SDK perform its default behavior.
+                    BOOL proceed = [result isEqualToString:@"notHandled"];
+                    onProcessActionHandler(proceed);
+                };
+            }
 
             // Serialize info + payload.
             NSMutableDictionary *info = [NSMutableDictionary new];
@@ -566,8 +616,12 @@ RCT_EXPORT_METHOD(v6RegisterInterceptor:(NSString *)kind) {
 
 RCT_EXPORT_METHOD(v6UnregisterInterceptor:(NSString *)kind) {
     V6EnsureInternalState();
-    [kV6InterceptorKinds removeObject:kind];
-    if (kV6InterceptorKinds.count == 0) {
+    BOOL noKindsLeft;
+    @synchronized (kV6StateLock) {
+        [kV6InterceptorKinds removeObject:kind];
+        noKindsLeft = (kV6InterceptorKinds.count == 0);
+    }
+    if (noKindsLeft) {
         dispatch_async(dispatch_get_main_queue(), ^{
             [Purchasely setPaywallActionsInterceptor:nil];
         });
@@ -576,9 +630,15 @@ RCT_EXPORT_METHOD(v6UnregisterInterceptor:(NSString *)kind) {
 
 RCT_EXPORT_METHOD(v6CompleteInterceptor:(NSString *)callbackId result:(NSString *)result) {
     V6EnsureInternalState();
-    void (^cb)(NSString *) = kV6InterceptorCallbacks[callbackId];
+    void (^cb)(NSString *) = nil;
+    @synchronized (kV6StateLock) {
+        cb = kV6InterceptorCallbacks[callbackId];
+        if (cb != nil) {
+            [kV6InterceptorCallbacks removeObjectForKey:callbackId];
+        }
+    }
+    // Invoke outside the lock — the callback re-enters the SDK's action handler.
     if (cb != nil) {
-        [kV6InterceptorCallbacks removeObjectForKey:callbackId];
         cb(result);
     }
 }
