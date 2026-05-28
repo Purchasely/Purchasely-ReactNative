@@ -10,6 +10,7 @@
 #import <React/RCTLog.h>
 #import <Purchasely/Purchasely-Swift.h>
 #import "PurchaselyRN.h"
+#import "PurchaselyRNV6.h"
 #import "Purchasely_Hybrid.h"
 #import "UIColor+PLYHelper.h"
 
@@ -1400,7 +1401,19 @@ RCT_EXPORT_METHOD(setDebugMode:(BOOL)enabled) {
 #pragma mark - Events
 
 - (NSArray<NSString *> *)supportedEvents {
-  return @[@"PURCHASELY_EVENTS", @"PURCHASE_LISTENER", @"USER_ATTRIBUTE_SET_LISTENER", @"USER_ATTRIBUTE_REMOVED_LISTENER"];
+  return @[
+    @"PURCHASELY_EVENTS",
+    @"PURCHASE_LISTENER",
+    @"USER_ATTRIBUTE_SET_LISTENER",
+    @"USER_ATTRIBUTE_REMOVED_LISTENER",
+    // v6 cross-platform bridge events. Names mirror the Android bridge so the
+    // same JS layer drives both platforms. See PurchaselyRNV6.m.
+    @"PURCHASELY_V6_LOADED",
+    @"PURCHASELY_V6_PRESENTED",
+    @"PURCHASELY_V6_CLOSE_REQUESTED",
+    @"PURCHASELY_V6_DISMISSED",
+    @"PURCHASELY_V6_ACTION_INTERCEPTED",
+  ];
 }
 
 - (void)startObserving
