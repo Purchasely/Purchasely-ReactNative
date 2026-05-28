@@ -27,13 +27,26 @@ import type {
   PurchaselySubscription,
   PurchaselyUserAttribute,
 } from './types';
+import {
+  PresentationBuilder,
+  PurchaselyBuilder,
+  interceptAction,
+  removeActionInterceptor,
+  removeAllActionInterceptors,
+} from './v6';
+import type { PresentationActionKind } from './v6';
 
-const purchaselyVersion = '5.7.3';
+const purchaselyVersion = '6.0.0';
 
 const constants = NativeModules.Purchasely.getConstants() as Constants;
 
 const PurchaselyEventEmitter = new NativeEventEmitter(NativeModules.Purchasely);
 
+/**
+ * @deprecated since v6.0.0 — use `Purchasely.builder(apiKey)` and chain the
+ * v6 options (`runningMode`, `allowDeeplink`, `allowCampaigns`, …). Kept for
+ * backward compatibility with v5 integrations.
+ */
 const start = ({
   apiKey,
   androidStores = ['Google'],
@@ -51,6 +64,18 @@ const start = ({
     runningMode,
     purchaselyVersion
   );
+};
+
+/**
+ * Cross-platform v6 start builder. Mirrors the iOS/Android contract:
+ * `Purchasely.builder('API_KEY').appUserId('u').runningMode('full').start()`.
+ *
+ * See: reports/v6-presentation-comparison-v3-claude/BRIDGE-CONTRACT.md
+ */
+const builder = (apiKey: string): PurchaselyBuilder => {
+  // Ensure the bridge version stays in sync with the wrapper version.
+  PurchaselyBuilder.bridgeVersion = purchaselyVersion;
+  return PurchaselyBuilder.apiKey(apiKey);
 };
 
 function setUserAttributeWithDate(key: string, value: Date, legalBasis?: PLYDataProcessingLegalBasis): void {
@@ -140,6 +165,11 @@ type PaywallActionInterceptorCallback = (
   result: PaywallActionInterceptorResult
 ) => void;
 
+/**
+ * @deprecated since v6.0.0 — use `Purchasely.interceptAction(kind, handler)`.
+ * The new API provides typed payloads and per-kind subscriptions. Kept for
+ * backward compatibility with v5 integrations.
+ */
 const setPaywallActionInterceptorCallback = (
   callback: PaywallActionInterceptorCallback
 ) => {
@@ -153,6 +183,12 @@ const setPaywallActionInterceptorCallback = (
   });
 };
 
+/**
+ * @deprecated since v6.0.0 — use
+ * `PresentationBuilder.placement(id).build().preload()`. The v6 builder
+ * exposes a typed {@link Presentation} and supports the full lifecycle
+ * (`onLoaded`, `onPresented`, `onCloseRequested`, `onDismissed`).
+ */
 const fetchPresentation = ({
   placementId = null,
   presentationId = null,
@@ -311,6 +347,12 @@ const setLogLevel = (logLevel: LogLevels): void => {
   return NativeModules.Purchasely.setLogLevel(logLevel);
 };
 
+/**
+ * @deprecated since v6.0.0 — use
+ * `Purchasely.builder(apiKey).allowDeeplink(true).start()`.
+ *
+ * Kept for backward compatibility with v5 integrations.
+ */
 const readyToOpenDeeplink = (ready: boolean): void => {
   return NativeModules.Purchasely.readyToOpenDeeplink(ready);
 };
@@ -366,6 +408,10 @@ const setDefaultPresentationResultHandler =
     return NativeModules.Purchasely.setDefaultPresentationResultHandler();
   };
 
+/**
+ * @deprecated since v6.0.0 — use `Purchasely.interceptAction(kind, handler)`.
+ * Kept for backward compatibility with v5 integrations.
+ */
 const setPaywallActionInterceptor =
   (): Promise<PaywallActionInterceptorResult> => {
     return NativeModules.Purchasely.setPaywallActionInterceptor();
@@ -490,6 +536,14 @@ const setDebugMode = (debugMode: boolean): void => {
 
 const Purchasely = {
   start,
+  builder,
+  presentation: PresentationBuilder,
+  interceptAction: (
+    kind: PresentationActionKind,
+    handler: Parameters<typeof interceptAction>[1]
+  ) => interceptAction(kind, handler),
+  removeActionInterceptor,
+  removeAllActionInterceptors,
   addEventListener,
   removeEventListener,
   addPurchasedListener,
@@ -564,6 +618,7 @@ const Purchasely = {
 export * from './types';
 export * from './enums';
 export * from './interfaces';
+export * from './v6';
 export { PLYPresentationView };
 
 export default Purchasely;
