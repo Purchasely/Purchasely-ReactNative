@@ -349,7 +349,15 @@ export class PresentationRequest {
         return this;
     }
 
-    /** Programmatically close the presentation if it is currently visible. */
+    /**
+     * Programmatically close the presentation if it is currently visible.
+     *
+     * @remarks
+     * The native SDK does not yet expose a per-request close, so this currently
+     * dismisses **all** displayed presentations, not only this request. If your
+     * app stacks presentations (e.g. a product page inside an onboarding flow),
+     * calling `close()` on one will also dismiss the others.
+     */
     close(): void {
         if (!this.requestId) {
             return;

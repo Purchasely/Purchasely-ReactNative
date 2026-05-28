@@ -286,13 +286,11 @@ object PurchaselyV6Bridge {
 
             promise.resolve(true)
         } catch (e: Throwable) {
-            // Synthesize a dismissed event so the JS side resolves the display Promise.
-            val payload = Arguments.createMap()
-            payload.putString("requestId", requestId)
-            payload.putMap("error", Arguments.createMap().apply {
-                putString("message", e.message ?: "Display failed")
-            })
-            sendEvent(reactContext, EVENT_DISMISSED, payload)
+            // Reject only — the JS `.catch` on v6Display synthesizes the dismissed
+            // outcome (onPresented(null, error) + onDismissed), mirroring the iOS
+            // error path. Emitting a DISMISSED event here as well would invoke the
+            // user-supplied onDismissed callback twice (the event listener and the
+            // promise rejection both settle the display flow).
             activeRequests.remove(requestId)
             promise.reject("v6_display_failure", e.message, e)
         }
@@ -301,8 +299,17 @@ object PurchaselyV6Bridge {
     @JvmStatic
     fun close(requestId: String) {
         activeRequests.remove(requestId)
-        // Closing all screens is the closest match — the SDK v6 does not yet
-        // expose a per-request close.
+        // The SDK v6 does not yet expose a per-request close, so this dismisses
+        // *every* displayed presentation, not just `requestId`. Warn the host when
+        // other requests are still active so a stacked presentation (e.g. a product
+        // page inside an onboarding flow) being torn down is not a silent surprise.
+        if (activeRequests.isNotEmpty()) {
+            PLYLogger.w(
+                "[v6] close($requestId) dismisses ALL displayed presentations " +
+                    "(per-request close is not yet supported by the native SDK); " +
+                    "${activeRequests.size} other active request(s) will also be closed."
+            )
+        }
         Purchasely.closeAllScreens()
     }
 
