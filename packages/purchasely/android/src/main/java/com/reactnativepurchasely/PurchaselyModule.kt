@@ -11,15 +11,13 @@ import com.facebook.react.modules.core.DeviceEventManagerModule.RCTDeviceEventEm
 import io.purchasely.billing.Store
 import io.purchasely.ext.*
 import io.purchasely.ext.EventListener
-import io.purchasely.models.PLYError
+import io.purchasely.ext.presentation.PLYPresentation
+import io.purchasely.ext.presentation.PLYPresentationType
 import io.purchasely.models.PLYPlan
-import io.purchasely.models.PLYPromoOffer
 import io.purchasely.models.PLYPresentationPlan
 import io.purchasely.storage.userData.PLYUserAttributeSource
 import io.purchasely.storage.userData.PLYUserAttributeType
 import io.purchasely.views.presentation.PLYThemeMode
-import io.purchasely.views.presentation.models.PLYTransition
-import io.purchasely.views.presentation.models.PLYTransitionType
 import io.purchasely.ext.PLYDataProcessingLegalBasis
 import io.purchasely.ext.PLYDataProcessingPurpose
 import kotlinx.coroutines.*
@@ -83,8 +81,11 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     constants["logLevelWarn"] = LogLevel.WARN.ordinal
     constants["logLevelInfo"] = LogLevel.INFO.ordinal
     constants["logLevelError"] = LogLevel.ERROR.ordinal
+    @Suppress("DEPRECATION")
     constants["productResultPurchased"] = PLYProductViewResult.PURCHASED.ordinal
+    @Suppress("DEPRECATION")
     constants["productResultCancelled"] = PLYProductViewResult.CANCELLED.ordinal
+    @Suppress("DEPRECATION")
     constants["productResultRestored"] = PLYProductViewResult.RESTORED.ordinal
     constants["firebaseAppInstanceId"] = Attribute.FIREBASE_APP_INSTANCE_ID.ordinal
     constants["airshipChannelId"] = Attribute.AIRSHIP_CHANNEL_ID.ordinal
@@ -282,8 +283,8 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   @ReactMethod
   fun setDefaultPresentationResultHandler(promise: Promise) {
     defaultPurchasePromise = promise
-    Purchasely.setDefaultPresentationResultHandler { result, plan ->
-      sendPurchaseResult(result, plan)
+    Purchasely.setDefaultPresentationResultHandler { outcome ->
+      sendPurchaseResultV6(outcome)
     }
   }
 
@@ -292,45 +293,21 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     Purchasely.synchronize()
   }
 
+  /**
+   * @deprecated since v6.0.0 — use the v6 builder API
+   * (`PresentationBuilder.placement(id).build().preload()`). This method now
+   * rejects with a migration message; the JS layer keeps a thin wrapper that
+   * surfaces the same deprecation notice.
+   */
   @ReactMethod
   fun fetchPresentation(placementId: String?,
                         presentationId: String?,
                         contentId: String?,
                         promise: Promise) {
-
-
-    val properties = PLYPresentationProperties(
-      placementId = placementId,
-      presentationId = presentationId,
-      contentId = contentId)
-
-
-    Purchasely.fetchPresentation(properties = properties) { presentation: PLYPresentation?, error: PLYError? ->
-      GlobalScope.launch {
-        if(presentation != null) {
-          mutex.withLock {
-            presentationsLoaded.removeAll { it.id == presentation.id && it.placementId == presentation.placementId }
-            presentationsLoaded.add(presentation)
-            val map = presentation.toMap().mapValues {
-              val value = it.value
-              when(value) {
-                is PLYPresentationType -> value.ordinal
-                is PLYTransitionType -> value.ordinal
-                else -> value
-              }
-            }
-
-            val mutableMap = map.toMutableMap().apply {
-              this["metadata"] = presentation.metadata?.toMap()
-              this["plans"] = (this["plans"] as List<PLYPresentationPlan>).map { it.toMap() }
-              this["height"] = presentation.height ?: 0
-            }
-            promise.resolve(Arguments.makeNativeMap(mutableMap))
-          }
-        }
-        if(error != null) promise.reject(IllegalStateException(error.message ?: "Unable to fetch presentation"))
-      }
-    }
+    promise.reject(
+      "v6_migration_required",
+      "fetchPresentation is removed in v6. Use Purchasely.presentation.placement(id).build().preload()."
+    )
   }
 
   @ReactMethod
@@ -338,34 +315,10 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
                           isFullScreen: Boolean,
                           loadingBackgroundColor: String?,
                           promise: Promise) {
-    if (presentationMap == null) {
-      promise.reject(NullPointerException("presentation cannot be null"))
-      return
-    }
-
-    val presentation = presentationsLoaded.lastOrNull {
-      it.id == presentationMap.getString("id")
-      && it.placementId == presentationMap.getString("placementId")
-    }
-    if(presentation == null) {
-      promise.reject(NullPointerException("presentation not fond"))
-      return
-    }
-
-    purchasePromise = promise
-
-    reactApplicationContext.currentActivity?.let { activity ->
-      if (presentation.flowId != null) {
-        presentation.display(activity) { result, plan ->
-          sendPurchaseResult(result, plan)
-        }
-      } else {
-        val intent = PLYProductActivity.newIntent(activity, PLYPresentationProperties(), isFullScreen, loadingBackgroundColor).apply {
-          putExtra("presentation", presentation)
-        }
-        activity.startActivity(intent)
-      }
-    }
+    promise.reject(
+      "v6_migration_required",
+      "presentPresentation is removed in v6. Use Purchasely.presentation.placement(id).build().display()."
+    )
   }
 
   @ReactMethod
@@ -374,15 +327,10 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
                                         isFullScreen: Boolean,
                                         loadingBackgroundColor: String?,
                                         promise: Promise) {
-    purchasePromise = promise
-    reactApplicationContext.currentActivity?.let {
-      val properties = PLYPresentationProperties(
-        presentationId = presentationVendorId,
-        contentId = contentId
-      )
-      val intent = PLYProductActivity.newIntent(it, properties, isFullScreen, loadingBackgroundColor)
-      it.startActivity(intent)
-    }
+    promise.reject(
+      "v6_migration_required",
+      "presentPresentationWithIdentifier is removed in v6. Use Purchasely.presentation.screen(id).build().display()."
+    )
   }
 
   @ReactMethod
@@ -391,15 +339,10 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
                                       isFullScreen: Boolean,
                                       loadingBackgroundColor: String?,
                                       promise: Promise) {
-    purchasePromise = promise
-    reactApplicationContext.currentActivity?.let {
-      val properties = PLYPresentationProperties(
-        placementId = placementVendorId,
-        contentId = contentId
-      )
-      val intent = PLYProductActivity.newIntent(it, properties, isFullScreen, loadingBackgroundColor)
-      it.startActivity(intent)
-    }
+    promise.reject(
+      "v6_migration_required",
+      "presentPresentationForPlacement is removed in v6. Use Purchasely.presentation.placement(id).build().display()."
+    )
   }
 
   @ReactMethod
@@ -409,16 +352,10 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
                                    isFullScreen: Boolean,
                                    loadingBackgroundColor: String?,
                                    promise: Promise) {
-    purchasePromise = promise
-    reactApplicationContext.currentActivity?.let {
-      val properties = PLYPresentationProperties(
-        presentationId = presentationVendorId,
-        productId = productVendorId,
-        contentId = contentId
-      )
-      val intent = PLYProductActivity.newIntent(it, properties, isFullScreen, loadingBackgroundColor)
-      it.startActivity(intent)
-    }
+    promise.reject(
+      "v6_migration_required",
+      "presentProductWithIdentifier is removed in v6. Use Purchasely.presentation.screen(id).contentId(c).build().display()."
+    )
   }
 
   @ReactMethod
@@ -428,16 +365,10 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
                                 isFullScreen: Boolean,
                                 loadingBackgroundColor: String?,
                                 promise: Promise) {
-    purchasePromise = promise
-    reactApplicationContext.currentActivity?.let {
-      val properties = PLYPresentationProperties(
-        presentationId = presentationVendorId,
-        planId = planVendorId,
-        contentId = contentId
-      )
-      val intent = PLYProductActivity.newIntent(it, properties, isFullScreen, loadingBackgroundColor)
-      it.startActivity(intent)
-    }
+    promise.reject(
+      "v6_migration_required",
+      "presentPlanWithIdentifier is removed in v6. Use Purchasely.presentation.screen(id).build().display()."
+    )
   }
 
   @ReactMethod
@@ -773,42 +704,17 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
     promise.resolve(Purchasely.isDeeplinkHandled(uri))
   }
 
+  /**
+   * @deprecated since v6.0.0 — use `Purchasely.interceptAction(kind, handler)`
+   * from the v6 façade. The new API provides typed payloads, per-kind
+   * subscriptions, and a coroutine-based completion.
+   */
   @ReactMethod
   fun setPaywallActionInterceptor(promise: Promise) {
-    Purchasely.setPaywallActionsInterceptor { info, action, parameters, processAction ->
-      paywallActionHandler = processAction
-      paywallAction = action
-
-      val parametersForReact = hashMapOf<String, Any?>();
-      parametersForReact["title"] = parameters.title
-      parametersForReact["url"] = parameters.url?.toString()
-      parametersForReact["plan"] = transformPlanToMap(parameters.plan)
-      parametersForReact["offer"] = mapOf(
-        "vendorId" to parameters.offer?.vendorId,
-        "storeOfferId" to parameters.offer?.storeOfferId
-      )
-      parametersForReact["subscriptionOffer"] = parameters.subscriptionOffer?.toMap()
-      parametersForReact["presentation"] = parameters.presentation
-      parametersForReact["placement"] = parameters.placement
-      parametersForReact["closeReason"] = parameters.closeReason?.name
-      parametersForReact["clientReferenceId"] = parameters?.clientReferenceId
-      parametersForReact["queryParameterKey"] = parameters?.queryParameterKey
-      parametersForReact["webCheckoutProvider"] = parameters?.webCheckoutProvider?.name
-
-      promise.resolve(Arguments.makeNativeMap(
-        mapOf(
-          Pair("info", mapOf(
-            Pair("contentId", info?.contentId),
-            Pair("presentationId", info?.presentationId),
-            Pair("placementId", info?.placementId),
-            Pair("abTestId", info?.abTestId),
-            Pair("abTestVariantId", info?.abTestVariantId)
-          )),
-          Pair("action", action.value),
-          Pair("parameters", parametersForReact.filterNot { it.value == null })
-        )
-      ))
-    }
+    promise.reject(
+      "v6_migration_required",
+      "setPaywallActionInterceptor is removed in v6. Use Purchasely.interceptAction(kind, handler)."
+    )
   }
 
   @ReactMethod
@@ -842,17 +748,16 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
     }
   }
 
+  /**
+   * @deprecated since v6.0.0 — use the v6 interceptor handler return value
+   * (`InterceptResult.success | failed | notHandled`).
+   */
   @ReactMethod
   fun onProcessAction(processAction: Boolean) {
-    CoroutineScope(Dispatchers.Default).launch {
-      delay(500)
-      val activityHandler = productActivity?.activity?.get() ?: reactApplicationContext.currentActivity
-      withContext(Dispatchers.Main) {
-        activityHandler?.runOnUiThread {
-          paywallActionHandler?.invoke(processAction)
-        }
-      }
-    }
+    Log.w(
+      "Purchasely",
+      "onProcessAction is removed in v6. Return InterceptResult from your interceptAction handler."
+    )
   }
 
   @ReactMethod
@@ -940,6 +845,62 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
     Purchasely.debugMode = enabled
   }
 
+  // region v6 — cross-platform bridge methods
+  // See: reports/v6-presentation-comparison-v3-claude/BRIDGE-CONTRACT.md
+
+  @ReactMethod
+  fun v6Preload(requestId: String, payload: ReadableMap?, promise: Promise) {
+    com.reactnativepurchasely.v6.PurchaselyV6Bridge.preload(
+      reactApplicationContext, requestId, payload, promise
+    )
+  }
+
+  @ReactMethod
+  fun v6Display(
+    requestId: String,
+    payload: ReadableMap?,
+    transition: ReadableMap?,
+    promise: Promise
+  ) {
+    com.reactnativepurchasely.v6.PurchaselyV6Bridge.display(
+      reactApplicationContext, requestId, payload, transition, promise
+    )
+  }
+
+  @ReactMethod
+  fun v6Close(requestId: String) {
+    com.reactnativepurchasely.v6.PurchaselyV6Bridge.close(requestId)
+  }
+
+  @ReactMethod
+  fun v6Back(requestId: String) {
+    com.reactnativepurchasely.v6.PurchaselyV6Bridge.back(requestId)
+  }
+
+  @ReactMethod
+  fun v6RegisterInterceptor(kind: String) {
+    com.reactnativepurchasely.v6.PurchaselyV6Bridge.registerInterceptor(
+      reactApplicationContext, kind
+    )
+  }
+
+  @ReactMethod
+  fun v6UnregisterInterceptor(kind: String) {
+    com.reactnativepurchasely.v6.PurchaselyV6Bridge.unregisterInterceptor(kind)
+  }
+
+  @ReactMethod
+  fun v6CompleteInterceptor(callbackId: String, result: String) {
+    com.reactnativepurchasely.v6.PurchaselyV6Bridge.completeInterceptor(callbackId, result)
+  }
+
+  @ReactMethod
+  fun v6ApplyStartOptions(options: ReadableMap) {
+    com.reactnativepurchasely.v6.PurchaselyV6Bridge.applyStartOptions(options)
+  }
+
+  // endregion
+
   private fun mapPurposesFromReadableArray(purposes: ReadableArray): Set<PLYDataProcessingPurpose> {
     val result = mutableSetOf<PLYDataProcessingPurpose>()
 
@@ -977,20 +938,25 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
     var productActivity: ProductActivity? = null
     var purchasePromise: Promise? = null
     var defaultPurchasePromise: Promise? = null
-    var paywallActionHandler: PLYCompletionHandler? = null
-    var paywallAction: PLYPresentationAction? = null
 
-    fun sendPurchaseResult(result: PLYProductViewResult, plan: PLYPlan?) {
-      val productViewResult = when(result) {
-        PLYProductViewResult.PURCHASED -> PLYProductViewResult.PURCHASED.ordinal
-        PLYProductViewResult.CANCELLED -> PLYProductViewResult.CANCELLED.ordinal
-        PLYProductViewResult.RESTORED -> PLYProductViewResult.RESTORED.ordinal
+    /**
+     * Backwards-compatible projection of a v6 `PLYPresentationOutcome` into the
+     * legacy `{result, plan}` shape consumed by the v5 JS API. The new v6 façade
+     * exposes the full outcome (with `closeReason` / `error`) via the dedicated
+     * `PURCHASELY_V6_DISMISSED` event.
+     */
+    fun sendPurchaseResultV6(outcome: io.purchasely.ext.presentation.PLYPresentationOutcome) {
+      val resultOrdinal = when (outcome.purchaseResult) {
+        io.purchasely.ext.presentation.PLYPurchaseResult.PURCHASED -> 0
+        io.purchasely.ext.presentation.PLYPurchaseResult.RESTORED -> 2
+        io.purchasely.ext.presentation.PLYPurchaseResult.CANCELLED -> 1
+        null -> 1
       }
-
       val map: MutableMap<String, Any?> = HashMap()
-      map["result"] = productViewResult
-      map["plan"] = transformPlanToMap(plan)
-      purchasePromise?.resolve(Arguments.makeNativeMap(map)) ?: defaultPurchasePromise?.resolve(Arguments.makeNativeMap(map))
+      map["result"] = resultOrdinal
+      map["plan"] = transformPlanToMap(outcome.plan)
+      purchasePromise?.resolve(Arguments.makeNativeMap(map))
+        ?: defaultPurchasePromise?.resolve(Arguments.makeNativeMap(map))
     }
 
     fun transformPlanToMap(plan: PLYPlan?): Map<String, Any?> {
@@ -1009,6 +975,10 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
     }
   }
 
+  /**
+   * Legacy host wrapper kept as a stub so JS-side cached state from v5 sessions
+   * continues to parse. The v6 builder pipeline does not use this class.
+   */
   class ProductActivity(
     val presentation: PLYPresentation? = null,
     val presentationId: String? = null,
@@ -1017,45 +987,35 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
     val planId: String? = null,
     val contentId: String? = null,
     val isFullScreen: Boolean = false,
-    val loadingBackgroundColor: String? = null) {
-
+    val loadingBackgroundColor: String? = null
+  ) {
     var activity: WeakReference<Activity>? = null
 
-
-    fun relaunch(reactApplicationContext: ReactApplicationContext) : Boolean {
+    fun relaunch(reactApplicationContext: ReactApplicationContext): Boolean {
       val backgroundActivity = activity?.get()
-      return if(backgroundActivity != null
-          && !backgroundActivity.isFinishing
-          && !backgroundActivity.isDestroyed) {
+      return if (backgroundActivity != null
+        && !backgroundActivity.isFinishing
+        && !backgroundActivity.isDestroyed
+      ) {
         reactApplicationContext.currentActivity?.let {
           it.startActivity(
             Intent(it, backgroundActivity::class.java).apply {
-              //flags = Intent.FLAG_ACTIVITY_NEW_TASK
               flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
             }
           )
         }
         true
       } else {
-        reactApplicationContext.currentActivity?.let {
-          val properties = PLYPresentationProperties(
-            presentationId = presentationId,
-            placementId = placementId,
-            productId = productId,
-            planId = planId,
-            contentId = contentId
-          )
-          val intent = PLYProductActivity.newIntent(it, properties, isFullScreen, loadingBackgroundColor).apply {
-            putExtra("presentation", presentation)
-          }
-          it.startActivity(intent)
-        }
-        return false
+        Log.w(
+          "Purchasely",
+          "[v6] Legacy productActivity has no live host. Use the v6 builder to (re)display."
+        )
+        false
       }
     }
   }
 
-  fun PLYPresentationPlan.toMap() : Map<String, String?> {
+  fun PLYPresentationPlan.toMap(): Map<String, String?> {
     return mapOf(
       Pair("planVendorId", planVendorId),
       Pair("storeProductId", storeProductId),
@@ -1064,7 +1024,7 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
     )
   }
 
-  suspend fun PLYPresentationMetadata.toMap() : Map<String, Any> {
+  suspend fun io.purchasely.ext.presentation.PLYPresentationMetadata.toMap(): Map<String, Any> {
     val metadata = mutableMapOf<String, Any>()
     this.keys()?.forEach { key ->
       val value = when (this.type(key)) {
