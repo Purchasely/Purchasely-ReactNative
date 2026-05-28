@@ -8,8 +8,12 @@ import Purchasely, {
     PLYDataProcessingLegalBasis,
     PLYDataProcessingPurpose,
     PLYPaywallAction,
+    PresentationBuilder,
+    PurchaselyBuilder,
     PurchaselyUserAttribute,
     RunningMode,
+    interceptAction,
+    removeAllActionInterceptors,
 } from 'react-native-purchasely'
 import { PaywallScreen } from './Paywall.tsx'
 
@@ -308,9 +312,87 @@ function App(): React.JSX.Element {
         }
     }
 
+    // -------------------------------------------------------------------------
+    // v6 builder demo. The v6 API is the cross-platform replacement for the
+    // legacy `Purchasely.start(...)` / `fetchPresentation` flow. It mirrors
+    // the Android-style chained builder.
+    //
+    // To opt in, uncomment the `setupPurchaselyV6()` call inside the
+    // `useEffect` below.
+    // -------------------------------------------------------------------------
+    async function setupPurchaselyV6() {
+        try {
+            // Chained start — equivalent to the legacy `Purchasely.start({...})`
+            // but uses Android-style typed strings + chain options.
+            await PurchaselyBuilder.apiKey(
+                'fcb39be4-2ba4-4db7-bde3-2a5a1e20745d'
+            )
+                .appUserId('test-user-id')
+                .runningMode('full')
+                .logLevel('debug')
+                .allowDeeplink(true)
+                .allowCampaigns(true)
+                .storekitVersion('storeKit2')
+                .stores(['google'])
+                .start()
+        } catch (e) {
+            console.error('[v6] start failed:', e)
+            return
+        }
+
+        // Register at least one interceptor — purchase action — per the v6
+        // bridge contract. Handlers must return 'success' | 'failed' |
+        // 'notHandled'.
+        interceptAction('purchase', async (info, payload) => {
+            console.info('[v6] purchase intercepted', info, payload)
+            // Returning 'notHandled' lets the SDK perform its default
+            // purchase flow. Switch to 'success' / 'failed' if you handle
+            // the transaction yourself.
+            return 'notHandled'
+        })
+
+        // Build, present and react to lifecycle callbacks. `display()`
+        // resolves at DISMISS with a 5-field `PresentationOutcome`.
+        const request = PresentationBuilder.placement('ONBOARDING')
+            .contentId('content_123')
+            .onLoaded((presentation) => {
+                console.info('[v6] loaded', presentation.screenId)
+            })
+            .onPresented((presentation, error) => {
+                if (error) {
+                    console.error('[v6] presented error', error)
+                    return
+                }
+                console.info('[v6] presented', presentation?.screenId)
+            })
+            .onCloseRequested(() => {
+                console.info('[v6] close requested by host')
+            })
+            .onDismissed((outcome) => {
+                console.info(
+                    '[v6] dismissed',
+                    'purchaseResult=', outcome.purchaseResult,
+                    'plan=', outcome.plan?.vendorId,
+                    'closeReason=', outcome.closeReason,
+                    'error=', outcome.error?.message
+                )
+            })
+            .build()
+
+        const outcome = await request.display({ type: 'fullScreen' })
+        console.info('[v6] display() resolved with outcome', outcome)
+
+        // Equivalent helper to detach every interceptor previously registered.
+        removeAllActionInterceptors()
+    }
+
     useEffect(() => {
         setupPurchasely()
         fetchPresentation()
+        // Uncomment to exercise the v6 builder pipeline alongside the legacy
+        // v5 example flow above. The two are mutually exclusive at runtime:
+        // calling start() twice will return the cached initialization.
+        // setupPurchaselyV6()
     }, [])
 
     return (
