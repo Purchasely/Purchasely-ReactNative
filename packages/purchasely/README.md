@@ -161,6 +161,124 @@ export const PaywallScreen: React.FC<NativeStackScreenProps<any>> = ({ navigatio
 };
 ```
 
+## 🆕 Migration to v6.x
+
+`react-native-purchasely@6` introduces a cross-platform builder API that
+mirrors the native Android/iOS v6 SDKs. The legacy v5 API stays available
+during the transition — the v6 façade ships side-by-side and is the
+recommended way to integrate going forward.
+
+The v6 contract is documented in
+`reports/v6-presentation-comparison-v3-claude/BRIDGE-CONTRACT.md` (internal).
+
+### Initialization
+
+```ts
+// v5 (deprecated, still works)
+await Purchasely.start({
+  apiKey: 'YOUR_API_KEY',
+  androidStores: ['Google'],
+  storeKit1: false,
+  userId: 'user_id',
+  logLevel: LogLevels.DEBUG,
+  runningMode: RunningMode.FULL,
+})
+
+// v6
+import { PurchaselyBuilder } from 'react-native-purchasely'
+
+await PurchaselyBuilder.apiKey('YOUR_API_KEY')
+  .appUserId('user_id')
+  .runningMode('full')          // 'observer' | 'full'
+  .logLevel('debug')            // 'debug' | 'info' | 'warn' | 'error'
+  .allowDeeplink(true)
+  .allowCampaigns(true)
+  .storekitVersion('storeKit2') // iOS only
+  .stores(['google'])           // Android only
+  .start()
+```
+
+### Paywall display
+
+```ts
+// v5
+const result = await Purchasely.presentPresentationForPlacement({
+  placementVendorId: 'ONBOARDING',
+  isFullscreen: true,
+})
+
+// v6
+import { PresentationBuilder } from 'react-native-purchasely'
+
+const request = PresentationBuilder.placement('ONBOARDING')
+  .contentId('content_123')
+  .onLoaded((presentation) => { /* preload complete */ })
+  .onPresented((presentation, error) => { /* presentation visible (or error) */ })
+  .onCloseRequested(() => { /* user asked to close */ })
+  .onDismissed((outcome) => { /* see outcome contract below */ })
+  .build()
+
+// Resolves at DISMISS with the 5-field outcome (not at trigger).
+const outcome = await request.display({ type: 'fullScreen' })
+
+// Or use `.screen('SCREEN_ID')` to target a presentation directly.
+// Or `.default()` to use the SDK default placement.
+```
+
+### Action interceptor
+
+```ts
+// v5: single global handler dispatched by switch on `action`
+Purchasely.setPaywallActionInterceptorCallback((result) => {
+  switch (result.action) {
+    case PLYPaywallAction.PURCHASE:
+      Purchasely.onProcessAction(true)
+      break
+    /* ... */
+  }
+})
+
+// v6: one typed interceptor per action kind, returning an InterceptResult
+import { interceptAction } from 'react-native-purchasely'
+
+interceptAction('purchase', async ({ presentation }, payload) => {
+  if (payload?.kind === 'purchase') {
+    console.log('user wants to buy', payload.plan.vendorId)
+  }
+  // 'success' | 'failed' | 'notHandled'
+  // 'notHandled' lets the SDK run its default flow for the action.
+  return 'notHandled'
+})
+
+interceptAction('navigate', async (_info, payload) => {
+  if (payload?.kind === 'navigate') {
+    Linking.openURL(payload.url)
+    return 'success'
+  }
+  return 'notHandled'
+})
+```
+
+### Outcome (5 fields)
+
+The v6 `PresentationOutcome` exposes the full close context:
+
+```ts
+interface PresentationOutcome {
+  presentation?: Presentation | null
+  purchaseResult?: 'purchased' | 'cancelled' | 'restored' | null
+  plan?: PurchaselyPlan | null
+  closeReason?: 'button' | 'backSystem' | 'programmatic' | null
+  error?: PresentationError | null
+}
+```
+
+Exclusion rule: `error != null` ⇒ `closeReason == null`.
+
+> **iOS notes (temporary).** Until the iOS native v6 lands, the bridge
+> synthesizes the 5-field outcome from the legacy callbacks. `closeReason`
+> stays `null` and `screenId` is mapped from `presentation.id`.
+
 ## 📖 Documentation
 
 A complete documentation is available on our website: [Purchasely Docs](https://docs.purchasely.com/quick-start/sdk-installation/react-native-sdk).
