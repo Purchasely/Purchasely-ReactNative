@@ -2,13 +2,13 @@
 
 All notable changes to `react-native-purchasely` are documented in this file.
 
-## [6.0.0-beta.0] — Unreleased
+## [6.0.0] — Unreleased
 
 ### Added — v6 cross-platform builder API
 
 The v6 façade is a chainable, type-safe API that mirrors the v6 Android/iOS
-SDKs. It ships alongside the legacy v5 API for backwards compatibility — both
-can be used in the same app during migration.
+SDKs. It is now the **only** paywall API — the legacy v5 paywall methods have
+been removed (see Breaking changes below).
 
 - **`PurchaselyBuilder`** chained start (`apiKey(...).runningMode(...).start()`)
   replacing the multi-argument `Purchasely.start({...})`.
@@ -40,18 +40,46 @@ can be used in the same app during migration.
   `onPresented(presentation?, error?)` callback per contract workarounds.
   `closeReason` stays `null` on iOS until the native pipeline exposes it.
 
-### Breaking changes
+### Breaking changes — v5 paywall API removed
 
-None — the legacy v5 API stays exported and behaves exactly as in 5.x. New code
-should use the v6 builders.
+The legacy v5 **paywall** API has been **removed** (not deprecated). The removed
+methods no longer exist on the `Purchasely` export and will fail to compile.
+Migrate to the v6 builders — see [`MIGRATION-v6.md`](../../MIGRATION-v6.md) for
+the full old→new mapping. The Purchasely AI plugin / skills can assist the
+migration.
 
-### Deprecated
+Removed → replacement:
 
-- `Purchasely.start({...})` → use `PurchaselyBuilder.apiKey(...).start()`.
-- `Purchasely.presentPresentationForPlacement({...})` → use
-  `PresentationBuilder.placement(...).build().display()`.
-- `Purchasely.setPaywallActionInterceptorCallback(...)` → use
-  `interceptAction(kind, handler)` per action kind.
+- `Purchasely.start({...})` / `startWithAPIKey(...)` →
+  `Purchasely.builder(apiKey).<...>.start()`.
+- `fetchPresentation({...})` →
+  `Purchasely.presentation.placement(id).build().preload()`.
+- `presentPresentationForPlacement({...})` →
+  `Purchasely.presentation.placement(id).build().display()`.
+- `presentPresentationWithIdentifier({...})` →
+  `Purchasely.presentation.screen(id).build().display()`.
+- `presentProductWithIdentifier(...)` →
+  `Purchasely.presentation.screen(id).contentId(c).build().display()`.
+- `presentPlanWithIdentifier(...)` →
+  `Purchasely.presentation.screen(id).build().display()`.
+- `showPresentation` / `hidePresentation` / `closePresentation` →
+  request lifecycle (`request.display()` / `request.close()`).
+- `setPaywallActionInterceptorCallback(...)` + `onProcessAction(...)` →
+  `Purchasely.interceptAction(kind, handler)` (handler returns
+  `'success' | 'failed' | 'notHandled'`).
+- `setDefaultPresentationResultCallback(...)` /
+  `setDefaultPresentationResultHandler(...)` →
+  `request.onDismissed(outcome => ...)`.
+- `readyToOpenDeeplink(true)` →
+  `Purchasely.builder(apiKey).allowDeeplink(true).start()`.
+
+The default `runningMode` is now `'observer'` (v5 defaulted to full control of
+the purchase flow). Pass `.runningMode('full')` to keep the previous behaviour.
+
+**Unchanged**: all CORE methods (user, products, subscriptions, attributes,
+listeners, `presentSubscriptions`, `clientPresentationDisplayed` /
+`clientPresentationClosed`) and the embedded `PLYPresentationView` component
+behave exactly as in 5.x.
 
 ### iOS TODOs (tracked in the bridge code)
 

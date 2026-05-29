@@ -11,29 +11,21 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { Colors } from 'react-native/Libraries/NewAppScreen'
 import Purchasely, {
     PLYPresentationType,
-    ProductResult,
-    PurchaselyPresentation,
+    PresentationBuilder,
+    PresentationRequest,
 } from 'react-native-purchasely'
 
 import DeviceInfo from 'react-native-device-info'
-import { useEffect, useRef } from 'react'
+import { useRef } from 'react'
 
 export const HomeScreen: React.FC<NativeStackScreenProps<any>> = ({
     navigation,
 }) => {
     const isDarkMode = useColorScheme() === 'dark'
-    const cachedPresentation = useRef<PurchaselyPresentation | null>(null)
+    // Holds the most recently displayed v6 request so it can be closed or
+    // navigated back programmatically (replaces the v5 show/hide/close calls).
+    const currentRequest = useRef<PresentationRequest | null>(null)
 
-    useEffect(() => {
-        Purchasely.fetchPresentation({
-            placementId: 'nested',
-            contentId: null,
-        })
-            .then((p) => {
-                cachedPresentation.current = p
-            })
-            .catch(console.error)
-    }, [])
     const backgroundStyle = {
         backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
     }
@@ -41,21 +33,13 @@ export const HomeScreen: React.FC<NativeStackScreenProps<any>> = ({
     // Boutons d'exemples
     const buttons = [
         { title: 'Display Presentation', onPress: () => onPressPresentation() },
-        { title: 'Fetch Presentation', onPress: () => onPressFetch() },
+        { title: 'Preload Presentation', onPress: () => onPressPreload() },
         { title: 'Display Nested View', onPress: () => onPressNestedView() },
-        {
-            title: 'Show Presentation',
-            onPress: () => onPressShowPresentation(),
-        },
-        {
-            title: 'Hide Presentation',
-            onPress: () => onPressHidePresentation(),
-        },
         {
             title: 'Close Presentation',
             onPress: () => onPressClosePresentation(),
         },
-        { title: 'Continue Action', onPress: () => onPressContinueAction() },
+        { title: 'Back', onPress: () => onPressBack() },
         { title: 'Purchase', onPress: () => onPressPurchase() },
         {
             title: 'Purchase With Promotional Offer',
@@ -76,23 +60,25 @@ export const HomeScreen: React.FC<NativeStackScreenProps<any>> = ({
 
     const onPressPresentation = async () => {
         try {
-            const result = await Purchasely.presentPresentationForPlacement({
-                placementVendorId: 'premium_support',
-                // isFullscreen: true,
-                loadingBackgroundColor: '#FFFFFFFF',
-            })
+            // v6: build a request for the placement, then display it.
+            // `display()` resolves at DISMISS with a PresentationOutcome.
+            const request = PresentationBuilder.placement('premium_support')
+                .backgroundColor('#FFFFFFFF')
+                .build()
+            currentRequest.current = request
 
-            console.log('Result is ' + result.result)
+            const outcome = await request.display({ type: 'fullScreen' })
 
-            switch (result.result) {
-                case ProductResult.PRODUCT_RESULT_PURCHASED:
-                case ProductResult.PRODUCT_RESULT_RESTORED:
-                    if (result.plan != null) {
-                        console.log('User purchased ' + result.plan.name)
+            console.log('Purchase result is ' + outcome.purchaseResult)
+
+            switch (outcome.purchaseResult) {
+                case 'purchased':
+                case 'restored':
+                    if (outcome.plan != null) {
+                        console.log('User purchased ' + outcome.plan.name)
                     }
-
                     break
-                case ProductResult.PRODUCT_RESULT_CANCELLED:
+                case 'cancelled':
                     break
             }
         } catch (e) {
@@ -100,18 +86,22 @@ export const HomeScreen: React.FC<NativeStackScreenProps<any>> = ({
         }
     }
 
-    const onPressFetch = async () => {
+    const onPressPreload = async () => {
         try {
-            const presentation = await Purchasely.fetchPresentation({
-                placementId: 'FLOW',
-                contentId: null,
-            })
+            // v6: preload a placement without showing any UI yet. Resolves once
+            // the screen is loaded. Inspect the resolved Presentation to decide
+            // whether to display a Purchasely paywall or your own screen.
+            const presentation = await PresentationBuilder.placement('FLOW')
+                .contentId(null)
+                .build()
+                .preload()
 
             console.log(presentation.placementId)
             console.log('Type = ' + presentation.type)
             console.log(
                 'Plans = ' + JSON.stringify(presentation.plans, null, 2)
             )
+
             if (presentation.type === PLYPresentationType.DEACTIVATED) {
                 // No paywall to display
                 return
@@ -126,23 +116,25 @@ export const HomeScreen: React.FC<NativeStackScreenProps<any>> = ({
                 return
             }
 
-            //Display Purchasely paywall
-             const result = await Purchasely.presentPresentation({
-                 presentation: presentation,
-             })
+            // Display the preloaded Purchasely paywall.
+            const request = PresentationBuilder.placement('FLOW')
+                .contentId(null)
+                .build()
+            currentRequest.current = request
+
+            const outcome = await request.display({ type: 'fullScreen' })
 
             console.log('---- Paywall Closed ----')
-            console.log('Result is ' + result.result)
+            console.log('Purchase result is ' + outcome.purchaseResult)
 
-            switch (result.result) {
-                case ProductResult.PRODUCT_RESULT_PURCHASED:
-                case ProductResult.PRODUCT_RESULT_RESTORED:
-                    if (result.plan != null) {
-                        console.log('User purchased ' + result.plan.name)
+            switch (outcome.purchaseResult) {
+                case 'purchased':
+                case 'restored':
+                    if (outcome.plan != null) {
+                        console.log('User purchased ' + outcome.plan.name)
                     }
-
                     break
-                case ProductResult.PRODUCT_RESULT_CANCELLED:
+                case 'cancelled':
                     console.log('User cancelled')
                     break
             }
@@ -152,27 +144,20 @@ export const HomeScreen: React.FC<NativeStackScreenProps<any>> = ({
     }
 
     const onPressNestedView = () => {
+        // The embedded PLYPresentationView is driven by a placement id in v6.
         navigation.navigate('Paywall', {
-            presentation: cachedPresentation.current,
+            placementId: 'nested',
         })
     }
 
-    const onPressShowPresentation = () => {
-        Purchasely.showPresentation()
-    }
-
-    const onPressHidePresentation = () => {
-        Purchasely.hidePresentation()
-    }
-
     const onPressClosePresentation = () => {
-        Purchasely.closePresentation()
+        // v6: close the currently displayed request programmatically.
+        currentRequest.current?.close()
     }
 
-    const onPressContinueAction = () => {
-        //Call this method to continue Purchasely action
-        Purchasely.showPresentation()
-        Purchasely.onProcessAction(true)
+    const onPressBack = () => {
+        // v6: navigate back inside a multi-step (Flow) presentation.
+        currentRequest.current?.back()
     }
 
     const onPressPurchase = async () => {

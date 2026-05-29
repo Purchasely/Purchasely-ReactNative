@@ -1,6 +1,5 @@
 package com.reactnativepurchasely
 
-import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -23,7 +22,6 @@ import io.purchasely.ext.PLYDataProcessingPurpose
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import java.lang.ref.WeakReference
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.collections.ArrayList
@@ -171,19 +169,6 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     return result.toList()
   }
 
-  @Deprecated("Should use start method", ReplaceWith("start"))
-  @ReactMethod
-  fun startWithAPIKey(apiKey: String,
-                      stores: ReadableArray,
-                      userId: String?,
-                      logLevel: Int,
-                      runningMode: Int,
-                      bridgeVersion: String,
-                      promise: Promise) {
-
-    start(apiKey, stores, false, userId, logLevel, runningMode, bridgeVersion, promise)
-  }
-
   @ReactMethod
   fun start(apiKey: String,
             stores: ReadableArray,
@@ -224,7 +209,6 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
 
   @ReactMethod
   fun close() {
-    productActivity = null
     Purchasely.close()
   }
 
@@ -291,84 +275,6 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   @ReactMethod
   fun synchronize() {
     Purchasely.synchronize()
-  }
-
-  /**
-   * @deprecated since v6.0.0 — use the v6 builder API
-   * (`PresentationBuilder.placement(id).build().preload()`). This method now
-   * rejects with a migration message; the JS layer keeps a thin wrapper that
-   * surfaces the same deprecation notice.
-   */
-  @ReactMethod
-  fun fetchPresentation(placementId: String?,
-                        presentationId: String?,
-                        contentId: String?,
-                        promise: Promise) {
-    promise.reject(
-      "v6_migration_required",
-      "fetchPresentation is removed in v6. Use Purchasely.presentation.placement(id).build().preload()."
-    )
-  }
-
-  @ReactMethod
-  fun presentPresentation(presentationMap: ReadableMap?,
-                          isFullScreen: Boolean,
-                          loadingBackgroundColor: String?,
-                          promise: Promise) {
-    promise.reject(
-      "v6_migration_required",
-      "presentPresentation is removed in v6. Use Purchasely.presentation.placement(id).build().display()."
-    )
-  }
-
-  @ReactMethod
-  fun presentPresentationWithIdentifier(presentationVendorId: String?,
-                                        contentId: String?,
-                                        isFullScreen: Boolean,
-                                        loadingBackgroundColor: String?,
-                                        promise: Promise) {
-    promise.reject(
-      "v6_migration_required",
-      "presentPresentationWithIdentifier is removed in v6. Use Purchasely.presentation.screen(id).build().display()."
-    )
-  }
-
-  @ReactMethod
-  fun presentPresentationForPlacement(placementVendorId: String?,
-                                      contentId: String?,
-                                      isFullScreen: Boolean,
-                                      loadingBackgroundColor: String?,
-                                      promise: Promise) {
-    promise.reject(
-      "v6_migration_required",
-      "presentPresentationForPlacement is removed in v6. Use Purchasely.presentation.placement(id).build().display()."
-    )
-  }
-
-  @ReactMethod
-  fun presentProductWithIdentifier(productVendorId: String,
-                                   presentationVendorId: String?,
-                                   contentId: String?,
-                                   isFullScreen: Boolean,
-                                   loadingBackgroundColor: String?,
-                                   promise: Promise) {
-    promise.reject(
-      "v6_migration_required",
-      "presentProductWithIdentifier is removed in v6. Use Purchasely.presentation.screen(id).contentId(c).build().display()."
-    )
-  }
-
-  @ReactMethod
-  fun presentPlanWithIdentifier(planVendorId: String,
-                                presentationVendorId: String?,
-                                contentId: String?,
-                                isFullScreen: Boolean,
-                                loadingBackgroundColor: String?,
-                                promise: Promise) {
-    promise.reject(
-      "v6_migration_required",
-      "presentPlanWithIdentifier is removed in v6. Use Purchasely.presentation.screen(id).build().display()."
-    )
   }
 
   @ReactMethod
@@ -704,19 +610,6 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
     promise.resolve(Purchasely.isDeeplinkHandled(uri))
   }
 
-  /**
-   * @deprecated since v6.0.0 — use `Purchasely.interceptAction(kind, handler)`
-   * from the v6 façade. The new API provides typed payloads, per-kind
-   * subscriptions, and a coroutine-based completion.
-   */
-  @ReactMethod
-  fun setPaywallActionInterceptor(promise: Promise) {
-    promise.reject(
-      "v6_migration_required",
-      "setPaywallActionInterceptor is removed in v6. Use Purchasely.interceptAction(kind, handler)."
-    )
-  }
-
   @ReactMethod
   fun isEligibleForIntroOffer(planVendorId: String, promise: Promise) {
     GlobalScope.launch {
@@ -736,45 +629,6 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
   @ReactMethod
   fun isAnonymous(promise: Promise) {
     promise.resolve(Purchasely.isAnonymous())
-  }
-
-  @ReactMethod
-  fun showPresentation() {
-    CoroutineScope(Dispatchers.Main).launch {
-      if (productActivity?.relaunch(reactApplicationContext) == false) {
-        //wait for activity to relaunch
-        withContext(Dispatchers.Default) { delay(500) }
-      }
-    }
-  }
-
-  /**
-   * @deprecated since v6.0.0 — use the v6 interceptor handler return value
-   * (`InterceptResult.success | failed | notHandled`).
-   */
-  @ReactMethod
-  fun onProcessAction(processAction: Boolean) {
-    Log.w(
-      "Purchasely",
-      "onProcessAction is removed in v6. Return InterceptResult from your interceptAction handler."
-    )
-  }
-
-  @ReactMethod
-  fun closePresentation() {
-    Purchasely.closeAllScreens()
-    productActivity = null
-  }
-
-  @ReactMethod
-  fun hidePresentation() {
-    val reactActivity = reactApplicationContext.currentActivity ?: return
-    val activity = productActivity?.activity?.get() ?: reactActivity
-    activity.startActivity(
-      Intent(activity, reactActivity::class.java).apply {
-        flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
-      }
-    )
   }
 
   @ReactMethod
@@ -935,7 +789,6 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
 
     val presentationsLoaded = mutableListOf<PLYPresentation>()
 
-    var productActivity: ProductActivity? = null
     var purchasePromise: Promise? = null
     var defaultPurchasePromise: Promise? = null
 
@@ -971,46 +824,6 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
           DistributionType.UNKNOWN -> DistributionType.UNKNOWN.ordinal
           else -> null
         }
-      }
-    }
-  }
-
-  /**
-   * Legacy host wrapper kept as a stub so JS-side cached state from v5 sessions
-   * continues to parse. The v6 builder pipeline does not use this class.
-   */
-  class ProductActivity(
-    val presentation: PLYPresentation? = null,
-    val presentationId: String? = null,
-    val placementId: String? = null,
-    val productId: String? = null,
-    val planId: String? = null,
-    val contentId: String? = null,
-    val isFullScreen: Boolean = false,
-    val loadingBackgroundColor: String? = null
-  ) {
-    var activity: WeakReference<Activity>? = null
-
-    fun relaunch(reactApplicationContext: ReactApplicationContext): Boolean {
-      val backgroundActivity = activity?.get()
-      return if (backgroundActivity != null
-        && !backgroundActivity.isFinishing
-        && !backgroundActivity.isDestroyed
-      ) {
-        reactApplicationContext.currentActivity?.let {
-          it.startActivity(
-            Intent(it, backgroundActivity::class.java).apply {
-              flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
-            }
-          )
-        }
-        true
-      } else {
-        Log.w(
-          "Purchasely",
-          "[v6] Legacy productActivity has no live host. Use the v6 builder to (re)display."
-        )
-        false
       }
     }
   }
