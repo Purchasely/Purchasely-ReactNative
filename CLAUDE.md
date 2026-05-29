@@ -231,39 +231,56 @@ The following sections provide quick API examples. For comprehensive documentati
 
 Refer to the [SDK Public Documentation](../sdk_public_doc.md).
 
-### Initialization
+> **v6 paywall API only.** The v5 paywall methods (`start({...})`,
+> `presentPresentationForPlacement`, `presentPresentationWithIdentifier`,
+> `presentProductWithIdentifier`, `presentPlanWithIdentifier`,
+> `fetchPresentation`, `setPaywallActionInterceptorCallback`, `onProcessAction`,
+> `setDefaultPresentationResultCallback`, `readyToOpenDeeplink`, …) are
+> **removed**. Use the builders below. Full mapping: `MIGRATION-v6.md`.
+
+### Initialization (v6 builder)
 
 ```typescript
-import Purchasely, { LogLevels, RunningMode } from 'react-native-purchasely'
+import Purchasely from 'react-native-purchasely'
 
-await Purchasely.start({
-  apiKey: 'YOUR_API_KEY',
-  androidStores: ['Google'], // or ['Huawei', 'Amazon']
-  storeKit1: false,          // iOS: use StoreKit 2
-  userId: 'user_id',         // optional
-  logLevel: LogLevels.DEBUG,
-  runningMode: RunningMode.FULL
-})
+await Purchasely.builder('YOUR_API_KEY')
+  .appUserId('user_id')          // optional
+  .runningMode('full')           // 'observer' (default) | 'full'
+  .logLevel('debug')             // 'debug' | 'info' | 'warn' | 'error'
+  .allowDeeplink(true)           // replaces readyToOpenDeeplink(true)
+  .stores(['google'])            // Android only: 'google' | 'huawei' | 'amazon'
+  .storekitVersion('storeKit2')  // iOS only: 'storeKit1' | 'storeKit2'
+  .start()
 ```
 
-### Presentation Methods
+### Presentation Methods (v6 builders)
+
+`Purchasely.presentation` is the `PresentationBuilder`. `build()` returns a
+`PresentationRequest`; `display()` resolves at dismiss with a 5-field
+`PresentationOutcome` (`{ presentation, purchaseResult, plan, closeReason,
+error }`).
 
 ```typescript
-// Fetch presentation data
-const presentation = await Purchasely.fetchPresentation({
-  placementVendorId: 'ONBOARDING',
-  contentId: 'content_123'
-})
+// Preload a placement (was fetchPresentation)
+const request = Purchasely.presentation.placement('ONBOARDING').build()
+const presentation = await request.preload()
 
-// Present full-screen paywall
-const result = await Purchasely.presentPresentationForPlacement({
-  placementVendorId: 'ONBOARDING',
-  isFullscreen: true
-})
+// Present a placement full-screen (was presentPresentationForPlacement)
+const outcome = await Purchasely.presentation.placement('ONBOARDING').build().display()
 
-// Present specific product or plan
-await Purchasely.presentProductWithIdentifier('product_id')
-await Purchasely.presentPlanWithIdentifier('plan_id')
+// Present a specific screen (was presentPresentationWithIdentifier)
+await Purchasely.presentation.screen('SCREEN_ID').build().display()
+
+// Present a specific product / plan (was presentProductWithIdentifier / presentPlanWithIdentifier)
+await Purchasely.presentation.screen('SCREEN_ID').contentId('CONTENT_ID').build().display()
+
+// Lifecycle: request.display() (show) / request.close() (hide) / request.back()
+
+// Action interception (was setPaywallActionInterceptorCallback + onProcessAction)
+Purchasely.interceptAction('purchase', async (info, payload) => {
+  // return 'success' | 'failed' | 'notHandled'
+  return 'notHandled'
+})
 ```
 
 ### Event Listening

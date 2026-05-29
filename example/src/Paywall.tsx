@@ -5,19 +5,18 @@ import {
     PLYPresentationView,
     PresentPresentationResult,
     ProductResult,
-    PurchaselyPresentation,
 } from 'react-native-purchasely'
 
 export const PaywallScreen: React.FC<NativeStackScreenProps<any>> = ({
     navigation,
     route,
 }) => {
-    const purchaselyPresentation: PurchaselyPresentation | null =
-        (route.params as any)?.presentation ?? null
+    // v6: the embedded PLYPresentationView is driven by a placement id.
+    const placementId: string | null =
+        (route.params as any)?.placementId ?? null
 
     console.log('### Paywall screen')
-    console.log('presentation', purchaselyPresentation)
-    console.log('presentation height : ', purchaselyPresentation?.height)
+    console.log('placementId', placementId)
 
     const callback = (result: PresentPresentationResult) => {
         console.log('### Paywall closed')
@@ -37,10 +36,10 @@ export const PaywallScreen: React.FC<NativeStackScreenProps<any>> = ({
         navigation.goBack()
     }
 
-    if (purchaselyPresentation === null) {
+    if (placementId === null) {
         return (
             <View>
-                <Text>No presentation (not fetched yet)</Text>
+                <Text>No placement provided</Text>
             </View>
         )
     }
@@ -61,9 +60,8 @@ export const PaywallScreen: React.FC<NativeStackScreenProps<any>> = ({
                 <Button title="← Back" onPress={() => navigation.goBack()} />
             </View>
             <PLYPresentationView
-                //placementId="ACCOUNT"
                 flex={7}
-                presentation={purchaselyPresentation}
+                placementId={placementId}
                 onPresentationClosed={(res: PresentPresentationResult) =>
                     callback(res)
                 }
