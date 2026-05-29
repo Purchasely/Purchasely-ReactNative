@@ -1,0 +1,303 @@
+# Migrating to Purchasely React Native SDK v6
+
+Purchasely React Native SDK **v6 is paywall-API-only**: the legacy v5 paywall
+API has been **REMOVED** (not deprecated). Calling any of the removed methods
+will fail to compile (TypeScript) and the methods no longer exist at runtime.
+
+This guide maps every removed v5 paywall method to its v6 replacement and lists
+the methods that are **unchanged**.
+
+> **Tip — let the AI help you migrate.** The Purchasely AI plugin and the
+> `purchasely-integrate`, `purchasely-review` and `purchasely-debug` skills can
+> read your integration and rewrite the v5 paywall calls to the v6 builder API
+> for you. Point them at the files that call `Purchasely.start`,
+> `presentPresentationForPlacement`, `fetchPresentation`,
+> `setPaywallActionInterceptorCallback`, etc.
+
+---
+
+## TL;DR
+
+- The paywall surface is now built around three entry points exposed on the
+  `Purchasely` default export:
+  - `Purchasely.builder(apiKey)` — chainable SDK start.
+  - `Purchasely.presentation` — the `PresentationBuilder` (`.placement(id)`,
+    `.screen(id)`, `.default()`).
+  - `Purchasely.interceptAction(kind, handler)` — typed action interception.
+- `PresentationBuilder.build()` returns a **`PresentationRequest`** with a
+  lifecycle (`preload()`, `display(transition?)`, `close()`, `back()`).
+- `display()` resolves at **dismiss** with a 5-field `PresentationOutcome`
+  (`{ presentation, purchaseResult, plan, closeReason, error }`).
+- **All CORE methods are UNCHANGED** — see [Unchanged](#whats-unchanged).
+
+---
+
+## Removed v5 paywall API → v6 replacement
+
+| Removed v5 method | v6 replacement |
+|-------------------|----------------|
+| `Purchasely.start({ apiKey, androidStores, storeKit1, userId, logLevel, runningMode })` | `Purchasely.builder(apiKey).appUserId(userId).runningMode('full').logLevel('error').stores(['google']).storekitVersion('storeKit2').start()` |
+| `Purchasely.startWithAPIKey(apiKey, stores, userId, logLevel, runningMode)` | `Purchasely.builder(apiKey).appUserId(userId).runningMode('full').start()` |
+| `Purchasely.fetchPresentation({ placementId })` | `Purchasely.presentation.placement(id).build().preload()` |
+| `Purchasely.presentPresentationForPlacement({ placementVendorId })` | `Purchasely.presentation.placement(id).build().display()` |
+| `Purchasely.presentPresentationWithIdentifier({ presentationVendorId })` | `Purchasely.presentation.screen(id).build().display()` |
+| `Purchasely.presentPresentation({ presentation })` | preload then display the same request: `const req = Purchasely.presentation.placement(id).build(); await req.preload(); await req.display()` |
+| `Purchasely.presentProductWithIdentifier(productId, …)` | `Purchasely.presentation.screen(id).contentId(contentId).build().display()` |
+| `Purchasely.presentPlanWithIdentifier(planId, …)` | `Purchasely.presentation.screen(id).build().display()` |
+| `Purchasely.showPresentation()` / `Purchasely.presentPresentation(...)` | request lifecycle: `request.display()` |
+| `Purchasely.hidePresentation()` / `Purchasely.closePresentation()` | request lifecycle: `request.close()` |
+| `Purchasely.setPaywallActionInterceptorCallback(cb)` + `Purchasely.onProcessAction(bool)` | `Purchasely.interceptAction(kind, handler)` — handler returns `'success' \| 'failed' \| 'notHandled'` (no more `onProcessAction`) |
+| `Purchasely.setDefaultPresentationResultCallback(cb)` / `setDefaultPresentationResultHandler(cb)` | `request.onDismissed(outcome => …)` (or `Purchasely.presentation.placement(id).onDismissed(...).build()`) |
+| `Purchasely.readyToOpenDeeplink(true)` | `Purchasely.builder(apiKey).allowDeeplink(true).start()` |
+
+---
+
+## Initialization
+
+### Before (v5 — removed)
+
+```typescript
+import Purchasely, { LogLevels, RunningMode } from 'react-native-purchasely'
+
+await Purchasely.start({
+  apiKey: 'YOUR_API_KEY',
+  androidStores: ['Google'],
+  storeKit1: false,
+  userId: 'user_id',
+  logLevel: LogLevels.ERROR,
+  runningMode: RunningMode.FULL,
+})
+
+Purchasely.readyToOpenDeeplink(true)
+```
+
+### After (v6)
+
+```typescript
+import Purchasely from 'react-native-purchasely'
+
+const configured = await Purchasely.builder('YOUR_API_KEY')
+  .appUserId('user_id')        // optional, defaults to anonymous
+  .runningMode('full')         // 'observer' (default) | 'full'
+  .logLevel('error')           // 'debug' | 'info' | 'warn' | 'error'
+  .allowDeeplink(true)         // replaces readyToOpenDeeplink(true)
+  .allowCampaigns(true)        // automatic campaigns
+  .stores(['google'])          // Android only: 'google' | 'huawei' | 'amazon'
+  .storekitVersion('storeKit2')// iOS only: 'storeKit1' | 'storeKit2'
+  .start()
+```
+
+> **Default running mode changed.** In v6 the default `runningMode` is
+> `'observer'` — the host app keeps control of the purchase flow unless it opts
+> into `'full'`. Pass `.runningMode('full')` to keep the previous v5 default
+> behaviour where Purchasely owns the purchase flow.
+
+---
+
+## Displaying a paywall
+
+### Before (v5 — removed)
+
+```typescript
+const result = await Purchasely.presentPresentationForPlacement({
+  placementVendorId: 'ONBOARDING',
+  contentId: 'my_content_id',
+  isFullscreen: true,
+})
+
+switch (result.result) {
+  case ProductResult.PRODUCT_RESULT_PURCHASED:
+  case ProductResult.PRODUCT_RESULT_RESTORED:
+    console.log('Purchased', result.plan?.name)
+    break
+  case ProductResult.PRODUCT_RESULT_CANCELLED:
+    break
+}
+```
+
+### After (v6)
+
+`display()` resolves at **dismiss** with a `PresentationOutcome`:
+
+```typescript
+const outcome = await Purchasely.presentation
+  .placement('ONBOARDING')
+  .contentId('my_content_id')
+  .build()
+  .display()
+
+// outcome: { presentation, purchaseResult, plan, closeReason, error }
+if (outcome.error) {
+  console.error(outcome.error.message)
+} else if (outcome.purchaseResult === 'purchased' || outcome.purchaseResult === 'restored') {
+  console.log('Purchased', outcome.plan?.name)
+} else {
+  console.log('Dismissed', outcome.closeReason) // 'button' | 'backSystem' | 'programmatic'
+}
+```
+
+`purchaseResult` is now a string union (`'purchased' | 'cancelled' | 'restored'`)
+instead of the `ProductResult` ordinal enum.
+
+### Targeting a specific screen / product / plan
+
+```typescript
+// Specific presentation by screen id (was presentPresentationWithIdentifier)
+await Purchasely.presentation.screen('SCREEN_ID').build().display()
+
+// Specific product (was presentProductWithIdentifier)
+await Purchasely.presentation.screen('SCREEN_ID').contentId('CONTENT_ID').build().display()
+
+// Specific plan (was presentPlanWithIdentifier)
+await Purchasely.presentation.screen('SCREEN_ID').build().display()
+```
+
+---
+
+## Pre-fetching (preload)
+
+### Before (v5 — removed)
+
+```typescript
+const presentation = await Purchasely.fetchPresentation({ placementId: 'ONBOARDING' })
+const result = await Purchasely.presentPresentation({ presentation })
+```
+
+### After (v6)
+
+```typescript
+const request = Purchasely.presentation.placement('ONBOARDING').build()
+const presentation = await request.preload() // resolves when the screen is loaded
+// later, when ready to show it:
+const outcome = await request.display()
+```
+
+---
+
+## Presentation lifecycle (show / hide / close)
+
+The imperative `showPresentation` / `hidePresentation` / `closePresentation`
+methods are replaced by the request lifecycle:
+
+```typescript
+const request = Purchasely.presentation.placement('ONBOARDING').build()
+
+request.display()  // show
+request.close()    // hide / close
+request.back()     // navigate back inside a multi-step (Flow) presentation
+```
+
+> `request.close()` currently dismisses **all** displayed presentations (the
+> native SDK does not yet expose a per-request close). If you stack
+> presentations, closing one will dismiss the others.
+
+---
+
+## Action interceptor
+
+`setPaywallActionInterceptorCallback` + `onProcessAction` are replaced by
+`Purchasely.interceptAction(kind, handler)`. Register **one handler per action
+kind**; the handler returns `'success' | 'failed' | 'notHandled'` instead of
+calling `onProcessAction(true/false)`.
+
+### Before (v5 — removed)
+
+```typescript
+Purchasely.setPaywallActionInterceptorCallback((result) => {
+  if (result.action === PLYPaywallAction.PURCHASE) {
+    MyPurchaseSystem.purchase(result.parameters.plan.productId)
+    Purchasely.onProcessAction(false)
+  } else {
+    Purchasely.onProcessAction(true)
+  }
+})
+```
+
+### After (v6)
+
+```typescript
+import { Linking } from 'react-native'
+
+Purchasely.interceptAction('purchase', async (info, payload) => {
+  if (payload?.kind === 'purchase') {
+    const ok = await MyPurchaseSystem.purchase(payload.plan.productId)
+    return ok ? 'success' : 'failed'
+  }
+  return 'notHandled'
+})
+
+Purchasely.interceptAction('navigate', async (info, payload) => {
+  if (payload?.kind === 'navigate') {
+    Linking.openURL(payload.url)
+    return 'success'
+  }
+  return 'notHandled'
+})
+
+// Cleanup
+Purchasely.removeActionInterceptor('purchase')
+Purchasely.removeAllActionInterceptors()
+```
+
+Known action kinds: `close`, `closeAll`, `login`, `navigate`, `purchase`,
+`restore`, `openPresentation`, `openPlacement`, `promoCode`, `webCheckout`.
+
+---
+
+## Deeplinks & default result handler
+
+```typescript
+// Allow deeplinks (replaces readyToOpenDeeplink(true)) — set at start:
+await Purchasely.builder('YOUR_API_KEY').allowDeeplink(true).start()
+
+// Default result handler (replaces setDefaultPresentationResultCallback):
+Purchasely.presentation
+  .default()
+  .onDismissed((outcome) => {
+    console.log('Deeplink paywall dismissed', outcome.purchaseResult, outcome.closeReason)
+  })
+  .build()
+  .display()
+
+// isDeeplinkHandled is UNCHANGED:
+const handled = await Purchasely.isDeeplinkHandled('app://ply/presentations/')
+```
+
+---
+
+## What's UNCHANGED
+
+All **core** SDK methods are unchanged in name, signature, and behaviour. Only
+the v5 *paywall* surface was removed. The following keep working exactly as in
+v5:
+
+- **User**: `userLogin`, `userLogout`, `getAnonymousUserId`, `isAnonymous`,
+  `synchronize`.
+- **Products**: `allProducts`, `productWithIdentifier`, `planWithIdentifier`,
+  `purchaseWithPlanVendorId`, `signPromotionalOffer`, `isEligibleForIntroOffer`,
+  `setDynamicOffering`, `getDynamicOfferings`, `removeDynamicOffering`,
+  `clearDynamicOfferings`.
+- **Subscriptions**: `userSubscriptions`, `userSubscriptionsHistory`,
+  `restoreAllProducts`, `silentRestoreAllProducts`,
+  `userDidConsumeSubscriptionContent`, **`presentSubscriptions`**.
+- **Attributes**: `setUserAttributeWith{String,Number,Boolean,Date,StringArray,NumberArray,BooleanArray}`,
+  `incrementUserAttribute`, `decrementUserAttribute`, `userAttributes`,
+  `userAttribute`, `clearUserAttribute`, `clearUserAttributes`,
+  `clearBuiltInAttributes`, `setAttribute`.
+- **Listeners**: `addEventListener` / `removeEventListener`,
+  `addPurchasedListener` / `removePurchasedListener`,
+  `addUserAttributeSetListener` / `removeUserAttributeSetListener`,
+  `addUserAttributeRemovedListener` / `removeUserAttributeRemovedListener`.
+- **Client (BYOS) presentations**: **`clientPresentationDisplayed`**,
+  **`clientPresentationClosed`** — unchanged.
+- **Misc**: `setLogLevel`, `setLanguage`, `setThemeMode`, `setDebugMode`,
+  `isDeeplinkHandled`, `revokeDataProcessingConsent`, `getConstants`, `close`.
+- **Embedded component**: `PLYPresentationView` — unchanged.
+
+---
+
+## Need a hand?
+
+Use the Purchasely AI plugin / skills (`purchasely-integrate`,
+`purchasely-review`, `purchasely-debug`) to scan your project and apply this
+migration automatically.

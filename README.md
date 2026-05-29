@@ -10,31 +10,32 @@ npm install react-native-purchasely
 
 ## 🔧 Setup
 
+> **v6** — the SDK is initialized and paywalls are displayed with the chainable
+> builder API. The legacy v5 paywall API (`start({...})`, `startWithAPIKey`,
+> `presentPresentationForPlacement`, `fetchPresentation`,
+> `setPaywallActionInterceptorCallback`, …) has been **removed**. See
+> [`MIGRATION-v6.md`](./MIGRATION-v6.md) for the full old→new mapping.
+
 Add the following code in the root of your project (typically `App.tsx` in a React Native project):
 
 ```ts
-import Purchasely, { LogLevels, RunningMode } from 'react-native-purchasely'
+import Purchasely from 'react-native-purchasely'
 
-Purchasely.startWithAPIKey(
-    'afa96c76-1d8e-4e3c-a48f-204a3cd93a15',
-    ['Google'], // List of stores for Android, accepted values: Google, Huawei, and Amazon
-    null, // Your user ID
-    LogLevels.DEBUG, // Log level, should be warning or error in production
-    RunningMode.FULL // Running mode
-).then(
-    (configured) => {
-        if (!configured) {
-            console.log('Purchasely SDK not properly initialized')
-            return
-        }
+const configured = await Purchasely.builder('afa96c76-1d8e-4e3c-a48f-204a3cd93a15')
+    .stores(['google']) // Android stores: 'google' | 'huawei' | 'amazon'
+    .appUserId(null) // your user ID, or null for anonymous
+    .logLevel('debug') // 'warn' or 'error' in production
+    .runningMode('full') // 'observer' (default) | 'full'
+    .allowDeeplink(true)
+    .storekitVersion('storeKit2') // iOS only
+    .start()
 
-        console.log('Purchasely SDK is initialized')
-        setupPurchasely()
-    },
-    (error) => {
-        console.log('Purchasely SDK initialization error', error)
-    }
-)
+if (!configured) {
+    console.log('Purchasely SDK not properly initialized')
+} else {
+    console.log('Purchasely SDK is initialized')
+    setupPurchasely()
+}
 ```
 
 ## 🎬 Usage
@@ -42,28 +43,25 @@ Purchasely.startWithAPIKey(
 ### 1️⃣ Full Screen Paywall
 
 ```ts
-import Purchasely, {
-    PLYPresentationType,
-    ProductResult,
-} from 'react-native-purchasely'
+import Purchasely from 'react-native-purchasely'
 
 try {
-    const result = await Purchasely.presentPresentationForPlacement({
-        placementVendorId: 'composer',
-        loadingBackgroundColor: '#FFFFFFFF',
-    })
+    // display() resolves at dismiss with a PresentationOutcome
+    const outcome = await Purchasely.presentation
+        .placement('composer')
+        .backgroundColor('#FFFFFFFF')
+        .build()
+        .display()
 
-    console.log('Result is ' + result.result)
-
-    switch (result.result) {
-        case ProductResult.PRODUCT_RESULT_PURCHASED:
-        case ProductResult.PRODUCT_RESULT_RESTORED:
-            if (result.plan != null) {
-                console.log('User purchased ' + result.plan.name)
-            }
-            break
-        case ProductResult.PRODUCT_RESULT_CANCELLED:
-            break
+    if (outcome.error) {
+        console.error(outcome.error.message)
+    } else if (
+        outcome.purchaseResult === 'purchased' ||
+        outcome.purchaseResult === 'restored'
+    ) {
+        console.log('User purchased ' + outcome.plan?.name)
+    } else {
+        console.log('Dismissed: ' + outcome.closeReason)
     }
 } catch (e) {
     console.error(e)
@@ -72,63 +70,22 @@ try {
 
 ### 2️⃣ Nested View Paywall
 
+The embedded `PLYPresentationView` component is part of the **core** API and is
+unchanged in v6. Pass a `placementId` directly — no manual pre-fetch step is
+required.
+
 ```ts
 import { Text, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Header } from 'react-native/Libraries/NewAppScreen';
 import { Section } from './Section.tsx';
-import Purchasely, {
-  PLYPresentationView,
-  PresentPresentationResult,
-  ProductResult,
-  PurchaselyPresentation,
-} from 'react-native-purchasely';
-import { useEffect, useState } from 'react';
+import { PLYPresentationView, PresentPresentationResult } from 'react-native-purchasely';
 
 export const PaywallScreen: React.FC<NativeStackScreenProps<any>> = ({ navigation }) => {
-  const [purchaselyPresentation, setPurchaselyPresentation] = useState<PurchaselyPresentation>();
-
-  useEffect(() => {
-    fetchPresentation();
-  }, []);
-
-  const fetchPresentation = async () => {
-    try {
-      setPurchaselyPresentation(
-        await Purchasely.fetchPresentation({
-          placementId: 'ONBOARDING',
-          contentId: null,
-        })
-      );
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
   const callback = (result: PresentPresentationResult) => {
-    console.log('### Paywall closed');
-    console.log('### Result is ' + result.result);
-    switch (result.result) {
-      case ProductResult.PRODUCT_RESULT_PURCHASED:
-      case ProductResult.PRODUCT_RESULT_RESTORED:
-        if (result.plan != null) {
-          console.log('User purchased ' + result.plan.name);
-        }
-        break;
-      case ProductResult.PRODUCT_RESULT_CANCELLED:
-        console.log('User cancelled');
-        break;
-    }
+    console.log('### Paywall closed, result is ' + result.result);
     navigation.goBack();
   };
-
-  if (purchaselyPresentation == null) {
-    return (
-      <View>
-        <Text>Loading ...</Text>
-      </View>
-    );
-  }
 
   return (
     <View style={{ flex: 1 }}>
@@ -136,7 +93,6 @@ export const PaywallScreen: React.FC<NativeStackScreenProps<any>> = ({ navigatio
       <PLYPresentationView
         placementId="ACCOUNT"
         flex={7}
-        presentation={purchaselyPresentation}
         onPresentationClosed={(res: PresentPresentationResult) => callback(res)}
       />
       <View style={{ flex: 3, justifyContent: 'center', alignItems: 'center' }}>
@@ -152,6 +108,9 @@ export const PaywallScreen: React.FC<NativeStackScreenProps<any>> = ({ navigatio
 ## 📖 Documentation
 
 A complete documentation is available on our website: [Purchasely Docs](https://docs.purchasely.com/quick-start/sdk-installation/react-native-sdk).
+
+Migrating from v5? See [`MIGRATION-v6.md`](./MIGRATION-v6.md) for the complete
+old→new mapping of every removed v5 paywall method.
 
 ## 🛠️ Developer Guide
 
