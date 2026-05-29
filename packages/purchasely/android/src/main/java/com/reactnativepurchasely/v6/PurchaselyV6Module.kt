@@ -29,6 +29,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
@@ -54,6 +55,14 @@ object PurchaselyV6Bridge {
     private const val EVENT_ACTION_INTERCEPTED = "PURCHASELY_V6_ACTION_INTERCEPTED"
 
     /**
+     * Upper bound on how long the bridge waits for JS to resolve an intercepted
+     * action via [completeInterceptor]. If the JS handler never calls back (e.g.
+     * the event listener was torn down by a bridge reload), we fall back to
+     * [PLYInterceptResult.NOT_HANDLED] so the SDK is never blocked indefinitely.
+     */
+    private const val INTERCEPTOR_TIMEOUT_MS = 30_000L
+
+    /**
      * Active presentation requests, keyed by the JS-supplied requestId. Lets
      * `v6Close` / `v6Back` find the right `Prepared` to act on.
      */
@@ -68,6 +77,15 @@ object PurchaselyV6Bridge {
 
     /**
      * Build a [PLYPresentationBase.Prepared] from the JS payload.
+     *
+     * The JS `isDefault` flag (set by `PresentationBuilder.default()`) is
+     * intentionally **not** read here: a `default()` request carries no
+     * `placementId` and no `presentationId`, and the native SDK resolves the
+     * default presentation (`ply_default`) precisely from that absence —
+     * `PLYPresentationManager.getPresentation` routes a request with both ids
+     * null to `apiService.getPresentation(null)`, which substitutes
+     * `"ply_default"`. An empty builder is therefore the Android equivalent of
+     * iOS `fetchPresentationWith:nil`, so no `isDefault` branch is required.
      */
     private fun buildPrepared(payload: ReadableMap?): PLYPresentationBase.Prepared {
         val builder = PLYPresentationBase.builder()
@@ -353,8 +371,15 @@ object PurchaselyV6Bridge {
             sendEvent(reactContext, EVENT_ACTION_INTERCEPTED, payload)
 
             CoroutineScope(Dispatchers.Main).launch {
-                val result = runCatching { deferred.await() }
-                    .getOrDefault(PLYInterceptResult.NOT_HANDLED)
+                // Bound the suspension: `withTimeoutOrNull` returns null if JS never
+                // calls back within INTERCEPTOR_TIMEOUT_MS, and `runCatching` guards
+                // against the deferred being cancelled. In every case we default to
+                // NOT_HANDLED and drop the pending entry so neither the SDK action
+                // nor the `complete` lambda is held alive forever.
+                val result = runCatching {
+                    withTimeoutOrNull(INTERCEPTOR_TIMEOUT_MS) { deferred.await() }
+                }.getOrNull() ?: PLYInterceptResult.NOT_HANDLED
+                pendingInterceptors.remove(callbackId)
                 complete(result)
             }
         }

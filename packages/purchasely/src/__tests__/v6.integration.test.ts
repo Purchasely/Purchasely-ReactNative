@@ -160,6 +160,42 @@ describe('v6 façade · integration with native bridge', () => {
         });
     });
 
+    describe('PresentationBuilder.default().build()', () => {
+        // Contract: `default()` carries no placementId/screenId. Both native
+        // bridges resolve the SDK default presentation from that absence — iOS
+        // takes its `else if (isDefault)` branch → `fetchPresentationWith:nil`,
+        // Android builds an empty builder → `ply_default`. The `isDefault` flag
+        // must therefore reach native with null ids; regressing it silently
+        // breaks `default()`.
+        it('sends isDefault:true with null placement + presentation ids (preload)', () => {
+            const req = PresentationBuilder.default().build();
+            req.preload();
+
+            expect(native.v6Preload).toHaveBeenCalledTimes(1);
+            const [, payload] = native.v6Preload.mock.calls[0];
+            expect(payload.isDefault).toBe(true);
+            expect(payload.placementId).toBeNull();
+            expect(payload.presentationId).toBeNull();
+        });
+
+        it('forwards the same default payload to v6Display', () => {
+            const req = PresentationBuilder.default().build();
+            req.display();
+
+            expect(native.v6Display).toHaveBeenCalledTimes(1);
+            const [, payload] = native.v6Display.mock.calls[0];
+            expect(payload.isDefault).toBe(true);
+            expect(payload.placementId).toBeNull();
+            expect(payload.presentationId).toBeNull();
+        });
+
+        it('placement()/screen() do not set isDefault', () => {
+            PresentationBuilder.placement('home').build().preload();
+            const [, payload] = native.v6Preload.mock.calls[0];
+            expect(payload.isDefault).toBe(false);
+        });
+    });
+
     describe('PresentationRequest.display() — outcome 5 fields', () => {
         it('resolves with the full outcome at DISMISS (not at trigger)', async () => {
             let presentedPayload: any = null;
