@@ -23,6 +23,7 @@ import type {
     PresentPresentationResult,
     PaywallActionInterceptorResult,
     PurchaselyEvent,
+    PurchaselyEventProperties,
     PurchaselyPresentation,
     PLYPaywallInfo,
     PLYPresentationPlan,
@@ -340,6 +341,65 @@ describe('Purchasely Types', () => {
 
             expect(event.name).toBe('PURCHASE_TAPPED')
             expect(event.properties.sdk_version).toBe('5.7.3')
+        })
+
+        it('should accept the extended event properties emitted by the native SDKs', () => {
+            const properties: PurchaselyEventProperties = {
+                sdk_version: '5.7.3',
+                event_name: 'PURCHASE_TAPPED',
+                event_created_at_ms: 1705315200000,
+                event_created_at: '2024-01-15T12:00:00Z',
+                // Presentation & campaign context
+                is_fallback_presentation: false,
+                presentation_type: 'NORMAL',
+                audience_id: 'audience-123',
+                ab_test_id: 'ab-123',
+                ab_test_variant_id: 'variant-a',
+                content_id: 'content-123',
+                campaign_id: 'campaign-123',
+                flow_id: 'flow-123',
+                step_id: 'step-123',
+                flow_version: '2',
+                flow_session_id: 'flow-session-123',
+                from_action_id: 'action-123',
+                from_step_id: 'step-122',
+                // Display, timing & session metrics
+                display_mode: 'fullscreen',
+                display_method: 'present',
+                orientation: 'portrait',
+                paywall_request_duration_in_ms: 120,
+                paywall_display_time_in_ms: 340,
+                paywall_rendering_time_in_ms: 80,
+                screen_duration: 1500,
+                session_id: 'session-123',
+                session_duration: 4200,
+                session_count: 7,
+                app_installed_at: '2024-01-01T00:00:00Z',
+                app_installed_at_ms: 1704067200000,
+                // Offer & plan details
+                promo_offer: 'promo-123',
+                eligible_to_intro_offer: true,
+                eligible_to_promo_offer: false,
+                billing_plan_type: 'recurring',
+                commitment: 'yearly',
+                storekit_version: 'storeKit2',
+                // SDK lifecycle
+                is_sdk_started: true,
+                sdk_start_duration_in_ms: 250,
+                // Web checkout
+                web_checkout_provider: PLYWebCheckoutProvider.STRIPE,
+                web_checkout_url: 'https://checkout.example.com/session',
+                client_reference_id: 'client-ref-123',
+                stripe_checkout_session_id: 'cs_test_123',
+                stripe_purchase_id: 'pi_test_123',
+            }
+
+            expect(properties.flow_id).toBe('flow-123')
+            expect(properties.eligible_to_intro_offer).toBe(true)
+            expect(properties.web_checkout_provider).toBe(
+                PLYWebCheckoutProvider.STRIPE
+            )
+            expect(properties.stripe_purchase_id).toBe('pi_test_123')
         })
     })
 
