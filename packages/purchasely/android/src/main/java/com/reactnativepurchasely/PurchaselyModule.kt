@@ -26,7 +26,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
-// v6 cross-platform bridge (merged into this single module)
+// cross-platform bridge (merged into this single module)
 import android.app.Activity
 import io.purchasely.ext.presentation.PLYCloseReason
 import io.purchasely.ext.presentation.PLYPresentationAction
@@ -281,7 +281,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   fun setDefaultPresentationResultHandler(promise: Promise) {
     defaultPurchasePromise = promise
     Purchasely.setDefaultPresentationResultHandler { outcome ->
-      sendPurchaseResultV6(outcome)
+      sendPurchaseResult(outcome)
     }
   }
 
@@ -712,40 +712,40 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
     Purchasely.debugMode = enabled
   }
 
-  // region v6 — cross-platform bridge methods
-  // See: reports/v6-presentation-comparison-v3-claude/BRIDGE-CONTRACT.md
+  // region presentation — cross-platform bridge methods
+  // See: the cross-platform bridge contract
   //
-  // The v6 bridge logic lives directly in this single native module. Lifecycle
+  // The bridge logic lives directly in this single native module. Lifecycle
   // events are emitted over the existing RCTDeviceEventEmitter using the
-  // PURCHASELY_V6_* event names. State + constants are in the companion object.
+  // PURCHASELY_PRESENTATION_* event names. State + constants are in the companion object.
 
-  /** v6 preload entry point. JS calls this with a requestId + builder payload. */
+  /** preload entry point. JS calls this with a requestId + builder payload. */
   @ReactMethod
-  fun v6Preload(requestId: String, payload: ReadableMap?, promise: Promise) {
+  fun preloadPresentation(requestId: String, payload: ReadableMap?, promise: Promise) {
     try {
-      val prepared = buildV6Prepared(payload)
-      activeV6Requests[requestId] = prepared
-      wireV6Callbacks(requestId, prepared)
+      val prepared = buildPreparedPresentation(payload)
+      activePresentationRequests[requestId] = prepared
+      wirePresentationCallbacks(requestId, prepared)
 
       prepared.preload { loaded, error ->
         val map = Arguments.createMap()
         map.putString("requestId", requestId)
-        loaded?.let { map.putMap("presentation", it.toV6Map()) }
-        error?.let { map.putMap("error", it.toV6Map()) }
-        sendEvent(reactApplicationContext, EVENT_V6_LOADED, map)
+        loaded?.let { map.putMap("presentation", it.toRNMap()) }
+        error?.let { map.putMap("error", it.toRNMap()) }
+        sendEvent(reactApplicationContext, EVENT_PRESENTATION_LOADED, map)
       }
       promise.resolve(true)
     } catch (e: Throwable) {
-      promise.reject("v6_preload_failure", e.message, e)
+      promise.reject("preload_failure", e.message, e)
     }
   }
 
   /**
-   * v6 display entry point. JS calls this with a requestId + builder payload
+   * display entry point. JS calls this with a requestId + builder payload
    * (+ optional transition).
    */
   @ReactMethod
-  fun v6Display(
+  fun displayPresentation(
     requestId: String,
     payload: ReadableMap?,
     transition: ReadableMap?,
@@ -755,9 +755,9 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
       val activity: Activity = reactApplicationContext.currentActivity
         ?: throw IllegalStateException("No current activity to host the presentation")
 
-      val prepared = activeV6Requests[requestId] ?: buildV6Prepared(payload).also {
-        activeV6Requests[requestId] = it
-        wireV6Callbacks(requestId, it)
+      val prepared = activePresentationRequests[requestId] ?: buildPreparedPresentation(payload).also {
+        activePresentationRequests[requestId] = it
+        wirePresentationCallbacks(requestId, it)
       }
 
       val plyTransition: PLYTransition? = transition?.let { tm ->
@@ -794,7 +794,7 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
       }
 
       // The outcome is emitted to JS through `onDismissed` (wired in
-      // `wireV6Callbacks`), so the local `callback` is a noop. We still pass an
+      // `wirePresentationCallbacks`), so the local `callback` is a noop. We still pass an
       // outcome handler so the SDK does not log a missing-callback warning.
       prepared.display(
         context = activity,
@@ -805,41 +805,41 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
 
       promise.resolve(true)
     } catch (e: Throwable) {
-      // Reject only — the JS `.catch` on v6Display synthesizes the dismissed
+      // Reject only — the JS `.catch` on displayPresentation synthesizes the dismissed
       // outcome (onPresented(null, error) + onDismissed), mirroring the iOS
       // error path. Emitting a DISMISSED event here too would invoke the
       // user-supplied onDismissed callback twice.
-      activeV6Requests.remove(requestId)
-      promise.reject("v6_display_failure", e.message, e)
+      activePresentationRequests.remove(requestId)
+      promise.reject("display_failure", e.message, e)
     }
   }
 
   @ReactMethod
-  fun v6Close(requestId: String) {
-    activeV6Requests.remove(requestId)
-    // The SDK v6 does not yet expose a per-request close, so this dismisses
+  fun closePresentation(requestId: String) {
+    activePresentationRequests.remove(requestId)
+    // The SDK does not yet expose a per-request close, so this dismisses
     // *every* displayed presentation, not just `requestId`. Warn the host when
     // other requests are still active so tearing down a stacked presentation is
     // not a silent surprise.
-    if (activeV6Requests.isNotEmpty()) {
+    if (activePresentationRequests.isNotEmpty()) {
       PLYLogger.w(
-        "[v6] close($requestId) dismisses ALL displayed presentations " +
+        "[Purchasely] close($requestId) dismisses ALL displayed presentations " +
           "(per-request close is not yet supported by the native SDK); " +
-          "${activeV6Requests.size} other active request(s) will also be closed."
+          "${activePresentationRequests.size} other active request(s) will also be closed."
       )
     }
     Purchasely.closeAllScreens()
   }
 
   @ReactMethod
-  fun v6Back(requestId: String) {
+  fun goBackToPreviousScreen(requestId: String) {
     // No public `back()` on the Java façade — surface as a noop log.
-    PLYLogger.w("[v6] back($requestId) is not yet bridged on Android")
+    PLYLogger.w("[Purchasely] back($requestId) is not yet bridged on Android")
   }
 
   /** Register an interceptor for a given action kind. */
   @ReactMethod
-  fun v6RegisterInterceptor(kind: String) {
+  fun registerActionInterceptor(kind: String) {
     val actionType: Class<out PLYPresentationAction> = when (kind) {
       "close" -> PLYPresentationAction.Close::class.java
       "closeAll" -> PLYPresentationAction.CloseAll::class.java
@@ -852,7 +852,7 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
       "promoCode" -> PLYPresentationAction.PromoCode::class.java
       "webCheckout" -> PLYPresentationAction.WebCheckout::class.java
       else -> {
-        PLYLogger.w("[v6] unknown interceptor kind: $kind")
+        PLYLogger.w("[Purchasely] unknown interceptor kind: $kind")
         return
       }
     }
@@ -860,15 +860,15 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
     Purchasely.interceptAction(actionType) { info, action, complete ->
       val callbackId = UUID.randomUUID().toString()
       val deferred = CompletableDeferred<PLYInterceptResult>()
-      pendingV6Interceptors[callbackId] = deferred
+      pendingActionInterceptors[callbackId] = deferred
 
       val payload = Arguments.createMap()
       payload.putString("requestId", "")
       payload.putString("callbackId", callbackId)
       payload.putString("kind", kind)
-      payload.putMap("info", info.toV6Map())
-      payload.putMap("payload", action.toV6Payload())
-      sendEvent(reactApplicationContext, EVENT_V6_ACTION_INTERCEPTED, payload)
+      payload.putMap("info", info.toRNMap())
+      payload.putMap("payload", action.toRNPayload())
+      sendEvent(reactApplicationContext, EVENT_ACTION_INTERCEPTED, payload)
 
       CoroutineScope(Dispatchers.Main).launch {
         // Bound the suspension: `withTimeoutOrNull` returns null if JS never
@@ -879,14 +879,14 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
         val result = runCatching {
           withTimeoutOrNull(INTERCEPTOR_TIMEOUT_MS) { deferred.await() }
         }.getOrNull() ?: PLYInterceptResult.NOT_HANDLED
-        pendingV6Interceptors.remove(callbackId)
+        pendingActionInterceptors.remove(callbackId)
         complete(result)
       }
     }
   }
 
   @ReactMethod
-  fun v6UnregisterInterceptor(kind: String) {
+  fun unregisterActionInterceptor(kind: String) {
     val actionType: Class<out PLYPresentationAction>? = when (kind) {
       "close" -> PLYPresentationAction.Close::class.java
       "closeAll" -> PLYPresentationAction.CloseAll::class.java
@@ -901,19 +901,19 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
       else -> null
     }
     if (actionType == null) {
-      PLYLogger.w("[v6] unknown interceptor kind: $kind")
+      PLYLogger.w("[Purchasely] unknown interceptor kind: $kind")
       return
     }
     runCatching {
       Purchasely.removeActionInterceptor(actionType)
     }.onFailure {
-      PLYLogger.w("[v6] removeActionInterceptor($kind) failed: ${it.message}")
+      PLYLogger.w("[Purchasely] removeActionInterceptor($kind) failed: ${it.message}")
     }
   }
 
   @ReactMethod
-  fun v6CompleteInterceptor(callbackId: String, result: String) {
-    val deferred = pendingV6Interceptors.remove(callbackId) ?: return
+  fun completeActionInterceptor(callbackId: String, result: String) {
+    val deferred = pendingActionInterceptors.remove(callbackId) ?: return
     deferred.complete(
       when (result) {
         "success" -> PLYInterceptResult.SUCCESS
@@ -924,7 +924,7 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
   }
 
   @ReactMethod
-  fun v6ApplyStartOptions(options: ReadableMap) {
+  fun applyStartOptions(options: ReadableMap) {
     if (options.hasKey("allowDeeplink") && !options.isNull("allowDeeplink")) {
       Purchasely.readyToOpenDeeplink = options.getBoolean("allowDeeplink")
     }
@@ -937,13 +937,13 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
             setOf(PLYDataProcessingPurpose.Campaigns)
           )
         }.onFailure {
-          PLYLogger.w("[v6] allowCampaigns(false) could not be honored: ${it.message}")
+          PLYLogger.w("[Purchasely] allowCampaigns(false) could not be honored: ${it.message}")
         }
       }
     }
   }
 
-  // --- v6 private helpers ---
+  // --- presentation private helpers ---
 
   /**
    * Build a [PLYPresentationBase.Prepared] from the JS payload.
@@ -957,7 +957,7 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
    * `"ply_default"`. An empty builder is therefore the Android equivalent of
    * iOS `fetchPresentationWith:nil`, so no `isDefault` branch is required.
    */
-  private fun buildV6Prepared(payload: ReadableMap?): PLYPresentationBase.Prepared {
+  private fun buildPreparedPresentation(payload: ReadableMap?): PLYPresentationBase.Prepared {
     val builder = PLYPresentationBase.builder()
     payload?.let { p ->
       if (p.hasKey("placementId") && !p.isNull("placementId")) {
@@ -981,7 +981,7 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
           val color = android.graphics.Color.parseColor(p.getString("backgroundColor"))
           builder.backgroundColor(color)
         }.onFailure {
-          PLYLogger.w("[v6] invalid backgroundColor: ${p.getString("backgroundColor")}")
+          PLYLogger.w("[Purchasely] invalid backgroundColor: ${p.getString("backgroundColor")}")
         }
       }
       if (p.hasKey("progressColor") && !p.isNull("progressColor")) {
@@ -989,40 +989,40 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
           val color = android.graphics.Color.parseColor(p.getString("progressColor"))
           builder.progressColor(color)
         }.onFailure {
-          PLYLogger.w("[v6] invalid progressColor: ${p.getString("progressColor")}")
+          PLYLogger.w("[Purchasely] invalid progressColor: ${p.getString("progressColor")}")
         }
       }
     }
     return builder.build()
   }
 
-  private fun wireV6Callbacks(requestId: String, prepared: PLYPresentationBase.Prepared) {
+  private fun wirePresentationCallbacks(requestId: String, prepared: PLYPresentationBase.Prepared) {
     prepared.onPresented = { presentation, error ->
       val payload = Arguments.createMap()
       payload.putString("requestId", requestId)
-      presentation?.let { payload.putMap("presentation", it.toV6Map()) }
-      error?.let { payload.putMap("error", it.toV6Map()) }
-      sendEvent(reactApplicationContext, EVENT_V6_PRESENTED, payload)
+      presentation?.let { payload.putMap("presentation", it.toRNMap()) }
+      error?.let { payload.putMap("error", it.toRNMap()) }
+      sendEvent(reactApplicationContext, EVENT_PRESENTATION_PRESENTED, payload)
     }
     prepared.onCloseRequested = {
       val payload = Arguments.createMap()
       payload.putString("requestId", requestId)
-      sendEvent(reactApplicationContext, EVENT_V6_CLOSE_REQUESTED, payload)
+      sendEvent(reactApplicationContext, EVENT_PRESENTATION_CLOSE_REQUESTED, payload)
     }
     prepared.onDismissed = { outcome: PLYPresentationOutcome ->
       val payload = Arguments.createMap()
       payload.putString("requestId", requestId)
-      outcome.presentation?.let { payload.putMap("presentation", it.toV6Map()) }
-      outcome.purchaseResult?.let { payload.putInt("purchaseResult", it.toV6Ordinal()) }
+      outcome.presentation?.let { payload.putMap("presentation", it.toRNMap()) }
+      outcome.purchaseResult?.let { payload.putInt("purchaseResult", it.toRNOrdinal()) }
       outcome.plan?.let {
         payload.putMap("plan", Arguments.makeNativeMap(
           transformPlanToMap(it).toMutableMap()
         ))
       }
-      outcome.closeReason?.let { payload.putString("closeReason", it.toV6String()) }
-      outcome.error?.let { payload.putMap("error", it.toV6Map()) }
-      sendEvent(reactApplicationContext, EVENT_V6_DISMISSED, payload)
-      activeV6Requests.remove(requestId)
+      outcome.closeReason?.let { payload.putString("closeReason", it.toRNString()) }
+      outcome.error?.let { payload.putMap("error", it.toRNMap()) }
+      sendEvent(reactApplicationContext, EVENT_PRESENTATION_DISMISSED, payload)
+      activePresentationRequests.remove(requestId)
     }
   }
 
@@ -1030,7 +1030,7 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
    * Convert a [PLYPresentation] to a React-Native map. We expose the screenId
    * (mapped from the SDK `screenId`) and keep `id` as alias for compat.
    */
-  private fun PLYPresentation.toV6Map(): WritableMap {
+  private fun PLYPresentation.toRNMap(): WritableMap {
     val map = Arguments.createMap()
     map.putString("screenId", screenId)
     map.putString("id", screenId)
@@ -1046,32 +1046,32 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
     return map
   }
 
-  private fun PLYError.toV6Map(): WritableMap {
+  private fun PLYError.toRNMap(): WritableMap {
     val map = Arguments.createMap()
     map.putString("message", message ?: "Unknown error")
     return map
   }
 
-  private fun PLYCloseReason.toV6String(): String = when (this) {
+  private fun PLYCloseReason.toRNString(): String = when (this) {
     PLYCloseReason.BUTTON -> "button"
     PLYCloseReason.BACK_SYSTEM -> "backSystem"
     PLYCloseReason.PROGRAMMATIC -> "programmatic"
   }
 
-  private fun PLYPurchaseResult.toV6Ordinal(): Int = when (this) {
+  private fun PLYPurchaseResult.toRNOrdinal(): Int = when (this) {
     PLYPurchaseResult.PURCHASED -> 0
     PLYPurchaseResult.CANCELLED -> 1
     PLYPurchaseResult.RESTORED -> 2
   }
 
-  private fun PLYInterceptorInfo.toV6Map(): WritableMap {
+  private fun PLYInterceptorInfo.toRNMap(): WritableMap {
     val map = Arguments.createMap()
     contentId?.let { map.putString("contentId", it) }
-    presentation?.let { map.putMap("presentation", it.toV6Map()) }
+    presentation?.let { map.putMap("presentation", it.toRNMap()) }
     return map
   }
 
-  private fun PLYPresentationAction.toV6Payload(): WritableMap {
+  private fun PLYPresentationAction.toRNPayload(): WritableMap {
     val payload = Arguments.createMap()
     when (this) {
       is PLYPresentationAction.Navigate -> {
@@ -1101,10 +1101,10 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
         }
       }
       is PLYPresentationAction.Close -> {
-        payload.putString("closeReason", closeReason.toV6String())
+        payload.putString("closeReason", closeReason.toRNString())
       }
       is PLYPresentationAction.CloseAll -> {
-        payload.putString("closeReason", closeReason.toV6String())
+        payload.putString("closeReason", closeReason.toRNString())
       }
       is PLYPresentationAction.OpenPresentation -> {
         payload.putString("presentationId", presentationId)
@@ -1162,28 +1162,28 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
     private const val runningModePaywallObserver = 3
     private const val runningModeFull = 4
 
-    // v6 bridge — event names, interceptor timeout, and per-request state
+    // bridge — event names, interceptor timeout, and per-request state
     // (kept in the companion to preserve the process-global semantics the
-    // former standalone PurchaselyV6Bridge object had).
-    private const val EVENT_V6_LOADED = "PURCHASELY_V6_LOADED"
-    private const val EVENT_V6_PRESENTED = "PURCHASELY_V6_PRESENTED"
-    private const val EVENT_V6_CLOSE_REQUESTED = "PURCHASELY_V6_CLOSE_REQUESTED"
-    private const val EVENT_V6_DISMISSED = "PURCHASELY_V6_DISMISSED"
-    private const val EVENT_V6_ACTION_INTERCEPTED = "PURCHASELY_V6_ACTION_INTERCEPTED"
+    // former standalone bridge object had).
+    private const val EVENT_PRESENTATION_LOADED = "PURCHASELY_PRESENTATION_LOADED"
+    private const val EVENT_PRESENTATION_PRESENTED = "PURCHASELY_PRESENTATION_PRESENTED"
+    private const val EVENT_PRESENTATION_CLOSE_REQUESTED = "PURCHASELY_PRESENTATION_CLOSE_REQUESTED"
+    private const val EVENT_PRESENTATION_DISMISSED = "PURCHASELY_PRESENTATION_DISMISSED"
+    private const val EVENT_ACTION_INTERCEPTED = "PURCHASELY_ACTION_INTERCEPTED"
 
     /**
      * Upper bound on how long the bridge waits for JS to resolve an intercepted
-     * action via [v6CompleteInterceptor]. If the JS handler never calls back
+     * action via [completeActionInterceptor]. If the JS handler never calls back
      * (e.g. the event listener was torn down by a bridge reload), we fall back to
      * [PLYInterceptResult.NOT_HANDLED] so the SDK is never blocked indefinitely.
      */
     private const val INTERCEPTOR_TIMEOUT_MS = 30_000L
 
-    /** Active v6 presentation requests, keyed by the JS-supplied requestId. */
-    private val activeV6Requests = ConcurrentHashMap<String, PLYPresentationBase.Prepared>()
+    /** Active presentation requests, keyed by the JS-supplied requestId. */
+    private val activePresentationRequests = ConcurrentHashMap<String, PLYPresentationBase.Prepared>()
 
-    /** Pending v6 interceptor callbacks, resolved when JS calls v6CompleteInterceptor. */
-    private val pendingV6Interceptors =
+    /** Pending interceptor callbacks, resolved when JS calls completeActionInterceptor. */
+    private val pendingActionInterceptors =
       ConcurrentHashMap<String, CompletableDeferred<PLYInterceptResult>>()
 
     val presentationsLoaded = mutableListOf<PLYPresentation>()
@@ -1192,12 +1192,12 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
     var defaultPurchasePromise: Promise? = null
 
     /**
-     * Backwards-compatible projection of a v6 `PLYPresentationOutcome` into the
-     * legacy `{result, plan}` shape consumed by the v5 JS API. The new v6 façade
+     * Backwards-compatible projection of a `PLYPresentationOutcome` into the
+     * legacy `{result, plan}` shape consumed by the v5 JS API. The new façade
      * exposes the full outcome (with `closeReason` / `error`) via the dedicated
-     * `PURCHASELY_V6_DISMISSED` event.
+     * `PURCHASELY_PRESENTATION_DISMISSED` event.
      */
-    fun sendPurchaseResultV6(outcome: io.purchasely.ext.presentation.PLYPresentationOutcome) {
+    fun sendPurchaseResult(outcome: io.purchasely.ext.presentation.PLYPresentationOutcome) {
       val resultOrdinal = when (outcome.purchaseResult) {
         io.purchasely.ext.presentation.PLYPurchaseResult.PURCHASED -> 0
         io.purchasely.ext.presentation.PLYPurchaseResult.RESTORED -> 2

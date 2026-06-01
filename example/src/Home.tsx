@@ -22,7 +22,7 @@ export const HomeScreen: React.FC<NativeStackScreenProps<any>> = ({
     navigation,
 }) => {
     const isDarkMode = useColorScheme() === 'dark'
-    // Holds the most recently displayed v6 request so it can be closed or
+    // Holds the most recently displayed presentation request so it can be closed or
     // navigated back programmatically (replaces the v5 show/hide/close calls).
     const currentRequest = useRef<PresentationRequest | null>(null)
 
@@ -60,7 +60,7 @@ export const HomeScreen: React.FC<NativeStackScreenProps<any>> = ({
 
     const onPressPresentation = async () => {
         try {
-            // v6: build a request for the placement, then display it.
+            // build a request for the placement, then display it.
             // `display()` resolves at DISMISS with a PresentationOutcome.
             const request = PresentationBuilder.placement('premium_support')
                 .backgroundColor('#FFFFFFFF')
@@ -88,7 +88,7 @@ export const HomeScreen: React.FC<NativeStackScreenProps<any>> = ({
 
     const onPressPreload = async () => {
         try {
-            // v6: preload a placement without showing any UI yet. Resolves once
+            // preload a placement without showing any UI yet. Resolves once
             // the screen is loaded. Inspect the resolved Presentation to decide
             // whether to display a Purchasely paywall or your own screen.
             const presentation = await PresentationBuilder.placement('FLOW')
@@ -144,19 +144,19 @@ export const HomeScreen: React.FC<NativeStackScreenProps<any>> = ({
     }
 
     const onPressNestedView = () => {
-        // The embedded PLYPresentationView is driven by a placement id in v6.
+        // The embedded PLYPresentationView is driven by a placement id.
         navigation.navigate('Paywall', {
             placementId: 'nested',
         })
     }
 
     const onPressClosePresentation = () => {
-        // v6: close the currently displayed request programmatically.
+        // close the currently displayed request programmatically.
         currentRequest.current?.close()
     }
 
     const onPressBack = () => {
-        // v6: navigate back inside a multi-step (Flow) presentation.
+        // navigate back inside a multi-step (Flow) presentation.
         currentRequest.current?.back()
     }
 

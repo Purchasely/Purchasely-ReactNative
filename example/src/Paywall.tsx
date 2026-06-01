@@ -11,7 +11,7 @@ export const PaywallScreen: React.FC<NativeStackScreenProps<any>> = ({
     navigation,
     route,
 }) => {
-    // v6: the embedded PLYPresentationView is driven by a placement id.
+    // the embedded PLYPresentationView is driven by a placement id.
     const placementId: string | null =
         (route.params as any)?.placementId ?? null
 

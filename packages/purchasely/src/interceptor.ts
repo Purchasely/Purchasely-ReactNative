@@ -2,10 +2,10 @@ import { NativeModules } from 'react-native';
 import type { EmitterSubscription } from 'react-native';
 
 import {
-    PURCHASELY_V6_EVENTS,
-    purchaselyV6EventEmitter,
+    PURCHASELY_PRESENTATION_EVENTS,
+    presentationEventEmitter,
 } from './events';
-import type { V6InterceptorEvent } from './events';
+import type { ActionInterceptorEvent } from './events';
 import type {
     ActionPayload,
     InterceptorHandler,
@@ -13,7 +13,7 @@ import type {
     InterceptResult,
     Presentation,
     PresentationActionKind,
-} from './types';
+} from './presentationTypes';
 
 /**
  * Registry of attached interceptors. Keyed by action kind so each kind can be
@@ -125,9 +125,9 @@ export function interceptAction(
 ): void {
     removeActionInterceptor(kind);
 
-    const subscription = purchaselyV6EventEmitter.addListener(
-        PURCHASELY_V6_EVENTS.ACTION_INTERCEPTED,
-        async (event: V6InterceptorEvent) => {
+    const subscription = presentationEventEmitter.addListener(
+        PURCHASELY_PRESENTATION_EVENTS.ACTION_INTERCEPTED,
+        async (event: ActionInterceptorEvent) => {
             if (event.kind !== kind) {
                 return;
             }
@@ -139,7 +139,7 @@ export function interceptAction(
             } catch (e) {
                 result = 'failed';
             }
-            NativeModules.Purchasely.v6CompleteInterceptor(
+            NativeModules.Purchasely.completeActionInterceptor(
                 event.callbackId,
                 result
             );
@@ -148,7 +148,7 @@ export function interceptAction(
 
     interceptorRegistry.set(kind, { subscription, handler });
 
-    NativeModules.Purchasely.v6RegisterInterceptor(kind);
+    NativeModules.Purchasely.registerActionInterceptor(kind);
 }
 
 /** Remove a specific action interceptor. */
@@ -158,7 +158,7 @@ export function removeActionInterceptor(kind: PresentationActionKind): void {
         entry.subscription.remove();
         interceptorRegistry.delete(kind);
     }
-    NativeModules.Purchasely.v6UnregisterInterceptor(kind);
+    NativeModules.Purchasely.unregisterActionInterceptor(kind);
 }
 
 /** Remove every previously-registered action interceptor. */

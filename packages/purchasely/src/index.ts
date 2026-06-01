@@ -18,14 +18,14 @@ import type {
   PurchaselySubscription,
   PurchaselyUserAttribute,
 } from './types';
+import { PresentationBuilder } from './presentation';
+import { PurchaselyBuilder } from './startBuilder';
 import {
-  PresentationBuilder,
-  PurchaselyBuilder,
   interceptAction,
   removeActionInterceptor,
   removeAllActionInterceptors,
-} from './v6';
-import type { PresentationActionKind } from './v6';
+} from './interceptor';
+import type { PresentationActionKind } from './presentationTypes';
 
 const purchaselyVersion = '6.0.0';
 
@@ -34,10 +34,10 @@ const constants = NativeModules.Purchasely.getConstants() as Constants;
 const PurchaselyEventEmitter = new NativeEventEmitter(NativeModules.Purchasely);
 
 /**
- * Cross-platform v6 start builder. Mirrors the iOS/Android contract:
+ * Cross-platform start builder. Mirrors the iOS/Android contract:
  * `Purchasely.builder('API_KEY').appUserId('u').runningMode('full').start()`.
  *
- * This is the only supported way to initialize the SDK since v6.
+ * This is the only supported way to initialize the SDK since 6.0.0.
  */
 const builder = (apiKey: string): PurchaselyBuilder => {
   // Ensure the bridge version stays in sync with the wrapper version.
@@ -331,7 +331,7 @@ const setDebugMode = (debugMode: boolean): void => {
 };
 
 const Purchasely = {
-  // v6 paywall API — the only supported way to display & intercept paywalls.
+  // paywall API — the only supported way to display & intercept paywalls.
   builder,
   presentation: PresentationBuilder,
   interceptAction: (
@@ -400,7 +400,15 @@ const Purchasely = {
 export * from './types';
 export * from './enums';
 export * from './interfaces';
-export * from './v6';
+export * from './presentationTypes';
+export { PURCHASELY_PRESENTATION_EVENTS } from './events';
+export { PresentationBuilder, PresentationRequest } from './presentation';
+export {
+  interceptAction,
+  removeActionInterceptor,
+  removeAllActionInterceptors,
+} from './interceptor';
+export { PurchaselyBuilder } from './startBuilder';
 export { PLYPresentationView };
 
 export default Purchasely;
