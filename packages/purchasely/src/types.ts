@@ -269,7 +269,7 @@ export type PurchaselyEventProperties = {
   sdk_start_error?: string;
   sdk_start_duration_in_ms?: number;
   error_code?: string;
-  web_checkout_provider?: string;
+  web_checkout_provider?: PLYWebCheckoutProvider;
   web_checkout_url?: string;
   client_reference_id?: string;
   stripe_checkout_session_id?: string;
