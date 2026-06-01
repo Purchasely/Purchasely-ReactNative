@@ -50,6 +50,7 @@ android {
 }
 
 repositories {
+  mavenLocal()
   google()
   mavenCentral()
 }

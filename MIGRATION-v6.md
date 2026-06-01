@@ -277,9 +277,12 @@ v5:
   `purchaseWithPlanVendorId`, `signPromotionalOffer`, `isEligibleForIntroOffer`,
   `setDynamicOffering`, `getDynamicOfferings`, `removeDynamicOffering`,
   `clearDynamicOfferings`.
-- **Subscriptions**: `userSubscriptions`, `userSubscriptionsHistory`,
+- **Subscriptions data**: `userSubscriptions`, `userSubscriptionsHistory`,
   `restoreAllProducts`, `silentRestoreAllProducts`,
-  `userDidConsumeSubscriptionContent`, **`presentSubscriptions`**.
+  `userDidConsumeSubscriptionContent`.
+  `presentSubscriptions()` remains callable for source compatibility, but the
+  Android native SDK v6 removed the built-in subscription-list UI, so Android
+  logs a warning/no-ops; build your own UI from the subscription data APIs.
 - **Attributes**: `setUserAttributeWith{String,Number,Boolean,Date,StringArray,NumberArray,BooleanArray}`,
   `incrementUserAttribute`, `decrementUserAttribute`, `userAttributes`,
   `userAttribute`, `clearUserAttribute`, `clearUserAttributes`,
