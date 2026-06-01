@@ -6,19 +6,19 @@ import type {
     PresentationError,
     PresentationOutcome,
     Transition,
-} from './types';
-import { purchaseResultFromOrdinal } from './types';
-import { PURCHASELY_V6_EVENTS, purchaselyV6EventEmitter } from './events';
-import type { V6LifecycleEvent } from './events';
+} from './presentationTypes';
+import { purchaseResultFromOrdinal } from './presentationTypes';
+import { PURCHASELY_PRESENTATION_EVENTS, presentationEventEmitter } from './events';
+import type { PresentationLifecycleEvent } from './events';
 
 /** Counter for generating bridge request ids. */
 let nextRequestId = 0;
 const generateRequestId = (): string => {
     nextRequestId += 1;
-    return `v6_req_${Date.now()}_${nextRequestId}`;
+    return `ply_req_${Date.now()}_${nextRequestId}`;
 };
 
-/** Normalize a native presentation payload to the v6 {@link Presentation} shape. */
+/** Normalize a native presentation payload to the {@link Presentation} shape. */
 function normalizePresentation(raw: any): Presentation | null {
     if (!raw || typeof raw !== 'object') {
         return null;
@@ -47,7 +47,7 @@ function normalizePresentation(raw: any): Presentation | null {
     };
 }
 
-/** Normalize a native error payload to the v6 {@link PresentationError} shape. */
+/** Normalize a native error payload to the {@link PresentationError} shape. */
 function normalizeError(raw: any): PresentationError | null {
     if (!raw) {
         return null;
@@ -64,7 +64,7 @@ function normalizeError(raw: any): PresentationError | null {
 
 /** Convert a native lifecycle event into a {@link PresentationOutcome}. */
 function eventToOutcome(
-    event: V6LifecycleEvent,
+    event: PresentationLifecycleEvent,
     presentation: Presentation | null
 ): PresentationOutcome {
     const error = normalizeError(event.error);
@@ -109,7 +109,7 @@ interface BuilderConfig {
 }
 
 /**
- * Cross-platform v6 builder. Mirrors the Android/iOS builder API while hiding
+ * Cross-platform builder. Mirrors the Android/iOS builder API while hiding
  * the platform-specific bridge wiring.
  *
  * @example
@@ -224,7 +224,7 @@ export class PresentationBuilder {
 }
 
 /**
- * Encapsulates a v6 presentation request: it can be preloaded (without UI),
+ * Encapsulates a presentation request: it can be preloaded (without UI),
  * or displayed (which resolves at dismiss).
  */
 export class PresentationRequest {
@@ -249,9 +249,9 @@ export class PresentationRequest {
         const requestId = this.ensureRequestId();
         return new Promise<Presentation>((resolve, reject) => {
             const loadedSubscription =
-                purchaselyV6EventEmitter.addListener(
-                    PURCHASELY_V6_EVENTS.LOADED,
-                    (event: V6LifecycleEvent) => {
+                presentationEventEmitter.addListener(
+                    PURCHASELY_PRESENTATION_EVENTS.LOADED,
+                    (event: PresentationLifecycleEvent) => {
                         if (event.requestId !== requestId) {
                             return;
                         }
@@ -273,7 +273,7 @@ export class PresentationRequest {
                 );
             this.subscriptions.push(loadedSubscription);
 
-            NativeModules.Purchasely.v6Preload(
+            NativeModules.Purchasely.preloadPresentation(
                 requestId,
                 this.toNativePayload()
             ).catch((nativeError: any) => {
@@ -297,7 +297,7 @@ export class PresentationRequest {
         return new Promise<PresentationOutcome>((resolve) => {
             this.bindLifecycleEvents(requestId, resolve);
 
-            NativeModules.Purchasely.v6Display(
+            NativeModules.Purchasely.displayPresentation(
                 requestId,
                 this.toNativePayload(),
                 transition ?? null
@@ -362,7 +362,7 @@ export class PresentationRequest {
         if (!this.requestId) {
             return;
         }
-        NativeModules.Purchasely.v6Close(this.requestId);
+        NativeModules.Purchasely.closePresentation(this.requestId);
     }
 
     /** Navigate back inside a multi-step (Flow) presentation. */
@@ -370,7 +370,7 @@ export class PresentationRequest {
         if (!this.requestId) {
             return;
         }
-        NativeModules.Purchasely.v6Back(this.requestId);
+        NativeModules.Purchasely.goBackToPreviousScreen(this.requestId);
     }
 
     private ensureRequestId(): string {
@@ -384,9 +384,9 @@ export class PresentationRequest {
         requestId: string,
         resolve: (outcome: PresentationOutcome) => void
     ): void {
-        const onPresented = purchaselyV6EventEmitter.addListener(
-            PURCHASELY_V6_EVENTS.PRESENTED,
-            (event: V6LifecycleEvent) => {
+        const onPresented = presentationEventEmitter.addListener(
+            PURCHASELY_PRESENTATION_EVENTS.PRESENTED,
+            (event: PresentationLifecycleEvent) => {
                 if (event.requestId !== requestId) {
                     return;
                 }
@@ -405,9 +405,9 @@ export class PresentationRequest {
                 }
             }
         );
-        const onCloseRequested = purchaselyV6EventEmitter.addListener(
-            PURCHASELY_V6_EVENTS.CLOSE_REQUESTED,
-            (event: V6LifecycleEvent) => {
+        const onCloseRequested = presentationEventEmitter.addListener(
+            PURCHASELY_PRESENTATION_EVENTS.CLOSE_REQUESTED,
+            (event: PresentationLifecycleEvent) => {
                 if (event.requestId !== requestId) {
                     return;
                 }
@@ -416,9 +416,9 @@ export class PresentationRequest {
                 }
             }
         );
-        const onDismissed = purchaselyV6EventEmitter.addListener(
-            PURCHASELY_V6_EVENTS.DISMISSED,
-            (event: V6LifecycleEvent) => {
+        const onDismissed = presentationEventEmitter.addListener(
+            PURCHASELY_PRESENTATION_EVENTS.DISMISSED,
+            (event: PresentationLifecycleEvent) => {
                 if (event.requestId !== requestId) {
                     return;
                 }

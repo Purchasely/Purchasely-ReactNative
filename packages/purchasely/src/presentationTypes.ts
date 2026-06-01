@@ -1,25 +1,25 @@
 /**
- * v6 cross-platform bridge contract types.
- * See: reports/v6-presentation-comparison-v3-claude/BRIDGE-CONTRACT.md
+ * cross-platform bridge contract types.
+ * See: the cross-platform bridge contract
  *
- * These types are exposed by the v6 builder API
+ * These types are exposed by the builder API
  * (`PresentationBuilder`, `Purchasely.interceptAction`, `Purchasely.builder()`).
  *
  * The legacy v5 types in `types.ts` remain for backward compatibility.
  */
 
-import { ProductResult } from '../enums';
+import { ProductResult } from './enums';
 import type {
     PLYPresentationType,
     PLYWebCheckoutProvider,
-} from '../enums';
+} from './enums';
 import type {
     PurchaselyPlan,
     PurchaselyOffer,
     PurchaselySubscriptionOffer,
     PLYPresentationPlan,
     PLYPresentationMetadata,
-} from '../types';
+} from './types';
 
 /**
  * Reason a Presentation was dismissed.
@@ -30,7 +30,7 @@ export type CloseReason = 'button' | 'backSystem' | 'programmatic';
 /** Outcome of `purchaseResult` in {@link PresentationOutcome}. */
 export type PurchaseResultKind = 'purchased' | 'cancelled' | 'restored';
 
-/** Error returned by the v6 presentation lifecycle. */
+/** Error returned by the presentation lifecycle. */
 export interface PresentationError {
     code?: string | number | null;
     message: string;
@@ -175,7 +175,7 @@ export type InterceptorHandler = (
 
 /**
  * Internal helper — convert the legacy v5 `ProductResult` ordinal to the
- * v6 string form for the {@link PresentationOutcome.purchaseResult}.
+ * string form for the {@link PresentationOutcome.purchaseResult}.
  */
 export function purchaseResultFromOrdinal(
     value: ProductResult | number | null | undefined

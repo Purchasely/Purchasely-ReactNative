@@ -32,12 +32,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * View manager for `<PLYPresentationView />`. Hosts a v6 `PLYPresentationView`
+ * View manager for `<PLYPresentationView />`. Hosts a `PLYPresentationView`
  * inside a React-Native managed Fragment.
  *
  * The presentation is sourced either from a `placementId` prop or from a
- * `presentation` map produced by the v6 builder. Outcomes flow back to JS
- * through the same `PURCHASELY_V6_DISMISSED`-friendly shape used by the v5 view
+ * `presentation` map produced by the builder. Outcomes flow back to JS
+ * through the same `PURCHASELY_PRESENTATION_DISMISSED`-friendly shape used by the v5 view
  * (`{ result, plan }`), preserving the existing `onPresentationClosed` contract.
  */
 class PurchaselyViewManager(private val reactContext: ReactApplicationContext) : ViewGroupManager<FrameLayout>() {
@@ -181,7 +181,7 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
 
   @ReactProp(name = "presentation")
   fun setPresentation(view: FrameLayout?, value: ReadableMap?) {
-    // The JS layer forwards either `id` (legacy) or `screenId` (v6).
+    // The JS layer forwards either `id` (legacy) or `screenId`.
     screenId = value?.getString("screenId") ?: value?.getString("id")
     placementId = placementId ?: value?.getString("placementId")
   }
@@ -211,7 +211,7 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
   }
 
   /**
-   * Fragment hosting a v6 `PLYPresentationView`. The presentation is built
+   * Fragment hosting a `PLYPresentationView`. The presentation is built
    * lazily inside `onViewCreated` so the SDK can attach to the live Activity.
    */
   class PurchaselyFragment(

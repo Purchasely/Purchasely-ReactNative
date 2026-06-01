@@ -10,9 +10,141 @@
 #import <React/RCTLog.h>
 #import <Purchasely/Purchasely-Swift.h>
 #import "PurchaselyRN.h"
-#import "PurchaselyRNV6.h"
 #import "Purchasely_Hybrid.h"
 #import "UIColor+PLYHelper.h"
+
+#pragma mark - event names
+
+static NSString *const kPresentationEventLoaded = @"PURCHASELY_PRESENTATION_LOADED";
+static NSString *const kPresentationEventPresented = @"PURCHASELY_PRESENTATION_PRESENTED";
+static NSString *const kPresentationEventCloseRequested = @"PURCHASELY_PRESENTATION_CLOSE_REQUESTED";
+static NSString *const kPresentationEventDismissed = @"PURCHASELY_PRESENTATION_DISMISSED";
+static NSString *const kPresentationEventActionIntercepted = @"PURCHASELY_ACTION_INTERCEPTED";
+
+#pragma mark - internal state (shared across presentation methods)
+
+/// requestId → captured PLYPresentation (so we can replay it in events).
+static NSMutableDictionary<NSString *, PLYPresentation *> *kPresentationsByRequest;
+/// callbackId → completion block to call once JS replies with an InterceptResult.
+static NSMutableDictionary<NSString *, void (^)(NSString *)> *kInterceptorCallbacks;
+/// kind → BOOL : tracks which interceptor kinds JS has registered. The native
+/// interceptor itself is global (`setPaywallActionsInterceptor`) — we only fire
+/// the JS event when the action kind matches a registered one.
+static NSMutableSet<NSString *> *kInterceptorKinds;
+/// Serialises every access to the three mutable collections above. RN bridge
+/// methods run on a background queue while the interceptor block / completions
+/// run on the main queue; `NSMutable*` is not thread-safe, so all reads and
+/// writes are guarded by `@synchronized(kPresentationStateLock)`.
+static NSObject *kPresentationStateLock;
+
+static void ensurePresentationState(void) {
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        kPresentationsByRequest = [NSMutableDictionary new];
+        kInterceptorCallbacks = [NSMutableDictionary new];
+        kInterceptorKinds = [NSMutableSet new];
+        kPresentationStateLock = [NSObject new];
+    });
+}
+
+#pragma mark - helpers
+
+/// Map a `PLYPresentationAction` to its string kind.
+/// Mirrors the kind names emitted by the Android bridge.
+static NSString *stringFromPresentationAction(PLYPresentationAction action) {
+    switch (action) {
+        case PLYPresentationActionLogin:           return @"login";
+        case PLYPresentationActionPurchase:        return @"purchase";
+        case PLYPresentationActionClose:           return @"close";
+        case PLYPresentationActionCloseAll:        return @"closeAll";
+        case PLYPresentationActionRestore:         return @"restore";
+        case PLYPresentationActionNavigate:        return @"navigate";
+        case PLYPresentationActionPromoCode:       return @"promoCode";
+        case PLYPresentationActionOpenPresentation:return @"openPresentation";
+        case PLYPresentationActionOpenPlacement:   return @"openPlacement";
+        case PLYPresentationActionWebCheckout:     return @"webCheckout";
+    }
+    return @"unknown";
+}
+
+/// String representation of `PLYWebCheckoutProvider` for the JS payload.
+static NSString *stringFromWebCheckoutProvider(PLYWebCheckoutProvider provider) {
+    switch (provider) {
+        case PLYWebCheckoutProviderStripe:     return @"stripe";
+        case PLYWebCheckoutProviderPaddle:     return @"paddle";
+        case PLYWebCheckoutProviderRecurly:    return @"recurly";
+        case PLYWebCheckoutProviderChargebee:  return @"chargebee";
+        case PLYWebCheckoutProviderPaypal:     return @"paypal";
+        case PLYWebCheckoutProviderRevenuecat: return @"revenuecat";
+        case PLYWebCheckoutProviderAdapty:     return @"adapty";
+        case PLYWebCheckoutProviderQonversion: return @"qonversion";
+        case PLYWebCheckoutProviderOther:      return @"other";
+        default:                               return @"unknown";
+    }
+}
+
+/// Convert a `PLYPresentation` to the cross-platform map.
+/// On iOS we map `presentation.id` to `screenId` and keep `id` as alias (P1.1).
+static NSDictionary *presentationToMap(PLYPresentation *presentation) {
+    if (presentation == nil) {
+        return nil;
+    }
+    NSMutableDictionary *map = [NSMutableDictionary new];
+    if (presentation.id != nil) {
+        map[@"screenId"] = presentation.id;
+        map[@"id"] = presentation.id;
+    }
+    if (presentation.placementId != nil) {
+        map[@"placementId"] = presentation.placementId;
+    }
+    if (presentation.audienceId != nil) {
+        map[@"audienceId"] = presentation.audienceId;
+    }
+    if (presentation.abTestId != nil) {
+        map[@"abTestId"] = presentation.abTestId;
+    }
+    if (presentation.abTestVariantId != nil) {
+        map[@"abTestVariantId"] = presentation.abTestVariantId;
+    }
+    if (presentation.language != nil) {
+        map[@"language"] = presentation.language;
+    }
+    map[@"type"] = @(presentation.type);
+    map[@"height"] = @(presentation.height);
+    if (presentation.plans != nil) {
+        NSMutableArray *plans = [NSMutableArray new];
+        for (PLYPresentationPlan *plan in presentation.plans) {
+            [plans addObject:plan.asDictionary];
+        }
+        map[@"plans"] = plans;
+    }
+    return map;
+}
+
+/// Wrap an `NSError` into the `PresentationError` shape.
+static NSDictionary *presentationErrorToMap(NSError *error) {
+    if (error == nil) {
+        return nil;
+    }
+    NSMutableDictionary *map = [NSMutableDictionary new];
+    map[@"code"] = @(error.code);
+    map[@"domain"] = error.domain ?: @"";
+    map[@"message"] = error.localizedDescription ?: @"Unknown error";
+    return map;
+}
+
+/// Convert a `PLYProductViewControllerResult` to the ordinal that JS expects
+/// for `PRESENTATION_DISMISSED.purchaseResult`. We keep the legacy ordinals
+/// here because the TS helper `purchaseResultFromOrdinal` translates them to
+/// the contract strings.
+static NSNumber *purchaseResultOrdinal(PLYProductViewControllerResult result) {
+    switch (result) {
+        case PLYProductViewControllerResultPurchased: return @(0);
+        case PLYProductViewControllerResultCancelled: return @(1);
+        case PLYProductViewControllerResultRestored:  return @(2);
+    }
+    return nil;
+}
 
 @implementation PurchaselyRN
 
@@ -801,13 +933,13 @@ RCT_EXPORT_METHOD(setDebugMode:(BOOL)enabled) {
     @"PURCHASE_LISTENER",
     @"USER_ATTRIBUTE_SET_LISTENER",
     @"USER_ATTRIBUTE_REMOVED_LISTENER",
-    // v6 cross-platform bridge events. Names mirror the Android bridge so the
-    // same JS layer drives both platforms. See PurchaselyRNV6.m.
-    @"PURCHASELY_V6_LOADED",
-    @"PURCHASELY_V6_PRESENTED",
-    @"PURCHASELY_V6_CLOSE_REQUESTED",
-    @"PURCHASELY_V6_DISMISSED",
-    @"PURCHASELY_V6_ACTION_INTERCEPTED",
+    // cross-platform bridge events. Names mirror the Android bridge so the
+    // same JS layer drives both platforms. See the presentation section below.
+    @"PURCHASELY_PRESENTATION_LOADED",
+    @"PURCHASELY_PRESENTATION_PRESENTED",
+    @"PURCHASELY_PRESENTATION_CLOSE_REQUESTED",
+    @"PURCHASELY_PRESENTATION_DISMISSED",
+    @"PURCHASELY_ACTION_INTERCEPTED",
   ];
 }
 
@@ -881,6 +1013,521 @@ RCT_EXPORT_METHOD(setDebugMode:(BOOL)enabled) {
 
 - (void)reject:(RCTPromiseRejectBlock)reject with:(NSError *)error {
 	reject([NSString stringWithFormat: @"%ld", (long)error.code], [error localizedDescription], error);
+}
+
+// ****************************************************************************
+#pragma mark - cross-platform bridge
+//
+//  cross-platform bridge implementation.
+//  Implements the contract documented in:
+//    the cross-platform bridge contract
+//
+//  Mapping notes (iOS-specific workarounds — see contract P0.2 / P0.4 / P1.1):
+//    - The native iOS SDK currently surfaces a `PLYProductViewControllerResult` +
+//      `PLYPlan` via the legacy `fetchPresentationFor:contentId:fetchCompletion:`
+//      callbacks. The bridge contract requires a 5-field outcome (presentation,
+//      purchaseResult, plan, closeReason, error). The bridge synthesizes the
+//      missing fields:
+//        * `presentation` is captured from the loaded `PLYPresentation`.
+//        * `closeReason` is set to `nil` (iOS does not yet expose it).
+//        * `error` is propagated from the fetch completion handler.
+//    - `screenId` maps to `presentation.id` until iOS exposes a dedicated
+//      `screenId` property.
+//    - `onPresented(presentation?, error?)` is synthesized after preload/display.
+//    - The Promise returned by `display()` resolves at DISMISS (not at trigger),
+//      matching the Android contract.
+
+#pragma mark - emitter access
+
+/// Wrapper around `sendEventWithName:body:` that ensures the bridge is observing.
+/// If `shouldEmit` is NO the SDK is not active yet — drop the event silently.
+- (void)emitPresentationEvent:(NSString *)eventName body:(NSDictionary *)body {
+    if (!self.shouldEmit) {
+        return;
+    }
+    [self sendEventWithName:eventName body:body ?: @{}];
+}
+
+#pragma mark - builder payload parsing
+
+/// Extract a `PLYPresentation` lookup spec from the builder payload sent by JS.
+/// Returns the values resolved into the corresponding strings.
+- (void)extractPresentationTargets:(NSDictionary *)payload
+                       toPlacement:(NSString * __autoreleasing *)placementId
+                    toPresentation:(NSString * __autoreleasing *)presentationId
+                       toContentId:(NSString * __autoreleasing *)contentId
+                       toIsDefault:(BOOL *)isDefault {
+    if (payload[@"placementId"] != [NSNull null]) {
+        *placementId = payload[@"placementId"];
+    }
+    // JS sends `screenId` as `presentationId` (cf. presentation.ts toNativePayload).
+    if (payload[@"presentationId"] != [NSNull null]) {
+        *presentationId = payload[@"presentationId"];
+    }
+    if (payload[@"contentId"] != [NSNull null]) {
+        *contentId = payload[@"contentId"];
+    }
+    // `PresentationBuilder.default()` sends `isDefault: true` with no placement /
+    // screen — route it to the SDK's default presentation (cf. legacy
+    // `fetchPresentation` which falls back to `fetchPresentationWith:nil`).
+    id isDefaultValue = payload[@"isDefault"];
+    if ([isDefaultValue isKindOfClass:[NSNumber class]]) {
+        *isDefault = [isDefaultValue boolValue];
+    }
+}
+
+#pragma mark - preloadPresentation
+
+RCT_EXPORT_METHOD(preloadPresentation:(NSString *)requestId
+                  payload:(NSDictionary *)payload
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
+    ensurePresentationState();
+
+    NSString *placementId = nil;
+    NSString *presentationId = nil;
+    NSString *contentId = nil;
+    BOOL isDefault = NO;
+    [self extractPresentationTargets:payload
+                          toPlacement:&placementId
+                       toPresentation:&presentationId
+                          toContentId:&contentId
+                          toIsDefault:&isDefault];
+
+    __weak PurchaselyRN *weakSelf = self;
+    void (^onFetchCompletion)(PLYPresentation * _Nullable, NSError * _Nullable) =
+    ^(PLYPresentation * _Nullable presentation, NSError * _Nullable error) {
+        PurchaselyRN *strongSelf = weakSelf;
+        if (!strongSelf) { return; }
+
+        NSMutableDictionary *event = [NSMutableDictionary new];
+        event[@"requestId"] = requestId;
+        if (presentation != nil) {
+            event[@"presentation"] = presentationToMap(presentation);
+            [PurchaselyRN.presentationsLoaded addObject:presentation];
+            @synchronized (kPresentationStateLock) {
+                kPresentationsByRequest[requestId] = presentation;
+            }
+        }
+        if (error != nil) {
+            event[@"error"] = presentationErrorToMap(error);
+        }
+        [strongSelf emitPresentationEvent:kPresentationEventLoaded body:event];
+    };
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (placementId != nil) {
+            [Purchasely fetchPresentationFor:placementId
+                                   contentId:contentId
+                              fetchCompletion:onFetchCompletion
+                                   completion:nil
+                            loadedCompletion:nil];
+        } else if (presentationId != nil) {
+            // P1.1: `screenId` → `fetchPresentationWith:` on iOS.
+            [Purchasely fetchPresentationWith:presentationId
+                                    contentId:contentId
+                             fetchCompletion:onFetchCompletion
+                                    completion:nil
+                             loadedCompletion:nil];
+        } else if (isDefault) {
+            // Default presentation: iOS resolves it via `fetchPresentationWith:nil`
+            // (mirrors the legacy `fetchPresentation` fallback path).
+            [Purchasely fetchPresentationWith:nil
+                                    contentId:contentId
+                             fetchCompletion:onFetchCompletion
+                                    completion:nil
+                             loadedCompletion:nil];
+        } else {
+            NSError *error = [NSError errorWithDomain:@"io.purchasely.presentation"
+                                                 code:400
+                                             userInfo:@{NSLocalizedDescriptionKey: @"No placementId or screenId provided"}];
+            onFetchCompletion(nil, error);
+        }
+        resolve(@(YES));
+    });
+}
+
+#pragma mark - displayPresentation
+
+RCT_EXPORT_METHOD(displayPresentation:(NSString *)requestId
+                  payload:(NSDictionary *)payload
+                  transition:(NSDictionary *)transition
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
+    ensurePresentationState();
+
+    NSString *placementId = nil;
+    NSString *presentationId = nil;
+    NSString *contentId = nil;
+    BOOL isDefault = NO;
+    [self extractPresentationTargets:payload
+                          toPlacement:&placementId
+                       toPresentation:&presentationId
+                          toContentId:&contentId
+                          toIsDefault:&isDefault];
+
+    __weak PurchaselyRN *weakSelf = self;
+
+    // Captured for the close-flow: lets the dismissal handler send the
+    // dismissed event with the right outcome.
+    __block PLYPresentation *capturedPresentation = nil;
+    __block PLYProductViewControllerResult capturedResult = PLYProductViewControllerResultCancelled;
+    __block PLYPlan *capturedPlan = nil;
+    __block BOOL hasPurchaseOutcome = NO;
+
+    void (^emitDismissed)(NSError * _Nullable) = ^(NSError * _Nullable error) {
+        PurchaselyRN *strongSelf = weakSelf;
+        if (!strongSelf) { return; }
+        NSMutableDictionary *body = [NSMutableDictionary new];
+        body[@"requestId"] = requestId;
+        if (capturedPresentation != nil) {
+            body[@"presentation"] = presentationToMap(capturedPresentation);
+        }
+        if (hasPurchaseOutcome) {
+            NSNumber *ordinal = purchaseResultOrdinal(capturedResult);
+            if (ordinal != nil) {
+                body[@"purchaseResult"] = ordinal;
+            }
+            if (capturedPlan != nil) {
+                body[@"plan"] = [capturedPlan asDictionary];
+            }
+        }
+        if (error != nil) {
+            body[@"error"] = presentationErrorToMap(error);
+        }
+        // closeReason stays absent on iOS until native exposes it (cf. P0.2).
+        [strongSelf emitPresentationEvent:kPresentationEventDismissed body:body];
+        @synchronized (kPresentationStateLock) {
+            [kPresentationsByRequest removeObjectForKey:requestId];
+        }
+    };
+
+    void (^onFetchCompletion)(PLYPresentation * _Nullable, NSError * _Nullable) =
+    ^(PLYPresentation * _Nullable presentation, NSError * _Nullable error) {
+        PurchaselyRN *strongSelf = weakSelf;
+        if (!strongSelf) { return; }
+
+        // Emit `onLoaded` (mirrors Android contract — preload+display share the
+        // same lifecycle on the JS side).
+        NSMutableDictionary *loaded = [NSMutableDictionary new];
+        loaded[@"requestId"] = requestId;
+        if (presentation != nil) {
+            loaded[@"presentation"] = presentationToMap(presentation);
+        }
+        if (error != nil) {
+            loaded[@"error"] = presentationErrorToMap(error);
+        }
+        [strongSelf emitPresentationEvent:kPresentationEventLoaded body:loaded];
+
+        if (error != nil) {
+            // P0.4: synthesize an onPresented(null, error) since the native
+            // pipeline failed before the controller was shown.
+            NSMutableDictionary *presented = [NSMutableDictionary new];
+            presented[@"requestId"] = requestId;
+            presented[@"error"] = presentationErrorToMap(error);
+            [strongSelf emitPresentationEvent:kPresentationEventPresented body:presented];
+
+            emitDismissed(error);
+            return;
+        }
+
+        if (presentation == nil) {
+            NSError *missing = [NSError errorWithDomain:@"io.purchasely.presentation"
+                                                   code:404
+                                               userInfo:@{NSLocalizedDescriptionKey: @"Presentation not found"}];
+            NSMutableDictionary *presented = [NSMutableDictionary new];
+            presented[@"requestId"] = requestId;
+            presented[@"error"] = presentationErrorToMap(missing);
+            [strongSelf emitPresentationEvent:kPresentationEventPresented body:presented];
+
+            emitDismissed(missing);
+            return;
+        }
+
+        capturedPresentation = presentation;
+        @synchronized (kPresentationStateLock) {
+            kPresentationsByRequest[requestId] = presentation;
+        }
+
+        // Emit onPresented (no native callback for it yet — we fire after the
+        // controller becomes available).
+        NSMutableDictionary *presented = [NSMutableDictionary new];
+        presented[@"requestId"] = requestId;
+        presented[@"presentation"] = presentationToMap(presentation);
+        [strongSelf emitPresentationEvent:kPresentationEventPresented body:presented];
+
+        UIViewController *controller = presentation.controller;
+        if (controller == nil) {
+            NSError *err = [NSError errorWithDomain:@"io.purchasely.presentation"
+                                               code:500
+                                           userInfo:@{NSLocalizedDescriptionKey: @"Presentation has no controller"}];
+            emitDismissed(err);
+            return;
+        }
+
+        // Apply the transition `dismissible` flag if provided.
+        if ([transition isKindOfClass:[NSDictionary class]]) {
+            id dismissible = transition[@"dismissible"];
+            if ([dismissible isKindOfClass:[NSNumber class]]) {
+                controller.modalInPresentation = ![dismissible boolValue];
+            }
+        }
+
+        strongSelf.presentedPresentationViewController = controller;
+        [Purchasely showController:controller type:PLYUIControllerTypeProductPage from:nil];
+    };
+
+    void (^onResultCompletion)(PLYProductViewControllerResult, PLYPlan * _Nullable) =
+    ^(PLYProductViewControllerResult result, PLYPlan * _Nullable plan) {
+        capturedResult = result;
+        capturedPlan = plan;
+        hasPurchaseOutcome = YES;
+        emitDismissed(nil);
+    };
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (placementId != nil) {
+            [Purchasely fetchPresentationFor:placementId
+                                   contentId:contentId
+                              fetchCompletion:onFetchCompletion
+                                   completion:onResultCompletion
+                            loadedCompletion:nil];
+        } else if (presentationId != nil) {
+            [Purchasely fetchPresentationWith:presentationId
+                                    contentId:contentId
+                             fetchCompletion:onFetchCompletion
+                                    completion:onResultCompletion
+                             loadedCompletion:nil];
+        } else if (isDefault) {
+            // Default presentation: iOS resolves it via `fetchPresentationWith:nil`
+            // (mirrors the legacy `fetchPresentation` fallback path).
+            [Purchasely fetchPresentationWith:nil
+                                    contentId:contentId
+                             fetchCompletion:onFetchCompletion
+                                    completion:onResultCompletion
+                             loadedCompletion:nil];
+        } else {
+            NSError *error = [NSError errorWithDomain:@"io.purchasely.presentation"
+                                                 code:400
+                                             userInfo:@{NSLocalizedDescriptionKey: @"No placementId or screenId provided"}];
+            onFetchCompletion(nil, error);
+        }
+        resolve(@(YES));
+    });
+}
+
+#pragma mark - closePresentation / goBackToPreviousScreen
+
+RCT_EXPORT_METHOD(closePresentation:(NSString *)requestId) {
+    ensurePresentationState();
+    dispatch_async(dispatch_get_main_queue(), ^{
+        // Notify JS so the host app can react before the native dismissal happens.
+        [self emitPresentationEvent:kPresentationEventCloseRequested body:@{ @"requestId": requestId ?: @"" }];
+        self.presentedPresentationViewController = nil;
+        [Purchasely closeDisplayedPresentation];
+        @synchronized (kPresentationStateLock) {
+            [kPresentationsByRequest removeObjectForKey:requestId];
+        }
+    });
+}
+
+RCT_EXPORT_METHOD(goBackToPreviousScreen:(NSString *)requestId) {
+    // The legacy iOS SDK does not expose a `back()` primitive on the
+    // presentation controller. Bridge contract says: noop with a warn.
+    RCTLogWarn(@"[Purchasely] goBackToPreviousScreen(%@) is not yet bridged on iOS", requestId);
+}
+
+#pragma mark - interceptors
+
+RCT_EXPORT_METHOD(registerActionInterceptor:(NSString *)kind) {
+    ensurePresentationState();
+    @synchronized (kPresentationStateLock) {
+        [kInterceptorKinds addObject:kind];
+    }
+
+    // The iOS SDK exposes a single global interceptor — we wire it once and
+    // dispatch to JS only for the registered kinds. Re-installing the same
+    // block on each call is safe (the SDK replaces the previous one).
+    dispatch_async(dispatch_get_main_queue(), ^{
+        __weak PurchaselyRN *weakSelf = self;
+        [Purchasely setPaywallActionsInterceptor:^(PLYPresentationAction action,
+                                                     PLYPresentationActionParameters * _Nullable params,
+                                                     PLYPresentationInfo * _Nullable infos,
+                                                     void (^ _Nonnull onProcessActionHandler)(BOOL)) {
+            PurchaselyRN *strongSelf = weakSelf;
+            if (!strongSelf) {
+                onProcessActionHandler(YES);
+                return;
+            }
+
+            NSString *actionKind = stringFromPresentationAction(action);
+            BOOL kindRegistered;
+            @synchronized (kPresentationStateLock) {
+                kindRegistered = [kInterceptorKinds containsObject:actionKind];
+            }
+            if (!kindRegistered) {
+                // JS did not register this kind — fall through to native default.
+                onProcessActionHandler(YES);
+                return;
+            }
+
+            NSString *callbackId = [[NSUUID UUID] UUIDString];
+            @synchronized (kPresentationStateLock) {
+                kInterceptorCallbacks[callbackId] = ^(NSString *result) {
+                    // Map InterceptResult → bool the native interceptor expects.
+                    //   - success / failed → JS handled the action: don't proceed natively.
+                    //   - notHandled       → let the SDK perform its default behavior.
+                    BOOL proceed = [result isEqualToString:@"notHandled"];
+                    onProcessActionHandler(proceed);
+                };
+            }
+
+            // Serialize info + payload.
+            NSMutableDictionary *info = [NSMutableDictionary new];
+            if (infos.contentId != nil) {
+                info[@"contentId"] = infos.contentId;
+            }
+            if (infos.presentationId != nil) {
+                // Surface the loaded PLYPresentation if we still have it cached.
+                PLYPresentation *cached = nil;
+                for (PLYPresentation *p in PurchaselyRN.presentationsLoaded) {
+                    if ([p.id isEqualToString:infos.presentationId]) {
+                        cached = p;
+                        break;
+                    }
+                }
+                NSMutableDictionary *presentationMap = [NSMutableDictionary new];
+                presentationMap[@"screenId"] = infos.presentationId;
+                presentationMap[@"id"] = infos.presentationId;
+                if (infos.placementId != nil) {
+                    presentationMap[@"placementId"] = infos.placementId;
+                }
+                if (cached != nil) {
+                    NSDictionary *full = presentationToMap(cached);
+                    [presentationMap addEntriesFromDictionary:full];
+                }
+                info[@"presentation"] = presentationMap;
+            }
+
+            NSMutableDictionary *payloadOut = [NSMutableDictionary new];
+            if (params != nil) {
+                switch (action) {
+                    case PLYPresentationActionNavigate: {
+                        payloadOut[@"url"] = params.url.absoluteString ?: @"";
+                        if (params.title != nil) {
+                            payloadOut[@"title"] = params.title;
+                        }
+                        break;
+                    }
+                    case PLYPresentationActionPurchase: {
+                        if (params.plan != nil) {
+                            payloadOut[@"plan"] = [params.plan asDictionary];
+                        }
+                        if (params.promoOffer != nil) {
+                            NSMutableDictionary *offer = [NSMutableDictionary new];
+                            if (params.promoOffer.vendorId != nil) {
+                                offer[@"vendorId"] = params.promoOffer.vendorId;
+                            }
+                            if (params.promoOffer.storeOfferId != nil) {
+                                offer[@"storeOfferId"] = params.promoOffer.storeOfferId;
+                            }
+                            payloadOut[@"offer"] = offer;
+                        }
+                        break;
+                    }
+                    case PLYPresentationActionClose:
+                    case PLYPresentationActionCloseAll: {
+                        // iOS has no closeReason yet — default to "button"
+                        // (cf. contract: iOS closeReason always null/button until fix).
+                        payloadOut[@"closeReason"] = @"button";
+                        break;
+                    }
+                    case PLYPresentationActionOpenPresentation: {
+                        if (params.presentation != nil) {
+                            payloadOut[@"presentationId"] = params.presentation;
+                        }
+                        break;
+                    }
+                    case PLYPresentationActionOpenPlacement: {
+                        if (params.placement != nil) {
+                            payloadOut[@"placementId"] = params.placement;
+                        }
+                        break;
+                    }
+                    case PLYPresentationActionWebCheckout: {
+                        payloadOut[@"url"] = params.url.absoluteString ?: @"";
+                        if (params.clientReferenceId != nil) {
+                            payloadOut[@"clientReferenceId"] = params.clientReferenceId;
+                        }
+                        if (params.queryParameterKey != nil) {
+                            payloadOut[@"queryParameterKey"] = params.queryParameterKey;
+                        }
+                        payloadOut[@"webCheckoutProvider"] =
+                            stringFromWebCheckoutProvider(params.webCheckoutProvider);
+                        break;
+                    }
+                    default:
+                        break;
+                }
+            }
+
+            NSMutableDictionary *event = [NSMutableDictionary new];
+            event[@"requestId"] = @"";
+            event[@"callbackId"] = callbackId;
+            event[@"kind"] = actionKind;
+            event[@"info"] = info;
+            event[@"payload"] = payloadOut;
+            [strongSelf emitPresentationEvent:kPresentationEventActionIntercepted body:event];
+        }];
+    });
+}
+
+RCT_EXPORT_METHOD(unregisterActionInterceptor:(NSString *)kind) {
+    ensurePresentationState();
+    BOOL noKindsLeft;
+    @synchronized (kPresentationStateLock) {
+        [kInterceptorKinds removeObject:kind];
+        noKindsLeft = (kInterceptorKinds.count == 0);
+    }
+    if (noKindsLeft) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [Purchasely setPaywallActionsInterceptor:nil];
+        });
+    }
+}
+
+RCT_EXPORT_METHOD(completeActionInterceptor:(NSString *)callbackId result:(NSString *)result) {
+    ensurePresentationState();
+    void (^cb)(NSString *) = nil;
+    @synchronized (kPresentationStateLock) {
+        cb = kInterceptorCallbacks[callbackId];
+        if (cb != nil) {
+            [kInterceptorCallbacks removeObjectForKey:callbackId];
+        }
+    }
+    // Invoke outside the lock — the callback re-enters the SDK's action handler.
+    if (cb != nil) {
+        cb(result);
+    }
+}
+
+#pragma mark - start options
+
+RCT_EXPORT_METHOD(applyStartOptions:(NSDictionary *)options) {
+    if (![options isKindOfClass:[NSDictionary class]]) { return; }
+    id allowDeeplink = options[@"allowDeeplink"];
+    if ([allowDeeplink isKindOfClass:[NSNumber class]]) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [Purchasely readyToOpenDeeplink:[allowDeeplink boolValue]];
+        });
+    }
+    // `allowCampaigns` is honored on Android via the consent manager; on iOS
+    // the equivalent is not exposed publicly yet — JS clients receive the value
+    // back through the start payload but iOS does not yet act on it.
+    id allowCampaigns = options[@"allowCampaigns"];
+    if ([allowCampaigns isKindOfClass:[NSNumber class]] && ![allowCampaigns boolValue]) {
+        RCTLogWarn(@"[Purchasely] allowCampaigns(false) is not bridged on iOS yet");
+    }
 }
 
 @end

@@ -1,6 +1,6 @@
 import { NativeModules } from 'react-native';
 
-import { LogLevels, RunningMode } from '../enums';
+import { LogLevels, RunningMode } from './enums';
 
 type LogLevelString = 'debug' | 'info' | 'warn' | 'error';
 type RunningModeString = 'observer' | 'full';
@@ -31,7 +31,7 @@ interface StartBuilderState {
 }
 
 /**
- * Cross-platform builder for `Purchasely.start()` (v6).
+ * Cross-platform builder for `Purchasely.start()`.
  *
  * Mirrors the Android/iOS contract:
  * - `allowDeeplink` / `allowCampaigns` are part of the chain (Android-style).
@@ -40,7 +40,7 @@ interface StartBuilderState {
  * - `stores(...)` is Android-only.
  * - `storekitVersion(...)` is iOS-only.
  *
- * In v6 the default running mode is `'observer'` — the host app keeps full
+ * The default running mode is `'observer'` — the host app keeps full
  * control of the purchase flow unless it opts into `'full'`.
  */
 export class PurchaselyBuilder {
@@ -135,14 +135,14 @@ export class PurchaselyBuilder {
             bridgeVersion
         );
 
-        // Apply the v6 chain-only options through the bridge.
-        if (NativeModules.Purchasely.v6ApplyStartOptions) {
-            NativeModules.Purchasely.v6ApplyStartOptions({
+        // Apply the chain-only options through the bridge.
+        if (NativeModules.Purchasely.applyStartOptions) {
+            NativeModules.Purchasely.applyStartOptions({
                 allowDeeplink: this.state.allowDeeplink,
                 allowCampaigns: this.state.allowCampaigns,
             });
         } else {
-            // Fallback for older native bridges still ignoring v6ApplyStartOptions.
+            // Fallback for older native bridges still ignoring applyStartOptions.
             NativeModules.Purchasely.readyToOpenDeeplink(
                 this.state.allowDeeplink
             );
