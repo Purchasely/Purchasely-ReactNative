@@ -281,6 +281,9 @@ export type PLYPresentationPlan = {
   storeProductId?: string | null;
   basePlanId?: string | null;
   offerId?: string | null;
+  storeOfferId?: string | null;
+  offerVendorId?: string | null;
+  default?: boolean | null;
 };
 
 export type PLYPresentationMetadata = {

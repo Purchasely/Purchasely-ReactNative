@@ -53,6 +53,7 @@ android {
 }
 
 repositories {
+  mavenLocal()
   google()
   mavenCentral()
   maven { url 'https://developer.huawei.com/repo/' }
