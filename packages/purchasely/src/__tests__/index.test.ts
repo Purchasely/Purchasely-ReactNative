@@ -25,6 +25,7 @@ jest.mock('react-native', () => ({
             getAnonymousUserId: jest.fn().mockResolvedValue('anonymous-user-id'),
             setLogLevel: jest.fn(),
             readyToOpenDeeplink: jest.fn(),
+            applyStartOptions: jest.fn(),
             setAttribute: jest.fn(),
             setLanguage: jest.fn(),
             synchronize: jest.fn(),
@@ -170,6 +171,24 @@ describe('Purchasely SDK', () => {
         it('should call native close', () => {
             Purchasely.close()
             expect(mockedPurchasely.close).toHaveBeenCalled()
+        })
+
+        it('should start through the v6 builder with wrapper version and safe start options', async () => {
+            await Purchasely.builder('api-key').start()
+
+            expect(mockedPurchasely.start).toHaveBeenCalledWith(
+                'api-key',
+                ['Google'],
+                false,
+                null,
+                mockConstants.logLevelError,
+                mockConstants.runningModeObserver,
+                '6.0.0-beta.0'
+            )
+            expect(mockedPurchasely.applyStartOptions).toHaveBeenCalledWith({
+                allowDeeplink: false,
+                allowCampaigns: true,
+            })
         })
     })
 

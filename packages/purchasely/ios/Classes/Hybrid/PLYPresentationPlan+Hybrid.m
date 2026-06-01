@@ -16,6 +16,10 @@
     if (self.offerId) {
         [dict setObject:self.offerId forKey:@"offerId"];
     }
+
+    if (self.offerVendorId) {
+        [dict setObject:self.offerVendorId forKey:@"offerVendorId"];
+    }
     
     if (self.storeProductId) {
         [dict setObject:self.storeProductId forKey:@"storeProductId"];
@@ -24,6 +28,8 @@
     if (self.planVendorId) {
         [dict setObject:self.planVendorId forKey:@"planVendorId"];
     }
+
+    [dict setObject:@(self.default) forKey:@"default"];
     
     return dict;
 }

@@ -26,19 +26,20 @@ been removed (see Breaking changes below).
   `openPlacement`, `webCheckout`, `login`, `restore`, `promoCode`). Handler
   returns `'success' | 'failed' | 'notHandled'`.
 - **`removeActionInterceptor(kind)`** / **`removeAllActionInterceptors()`**.
-- **5 new native events**: `PURCHASELY_V6_LOADED`, `PURCHASELY_V6_PRESENTED`,
-  `PURCHASELY_V6_CLOSE_REQUESTED`, `PURCHASELY_V6_DISMISSED`,
-  `PURCHASELY_V6_ACTION_INTERCEPTED`.
+- **5 native presentation events**: `PURCHASELY_PRESENTATION_LOADED`,
+  `PURCHASELY_PRESENTATION_PRESENTED`,
+  `PURCHASELY_PRESENTATION_CLOSE_REQUESTED`,
+  `PURCHASELY_PRESENTATION_DISMISSED`,
+  `PURCHASELY_ACTION_INTERCEPTED`.
 
 ### Native bridges
 
-- **Android**: `PurchaselyV6Bridge` (Kotlin object) wired to the v6 SDK builder
-  (`PLYPresentationBase.builder()`) — direct mapping of every contract item.
-- **iOS**: `PurchaselyRN (V6)` category implemented on top of the legacy
-  `fetchPresentationFor:contentId:fetchCompletion:completion:` while the
-  native v6 SDK lands. The bridge synthesizes the 5-field outcome and the
-  `onPresented(presentation?, error?)` callback per contract workarounds.
-  `closeReason` stays `null` on iOS until the native pipeline exposes it.
+- **Android**: v6 presentation and interceptor wiring lives directly in
+  `PurchaselyModule.kt` and uses the native v6 builder (`PLYPresentationBase.builder()`).
+- **iOS**: v6 presentation and interceptor wiring lives directly in
+  `PurchaselyRN.m`. The bridge uses the native v6 builder/interceptor APIs where
+  available and still synthesizes missing fields such as `closeReason` until the
+  native iOS pipeline exposes them.
 
 ### Breaking changes — v5 paywall API removed
 
@@ -76,10 +77,11 @@ Removed → replacement:
 The default `runningMode` is now `'observer'` (v5 defaulted to full control of
 the purchase flow). Pass `.runningMode('full')` to keep the previous behaviour.
 
-**Unchanged**: all CORE methods (user, products, subscriptions, attributes,
-listeners, `presentSubscriptions`, `clientPresentationDisplayed` /
-`clientPresentationClosed`) and the embedded `PLYPresentationView` component
-behave exactly as in 5.x.
+**Unchanged**: all CORE methods (user, products, subscription data, attributes,
+listeners, `clientPresentationDisplayed` / `clientPresentationClosed`) and the
+embedded `PLYPresentationView` component behave exactly as in 5.x. The Android
+native SDK v6 removed the built-in subscription-list UI, so
+`presentSubscriptions()` is a no-op with a warning on Android.
 
 ### iOS TODOs (tracked in the bridge code)
 

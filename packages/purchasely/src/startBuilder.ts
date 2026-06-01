@@ -59,7 +59,7 @@ export class PurchaselyBuilder {
             apiKey: key,
             runningMode: 'observer',
             logLevel: 'error',
-            allowDeeplink: true,
+            allowDeeplink: false,
             allowCampaigns: true,
             androidStores: ['google'],
             storekitVersion: 'storeKit2',

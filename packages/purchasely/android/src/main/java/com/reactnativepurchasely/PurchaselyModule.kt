@@ -1,6 +1,5 @@
 package com.reactnativepurchasely
 
-import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.util.Log
@@ -198,8 +197,8 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
       .logLevel(LogLevel.values()[logLevel])
       .runningMode(when(runningMode) {
         runningModeTransactionOnly -> PLYRunningMode.Full
-        runningModeObserver -> PLYRunningMode.PaywallObserver
-        runningModePaywallObserver -> PLYRunningMode.PaywallObserver
+        runningModeObserver -> PLYRunningMode.Observer
+        runningModePaywallObserver -> PLYRunningMode.Observer
         else -> PLYRunningMode.Full
       })
       .build()
@@ -210,9 +209,9 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
 
     Purchasely.appTechnology = PLYAppTechnology.REACT_NATIVE
 
-    Purchasely.start { isConfigured, error ->
-      if(isConfigured) promise.resolve(true)
-      else promise.reject(error ?: IllegalStateException("Purchasely start failed"))
+    Purchasely.start { error ->
+      if(error == null) promise.resolve(true)
+      else promise.reject(error)
     }
 
     Purchasely.purchaseListener = purchaseListener
@@ -263,7 +262,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
 
   @ReactMethod
   fun readyToOpenDeeplink(ready: Boolean) {
-    Purchasely.readyToOpenDeeplink = ready
+    Purchasely.allowDeeplink = ready
   }
 
   @ReactMethod
@@ -525,7 +524,8 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
         return
       }
 
-    val presentation = presentationsLoaded.firstOrNull { it.id ==  presentationMap.getString("id")}
+    val requestedScreenId = presentationMap.getString("screenId") ?: presentationMap.getString("id")
+    val presentation = presentationsLoaded.firstOrNull { it.screenId == requestedScreenId }
 
     if(presentation != null) {
       Purchasely.clientPresentationDisplayed(presentation)
@@ -539,7 +539,8 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
       return
     }
 
-    val presentation = presentationsLoaded.firstOrNull { it.id ==  presentationMap.getString("id")}
+    val requestedScreenId = presentationMap.getString("screenId") ?: presentationMap.getString("id")
+    val presentation = presentationsLoaded.firstOrNull { it.screenId == requestedScreenId }
 
     if(presentation != null) {
       Purchasely.clientPresentationClosed(presentation)
@@ -609,8 +610,7 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
 
   @ReactMethod
   fun presentSubscriptions() {
-    val intent = Intent(reactApplicationContext.applicationContext, PLYSubscriptionsActivity::class.java)
-    reactApplicationContext.currentActivity?.startActivity(intent)
+    PLYLogger.w("[Purchasely] presentSubscriptions() is not available with the Android v6 SDK; build your own subscription UI from userSubscriptions().")
   }
 
   @ReactMethod
@@ -620,7 +620,7 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
       return
     }
     val uri = Uri.parse(deeplink)
-    promise.resolve(Purchasely.isDeeplinkHandled(uri))
+    promise.resolve(Purchasely.handleDeeplink(uri, reactApplicationContext.currentActivity))
   }
 
   @ReactMethod
@@ -730,7 +730,10 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
       prepared.preload { loaded, error ->
         val map = Arguments.createMap()
         map.putString("requestId", requestId)
-        loaded?.let { map.putMap("presentation", it.toRNMap()) }
+        loaded?.let {
+          activeLoadedPresentations[requestId] = it
+          map.putMap("presentation", it.toRNMap())
+        }
         error?.let { map.putMap("error", it.toRNMap()) }
         sendEvent(reactApplicationContext, EVENT_PRESENTATION_LOADED, map)
       }
@@ -799,8 +802,8 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
       prepared.display(
         context = activity,
         transition = plyTransition,
-        presentation = null,
-        callback = { /* dismissed event is sent via onDismissed */ }
+        presentation = { loaded -> activeLoadedPresentations[requestId] = loaded },
+        callback = { outcome -> emitPresentationDismissed(requestId, outcome) }
       )
 
       promise.resolve(true)
@@ -817,6 +820,7 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
   @ReactMethod
   fun closePresentation(requestId: String) {
     activePresentationRequests.remove(requestId)
+    activeLoadedPresentations.remove(requestId)
     // The SDK does not yet expose a per-request close, so this dismisses
     // *every* displayed presentation, not just `requestId`. Warn the host when
     // other requests are still active so tearing down a stacked presentation is
@@ -833,8 +837,12 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
 
   @ReactMethod
   fun goBackToPreviousScreen(requestId: String) {
-    // No public `back()` on the Java façade — surface as a noop log.
-    PLYLogger.w("[Purchasely] back($requestId) is not yet bridged on Android")
+    val loaded = activeLoadedPresentations[requestId]
+    if (loaded == null) {
+      PLYLogger.w("[Purchasely] back($requestId) ignored: presentation is not loaded")
+      return
+    }
+    loaded.back()
   }
 
   /** Register an interceptor for a given action kind. */
@@ -926,20 +934,10 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
   @ReactMethod
   fun applyStartOptions(options: ReadableMap) {
     if (options.hasKey("allowDeeplink") && !options.isNull("allowDeeplink")) {
-      Purchasely.readyToOpenDeeplink = options.getBoolean("allowDeeplink")
+      Purchasely.allowDeeplink = options.getBoolean("allowDeeplink")
     }
     if (options.hasKey("allowCampaigns") && !options.isNull("allowCampaigns")) {
-      // No direct setter for "disallowCampaigns" — leverage the privacy API.
-      // If the host opts out, we record it through the consent manager.
-      if (!options.getBoolean("allowCampaigns")) {
-        runCatching {
-          Purchasely.revokeDataProcessingConsent(
-            setOf(PLYDataProcessingPurpose.Campaigns)
-          )
-        }.onFailure {
-          PLYLogger.w("[Purchasely] allowCampaigns(false) could not be honored: ${it.message}")
-        }
-      }
+      Purchasely.allowCampaigns = options.getBoolean("allowCampaigns")
     }
   }
 
@@ -1010,20 +1008,25 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
       sendEvent(reactApplicationContext, EVENT_PRESENTATION_CLOSE_REQUESTED, payload)
     }
     prepared.onDismissed = { outcome: PLYPresentationOutcome ->
-      val payload = Arguments.createMap()
-      payload.putString("requestId", requestId)
-      outcome.presentation?.let { payload.putMap("presentation", it.toRNMap()) }
-      outcome.purchaseResult?.let { payload.putInt("purchaseResult", it.toRNOrdinal()) }
-      outcome.plan?.let {
-        payload.putMap("plan", Arguments.makeNativeMap(
-          transformPlanToMap(it).toMutableMap()
-        ))
-      }
-      outcome.closeReason?.let { payload.putString("closeReason", it.toRNString()) }
-      outcome.error?.let { payload.putMap("error", it.toRNMap()) }
-      sendEvent(reactApplicationContext, EVENT_PRESENTATION_DISMISSED, payload)
-      activePresentationRequests.remove(requestId)
+      emitPresentationDismissed(requestId, outcome)
     }
+  }
+
+  private fun emitPresentationDismissed(requestId: String, outcome: PLYPresentationOutcome) {
+    val payload = Arguments.createMap()
+    payload.putString("requestId", requestId)
+    outcome.presentation?.let { payload.putMap("presentation", it.toRNMap()) }
+    outcome.purchaseResult?.let { payload.putInt("purchaseResult", it.toRNOrdinal()) }
+    outcome.plan?.let {
+      payload.putMap("plan", Arguments.makeNativeMap(
+        transformPlanToMap(it).toMutableMap()
+      ))
+    }
+    outcome.closeReason?.let { payload.putString("closeReason", it.toRNString()) }
+    outcome.error?.let { payload.putMap("error", it.toRNMap()) }
+    sendEvent(reactApplicationContext, EVENT_PRESENTATION_DISMISSED, payload)
+    activePresentationRequests.remove(requestId)
+    activeLoadedPresentations.remove(requestId)
   }
 
   /**
@@ -1042,8 +1045,17 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
     runCatching { abTestVariantId?.let { map.putString("abTestVariantId", it) } }
     runCatching { language?.let { map.putString("language", it) } }
     runCatching { map.putInt("type", type.ordinal) }
-    runCatching { height?.let { map.putInt("height", it) } }
+    runCatching { map.putInt("height", height) }
+    if (plans.isNotEmpty()) {
+      val planMaps = plans.map { Arguments.makeNativeMap(it.toMap()) }
+      map.putArray("plans", Arguments.makeNativeArray(planMaps))
+    }
+    metadata?.let { map.putMap("metadata", Arguments.makeNativeMap(it.toRNMetadataMap())) }
     return map
+  }
+
+  private fun io.purchasely.ext.presentation.PLYPresentationMetadata.toRNMetadataMap(): Map<String, Any?> {
+    return keys().associateWith { key -> get(key) }
   }
 
   private fun PLYError.toRNMap(): WritableMap {
@@ -1182,6 +1194,9 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
     /** Active presentation requests, keyed by the JS-supplied requestId. */
     private val activePresentationRequests = ConcurrentHashMap<String, PLYPresentationBase.Prepared>()
 
+    /** Loaded presentations currently associated with a JS request id. */
+    private val activeLoadedPresentations = ConcurrentHashMap<String, PLYPresentation>()
+
     /** Pending interceptor callbacks, resolved when JS calls completeActionInterceptor. */
     private val pendingActionInterceptors =
       ConcurrentHashMap<String, CompletableDeferred<PLYInterceptResult>>()
@@ -1227,12 +1242,15 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
     }
   }
 
-  fun PLYPresentationPlan.toMap(): Map<String, String?> {
+  fun PLYPresentationPlan.toMap(): Map<String, Any?> {
     return mapOf(
       Pair("planVendorId", planVendorId),
       Pair("storeProductId", storeProductId),
       Pair("basePlanId", basePlanId),
-      Pair("storeOfferId", storeOfferId)
+      Pair("storeOfferId", storeOfferId),
+      Pair("offerId", storeOfferId),
+      Pair("offerVendorId", offerVendorId),
+      Pair("default", default)
     )
   }
 

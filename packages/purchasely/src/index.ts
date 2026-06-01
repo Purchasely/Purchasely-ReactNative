@@ -27,7 +27,7 @@ import {
 } from './interceptor';
 import type { PresentationActionKind } from './presentationTypes';
 
-const purchaselyVersion = '6.0.0';
+const purchaselyVersion = '6.0.0-beta.0';
 
 const constants = NativeModules.Purchasely.getConstants() as Constants;
 
