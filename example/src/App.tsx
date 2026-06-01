@@ -19,7 +19,7 @@ function App(): React.JSX.Element {
     async function setupPurchasely() {
         var configured = false
         try {
-            // v6 chained builder — the only supported way to start the SDK.
+            // chained builder — the only supported way to start the SDK.
             // `allowDeeplink(true)` replaces the legacy `readyToOpenDeeplink`.
             configured = await Purchasely.builder(
                 'fcb39be4-2ba4-4db7-bde3-2a5a1e20745d'
@@ -226,7 +226,7 @@ function App(): React.JSX.Element {
         const offeringsEmpty: DynamicOffering[] = await Purchasely.getDynamicOfferings()
         console.log('Dynamic offerings:', offeringsEmpty)
 
-        // Set paywall action interceptors (v6). Each handler is typed by the
+        // Set paywall action interceptors. Each handler is typed by the
         // action kind and must return 'success' | 'failed' | 'notHandled'.
         // Returning 'notHandled' lets the SDK perform its default behavior;
         // 'success' tells the SDK the host app fully handled the action.
@@ -287,7 +287,7 @@ function App(): React.JSX.Element {
     }
 
     // Preload a placement so its paywall is ready before the user reaches it.
-    // The v6 `preload()` resolves once the screen is loaded (no UI shown yet).
+    // The `preload()` resolves once the screen is loaded (no UI shown yet).
     const preloadOnboarding = async () => {
         try {
             const presentation = await PresentationBuilder.placement(
@@ -296,40 +296,40 @@ function App(): React.JSX.Element {
                 .contentId(null)
                 .build()
                 .preload()
-            console.info('[v6] preloaded', presentation.screenId)
+            console.info('[Purchasely] preloaded', presentation.screenId)
         } catch (e) {
             console.error(e)
         }
     }
 
     // -------------------------------------------------------------------------
-    // v6 presentation demo. Builds an ONBOARDING placement request, wires up
+    // presentation demo. Builds an ONBOARDING placement request, wires up
     // every lifecycle callback, then displays it. `display()` resolves at
     // DISMISS with a 5-field `PresentationOutcome`.
     //
-    // To opt in, uncomment the `presentOnboardingV6()` call inside the
+    // To opt in, uncomment the `presentOnboarding()` call inside the
     // `useEffect` below.
     // -------------------------------------------------------------------------
-    async function presentOnboardingV6() {
+    async function presentOnboarding() {
         // Build, present and react to lifecycle callbacks.
         const request = PresentationBuilder.placement('ONBOARDING')
             .contentId('content_123')
             .onLoaded((presentation) => {
-                console.info('[v6] loaded', presentation.screenId)
+                console.info('[Purchasely] loaded', presentation.screenId)
             })
             .onPresented((presentation, error) => {
                 if (error) {
-                    console.error('[v6] presented error', error)
+                    console.error('[Purchasely] presented error', error)
                     return
                 }
-                console.info('[v6] presented', presentation?.screenId)
+                console.info('[Purchasely] presented', presentation?.screenId)
             })
             .onCloseRequested(() => {
-                console.info('[v6] close requested by host')
+                console.info('[Purchasely] close requested by host')
             })
             .onDismissed((outcome) => {
                 console.info(
-                    '[v6] dismissed',
+                    '[Purchasely] dismissed',
                     'purchaseResult=', outcome.purchaseResult,
                     'plan=', outcome.plan?.vendorId,
                     'closeReason=', outcome.closeReason,
@@ -339,7 +339,7 @@ function App(): React.JSX.Element {
             .build()
 
         const outcome = await request.display({ type: 'fullScreen' })
-        console.info('[v6] display() resolved with outcome', outcome)
+        console.info('[Purchasely] display() resolved with outcome', outcome)
 
         // Detach every interceptor previously registered.
         removeAllActionInterceptors()
@@ -348,9 +348,9 @@ function App(): React.JSX.Element {
     useEffect(() => {
         setupPurchasely()
         preloadOnboarding()
-        // Uncomment to display the ONBOARDING paywall through the v6 pipeline
+        // Uncomment to display the ONBOARDING paywall through the presentation pipeline
         // once the SDK has been started by `setupPurchasely()` above.
-        // presentOnboardingV6()
+        // presentOnboarding()
     }, [])
 
     return (

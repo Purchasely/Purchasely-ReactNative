@@ -1,9 +1,9 @@
 /**
- * Integration tests for the v6 cross-platform façade.
+ * Integration tests for the cross-platform façade.
  *
  * Validates the JS ↔ native contract documented in
- * `reports/v6-presentation-comparison-v3-claude/BRIDGE-CONTRACT.md`:
- *   - PresentationBuilder → invokes `v6Preload`/`v6Display` with expected args
+ * `the cross-platform bridge contract`:
+ *   - PresentationBuilder → invokes `preloadPresentation`/`displayPresentation` with expected args
  *   - Lifecycle events (LOADED, PRESENTED, CLOSE_REQUESTED, DISMISSED) flow
  *     through `NativeEventEmitter` and resolve the public promises/callbacks
  *   - Outcome carries the 5 fields (presentation, purchaseResult, plan,
@@ -27,14 +27,14 @@ jest.mock('react-native', () => {
             productResultCancelled: 1,
             productResultRestored: 2,
         }),
-        v6Preload: jest.fn().mockResolvedValue(undefined),
-        v6Display: jest.fn().mockResolvedValue(undefined),
-        v6Close: jest.fn(),
-        v6Back: jest.fn(),
-        v6RegisterInterceptor: jest.fn(),
-        v6UnregisterInterceptor: jest.fn(),
-        v6CompleteInterceptor: jest.fn(),
-        v6ApplyStartOptions: jest.fn(),
+        preloadPresentation: jest.fn().mockResolvedValue(undefined),
+        displayPresentation: jest.fn().mockResolvedValue(undefined),
+        closePresentation: jest.fn(),
+        goBackToPreviousScreen: jest.fn(),
+        registerActionInterceptor: jest.fn(),
+        unregisterActionInterceptor: jest.fn(),
+        completeActionInterceptor: jest.fn(),
+        applyStartOptions: jest.fn(),
         start: jest.fn().mockResolvedValue(true),
         readyToOpenDeeplink: jest.fn(),
         addListener: jest.fn(),
@@ -67,12 +67,9 @@ jest.mock('react-native', () => {
 });
 
 import { NativeModules } from 'react-native';
-import {
-    PresentationBuilder,
-    interceptAction,
-    removeActionInterceptor,
-    PURCHASELY_V6_EVENTS,
-} from '../v6';
+import { PresentationBuilder } from '../presentation';
+import { interceptAction, removeActionInterceptor } from '../interceptor';
+import { PURCHASELY_PRESENTATION_EVENTS } from '../events';
 
 const native = NativeModules.Purchasely as any;
 const emit = native.__testEmit as (e: string, p: any) => void;
@@ -87,37 +84,37 @@ const fakePresentationPayload = {
     plans: [],
 };
 
-describe('v6 façade · integration with native bridge', () => {
+describe('façade · integration with native bridge', () => {
     beforeEach(() => {
-        native.v6Preload.mockClear();
-        native.v6Display.mockClear();
-        native.v6Close.mockClear();
-        native.v6Back.mockClear();
-        native.v6RegisterInterceptor.mockClear();
-        native.v6UnregisterInterceptor.mockClear();
-        native.v6CompleteInterceptor.mockClear();
+        native.preloadPresentation.mockClear();
+        native.displayPresentation.mockClear();
+        native.closePresentation.mockClear();
+        native.goBackToPreviousScreen.mockClear();
+        native.registerActionInterceptor.mockClear();
+        native.unregisterActionInterceptor.mockClear();
+        native.completeActionInterceptor.mockClear();
         native.__testResetListeners();
     });
 
     describe('PresentationBuilder.placement(...).preload()', () => {
-        it('invokes v6Preload with placementId + contentId payload', async () => {
+        it('invokes preloadPresentation with placementId + contentId payload', async () => {
             const req = PresentationBuilder.placement('home')
                 .contentId('content-1')
                 .build();
 
             const preloadPromise = req.preload();
             // The native call must have been issued synchronously.
-            expect(native.v6Preload).toHaveBeenCalledTimes(1);
-            const [requestId, payload] = native.v6Preload.mock.calls[0];
+            expect(native.preloadPresentation).toHaveBeenCalledTimes(1);
+            const [requestId, payload] = native.preloadPresentation.mock.calls[0];
             expect(typeof requestId).toBe('string');
-            expect(requestId).toMatch(/^v6_req_/);
+            expect(requestId).toMatch(/^ply_req_/);
             expect(payload).toMatchObject({
                 placementId: 'home',
                 contentId: 'content-1',
             });
 
             // Simulate native success.
-            emit(PURCHASELY_V6_EVENTS.LOADED, {
+            emit(PURCHASELY_PRESENTATION_EVENTS.LOADED, {
                 requestId,
                 presentation: fakePresentationPayload,
             });
@@ -130,9 +127,9 @@ describe('v6 façade · integration with native bridge', () => {
         it('rejects when native emits LOADED with an error', async () => {
             const req = PresentationBuilder.placement('home').build();
             const preloadPromise = req.preload();
-            const [requestId] = native.v6Preload.mock.calls[0];
+            const [requestId] = native.preloadPresentation.mock.calls[0];
 
-            emit(PURCHASELY_V6_EVENTS.LOADED, {
+            emit(PURCHASELY_PRESENTATION_EVENTS.LOADED, {
                 requestId,
                 presentation: null,
                 error: { code: 'NET', message: 'offline' },
@@ -150,8 +147,8 @@ describe('v6 façade · integration with native bridge', () => {
             const req = PresentationBuilder.screen('screen-xyz').build();
             req.preload();
 
-            expect(native.v6Preload).toHaveBeenCalledTimes(1);
-            const [, payload] = native.v6Preload.mock.calls[0];
+            expect(native.preloadPresentation).toHaveBeenCalledTimes(1);
+            const [, payload] = native.preloadPresentation.mock.calls[0];
             // Contract P1.1 — JS façade uses `screenId`, but the native bridge
             // contract still uses `presentationId` (iOS native API name) until
             // the iOS SDK renames it. The TS layer maps the two transparently.
@@ -171,19 +168,19 @@ describe('v6 façade · integration with native bridge', () => {
             const req = PresentationBuilder.default().build();
             req.preload();
 
-            expect(native.v6Preload).toHaveBeenCalledTimes(1);
-            const [, payload] = native.v6Preload.mock.calls[0];
+            expect(native.preloadPresentation).toHaveBeenCalledTimes(1);
+            const [, payload] = native.preloadPresentation.mock.calls[0];
             expect(payload.isDefault).toBe(true);
             expect(payload.placementId).toBeNull();
             expect(payload.presentationId).toBeNull();
         });
 
-        it('forwards the same default payload to v6Display', () => {
+        it('forwards the same default payload to displayPresentation', () => {
             const req = PresentationBuilder.default().build();
             req.display();
 
-            expect(native.v6Display).toHaveBeenCalledTimes(1);
-            const [, payload] = native.v6Display.mock.calls[0];
+            expect(native.displayPresentation).toHaveBeenCalledTimes(1);
+            const [, payload] = native.displayPresentation.mock.calls[0];
             expect(payload.isDefault).toBe(true);
             expect(payload.placementId).toBeNull();
             expect(payload.presentationId).toBeNull();
@@ -191,7 +188,7 @@ describe('v6 façade · integration with native bridge', () => {
 
         it('placement()/screen() do not set isDefault', () => {
             PresentationBuilder.placement('home').build().preload();
-            const [, payload] = native.v6Preload.mock.calls[0];
+            const [, payload] = native.preloadPresentation.mock.calls[0];
             expect(payload.isDefault).toBe(false);
         });
     });
@@ -211,24 +208,24 @@ describe('v6 façade · integration with native bridge', () => {
                 .build();
 
             const displayPromise = req.display({ type: 'modal' });
-            expect(native.v6Display).toHaveBeenCalledTimes(1);
-            const [requestId, , transition] = native.v6Display.mock.calls[0];
+            expect(native.displayPresentation).toHaveBeenCalledTimes(1);
+            const [requestId, , transition] = native.displayPresentation.mock.calls[0];
             expect(transition).toMatchObject({ type: 'modal' });
 
             // PRESENTED first — must NOT resolve the display promise
             // (contract P0.3 — bridge waits for DISMISSED).
-            emit(PURCHASELY_V6_EVENTS.PRESENTED, {
+            emit(PURCHASELY_PRESENTATION_EVENTS.PRESENTED, {
                 requestId,
                 presentation: fakePresentationPayload,
             });
             expect(presentedPayload).not.toBeNull();
             expect(presentedPayload.p.screenId).toBe('screen-abc');
 
-            emit(PURCHASELY_V6_EVENTS.CLOSE_REQUESTED, { requestId });
+            emit(PURCHASELY_PRESENTATION_EVENTS.CLOSE_REQUESTED, { requestId });
             expect(closeRequestedFired).toBe(true);
 
             // Now DISMISSED — promise resolves with full outcome.
-            emit(PURCHASELY_V6_EVENTS.DISMISSED, {
+            emit(PURCHASELY_PRESENTATION_EVENTS.DISMISSED, {
                 requestId,
                 presentation: fakePresentationPayload,
                 purchaseResult: 0, // purchased (ordinal mapping)
@@ -252,10 +249,10 @@ describe('v6 façade · integration with native bridge', () => {
                 })
                 .build();
             req.display();
-            const [requestId] = native.v6Display.mock.calls[0];
+            const [requestId] = native.displayPresentation.mock.calls[0];
 
             // Contract P0.4 — error path may carry an error on PRESENTED.
-            emit(PURCHASELY_V6_EVENTS.PRESENTED, {
+            emit(PURCHASELY_PRESENTATION_EVENTS.PRESENTED, {
                 requestId,
                 presentation: null,
                 error: { message: 'render failed' },
@@ -268,9 +265,9 @@ describe('v6 façade · integration with native bridge', () => {
         it('returns an outcome.error envelope when DISMISSED carries an error', async () => {
             const req = PresentationBuilder.placement('home').build();
             const promise = req.display();
-            const [requestId] = native.v6Display.mock.calls[0];
+            const [requestId] = native.displayPresentation.mock.calls[0];
 
-            emit(PURCHASELY_V6_EVENTS.DISMISSED, {
+            emit(PURCHASELY_PRESENTATION_EVENTS.DISMISSED, {
                 requestId,
                 error: { code: 'X', message: 'oops' },
             });
@@ -285,9 +282,9 @@ describe('v6 façade · integration with native bridge', () => {
         it('registers, dispatches and resolves an interceptor end-to-end', async () => {
             const handler = jest.fn().mockResolvedValue('success' as const);
             interceptAction('purchase', handler);
-            expect(native.v6RegisterInterceptor).toHaveBeenCalledWith('purchase');
+            expect(native.registerActionInterceptor).toHaveBeenCalledWith('purchase');
 
-            emit(PURCHASELY_V6_EVENTS.ACTION_INTERCEPTED, {
+            emit(PURCHASELY_PRESENTATION_EVENTS.ACTION_INTERCEPTED, {
                 requestId: 'req-1',
                 callbackId: 'cb-1',
                 kind: 'purchase',
@@ -304,7 +301,7 @@ describe('v6 façade · integration with native bridge', () => {
                 kind: 'purchase',
                 plan: { vendorId: 'monthly' },
             });
-            expect(native.v6CompleteInterceptor).toHaveBeenCalledWith('cb-1', 'success');
+            expect(native.completeActionInterceptor).toHaveBeenCalledWith('cb-1', 'success');
         });
 
         it('does not auto-resolve orphan events (native must time out)', async () => {
@@ -312,9 +309,9 @@ describe('v6 façade · integration with native bridge', () => {
             // bridge emits the event nobody filters it in, so the bridge layer
             // does NOT post a result back. Native is expected to handle the
             // timeout / default behavior on its side.
-            // (Documented as a TODO in the v6 contract — a global JS fallback
+            // (Documented as a TODO in the bridge contract — a global JS fallback
             //  could be added later if native does not handle it.)
-            emit(PURCHASELY_V6_EVENTS.ACTION_INTERCEPTED, {
+            emit(PURCHASELY_PRESENTATION_EVENTS.ACTION_INTERCEPTED, {
                 requestId: 'req-2',
                 callbackId: 'cb-orphan',
                 kind: 'restore',
@@ -322,7 +319,7 @@ describe('v6 façade · integration with native bridge', () => {
             });
             await new Promise((r) => setImmediate(r));
 
-            expect(native.v6CompleteInterceptor).not.toHaveBeenCalled();
+            expect(native.completeActionInterceptor).not.toHaveBeenCalled();
         });
 
         it('dispatches only to the matching kind (cross-kind isolation)', async () => {
@@ -331,7 +328,7 @@ describe('v6 façade · integration with native bridge', () => {
             interceptAction('purchase', purchaseHandler);
             interceptAction('login', loginHandler);
 
-            emit(PURCHASELY_V6_EVENTS.ACTION_INTERCEPTED, {
+            emit(PURCHASELY_PRESENTATION_EVENTS.ACTION_INTERCEPTED, {
                 requestId: 'req-3',
                 callbackId: 'cb-3',
                 kind: 'purchase',
@@ -342,14 +339,14 @@ describe('v6 façade · integration with native bridge', () => {
 
             expect(purchaseHandler).toHaveBeenCalledTimes(1);
             expect(loginHandler).not.toHaveBeenCalled();
-            expect(native.v6CompleteInterceptor).toHaveBeenCalledWith('cb-3', 'success');
+            expect(native.completeActionInterceptor).toHaveBeenCalledWith('cb-3', 'success');
         });
 
         it('removeActionInterceptor calls the native unregister', () => {
             interceptAction('login', jest.fn());
-            native.v6RegisterInterceptor.mockClear();
+            native.registerActionInterceptor.mockClear();
             removeActionInterceptor('login');
-            expect(native.v6UnregisterInterceptor).toHaveBeenCalledWith('login');
+            expect(native.unregisterActionInterceptor).toHaveBeenCalledWith('login');
         });
     });
 });
