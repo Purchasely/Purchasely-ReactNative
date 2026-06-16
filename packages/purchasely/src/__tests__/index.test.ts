@@ -183,7 +183,7 @@ describe('Purchasely SDK', () => {
                 null,
                 mockConstants.logLevelError,
                 mockConstants.runningModeObserver,
-                '6.0.0-beta.0'
+                '6.0.0-rc.1'
             )
             expect(mockedPurchasely.applyStartOptions).toHaveBeenCalledWith({
                 allowDeeplink: false,
@@ -635,6 +635,17 @@ describe('Purchasely SDK', () => {
         it('should call synchronize', () => {
             Purchasely.synchronize()
             expect(mockedPurchasely.synchronize).toHaveBeenCalled()
+        })
+
+        it('should resolve when the native synchronize succeeds', async () => {
+            mockedPurchasely.synchronize.mockResolvedValueOnce(true)
+            await expect(Purchasely.synchronize()).resolves.toBe(true)
+        })
+
+        it('should reject when the native synchronize fails', async () => {
+            const error = new Error('No store configured')
+            mockedPurchasely.synchronize.mockRejectedValueOnce(error)
+            await expect(Purchasely.synchronize()).rejects.toBe(error)
         })
     })
 })

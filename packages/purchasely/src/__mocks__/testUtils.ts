@@ -80,7 +80,7 @@ export const createMockPurchaselyModule = () => ({
     readyToOpenDeeplink: jest.fn(),
     setAttribute: jest.fn(),
     setLanguage: jest.fn(),
-    synchronize: jest.fn(),
+    synchronize: jest.fn().mockResolvedValue(true),
     fetchPresentation: jest.fn().mockResolvedValue({
         id: 'presentation-id',
         placementId: 'placement-id',

@@ -227,8 +227,12 @@ export const HomeScreen: React.FC<NativeStackScreenProps<any>> = ({
     }
 
     const onPressSynchronize = async () => {
-        Purchasely.synchronize()
-        console.log('Synchronize done')
+        try {
+            await Purchasely.synchronize()
+            console.log('Synchronize done')
+        } catch (e) {
+            console.error('Synchronize failed', e)
+        }
     }
 
     return (
