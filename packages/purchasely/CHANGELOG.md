@@ -73,15 +73,16 @@ Removed → replacement:
   `request.onDismissed(outcome => ...)`.
 - `readyToOpenDeeplink(true)` →
   `Purchasely.builder(apiKey).allowDeeplink(true).start()`.
+- `presentSubscriptions()` → **removed** on both iOS and Android; the native v6
+  SDKs no longer ship a built-in subscription-list UI. Build your own from
+  `userSubscriptions()`.
 
 The default `runningMode` is now `'observer'` (v5 defaulted to full control of
 the purchase flow). Pass `.runningMode('full')` to keep the previous behaviour.
 
 **Unchanged**: all CORE methods (user, products, subscription data, attributes,
 listeners, `clientPresentationDisplayed` / `clientPresentationClosed`) and the
-embedded `PLYPresentationView` component behave exactly as in 5.x. The Android
-native SDK v6 removed the built-in subscription-list UI, so
-`presentSubscriptions()` is a no-op with a warning on Android.
+embedded `PLYPresentationView` component behave exactly as in 5.x.
 
 ### iOS TODOs (tracked in the bridge code)
 

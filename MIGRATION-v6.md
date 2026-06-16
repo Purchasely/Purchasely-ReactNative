@@ -304,9 +304,10 @@ awaitable result — see above). The following keep working exactly as in v5:
 - **Subscriptions data**: `userSubscriptions`, `userSubscriptionsHistory`,
   `restoreAllProducts`, `silentRestoreAllProducts`,
   `userDidConsumeSubscriptionContent`.
-  `presentSubscriptions()` remains callable for source compatibility, but the
-  Android native SDK v6 removed the built-in subscription-list UI, so Android
-  logs a warning/no-ops; build your own UI from the subscription data APIs.
+
+> **Removed:** `presentSubscriptions()` no longer exists (iOS **and** Android).
+> The native v6 SDKs dropped the built-in subscription-list UI — build your own
+> screen from `userSubscriptions()` / `userSubscriptionsHistory()`.
 - **Attributes**: `setUserAttributeWith{String,Number,Boolean,Date,StringArray,NumberArray,BooleanArray}`,
   `incrementUserAttribute`, `decrementUserAttribute`, `userAttributes`,
   `userAttribute`, `clearUserAttribute`, `clearUserAttributes`,

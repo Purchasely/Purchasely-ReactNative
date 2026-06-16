@@ -6,6 +6,29 @@
 > mettre à jour `../Documentation` (docs publiques) et `../purchasely-ai-skill`
 > (références `react-native/`), comme cela a été fait pour Android, iOS et Flutter.
 
+> **⚠️ Mise à jour 2026-06-16 (session suivante — bridge iOS finalisé).**
+> Les **doutes n°2 et n°7** ci-dessous sont **obsolètes**. Le bridge iOS ne
+> compilait en réalité **pas** contre le pod `6.0.0-rc.1` : il appelait des API
+> natives **v5 supprimées** (`presentationController(for:…)`, `fetchPresentationFor:`,
+> `fetchPresentationWith:`, `closeDisplayedPresentation`, `subscriptionsController`),
+> erreurs masquées par l'échec `fmt`. Corrections appliquées cette session :
+> - **`PurchaselyRN.m` / `PurchaselyView.swift`** migrés vers l'**API builder v6** :
+>   `PLYPresentationBuilder.forPlacementId(_:)`/`forScreenId(_:)` → `build()` →
+>   `preloadWithCompletion:` + `onDismissed:` (`PLYPresentationOutcome`),
+>   `showController:type:from:` conservé, `closeDisplayedPresentation` →
+>   `[presentation close]` / `closeAllScreens`.
+> - **RunningMode** : `TransactionOnly`/`PaywallObserver` supprimés du natif (reste
+>   `Observer=2`/`Full=3`) → enum local `PLYRNRunningMode` + mapping (parité Android).
+> - `setDynamicOffering` : nouveau paramètre `billingPlanType:`.
+> - Bug ObjC préexistant masqué : `PLYPresentationPlan+Hybrid.m` `self.default`
+>   (mot-clé réservé) → `self.default_`.
+> - **`presentSubscriptions` SUPPRIMÉ** sur iOS **et** Android + surface JS (≠ no-op).
+> - **`fmt` est débloqué** par le `post_install` `FMT_USE_CONSTEVAL=0` du Podfile
+>   (hérité de la migration RN 0.86) — le doute n°2 est résolu.
+> Vérifié : `yarn typecheck`/`lint` OK, Jest 136/136, et
+> `react-native run-ios --device "iPhone KH"` = **built + installed + launched**
+> sur device physique (Xcode 26.5, RN 0.86). Runtime des paywalls non encore exercé.
+
 ---
 
 ## 1. Contexte et principe
@@ -196,8 +219,11 @@ try {
 `setDynamicOffering`/`getDynamicOfferings`/`removeDynamicOffering`/`clearDynamicOfferings`,
 `clientPresentationDisplayed`/`clientPresentationClosed`, `revokeDataProcessingConsent`,
 `setLanguage`, `setThemeMode`, `setLogLevel`, `setDebugMode`, `isDeeplinkHandled`,
-`userDidConsumeSubscriptionContent`, `presentSubscriptions` (Android : no-op + warning,
-UI native d'abonnements retirée en v6).
+`userDidConsumeSubscriptionContent`.
+
+> `presentSubscriptions` a été **supprimé** (iOS + Android + surface JS) : la v6
+> native ne fournit plus d'UI native de liste d'abonnements. Construire son
+> propre écran à partir de `userSubscriptions()`.
 
 ---
 
