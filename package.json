@@ -2,6 +2,9 @@
   "name": "monorepo-root",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": ">=22.11"
+  },
   "scripts": {
     "postinstall": "node ./scripts/fix-rnc-cli-permissions.js",
     "lint": "yarn workspace react-native-purchasely lint",
