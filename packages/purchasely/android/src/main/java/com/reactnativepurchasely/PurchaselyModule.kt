@@ -618,11 +618,6 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
   }
 
   @ReactMethod
-  fun presentSubscriptions() {
-    PLYLogger.w("[Purchasely] presentSubscriptions() is not available with the Android v6 SDK; build your own subscription UI from userSubscriptions().")
-  }
-
-  @ReactMethod
   fun isDeeplinkHandled(deeplink: String?, promise: Promise) {
     if (deeplink == null) {
       promise.reject(IllegalStateException("Deeplink must not be null"))

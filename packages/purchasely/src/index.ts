@@ -205,10 +205,6 @@ const userSubscriptionsHistory = (): Promise<PurchaselySubscription[]> => {
   return NativeModules.Purchasely.userSubscriptionsHistory();
 };
 
-const presentSubscriptions = (): void => {
-  return NativeModules.Purchasely.presentSubscriptions();
-};
-
 const isDeeplinkHandled = (deeplink: string | null): Promise<boolean> => {
   return NativeModules.Purchasely.isDeeplinkHandled(deeplink);
 };
@@ -372,7 +368,6 @@ const Purchasely = {
   silentRestoreAllProducts,
   userSubscriptions,
   userSubscriptionsHistory,
-  presentSubscriptions,
   isDeeplinkHandled,
   synchronize,
   setLanguage,
