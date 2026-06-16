@@ -48,10 +48,6 @@ export const HomeScreen: React.FC<NativeStackScreenProps<any>> = ({
             title: 'Sign Promotional Offer',
             onPress: () => onPressSignPromotionalOffer(),
         },
-        {
-            title: 'Display Subscriptions',
-            onPress: () => onPressSubscriptions(),
-        },
         { title: 'Restore', onPress: () => onPressRestore() },
         { title: 'Silent Restore', onPress: () => onPressSilentRestore() },
         { title: 'Synchronize', onPress: () => onPressSynchronize() },
@@ -201,10 +197,6 @@ export const HomeScreen: React.FC<NativeStackScreenProps<any>> = ({
         } catch (e) {
             console.error(e)
         }
-    }
-
-    const onPressSubscriptions = () => {
-        Purchasely.presentSubscriptions()
     }
 
     const onPressRestore = async () => {
