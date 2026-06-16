@@ -2,7 +2,11 @@
   "name": "monorepo-root",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": ">=22.11"
+  },
   "scripts": {
+    "postinstall": "node ./scripts/fix-rnc-cli-permissions.js",
     "lint": "yarn workspace react-native-purchasely lint",
     "typecheck": "yarn workspace react-native-purchasely typecheck",
     "test": "yarn workspace react-native-purchasely test",
@@ -25,8 +29,7 @@
     "reset-module": "find . -name 'node_modules' -type d -prune -exec rm -rf '{}' +"
   },
   "resolutions": {
-    "@types/react": "^18.2.12",
-    "@types/react-native": "^0.70.14",
+    "@types/react": "^19.2.0",
     "@babel/plugin-transform-modules-systemjs": ">=7.29.4",
     "basic-ftp": ">=5.3.1",
     "brace-expansion": "~1.1.13",
@@ -56,7 +59,7 @@
     "@release-it-plugins/workspaces": "^4.2.0",
     "@release-it/bumper": "^7.0.1",
     "@release-it/conventional-changelog": "^9.0.2",
-    "@types/react": "^19.0.10",
+    "@types/react": "^19.2.0",
     "@typescript-eslint/eslint-plugin": "^8.25.0",
     "@typescript-eslint/parser": "^8.25.0",
     "eslint": "^8.57.1",
@@ -70,7 +73,7 @@
     "eslint-plugin-react": "^7.37.4",
     "prettier": "^3.5.2",
     "release-it": "^17.10.0",
-    "typescript": "^5.2.2"
+    "typescript": "^5.8.3"
   },
   "release-it": {
     "git": {
