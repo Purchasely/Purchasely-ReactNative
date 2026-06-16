@@ -87,10 +87,14 @@ const configured = await Purchasely.builder('YOUR_API_KEY')
   .start()
 ```
 
-> **Default running mode changed.** In v6 the default `runningMode` is
-> `'observer'` — the host app keeps control of the purchase flow unless it opts
-> into `'full'`. Pass `.runningMode('full')` to keep the previous v5 default
-> behaviour where Purchasely owns the purchase flow.
+> **⚠️ Major breaking change — the default `runningMode` is now `'observer'`
+> (v5 effectively defaulted to `full`).** This is a **silent behavioural change**:
+> it does **not** produce a compile error, so an app that previously let
+> Purchasely own the purchase flow will **stop doing so** after upgrading unless
+> it explicitly passes `.runningMode('full')`. Audit every `start()`/`builder()`
+> call. The change is consistent across platforms (iOS, Android, Flutter, React
+> Native), including the native fallback: any unknown/unset value now resolves to
+> `observer`, never `full`.
 
 ---
 
