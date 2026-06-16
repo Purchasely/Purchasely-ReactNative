@@ -29,7 +29,9 @@
         [dict setObject:self.planVendorId forKey:@"planVendorId"];
     }
 
-    [dict setObject:@(self.default) forKey:@"default"];
+    // `default` is an ObjC keyword; the v6 SDK exposes the property as
+    // `default_` (getter `default`), so dot-syntax must use `default_`.
+    [dict setObject:@(self.default_) forKey:@"default"];
     
     return dict;
 }
