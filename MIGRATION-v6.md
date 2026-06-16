@@ -265,14 +265,38 @@ const handled = await Purchasely.isDeeplinkHandled('app://ply/presentations/')
 
 ---
 
+## Synchronize (now awaitable)
+
+`Purchasely.synchronize()` previously returned `void` (fire-and-forget). The v6
+native SDKs expose completion callbacks (iOS `synchronize(success:failure:)`,
+Android `synchronize(onSuccess:(PLYPlan?)->Unit, onError:(PLYError?)->Unit)`),
+so the bridge now returns a **`Promise<boolean>`** that resolves when the
+receipt synchronization completes and rejects on failure.
+
+This is **source-compatible**: existing fire-and-forget callers keep working
+(they just ignore the returned promise). New code can await it:
+
+```typescript
+try {
+  await Purchasely.synchronize() // resolves when the sync finishes
+  console.log('Synchronized')
+} catch (e) {
+  console.error('Synchronize failed', e) // e.g. PLYError.NoStoreConfigured
+}
+```
+
+> In Observer mode after a host-side purchase, `await Purchasely.synchronize()`
+> before chaining a follow-up placement so the receipt is uploaded first.
+
+---
+
 ## What's UNCHANGED
 
 All **core** SDK methods are unchanged in name, signature, and behaviour. Only
-the v5 *paywall* surface was removed. The following keep working exactly as in
-v5:
+the v5 *paywall* surface was removed (plus `synchronize`, which gained an
+awaitable result — see above). The following keep working exactly as in v5:
 
-- **User**: `userLogin`, `userLogout`, `getAnonymousUserId`, `isAnonymous`,
-  `synchronize`.
+- **User**: `userLogin`, `userLogout`, `getAnonymousUserId`, `isAnonymous`.
 - **Products**: `allProducts`, `productWithIdentifier`, `planWithIdentifier`,
   `purchaseWithPlanVendorId`, `signPromotionalOffer`, `isEligibleForIntroOffer`,
   `setDynamicOffering`, `getDynamicOfferings`, `removeDynamicOffering`,
