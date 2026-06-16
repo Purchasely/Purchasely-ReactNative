@@ -35,6 +35,10 @@ export const HomeScreen: React.FC<NativeStackScreenProps<any>> = ({
         { title: 'Preload Presentation', onPress: () => onPressPreload() },
         { title: 'Display Nested View', onPress: () => onPressNestedView() },
         {
+            title: 'Nested View (preloaded)',
+            onPress: () => onPressNestedViewPreloaded(),
+        },
+        {
             title: 'Close Presentation',
             onPress: () => onPressClosePresentation(),
         },
@@ -141,6 +145,14 @@ export const HomeScreen: React.FC<NativeStackScreenProps<any>> = ({
     const onPressNestedView = () => {
         // The embedded PLYPresentationView is driven by a placement id.
         navigation.navigate('Paywall', {
+            placementId: 'nested',
+        })
+    }
+
+    const onPressNestedViewPreloaded = () => {
+        // The embedded PLYPresentationView reuses a request preloaded by the
+        // screen (request.preload() → <PLYPresentationView request={...} />).
+        navigation.navigate('PaywallPreloaded', {
             placementId: 'nested',
         })
     }

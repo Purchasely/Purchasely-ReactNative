@@ -12,6 +12,7 @@ import Purchasely, {
     removeAllActionInterceptors,
 } from 'react-native-purchasely'
 import { PaywallScreen } from './Paywall.tsx'
+import { PaywallPreloadedScreen } from './PaywallPreloaded.tsx'
 
 const Stack = createNativeStackNavigator()
 
@@ -362,6 +363,10 @@ function App(): React.JSX.Element {
                     options={{ title: 'Welcome' }}
                 />
                 <Stack.Screen name="Paywall" component={PaywallScreen} />
+                <Stack.Screen
+                    name="PaywallPreloaded"
+                    component={PaywallPreloadedScreen}
+                />
             </Stack.Navigator>
         </NavigationContainer>
     )
