@@ -8,7 +8,6 @@ import {
     View,
 } from 'react-native'
 import { NativeStackScreenProps } from '@react-navigation/native-stack'
-import { Colors } from 'react-native/Libraries/NewAppScreen'
 import Purchasely, {
     PLYPresentationType,
     PresentationBuilder,
@@ -27,7 +26,7 @@ export const HomeScreen: React.FC<NativeStackScreenProps<any>> = ({
     const currentRequest = useRef<PresentationRequest | null>(null)
 
     const backgroundStyle = {
-        backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
+        backgroundColor: isDarkMode ? '#222222' : '#F3F3F3',
     }
 
     // Boutons d'exemples
