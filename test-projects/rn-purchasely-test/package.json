@@ -13,7 +13,7 @@
     "@purchasely/react-native-purchasely-android-player": "^5.6.2",
     "@purchasely/react-native-purchasely-google": "^5.6.2",
     "react": "19.0.0",
-    "react-native": "0.79.2",
+    "react-native": "0.86.0",
     "react-native-purchasely": "^5.6.2",
     "react-native-safe-area-context": "^5.4.0"
   },
@@ -26,7 +26,7 @@
     "@react-native-community/cli-platform-ios": "^15.0.1",
     "@react-native/babel-preset": "0.79.2",
     "@react-native/eslint-config": "0.79.2",
-    "@react-native/metro-config": "0.79.2",
+    "@react-native/metro-config": "0.86.0",
     "@react-native/typescript-config": "0.79.2",
     "@types/react": "^19.0.0",
     "eslint": "^8.19.0",
