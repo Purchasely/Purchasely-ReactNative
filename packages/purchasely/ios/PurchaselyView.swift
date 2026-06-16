@@ -103,23 +103,66 @@ class PurchaselyView: UIView {
   private func createNativeViewController(placementId: String?) -> UIViewController? {
     self.fetched = false
     guard let placementId = placementId else { return nil }
-    let controller = Purchasely.presentationController(
-      for: placementId,
-      loaded: nil,
-      completion: { [weak self] result, plan in
+
+    // v6: `Purchasely.presentationController(for:loaded:completion:)` was removed.
+    // Build a presentation request, preload it, then install the controller once
+    // the SDK hands it back. Preload is asynchronous, so we return nil here and
+    // swap the real view in via `installController` on completion.
+    let request = PLYPresentationBuilder
+      .from(placementId: placementId)
+      .onDismissed { [weak self] outcome in
         guard let self = self else { return }
         let resultDict: NSDictionary
-        if let plan = plan {
-          resultDict = ["result": result.rawValue, "plan": plan.asDictionary()]
+        if let plan = outcome.plan {
+          resultDict = ["result": self.productResultOrdinal(outcome.purchaseResult), "plan": plan.asDictionary()]
         } else {
-          resultDict = ["result": result.rawValue, "plan": NSNull()]
+          resultDict = ["result": self.productResultOrdinal(outcome.purchaseResult), "plan": NSNull()]
         }
         DispatchQueue.main.async {
           self.onPresentationClosedPromise?(resultDict)
         }
       }
-    )
-    return controller
+      .build()
+
+    request.preload { [weak self] presentation, _ in
+      DispatchQueue.main.async {
+        guard let self = self, let controller = presentation?.controller else { return }
+        self.installController(controller)
+      }
+    }
+    return nil
+  }
+
+  /// Install a freshly-preloaded controller into this view, replacing any
+  /// placeholder added synchronously while the presentation was still loading.
+  private func installController(_ controller: UIViewController) {
+    _view?.removeFromSuperview()
+    _controller = controller
+    let view = controller.view ?? UIView()
+    _view = view
+    self.addSubview(view)
+    view.translatesAutoresizingMaskIntoConstraints = false
+    NSLayoutConstraint.activate([
+      view.topAnchor.constraint(equalTo: self.topAnchor),
+      view.trailingAnchor.constraint(equalTo: self.trailingAnchor),
+      view.leadingAnchor.constraint(equalTo: self.leadingAnchor),
+      view.bottomAnchor.constraint(equalTo: self.bottomAnchor)
+    ])
+    self.fetched = true
+    controller.beginAppearanceTransition(true, animated: true)
+  }
+
+  /// Map a v6 `PLYPurchaseResult` to the `ProductResult` ordinal JS expects.
+  /// Kept in sync with the `productResult*` constants exported by PurchaselyRN
+  /// (which are backed by `PLYProductViewControllerResult`, not `PLYPurchaseResult`).
+  private func productResultOrdinal(_ result: PLYPurchaseResult) -> Int {
+    switch result {
+    case .purchased: return PLYProductViewControllerResult.purchased.rawValue
+    case .cancelled: return PLYProductViewControllerResult.cancelled.rawValue
+    case .restored:  return PLYProductViewControllerResult.restored.rawValue
+    case .none:      return PLYProductViewControllerResult.cancelled.rawValue
+    @unknown default: return PLYProductViewControllerResult.cancelled.rawValue
+    }
   }
 }
 

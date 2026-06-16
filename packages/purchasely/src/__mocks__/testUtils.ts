@@ -112,7 +112,6 @@ export const createMockPurchaselyModule = () => ({
     closePresentation: jest.fn(),
     hidePresentation: jest.fn(),
     showPresentation: jest.fn(),
-    presentSubscriptions: jest.fn(),
     purchaseWithPlanVendorId: jest.fn().mockResolvedValue({
         vendorId: 'plan-id',
         productId: 'product-id',

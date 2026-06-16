@@ -141,17 +141,66 @@ static NSDictionary *presentationErrorToMap(NSError *error) {
     return map;
 }
 
-/// Convert a `PLYProductViewControllerResult` to the ordinal that JS expects
-/// for `PRESENTATION_DISMISSED.purchaseResult`. We keep the legacy ordinals
-/// here because the TS helper `purchaseResultFromOrdinal` translates them to
-/// the contract strings.
-static NSNumber *purchaseResultOrdinal(PLYProductViewControllerResult result) {
+/// Convert a `PLYPurchaseResult` to the ordinal that JS expects for
+/// `PRESENTATION_DISMISSED.purchaseResult`. We keep the legacy ordinals here
+/// because the TS helper `purchaseResultFromOrdinal` translates them to the
+/// contract strings. `none` carries no purchase outcome, so it maps to nil.
+static NSNumber *purchaseResultOrdinal(PLYPurchaseResult result) {
     switch (result) {
-        case PLYProductViewControllerResultPurchased: return @(0);
-        case PLYProductViewControllerResultCancelled: return @(1);
-        case PLYProductViewControllerResultRestored:  return @(2);
+        case PLYPurchaseResultPurchased: return @(0);
+        case PLYPurchaseResultCancelled: return @(1);
+        case PLYPurchaseResultRestored:  return @(2);
+        case PLYPurchaseResultNone:      return nil;
     }
     return nil;
+}
+
+/// Build a `PLYPresentationBuilder` from the cross-platform builder payload.
+/// `placementId` wins over `screenId`, which wins over the default presentation
+/// (mirrors the JS `PresentationBuilder` resolution order). Returns nil when no
+/// target was provided.
+static PLYPresentationBuilder *presentationBuilderFor(NSString *placementId,
+                                                      NSString *presentationId,
+                                                      NSString *contentId,
+                                                      BOOL isDefault) {
+    PLYPresentationBuilder *builder = nil;
+    if (placementId != nil) {
+        builder = [PLYPresentationBuilder forPlacementId:placementId];
+    } else if (presentationId != nil) {
+        // P1.1: `screenId` → `forScreenId:` on iOS.
+        builder = [PLYPresentationBuilder forScreenId:presentationId];
+    } else if (isDefault) {
+        builder = [[PLYPresentationBuilder alloc] init];
+    }
+    if (builder != nil && contentId != nil) {
+        [builder contentId:contentId];
+    }
+    return builder;
+}
+
+/// JS-facing running-mode ordinals. v6 removed `TransactionOnly` and
+/// `PaywallObserver` from the native `PLYRunningMode`, so we keep a stable
+/// cross-platform protocol here (same ordinals as Android `PurchaselyModule`)
+/// and map them to the nearest native mode at start.
+typedef NS_ENUM(NSInteger, PLYRNRunningMode) {
+    PLYRNRunningModeTransactionOnly = 0,
+    PLYRNRunningModeObserver = 1,
+    PLYRNRunningModePaywallObserver = 3,
+    PLYRNRunningModeFull = 4,
+};
+
+/// Map a JS running-mode ordinal to a native `PLYRunningMode`. Mirrors Android:
+/// transactionOnly/full → Full, observer/paywallObserver → Observer.
+static PLYRunningMode runningModeFromOrdinal(NSInteger ordinal) {
+    switch (ordinal) {
+        case PLYRNRunningModeObserver:
+        case PLYRNRunningModePaywallObserver:
+            return PLYRunningModeObserver;
+        case PLYRNRunningModeTransactionOnly:
+        case PLYRNRunningModeFull:
+        default:
+            return PLYRunningModeFull;
+    }
 }
 
 @implementation PurchaselyRN
@@ -239,10 +288,10 @@ static UIViewController *_sharedViewController;
 		@"autoRenewingSubscription": @(PLYPlanTypeAutoRenewingSubscription),
 		@"nonRenewingSubscription": @(PLYPlanTypeNonRenewingSubscription),
 		@"unknown": @(PLYPlanTypeUnknown),
-        @"runningModeTransactionOnly": @(PLYRunningModeTransactionOnly),
-        @"runningModeObserver": @(PLYRunningModeObserver),
-        @"runningModePaywallObserver": @(PLYRunningModePaywallObserver),
-        @"runningModeFull": @(PLYRunningModeFull),
+        @"runningModeTransactionOnly": @(PLYRNRunningModeTransactionOnly),
+        @"runningModeObserver": @(PLYRNRunningModeObserver),
+        @"runningModePaywallObserver": @(PLYRNRunningModePaywallObserver),
+        @"runningModeFull": @(PLYRNRunningModeFull),
         @"presentationTypeNormal": @(PLYPresentationTypeNormal),
         @"presentationTypeFallback": @(PLYPresentationTypeFallback),
         @"presentationTypeDeactivated": @(PLYPresentationTypeDeactivated),
@@ -276,7 +325,7 @@ RCT_EXPORT_METHOD(start:(NSString * _Nonnull)apiKey
 
     PurchaselyBuilder *builder = [[[[[[[Purchasely apiKey:apiKey]
         appUserId:userId]
-        runningMode:(PLYRunningMode)runningMode]
+        runningMode:runningModeFromOrdinal(runningMode)]
         storekitSettings: storeKit1 ? [StorekitSettings storeKit1] : [StorekitSettings storeKit2]]
         logLevel:(PLYLogLevel)logLevel]
         appTechnology:PLYAppTechnologyReactNative]
@@ -309,7 +358,7 @@ RCT_EXPORT_METHOD(startWithAPIKey:(NSString * _Nonnull)apiKey
 
     PurchaselyBuilder *builder = [[[[[[[Purchasely apiKey:apiKey]
         appUserId:userId]
-        runningMode:(PLYRunningMode)runningMode]
+        runningMode:runningModeFromOrdinal(runningMode)]
         storekitSettings:[StorekitSettings storeKit2]]
         logLevel:(PLYLogLevel)logLevel]
         appTechnology:PLYAppTechnologyReactNative]
@@ -642,21 +691,6 @@ RCT_EXPORT_METHOD(clientPresentationClosed:(NSDictionary<NSString *, id> * _Null
     [Purchasely clientPresentationClosedWith:presentationLoaded];
 }
 
-RCT_EXPORT_METHOD(presentSubscriptions)
-{
-	dispatch_async(dispatch_get_main_queue(), ^{
-		UIViewController *ctrl = [Purchasely subscriptionsController];
-		UINavigationController *navCtrl = [[UINavigationController alloc] initWithRootViewController:ctrl];
-
-#if TARGET_OS_TV
-		[navCtrl setNavigationBarHidden:YES];
-#else
-		ctrl.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem: UIBarButtonSystemItemDone target:navCtrl action:@selector(close)];
-#endif
-		[Purchasely showController:navCtrl type: PLYUIControllerTypeSubscriptionList from:nil];
-	});
-}
-
 RCT_EXPORT_METHOD(purchaseWithPlanVendorId:(NSString * _Nonnull)planVendorId
                   offerId:(NSString * _Nullable)offerId
 				  contentId:(NSString * _Nullable)contentId
@@ -847,7 +881,7 @@ RCT_EXPORT_METHOD(setDynamicOffering:(NSString *)reference
                   reject:(RCTPromiseRejectBlock)reject)
 {
     dispatch_async(dispatch_get_main_queue(), ^{
-      [Purchasely setDynamicOfferingWithReference:reference planVendorId:planVendorId offerVendorId:offerId completion:^(BOOL result) {
+      [Purchasely setDynamicOfferingWithReference:reference planVendorId:planVendorId offerVendorId:offerId billingPlanType:PLYBillingPlanTypeUnspecified completion:^(BOOL result) {
         resolve(@(result));
       }];
     });
@@ -1124,33 +1158,17 @@ RCT_EXPORT_METHOD(preloadPresentation:(NSString *)requestId
     };
 
     dispatch_async(dispatch_get_main_queue(), ^{
-        if (placementId != nil) {
-            [Purchasely fetchPresentationFor:placementId
-                                   contentId:contentId
-                              fetchCompletion:onFetchCompletion
-                                   completion:nil
-                            loadedCompletion:nil];
-        } else if (presentationId != nil) {
-            // P1.1: `screenId` → `fetchPresentationWith:` on iOS.
-            [Purchasely fetchPresentationWith:presentationId
-                                    contentId:contentId
-                             fetchCompletion:onFetchCompletion
-                                    completion:nil
-                             loadedCompletion:nil];
-        } else if (isDefault) {
-            // Default presentation: iOS resolves it via `fetchPresentationWith:nil`
-            // (mirrors the legacy `fetchPresentation` fallback path).
-            [Purchasely fetchPresentationWith:nil
-                                    contentId:contentId
-                             fetchCompletion:onFetchCompletion
-                                    completion:nil
-                             loadedCompletion:nil];
-        } else {
+        PLYPresentationBuilder *builder = presentationBuilderFor(placementId, presentationId, contentId, isDefault);
+        if (builder == nil) {
             NSError *error = [NSError errorWithDomain:@"io.purchasely.presentation"
                                                  code:400
                                              userInfo:@{NSLocalizedDescriptionKey: @"No placementId or screenId provided"}];
             onFetchCompletion(nil, error);
+            resolve(@(YES));
+            return;
         }
+        id<PLYPresentationRequest> request = [builder build];
+        [request preloadWithCompletion:onFetchCompletion];
         resolve(@(YES));
     });
 }
@@ -1179,7 +1197,7 @@ RCT_EXPORT_METHOD(displayPresentation:(NSString *)requestId
     // Captured for the close-flow: lets the dismissal handler send the
     // dismissed event with the right outcome.
     __block id<PLYPresentation> capturedPresentation = nil;
-    __block PLYProductViewControllerResult capturedResult = PLYProductViewControllerResultCancelled;
+    __block PLYPurchaseResult capturedResult = PLYPurchaseResultCancelled;
     __block PLYPlan *capturedPlan = nil;
     __block BOOL hasPurchaseOutcome = NO;
 
@@ -1285,41 +1303,35 @@ RCT_EXPORT_METHOD(displayPresentation:(NSString *)requestId
         [Purchasely showController:controller type:PLYUIControllerTypeProductPage from:nil];
     };
 
-    void (^onResultCompletion)(PLYProductViewControllerResult, PLYPlan * _Nullable) =
-    ^(PLYProductViewControllerResult result, PLYPlan * _Nullable plan) {
-        capturedResult = result;
-        capturedPlan = plan;
+    // v6: the dismiss outcome (purchaseResult, plan, closeReason, error) is
+    // delivered through the builder's `onDismissed` handler instead of the
+    // legacy `PLYProductViewControllerCompletionBlock`.
+    void (^onDismissed)(PLYPresentationOutcome *) = ^(PLYPresentationOutcome *outcome) {
+        capturedResult = outcome.purchaseResult;
+        capturedPlan = outcome.plan;
         hasPurchaseOutcome = YES;
-        emitDismissed(nil);
+        if (outcome.presentation != nil) {
+            capturedPresentation = outcome.presentation;
+        }
+        emitDismissed(outcome.error);
     };
 
     dispatch_async(dispatch_get_main_queue(), ^{
-        if (placementId != nil) {
-            [Purchasely fetchPresentationFor:placementId
-                                   contentId:contentId
-                              fetchCompletion:onFetchCompletion
-                                   completion:onResultCompletion
-                            loadedCompletion:nil];
-        } else if (presentationId != nil) {
-            [Purchasely fetchPresentationWith:presentationId
-                                    contentId:contentId
-                             fetchCompletion:onFetchCompletion
-                                    completion:onResultCompletion
-                             loadedCompletion:nil];
-        } else if (isDefault) {
-            // Default presentation: iOS resolves it via `fetchPresentationWith:nil`
-            // (mirrors the legacy `fetchPresentation` fallback path).
-            [Purchasely fetchPresentationWith:nil
-                                    contentId:contentId
-                             fetchCompletion:onFetchCompletion
-                                    completion:onResultCompletion
-                             loadedCompletion:nil];
-        } else {
+        PLYPresentationBuilder *builder = presentationBuilderFor(placementId, presentationId, contentId, isDefault);
+        if (builder == nil) {
             NSError *error = [NSError errorWithDomain:@"io.purchasely.presentation"
                                                  code:400
                                              userInfo:@{NSLocalizedDescriptionKey: @"No placementId or screenId provided"}];
             onFetchCompletion(nil, error);
+            resolve(@(YES));
+            return;
         }
+        [builder onDismissed:onDismissed];
+        id<PLYPresentationRequest> request = [builder build];
+        // Preload to obtain the controller, then show it ourselves so we keep
+        // control over the transition flag and `presentedPresentationViewController`
+        // tracking (`onFetchCompletion` calls `showController:`).
+        [request preloadWithCompletion:onFetchCompletion];
         resolve(@(YES));
     });
 }
@@ -1331,8 +1343,19 @@ RCT_EXPORT_METHOD(closePresentation:(NSString *)requestId) {
     dispatch_async(dispatch_get_main_queue(), ^{
         // Notify JS so the host app can react before the native dismissal happens.
         [self emitPresentationEvent:kPresentationEventCloseRequested body:@{ @"requestId": requestId ?: @"" }];
+        id<PLYPresentation> presentation = nil;
+        @synchronized (kPresentationStateLock) {
+            presentation = kPresentationsByRequest[requestId];
+        }
         self.presentedPresentationViewController = nil;
-        [Purchasely closeDisplayedPresentation];
+        // v6: close the specific presentation when we still hold it; otherwise
+        // fall back to closing every Purchasely screen (`closeDisplayedPresentation`
+        // was removed in the native v6 SDK).
+        if (presentation != nil) {
+            [presentation close];
+        } else {
+            [Purchasely closeAllScreens];
+        }
         @synchronized (kPresentationStateLock) {
             [kPresentationsByRequest removeObjectForKey:requestId];
         }

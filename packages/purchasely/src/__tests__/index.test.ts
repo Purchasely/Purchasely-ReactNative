@@ -60,7 +60,6 @@ jest.mock('react-native', () => ({
             closePresentation: jest.fn(),
             hidePresentation: jest.fn(),
             showPresentation: jest.fn(),
-            presentSubscriptions: jest.fn(),
             purchaseWithPlanVendorId: jest.fn().mockResolvedValue({
                 vendorId: 'plan-id',
                 productId: 'product-id',
@@ -362,11 +361,6 @@ describe('Purchasely SDK', () => {
     })
 
     describe('Presentations', () => {
-        it('should present subscriptions', () => {
-            Purchasely.presentSubscriptions()
-            expect(mockedPurchasely.presentSubscriptions).toHaveBeenCalled()
-        })
-
         it('should track client presentation displayed', () => {
             const presentation = { id: 'pres-123', metadata: {}, height: null }
             Purchasely.clientPresentationDisplayed(presentation as any)
