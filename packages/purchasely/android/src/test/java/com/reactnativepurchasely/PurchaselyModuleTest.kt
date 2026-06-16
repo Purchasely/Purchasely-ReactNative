@@ -2,6 +2,7 @@ package com.reactnativepurchasely
 
 import com.facebook.react.bridge.ReactApplicationContext
 import io.purchasely.ext.*
+import io.purchasely.ext.presentation.PLYPresentationType
 import io.purchasely.storage.userData.PLYUserAttributeSource
 import io.purchasely.storage.userData.PLYUserAttributeType
 import io.purchasely.views.presentation.PLYThemeMode

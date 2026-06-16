@@ -285,8 +285,17 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   }
 
   @ReactMethod
-  fun synchronize() {
-    Purchasely.synchronize()
+  fun synchronize(promise: Promise) {
+    // v6 native SDK exposes onSuccess/onError callbacks. Bridge them to the JS
+    // promise so callers can `await Purchasely.synchronize()` and catch failures.
+    // Fire-and-forget callers (no await) stay source-compatible.
+    Purchasely.synchronize(
+      onSuccess = { promise.resolve(true) },
+      onError = { error ->
+        if (error == null) promise.reject("synchronize_error", "Synchronization failed")
+        else promise.reject(error)
+      }
+    )
   }
 
   @ReactMethod

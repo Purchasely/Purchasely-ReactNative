@@ -27,7 +27,7 @@ import {
 } from './interceptor';
 import type { PresentationActionKind } from './presentationTypes';
 
-const purchaselyVersion = '6.0.0-beta.0';
+const purchaselyVersion = '6.0.0-rc.1';
 
 const constants = NativeModules.Purchasely.getConstants() as Constants;
 
@@ -213,7 +213,11 @@ const isDeeplinkHandled = (deeplink: string | null): Promise<boolean> => {
   return NativeModules.Purchasely.isDeeplinkHandled(deeplink);
 };
 
-const synchronize = (): void => {
+const synchronize = (): Promise<boolean> => {
+  // v6: the native SDKs (iOS success/failure, Android onSuccess/onError) now
+  // report completion. The returned promise resolves when the receipt sync
+  // finishes and rejects on failure. Awaiting is optional — fire-and-forget
+  // callers stay source-compatible with the previous `void` signature.
   return NativeModules.Purchasely.synchronize();
 };
 

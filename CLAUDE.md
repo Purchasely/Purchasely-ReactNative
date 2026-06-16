@@ -11,7 +11,7 @@
 
 | Property | Value |
 |----------|-------|
-| Current Version | 6.0.0-beta.0 |
+| Current Version | 6.0.0-rc.1 |
 | React Native | 0.79.2 |
 | TypeScript | 5.2.2 (strict mode) |
 | Node.js | v20 (see `.nvmrc`) |
