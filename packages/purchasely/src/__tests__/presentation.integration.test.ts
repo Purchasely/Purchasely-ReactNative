@@ -124,6 +124,25 @@ describe('façade · integration with native bridge', () => {
             expect(presentation.placementId).toBe('home');
         });
 
+        it('exposes requestId (null before preload, set after) for <PLYPresentationView request>', async () => {
+            const req = PresentationBuilder.placement('home').build();
+            // Null until the request is preloaded/displayed.
+            expect(req.requestId).toBeNull();
+
+            const preloadPromise = req.preload();
+            const [requestId] = native.preloadPresentation.mock.calls[0];
+            // The public getter now matches the bridge requestId — this is what
+            // the embedded view forwards to native to reuse the preloaded screen.
+            expect(req.requestId).toBe(requestId);
+
+            emit(PURCHASELY_PRESENTATION_EVENTS.LOADED, {
+                requestId,
+                presentation: fakePresentationPayload,
+            });
+            await preloadPromise;
+            expect(req.requestId).toBe(requestId);
+        });
+
         it('rejects when native emits LOADED with an error', async () => {
             const req = PresentationBuilder.placement('home').build();
             const preloadPromise = req.preload();

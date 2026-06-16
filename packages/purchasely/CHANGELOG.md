@@ -21,6 +21,11 @@ been removed (see Breaking changes below).
   (not at trigger) with a 5-field `PresentationOutcome`.
 - **`PresentationOutcome`**: `{ presentation, purchaseResult, plan, closeReason,
   error }`. Exclusion rule: `error != null ⇒ closeReason == null`.
+- **`<PLYPresentationView request={...} />`**: the embedded view now accepts a
+  preloaded `PresentationRequest`. It reuses the presentation already loaded by
+  `request.preload()` (resolved natively by the request's `requestId`) instead of
+  loading a second time — aligned with the native iOS/Android and Flutter SDKs.
+  `PresentationRequest` exposes a public `requestId` getter for this.
 - **`interceptAction(kind, handler)`** with typed payloads per action kind
   (`navigate`, `purchase`, `close`, `closeAll`, `openPresentation`,
   `openPlacement`, `webCheckout`, `login`, `restore`, `promoCode`). Handler

@@ -231,7 +231,7 @@ export class PresentationRequest {
     /** @internal */
     private readonly config: BuilderConfig;
     /** @internal */
-    private requestId: string | null = null;
+    private _requestId: string | null = null;
     /** @internal */
     private subscriptions: EmitterSubscription[] = [];
     /** @internal */
@@ -239,6 +239,16 @@ export class PresentationRequest {
 
     constructor(config: BuilderConfig) {
         this.config = config;
+    }
+
+    /**
+     * The bridge correlation id for this request, or `null` until the request
+     * has been preloaded/displayed. Pass the request itself to
+     * `<PLYPresentationView request={...} />` to embed a presentation that was
+     * already preloaded — the view resolves it natively by this id.
+     */
+    get requestId(): string | null {
+        return this._requestId;
     }
 
     /**
@@ -359,25 +369,25 @@ export class PresentationRequest {
      * calling `close()` on one will also dismiss the others.
      */
     close(): void {
-        if (!this.requestId) {
+        if (!this._requestId) {
             return;
         }
-        NativeModules.Purchasely.closePresentation(this.requestId);
+        NativeModules.Purchasely.closePresentation(this._requestId);
     }
 
     /** Navigate back inside a multi-step (Flow) presentation. */
     back(): void {
-        if (!this.requestId) {
+        if (!this._requestId) {
             return;
         }
-        NativeModules.Purchasely.goBackToPreviousScreen(this.requestId);
+        NativeModules.Purchasely.goBackToPreviousScreen(this._requestId);
     }
 
     private ensureRequestId(): string {
-        if (!this.requestId) {
-            this.requestId = generateRequestId();
+        if (!this._requestId) {
+            this._requestId = generateRequestId();
         }
-        return this.requestId;
+        return this._requestId;
     }
 
     private bindLifecycleEvents(

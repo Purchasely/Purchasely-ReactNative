@@ -232,6 +232,13 @@ static UIViewController *_sharedViewController;
     _presentationsLoaded = presentationsLoaded;
 }
 
++ (id<PLYPresentation>)loadedPresentationForRequestId:(NSString *)requestId {
+    if (requestId == nil) { return nil; }
+    @synchronized (kPresentationStateLock) {
+        return kPresentationsByRequest[requestId];
+    }
+}
+
 + (RCTPromiseResolveBlock)purchaseResolve {
     return _purchaseResolve;
 }

@@ -26,7 +26,16 @@ class PurchaselyView: UIView {
       setupView()
     }
   }
-  
+
+  /// Bridge `requestId` of a presentation the JS layer already preloaded via
+  /// `request.preload()`. When set, the view reuses that loaded presentation's
+  /// controller instead of loading a new one (mirrors Android / Flutter).
+  @objc var requestId: String? {
+    didSet {
+      setupView()
+    }
+  }
+
   var onPresentationClosedPromise: RCTPromiseResolveBlock?
   
   override init(frame: CGRect) {
@@ -64,6 +73,19 @@ class PurchaselyView: UIView {
   
   private func getPresentationController(presentation: PurchaselyPresentation?,
                                          placementId: String?) -> UIViewController? {
+      // v6 / iso Flutter: when a `requestId` is provided, reuse the presentation
+      // the JS layer already preloaded (`request.preload()`) instead of loading a
+      // new one. Mirrors NativeView's `loadedPresentations[requestId]` lookup.
+      if let requestId = self.requestId,
+         let loaded = PurchaselyRN.loadedPresentation(forRequestId: requestId),
+         let controller = loaded.controller {
+          self.fetched = true
+          PurchaselyRN.purchaseResolve = { [weak self] result in
+              self?.onPresentationClosedPromise?(result)
+          }
+          return controller
+      }
+
       // Capture effective placement id before guard bindings are lost in the else branch.
       // When only the `presentation` prop is set (placementId prop is nil), we still need
       // the placement id to recreate the view controller on subsequent visits.

@@ -7,12 +7,21 @@ import {
   UIManager,
 } from 'react-native';
 import type { PresentPresentationResult } from '../';
+import type { PresentationRequest } from '../presentation';
 
 const PurchaselyView = requireNativeComponent('PurchaselyView');
 
 interface PLYPresentationViewProps {
   placementId?: string; // Made optional
   presentation?: any; // Made optional
+  /**
+   * A presentation request that was already preloaded via `request.preload()`.
+   * The native view resolves the loaded presentation by the request's
+   * `requestId` (no second preload) — mirrors the full-screen builder flow.
+   * Preload before rendering; otherwise `requestId` is null and the view falls
+   * back to `placementId` / `presentation`.
+   */
+  request?: PresentationRequest;
   onPresentationClosed?: (result: PresentPresentationResult) => void;
   flex?: number;
 }
@@ -20,6 +29,7 @@ interface PLYPresentationViewProps {
 export const PLYPresentationView: React.FC<PLYPresentationViewProps> = ({
   placementId,
   presentation,
+  request,
   onPresentationClosed,
   flex = 1, // Default to 1 if not provided
 }) => {
@@ -76,6 +86,7 @@ export const PLYPresentationView: React.FC<PLYPresentationViewProps> = ({
       style={{ flex }}
       placementId={placementId}
       presentation={presentation}
+      requestId={request?.requestId ?? undefined}
       {...(Platform.OS === 'android' && { ref: ref })}
     />
   );

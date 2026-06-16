@@ -46,6 +46,7 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
   private var propHeight: Int? = null
   private var placementId: String? = null
   private var screenId: String? = null
+  private var requestId: String? = null
 
   override fun getName(): String = "PurchaselyView"
 
@@ -129,7 +130,7 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
       promiseView = null
     }
 
-    val fragment = PurchaselyFragment(screenId, placementId, outcomeHandler)
+    val fragment = PurchaselyFragment(screenId, placementId, requestId, outcomeHandler)
 
     fm.beginTransaction()
       .setReorderingAllowed(true)
@@ -186,6 +187,11 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
     placementId = placementId ?: value?.getString("placementId")
   }
 
+  @ReactProp(name = "requestId")
+  fun setRequestId(view: FrameLayout?, value: String?) {
+    requestId = value
+  }
+
   @ReactMethod
   fun onPresentationClosed(promise: Promise) {
     promiseView = promise
@@ -217,6 +223,7 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
   class PurchaselyFragment(
     private val screenId: String?,
     private val placementId: String?,
+    private val requestId: String?,
     private val callback: (PLYPresentationOutcome) -> Unit
   ) : Fragment() {
 
@@ -227,6 +234,17 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
     ): View = FrameLayout(inflater.context)
 
     private fun attachPurchaselyView(host: ViewGroup) {
+      // v6 / iso iOS+Flutter: when a requestId is provided, reuse the
+      // presentation the JS layer already preloaded (request.preload()) instead
+      // of building + preloading a new one inside the view.
+      val preloaded = requestId?.let { PurchaselyModule.loadedPresentation(it) }
+      if (preloaded != null) {
+        val pv: PLYPresentationView? =
+          preloaded.buildView(host.context) { outcome -> callback(outcome) }
+        pv?.let { host.addView(it) }
+        return
+      }
+
       val prepared: PLYPresentationBase.Prepared = PLYPresentationBase.builder()
         .also { b ->
           placementId?.let { b.placementId(it) }

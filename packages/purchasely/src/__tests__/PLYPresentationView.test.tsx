@@ -182,6 +182,45 @@ describe('PLYPresentationView', () => {
         })
     })
 
+    describe('request prop', () => {
+        it('should forward the request requestId to the native view', async () => {
+            // A preloaded PresentationRequest exposes a non-null `requestId`.
+            const request: any = { requestId: 'req-123' }
+
+            let tree: any
+            await act(async () => {
+                tree = create(<PLYPresentationView request={request} />)
+            })
+
+            const purchaselyView = tree.root.findByType('PurchaselyView' as any)
+            expect(purchaselyView.props.requestId).toBe('req-123')
+        })
+
+        it('should forward undefined when the request has not been preloaded', async () => {
+            // Before preload(), requestId is null — the view falls back to
+            // placementId / presentation.
+            const request: any = { requestId: null }
+
+            let tree: any
+            await act(async () => {
+                tree = create(<PLYPresentationView request={request} />)
+            })
+
+            const purchaselyView = tree.root.findByType('PurchaselyView' as any)
+            expect(purchaselyView.props.requestId).toBeUndefined()
+        })
+
+        it('should leave requestId undefined when no request is passed', async () => {
+            let tree: any
+            await act(async () => {
+                tree = create(<PLYPresentationView placementId="onboarding" />)
+            })
+
+            const purchaselyView = tree.root.findByType('PurchaselyView' as any)
+            expect(purchaselyView.props.requestId).toBeUndefined()
+        })
+    })
+
     describe('Props', () => {
         it('should accept all optional props', async () => {
             const presentation = {

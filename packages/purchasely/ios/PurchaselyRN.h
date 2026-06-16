@@ -21,4 +21,9 @@
 
 @property (nonatomic, assign) Boolean shouldEmit;
 
+/// Look up a presentation that was preloaded through `preloadPresentation:` by
+/// its bridge `requestId`. Used by the embedded `PLYPresentationView` to reuse a
+/// presentation the JS layer already preloaded (instead of loading it again).
++ (nullable id<PLYPresentation>)loadedPresentationForRequestId:(nonnull NSString *)requestId;
+
 @end
