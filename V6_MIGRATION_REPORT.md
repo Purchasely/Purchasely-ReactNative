@@ -18,7 +18,9 @@
 >   `showController:type:from:` conservé, `closeDisplayedPresentation` →
 >   `[presentation close]` / `closeAllScreens`.
 > - **RunningMode** : `TransactionOnly`/`PaywallObserver` supprimés du natif (reste
->   `Observer=2`/`Full=3`) → enum local `PLYRNRunningMode` + mapping (parité Android).
+>   `Observer=2`/`Full=3`) → enum local `PLYRNRunningMode` + `runningModeFromOrdinal()`.
+>   Fallback (valeur inconnue/non définie) → **Observer** (défaut v6, iso Flutter) ;
+>   seul `full` engage le flux d'achat Purchasely.
 > - `setDynamicOffering` : nouveau paramètre `billingPlanType:`.
 > - Bug ObjC préexistant masqué : `PLYPresentationPlan+Hybrid.m` `self.default`
 >   (mot-clé réservé) → `self.default_`.

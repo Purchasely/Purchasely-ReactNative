@@ -189,17 +189,19 @@ typedef NS_ENUM(NSInteger, PLYRNRunningMode) {
     PLYRNRunningModeFull = 4,
 };
 
-/// Map a JS running-mode ordinal to a native `PLYRunningMode`. Mirrors Android:
-/// transactionOnly/full → Full, observer/paywallObserver → Observer.
+/// Map a JS running-mode ordinal to a native `PLYRunningMode`. transactionOnly/
+/// full → Full, observer/paywallObserver → Observer. Any unknown/unset value
+/// falls back to **Observer** — the v6 default (matches the JS/Dart default and
+/// Flutter's `?? .observer`); only `full` opts into Purchasely owning the flow.
 static PLYRunningMode runningModeFromOrdinal(NSInteger ordinal) {
     switch (ordinal) {
-        case PLYRNRunningModeObserver:
-        case PLYRNRunningModePaywallObserver:
-            return PLYRunningModeObserver;
         case PLYRNRunningModeTransactionOnly:
         case PLYRNRunningModeFull:
-        default:
             return PLYRunningModeFull;
+        case PLYRNRunningModeObserver:
+        case PLYRNRunningModePaywallObserver:
+        default:
+            return PLYRunningModeObserver;
     }
 }
 
