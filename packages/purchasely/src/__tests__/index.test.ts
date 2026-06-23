@@ -104,10 +104,7 @@ jest.mock('react-native', () => ({
             clearUserAttribute: jest.fn(),
             clearUserAttributes: jest.fn(),
             clearBuiltInAttributes: jest.fn(),
-            setDefaultPresentationResultHandler: jest.fn().mockResolvedValue({
-                result: 0,
-                plan: null,
-            }),
+            setDefaultPresentationDismissHandler: jest.fn(),
             setPaywallActionInterceptor: jest.fn().mockResolvedValue({
                 info: {},
                 action: 'close',

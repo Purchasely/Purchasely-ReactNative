@@ -156,10 +156,7 @@ export const createMockPurchaselyModule = () => ({
     clearUserAttribute: jest.fn(),
     clearUserAttributes: jest.fn(),
     clearBuiltInAttributes: jest.fn(),
-    setDefaultPresentationResultHandler: jest.fn().mockResolvedValue({
-        result: 0,
-        plan: null,
-    }),
+    setDefaultPresentationDismissHandler: jest.fn(),
     setPaywallActionInterceptor: jest.fn().mockResolvedValue({
         info: {},
         action: 'close',

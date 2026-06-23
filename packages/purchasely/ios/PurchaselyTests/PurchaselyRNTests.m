@@ -36,6 +36,22 @@
     XCTAssertNotNil([PurchaselyRN presentationsLoaded], @"presentationsLoaded array should be initialized");
 }
 
+#pragma mark - Default presentation dismiss handler
+
+- (void)testSupportedEventsIncludesDefaultPresentationDismissed {
+    NSArray<NSString *> *events = [self.purchaselyModule supportedEvents];
+    XCTAssertTrue([events containsObject:@"PURCHASELY_DEFAULT_PRESENTATION_DISMISSED"],
+                  @"supportedEvents should expose the global default-dismiss event");
+}
+
+- (void)testDefaultPresentationDismissHandlerIsBridged {
+    // RCT_EXPORT_METHOD generates a `setDefaultPresentationDismissHandler` method
+    // on the module. The native call itself is guarded by `respondsToSelector:`,
+    // so registering is a safe no-op until the native SDK ships the v6 rename.
+    XCTAssertTrue([self.purchaselyModule respondsToSelector:@selector(setDefaultPresentationDismissHandler)],
+                  @"setDefaultPresentationDismissHandler should be exported to the bridge");
+}
+
 #pragma mark - Constants Export Tests
 
 - (void)testConstantsExport {
