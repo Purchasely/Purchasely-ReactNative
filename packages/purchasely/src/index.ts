@@ -18,7 +18,11 @@ import type {
   PurchaselySubscription,
   PurchaselyUserAttribute,
 } from './types';
-import { PresentationBuilder } from './presentation';
+import {
+  PresentationBuilder,
+  setDefaultPresentationDismissHandler,
+  removeDefaultPresentationDismissHandler,
+} from './presentation';
 import { PurchaselyBuilder } from './startBuilder';
 import {
   interceptAction,
@@ -340,6 +344,10 @@ const Purchasely = {
   ) => interceptAction(kind, handler),
   removeActionInterceptor,
   removeAllActionInterceptors,
+  // Global handler for presentations the app did not instantiate itself
+  // (campaigns, deeplinks, Promoted In-App Purchases).
+  setDefaultPresentationDismissHandler,
+  removeDefaultPresentationDismissHandler,
   // Core SDK — version-agnostic (user, products, subscriptions, attributes…).
   addEventListener,
   removeEventListener,
@@ -401,7 +409,12 @@ export * from './enums';
 export * from './interfaces';
 export * from './presentationTypes';
 export { PURCHASELY_PRESENTATION_EVENTS } from './events';
-export { PresentationBuilder, PresentationRequest } from './presentation';
+export {
+  PresentationBuilder,
+  PresentationRequest,
+  setDefaultPresentationDismissHandler,
+  removeDefaultPresentationDismissHandler,
+} from './presentation';
 export {
   interceptAction,
   removeActionInterceptor,

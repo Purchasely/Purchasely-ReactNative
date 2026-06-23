@@ -277,10 +277,14 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   }
 
   @ReactMethod
-  fun setDefaultPresentationResultHandler(promise: Promise) {
-    defaultPurchasePromise = promise
-    Purchasely.setDefaultPresentationResultHandler { outcome ->
-      sendPurchaseResult(outcome)
+  fun setDefaultPresentationDismissHandler() {
+    // Global handler for presentations the app did NOT instantiate itself
+    // (campaigns, deeplinks, Promoted In-App Purchases). v6 renamed the native
+    // `setDefaultPresentationResultHandler` to `setDefaultPresentationDismissHandler`
+    // and now delivers a single rich `PLYPresentationOutcome`. The outcome is
+    // forwarded to JS through the dedicated DEFAULT_PRESENTATION_DISMISSED event.
+    Purchasely.setDefaultPresentationDismissHandler { outcome ->
+      emitDefaultPresentationDismissed(outcome)
     }
   }
 
@@ -1034,6 +1038,28 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
   }
 
   /**
+   * Emit the rich outcome of a presentation the app did NOT instantiate itself
+   * (campaign, deeplink, Promoted In-App Purchase) to the global
+   * `setDefaultPresentationDismissHandler` JS callback. Same payload shape as
+   * [emitPresentationDismissed] but without a `requestId` — the SDK, not the
+   * app, owns these presentations. The `presentation` field is always populated
+   * so JS can identify which campaign/deeplink screen closed.
+   */
+  private fun emitDefaultPresentationDismissed(outcome: PLYPresentationOutcome) {
+    val payload = Arguments.createMap()
+    outcome.presentation?.let { payload.putMap("presentation", it.toRNMap()) }
+    outcome.purchaseResult?.let { payload.putInt("purchaseResult", it.toRNOrdinal()) }
+    outcome.plan?.let {
+      payload.putMap("plan", Arguments.makeNativeMap(
+        transformPlanToMap(it).toMutableMap()
+      ))
+    }
+    outcome.closeReason?.let { payload.putString("closeReason", it.toRNString()) }
+    outcome.error?.let { payload.putMap("error", it.toRNMap()) }
+    sendEvent(reactApplicationContext, EVENT_DEFAULT_PRESENTATION_DISMISSED, payload)
+  }
+
+  /**
    * Convert a [PLYPresentation] to a React-Native map. We expose the screenId
    * (mapped from the SDK `screenId`) and keep `id` as alias for compat.
    */
@@ -1185,6 +1211,7 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
     private const val EVENT_PRESENTATION_PRESENTED = "PURCHASELY_PRESENTATION_PRESENTED"
     private const val EVENT_PRESENTATION_CLOSE_REQUESTED = "PURCHASELY_PRESENTATION_CLOSE_REQUESTED"
     private const val EVENT_PRESENTATION_DISMISSED = "PURCHASELY_PRESENTATION_DISMISSED"
+    private const val EVENT_DEFAULT_PRESENTATION_DISMISSED = "PURCHASELY_DEFAULT_PRESENTATION_DISMISSED"
     private const val EVENT_ACTION_INTERCEPTED = "PURCHASELY_ACTION_INTERCEPTED"
 
     /**
@@ -1206,29 +1233,6 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
       ConcurrentHashMap<String, CompletableDeferred<PLYInterceptResult>>()
 
     val presentationsLoaded = mutableListOf<PLYPresentation>()
-
-    var purchasePromise: Promise? = null
-    var defaultPurchasePromise: Promise? = null
-
-    /**
-     * Backwards-compatible projection of a `PLYPresentationOutcome` into the
-     * legacy `{result, plan}` shape consumed by the v5 JS API. The new façade
-     * exposes the full outcome (with `closeReason` / `error`) via the dedicated
-     * `PURCHASELY_PRESENTATION_DISMISSED` event.
-     */
-    fun sendPurchaseResult(outcome: io.purchasely.ext.presentation.PLYPresentationOutcome) {
-      val resultOrdinal = when (outcome.purchaseResult) {
-        io.purchasely.ext.presentation.PLYPurchaseResult.PURCHASED -> 0
-        io.purchasely.ext.presentation.PLYPurchaseResult.RESTORED -> 2
-        io.purchasely.ext.presentation.PLYPurchaseResult.CANCELLED -> 1
-        null -> 1
-      }
-      val map: MutableMap<String, Any?> = HashMap()
-      map["result"] = resultOrdinal
-      map["plan"] = transformPlanToMap(outcome.plan)
-      purchasePromise?.resolve(Arguments.makeNativeMap(map))
-        ?: defaultPurchasePromise?.resolve(Arguments.makeNativeMap(map))
-    }
 
     fun transformPlanToMap(plan: PLYPlan?): Map<String, Any?> {
       if(plan == null) return emptyMap()

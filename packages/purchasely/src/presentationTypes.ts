@@ -23,9 +23,20 @@ import type {
 
 /**
  * Reason a Presentation was dismissed.
- * Always `null` on iOS until native exposes the value (see contract P0.2).
+ *
+ * - `button` — the user tapped a close button inside the paywall.
+ * - `backSystem` — Android system back (gesture or button).
+ * - `interactiveDismiss` — iOS interactive dismiss (swipe-down / nav pop).
+ * - `programmatic` — closed via `request.close()` / `Purchasely.close()`.
+ *
+ * Platform note: Android never reports `interactiveDismiss`; iOS never reports
+ * `backSystem`. The union is the cross-platform superset.
  */
-export type CloseReason = 'button' | 'backSystem' | 'programmatic';
+export type CloseReason =
+    | 'button'
+    | 'backSystem'
+    | 'interactiveDismiss'
+    | 'programmatic';
 
 /** Outcome of `purchaseResult` in {@link PresentationOutcome}. */
 export type PurchaseResultKind = 'purchased' | 'cancelled' | 'restored';

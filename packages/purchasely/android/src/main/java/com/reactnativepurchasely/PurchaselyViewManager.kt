@@ -124,8 +124,7 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
       val map: MutableMap<String, Any?> = HashMap()
       map["result"] = resultOrdinal
       map["plan"] = PurchaselyModule.transformPlanToMap(outcome.plan)
-      (promiseView ?: PurchaselyModule.defaultPurchasePromise)
-        ?.resolve(Arguments.makeNativeMap(map))
+      promiseView?.resolve(Arguments.makeNativeMap(map))
       promiseView = null
     }
 

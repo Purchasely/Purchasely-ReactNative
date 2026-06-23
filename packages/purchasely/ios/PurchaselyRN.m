@@ -13,12 +13,26 @@
 #import "Purchasely_Hybrid.h"
 #import "UIColor+PLYHelper.h"
 
+#pragma mark - forward declarations
+
+// v6 renames the global default-presentation handler from
+// `setDefaultPresentationResultHandler:` (block: result, plan) to
+// `setDefaultPresentationDismissHandler:` (block: PLYPresentationOutcome).
+// The CocoaPods release we currently build against may predate that rename, so
+// we forward-declare the new selector here and guard the call site with
+// `respondsToSelector:`. Once the native SDK ships the rename, the handler
+// activates automatically — no further bridge change required.
+@interface Purchasely (PLYDefaultDismissHandler)
++ (void)setDefaultPresentationDismissHandler:(void (^)(PLYPresentationOutcome *outcome))handler;
+@end
+
 #pragma mark - event names
 
 static NSString *const kPresentationEventLoaded = @"PURCHASELY_PRESENTATION_LOADED";
 static NSString *const kPresentationEventPresented = @"PURCHASELY_PRESENTATION_PRESENTED";
 static NSString *const kPresentationEventCloseRequested = @"PURCHASELY_PRESENTATION_CLOSE_REQUESTED";
 static NSString *const kPresentationEventDismissed = @"PURCHASELY_PRESENTATION_DISMISSED";
+static NSString *const kPresentationEventDefaultDismissed = @"PURCHASELY_DEFAULT_PRESENTATION_DISMISSED";
 static NSString *const kPresentationEventActionIntercepted = @"PURCHASELY_ACTION_INTERCEPTED";
 
 #pragma mark - internal state (shared across presentation methods)
@@ -151,6 +165,20 @@ static NSNumber *purchaseResultOrdinal(PLYPurchaseResult result) {
         case PLYPurchaseResultCancelled: return @(1);
         case PLYPurchaseResultRestored:  return @(2);
         case PLYPurchaseResultNone:      return nil;
+    }
+    return nil;
+}
+
+/// Convert a `PLYCloseReason` to the cross-platform wire string consumed by the
+/// TS `CloseReason` union. `none` carries no reason, so it maps to nil. iOS
+/// reports `interactiveDismiss` (swipe-down / nav pop); it never reports
+/// Android's `backSystem`.
+static NSString *closeReasonToRNString(PLYCloseReason reason) {
+    switch (reason) {
+        case PLYCloseReasonButton:             return @"button";
+        case PLYCloseReasonInteractiveDismiss: return @"interactiveDismiss";
+        case PLYCloseReasonProgrammatic:       return @"programmatic";
+        case PLYCloseReasonNone:               return nil;
     }
     return nil;
 }
@@ -983,6 +1011,7 @@ RCT_EXPORT_METHOD(setDebugMode:(BOOL)enabled) {
     @"PURCHASELY_PRESENTATION_PRESENTED",
     @"PURCHASELY_PRESENTATION_CLOSE_REQUESTED",
     @"PURCHASELY_PRESENTATION_DISMISSED",
+    @"PURCHASELY_DEFAULT_PRESENTATION_DISMISSED",
     @"PURCHASELY_ACTION_INTERCEPTED",
   ];
 }
@@ -1335,6 +1364,56 @@ RCT_EXPORT_METHOD(displayPresentation:(NSString *)requestId
         // tracking (`onFetchCompletion` calls `showController:`).
         [request preloadWithCompletion:onFetchCompletion];
         resolve(@(YES));
+    });
+}
+
+#pragma mark - setDefaultPresentationDismissHandler
+
+// Global handler for presentations the app did NOT instantiate itself
+// (campaigns, deeplinks, Promoted In-App Purchases). v6 renamed the native
+// `setDefaultPresentationResultHandler` (block: result, plan) to
+// `setDefaultPresentationDismissHandler` (block: PLYPresentationOutcome). The
+// rich outcome is forwarded to JS through the dedicated
+// DEFAULT_PRESENTATION_DISMISSED event (no requestId — the SDK owns these).
+RCT_EXPORT_METHOD(setDefaultPresentationDismissHandler) {
+    ensurePresentationState();
+
+    __weak PurchaselyRN *weakSelf = self;
+    void (^handler)(PLYPresentationOutcome *) = ^(PLYPresentationOutcome *outcome) {
+        PurchaselyRN *strongSelf = weakSelf;
+        if (!strongSelf) { return; }
+
+        NSMutableDictionary *body = [NSMutableDictionary new];
+        // `presentation` is always populated for this handler so JS can tell
+        // which campaign/deeplink screen closed.
+        if (outcome.presentation != nil) {
+            body[@"presentation"] = presentationToMap(outcome.presentation);
+        }
+        NSNumber *ordinal = purchaseResultOrdinal(outcome.purchaseResult);
+        if (ordinal != nil) {
+            body[@"purchaseResult"] = ordinal;
+        }
+        if (outcome.plan != nil) {
+            body[@"plan"] = [outcome.plan asDictionary];
+        }
+        NSString *closeReason = closeReasonToRNString(outcome.closeReason);
+        if (closeReason != nil) {
+            body[@"closeReason"] = closeReason;
+        }
+        if (outcome.error != nil) {
+            body[@"error"] = presentationErrorToMap(outcome.error);
+        }
+        [strongSelf emitPresentationEvent:kPresentationEventDefaultDismissed body:body];
+    };
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+        // Guard against SDK builds that predate the v6 rename (see the
+        // forward-declared category at the top of this file).
+        if ([Purchasely respondsToSelector:@selector(setDefaultPresentationDismissHandler:)]) {
+            [Purchasely setDefaultPresentationDismissHandler:handler];
+        } else {
+            RCTLogWarn(@"[Purchasely] setDefaultPresentationDismissHandler is unavailable in this native SDK build; the global default dismiss handler will not fire.");
+        }
     });
 }
 

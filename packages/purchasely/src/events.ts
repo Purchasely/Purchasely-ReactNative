@@ -16,6 +16,12 @@ export const PURCHASELY_PRESENTATION_EVENTS = {
     CLOSE_REQUESTED: 'PURCHASELY_PRESENTATION_CLOSE_REQUESTED',
     /** Presentation dismissed — resolves the `display()` Promise. */
     DISMISSED: 'PURCHASELY_PRESENTATION_DISMISSED',
+    /**
+     * A presentation the app did NOT instantiate itself (campaign, deeplink,
+     * Promoted In-App Purchase) was dismissed. Drives the global
+     * `setDefaultPresentationDismissHandler` callback. Carries no `requestId`.
+     */
+    DEFAULT_DISMISSED: 'PURCHASELY_DEFAULT_PRESENTATION_DISMISSED',
     /** Action interceptor fired and is awaiting an InterceptResult. */
     ACTION_INTERCEPTED: 'PURCHASELY_ACTION_INTERCEPTED',
 } as const;
@@ -32,7 +38,12 @@ export interface PresentationLifecycleEvent {
     error?: { code?: string | number | null; message: string; domain?: string | null } | null;
     purchaseResult?: number | null;
     plan?: any;
-    closeReason?: 'button' | 'backSystem' | 'programmatic' | null;
+    closeReason?:
+        | 'button'
+        | 'backSystem'
+        | 'interactiveDismiss'
+        | 'programmatic'
+        | null;
 }
 
 /** Shape of an interceptor-triggered event sent from native. */
