@@ -47,7 +47,7 @@ the methods that are **unchanged**.
 | `Purchasely.showPresentation()` / `Purchasely.presentPresentation(...)` | request lifecycle: `request.display()` |
 | `Purchasely.hidePresentation()` / `Purchasely.closePresentation()` | request lifecycle: `request.close()` |
 | `Purchasely.setPaywallActionInterceptorCallback(cb)` + `Purchasely.onProcessAction(bool)` | `Purchasely.interceptAction(kind, handler)` — handler returns `'success' \| 'failed' \| 'notHandled'` (no more `onProcessAction`) |
-| `Purchasely.setDefaultPresentationResultCallback(cb)` / `setDefaultPresentationResultHandler(cb)` | `request.onDismissed(outcome => …)` (or `Purchasely.presentation.placement(id).onDismissed(...).build()`) |
+| `Purchasely.setDefaultPresentationResultCallback(cb)` / `setDefaultPresentationResultHandler(cb)` | `Purchasely.setDefaultPresentationDismissHandler(outcome => …)` — global handler for presentations the SDK opens itself (campaigns, deeplinks, Promoted IAP). For paywalls **you** display, use `request.onDismissed(outcome => …)` instead. |
 | `Purchasely.readyToOpenDeeplink(true)` | `Purchasely.builder(apiKey).allowDeeplink(true).start()` |
 
 ---
@@ -248,21 +248,59 @@ Known action kinds: `close`, `closeAll`, `login`, `navigate`, `purchase`,
 
 ---
 
-## Deeplinks & default result handler
+## Deeplinks, campaigns & the default dismiss handler
 
 ```typescript
 // Allow deeplinks (replaces readyToOpenDeeplink(true)) — set at start:
 await Purchasely.builder('YOUR_API_KEY').allowDeeplink(true).start()
+```
 
-// Default result handler (replaces setDefaultPresentationResultCallback):
-Purchasely.presentation
-  .default()
-  .onDismissed((outcome) => {
-    console.log('Deeplink paywall dismissed', outcome.purchaseResult, outcome.closeReason)
-  })
-  .build()
-  .display()
+There are **two distinct paywall flows** — don't conflate them:
 
+### 1. Paywalls **you** display
+
+When your app instantiates the presentation, read the result from that request
+(`await display()` or `request.onDismissed(...)`):
+
+```typescript
+const outcome = await Purchasely.presentation.placement('ONBOARDING').build().display()
+```
+
+### 2. Paywalls the **SDK** opens itself (campaigns, deeplinks, Promoted IAP)
+
+Your app never calls `display()` for these, so there is no request to attach a
+callback to. Register the **global default dismiss handler** instead. It is the
+v6 replacement for `setDefaultPresentationResultCallback` /
+`setDefaultPresentationResultHandler`, and mirrors the native
+`Purchasely.setDefaultPresentationDismissHandler`:
+
+```typescript
+import Purchasely from 'react-native-purchasely'
+
+const subscription = Purchasely.setDefaultPresentationDismissHandler((outcome) => {
+  // outcome: { presentation, purchaseResult, plan, closeReason, error }
+  // `presentation` is always populated here — use it to tell which
+  // campaign/deeplink screen closed.
+  console.log(
+    'SDK paywall dismissed:',
+    outcome.presentation?.screenId,
+    outcome.purchaseResult, // 'purchased' | 'restored' | 'cancelled' | null
+    outcome.closeReason     // 'button' | 'backSystem' | 'interactiveDismiss' | 'programmatic' | null
+  )
+})
+
+// Only one handler is active at a time — calling again replaces it.
+// Remove it (e.g. on unmount) with either:
+subscription.remove()
+// …or:
+Purchasely.removeDefaultPresentationDismissHandler()
+```
+
+> **Platform note.** `closeReason` is the cross-platform superset: Android
+> reports `backSystem` (system back), iOS reports `interactiveDismiss`
+> (swipe-down / nav pop). `error` is reserved (always `null` in 6.0).
+
+```typescript
 // isDeeplinkHandled is UNCHANGED:
 const handled = await Purchasely.isDeeplinkHandled('app://ply/presentations/')
 ```
