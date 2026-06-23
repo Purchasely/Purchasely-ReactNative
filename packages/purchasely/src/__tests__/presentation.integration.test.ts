@@ -34,6 +34,7 @@ jest.mock('react-native', () => {
         registerActionInterceptor: jest.fn(),
         unregisterActionInterceptor: jest.fn(),
         completeActionInterceptor: jest.fn(),
+        setDefaultPresentationDismissHandler: jest.fn(),
         applyStartOptions: jest.fn(),
         start: jest.fn().mockResolvedValue(true),
         readyToOpenDeeplink: jest.fn(),
@@ -67,7 +68,11 @@ jest.mock('react-native', () => {
 });
 
 import { NativeModules } from 'react-native';
-import { PresentationBuilder } from '../presentation';
+import {
+    PresentationBuilder,
+    setDefaultPresentationDismissHandler,
+    removeDefaultPresentationDismissHandler,
+} from '../presentation';
 import { interceptAction, removeActionInterceptor } from '../interceptor';
 import { PURCHASELY_PRESENTATION_EVENTS } from '../events';
 
@@ -93,7 +98,10 @@ describe('façade · integration with native bridge', () => {
         native.registerActionInterceptor.mockClear();
         native.unregisterActionInterceptor.mockClear();
         native.completeActionInterceptor.mockClear();
+        native.setDefaultPresentationDismissHandler.mockClear();
         native.__testResetListeners();
+        // Reset the module-level single-handler state between tests.
+        removeDefaultPresentationDismissHandler();
     });
 
     describe('PresentationBuilder.placement(...).preload()', () => {
@@ -275,6 +283,65 @@ describe('façade · integration with native bridge', () => {
             const outcome = await promise;
             expect(outcome.error).toMatchObject({ code: 'X', message: 'oops' });
             expect(outcome.closeReason).toBeFalsy();
+        });
+    });
+
+    describe('setDefaultPresentationDismissHandler (global handler)', () => {
+        it('registers natively and delivers the rich outcome of an SDK-owned presentation', () => {
+            let captured: any = null;
+            setDefaultPresentationDismissHandler((outcome) => {
+                captured = outcome;
+            });
+
+            // JS asks native to (re)register its single global handler.
+            expect(native.setDefaultPresentationDismissHandler).toHaveBeenCalledTimes(1);
+
+            // A campaign / deeplink screen the app never instantiated is dismissed.
+            // The event carries NO requestId — the SDK owns the presentation.
+            emit(PURCHASELY_PRESENTATION_EVENTS.DEFAULT_DISMISSED, {
+                presentation: fakePresentationPayload,
+                purchaseResult: 2, // restored (ordinal mapping)
+                plan: { vendorId: 'plan-monthly' },
+                closeReason: 'interactiveDismiss',
+            });
+
+            expect(captured).not.toBeNull();
+            expect(captured.purchaseResult).toBe('restored');
+            expect(captured.closeReason).toBe('interactiveDismiss');
+            expect(captured.plan).toMatchObject({ vendorId: 'plan-monthly' });
+            // `presentation` is always populated so the app can identify the screen.
+            expect(captured.presentation?.screenId).toBe('screen-abc');
+            expect(captured.error).toBeFalsy();
+        });
+
+        it('keeps a single active handler — re-registering replaces the previous one', () => {
+            const first = jest.fn();
+            const second = jest.fn();
+            setDefaultPresentationDismissHandler(first);
+            setDefaultPresentationDismissHandler(second);
+
+            emit(PURCHASELY_PRESENTATION_EVENTS.DEFAULT_DISMISSED, {
+                presentation: fakePresentationPayload,
+                purchaseResult: 1, // cancelled
+                closeReason: 'button',
+            });
+
+            expect(first).not.toHaveBeenCalled();
+            expect(second).toHaveBeenCalledTimes(1);
+            expect(native.setDefaultPresentationDismissHandler).toHaveBeenCalledTimes(2);
+        });
+
+        it('removeDefaultPresentationDismissHandler stops further deliveries', () => {
+            const handler = jest.fn();
+            setDefaultPresentationDismissHandler(handler);
+            removeDefaultPresentationDismissHandler();
+
+            emit(PURCHASELY_PRESENTATION_EVENTS.DEFAULT_DISMISSED, {
+                presentation: fakePresentationPayload,
+                closeReason: 'programmatic',
+            });
+
+            expect(handler).not.toHaveBeenCalled();
         });
     });
 
