@@ -458,3 +458,69 @@ export class PresentationRequest {
         };
     }
 }
+
+/**
+ * Module-scoped subscription backing the single global default-dismiss handler.
+ * The native SDK keeps a single handler, so we mirror that by replacing any
+ * previous subscription whenever a new handler is registered.
+ */
+let defaultDismissSubscription: EmitterSubscription | null = null;
+
+/**
+ * Register the global handler invoked when a presentation the app did **not**
+ * instantiate itself — a campaign, a deeplink, or a Promoted In-App Purchase —
+ * is dismissed. This is the v6 replacement for the removed
+ * `setDefaultPresentationResultCallback` / `setDefaultPresentationResultHandler`
+ * (it mirrors the native `Purchasely.setDefaultPresentationDismissHandler`).
+ *
+ * The handler receives the rich {@link PresentationOutcome}; its
+ * {@link PresentationOutcome.presentation} field is always populated for this
+ * handler, so the app can tell which campaign/deeplink screen closed.
+ *
+ * Like the native SDK, only one handler is active at a time — calling this
+ * again replaces the previous one. Returns the underlying
+ * {@link EmitterSubscription} so callers can `.remove()` it (e.g. on unmount);
+ * {@link removeDefaultPresentationDismissHandler} does the same.
+ *
+ * @example
+ * ```ts
+ * Purchasely.setDefaultPresentationDismissHandler((outcome) => {
+ *   console.log(
+ *     outcome.presentation?.screenId,
+ *     outcome.purchaseResult,
+ *     outcome.closeReason
+ *   )
+ * })
+ * ```
+ */
+export function setDefaultPresentationDismissHandler(
+    handler: (outcome: PresentationOutcome) => void
+): EmitterSubscription {
+    // Single global handler: drop the previous subscription before re-arming.
+    if (defaultDismissSubscription) {
+        defaultDismissSubscription.remove();
+        defaultDismissSubscription = null;
+    }
+
+    // Tell native to (re)register its global dismiss handler. Fire-and-forget:
+    // outcomes arrive through DEFAULT_DISMISSED events, not this call's return.
+    NativeModules.Purchasely.setDefaultPresentationDismissHandler();
+
+    defaultDismissSubscription = presentationEventEmitter.addListener(
+        PURCHASELY_PRESENTATION_EVENTS.DEFAULT_DISMISSED,
+        (event: PresentationLifecycleEvent) => {
+            const presentation = normalizePresentation(event.presentation);
+            handler(eventToOutcome(event, presentation));
+        }
+    );
+
+    return defaultDismissSubscription;
+}
+
+/** Remove the global default-dismiss handler registered above, if any. */
+export function removeDefaultPresentationDismissHandler(): void {
+    if (defaultDismissSubscription) {
+        defaultDismissSubscription.remove();
+        defaultDismissSubscription = null;
+    }
+}
