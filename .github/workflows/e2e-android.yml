@@ -22,12 +22,21 @@ concurrency:
 jobs:
   e2e-android:
     name: E2E Tests (Android T1-T10)
-    runs-on: macos-latest
+    # Ubuntu: KVM hardware acceleration available → emulator boots in ~2 min.
+    # NOTE: iOS E2E (future) will use a separate job on macos-latest.
+    runs-on: ubuntu-latest
     timeout-minutes: 45
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Enable KVM (required for Android emulator on Linux)
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
 
       - name: Setup Node.js 20
         uses: actions/setup-node@v4
@@ -71,7 +80,7 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 34
-          arch: arm64-v8a
+          arch: x86_64
           profile: pixel_6
           ram-size: 4096M
           heap-size: 512M
