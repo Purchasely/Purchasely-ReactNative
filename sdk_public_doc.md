@@ -230,7 +230,7 @@ Purchasely paywalls are displayed using **placements**. A placement is a specifi
 
 `Purchasely.presentation.placement(id).build()` returns a `PresentationRequest`.
 Calling `display()` shows the paywall and resolves at **dismiss** with a
-`PresentationOutcome`.
+`PLYPresentationOutcome`.
 
 ```typescript
 import Purchasely from 'react-native-purchasely';
@@ -667,7 +667,7 @@ To enable Purchasely to display screens via deeplinks, you need to:
 ### Passing the Deeplink
 
 ```typescript
-Purchasely.isDeeplinkHandled('app://ply/presentations/')
+Purchasely.handleDeeplink('app://ply/presentations/')
     .then((value) => console.log('Deeplink handled by Purchasely? ' + value));
 ```
 

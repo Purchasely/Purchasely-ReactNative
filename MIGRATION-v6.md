@@ -26,7 +26,7 @@ the methods that are **unchanged**.
   - `Purchasely.interceptAction(kind, handler)` — typed action interception.
 - `PresentationBuilder.build()` returns a **`PresentationRequest`** with a
   lifecycle (`preload()`, `display(transition?)`, `close()`, `back()`).
-- `display()` resolves at **dismiss** with a 5-field `PresentationOutcome`
+- `display()` resolves at **dismiss** with a 5-field `PLYPresentationOutcome`
   (`{ presentation, purchaseResult, plan, closeReason, error }`).
 - **All CORE methods are UNCHANGED** — see [Unchanged](#whats-unchanged).
 
@@ -121,7 +121,7 @@ switch (result.result) {
 
 ### After (v6)
 
-`display()` resolves at **dismiss** with a `PresentationOutcome`:
+`display()` resolves at **dismiss** with a `PLYPresentationOutcome`:
 
 ```typescript
 const outcome = await Purchasely.presentation
@@ -285,7 +285,7 @@ const subscription = Purchasely.setDefaultPresentationDismissHandler((outcome) =
     'SDK paywall dismissed:',
     outcome.presentation?.screenId,
     outcome.purchaseResult, // 'purchased' | 'restored' | 'cancelled' | null
-    outcome.closeReason     // 'button' | 'backSystem' | 'interactiveDismiss' | 'programmatic' | null
+    outcome.closeReason     // 'button' | 'backSystem' | 'programmatic' | null
   )
 })
 
@@ -296,13 +296,14 @@ subscription.remove()
 Purchasely.removeDefaultPresentationDismissHandler()
 ```
 
-> **Platform note.** `closeReason` is the cross-platform superset: Android
-> reports `backSystem` (system back), iOS reports `interactiveDismiss`
-> (swipe-down / nav pop). `error` is reserved (always `null` in 6.0).
+> **Platform note.** `closeReason` mirrors the native `PLYCloseReason`
+> (`button` / `backSystem` / `programmatic`) and is `null` when the SDK does not
+> report a reason. The iOS interactive dismiss (swipe-down / nav pop) maps to
+> `backSystem` for parity with Android's system back.
 
 ```typescript
-// isDeeplinkHandled is UNCHANGED:
-const handled = await Purchasely.isDeeplinkHandled('app://ply/presentations/')
+// `isDeeplinkHandled` was RENAMED to `handleDeeplink` (matches the native SDK):
+const handled = await Purchasely.handleDeeplink('app://ply/presentations/')
 ```
 
 ---
@@ -361,7 +362,7 @@ awaitable result — see above). The following keep working exactly as in v5:
 - **Client (BYOS) presentations**: **`clientPresentationDisplayed`**,
   **`clientPresentationClosed`** — unchanged.
 - **Misc**: `setLogLevel`, `setLanguage`, `setThemeMode`, `setDebugMode`,
-  `isDeeplinkHandled`, `revokeDataProcessingConsent`, `getConstants`, `close`.
+  `revokeDataProcessingConsent`, `getConstants`, `close`.
 - **Embedded component**: `PLYPresentationView` — unchanged.
 
 ---

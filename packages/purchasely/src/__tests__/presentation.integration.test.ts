@@ -249,6 +249,24 @@ describe('façade · integration with native bridge', () => {
             expect(outcome.plan).toMatchObject({ vendorId: 'plan-monthly' });
         });
 
+        it('forwards the v6 transition dimensions (width/height) to native', () => {
+            const req = PresentationBuilder.placement('home').build();
+            req.display({
+                type: 'drawer',
+                height: { type: 'percentage', value: 0.6 },
+                width: { type: 'pixel', value: 320 },
+                dismissible: false,
+            });
+
+            const [, , transition] = native.displayPresentation.mock.calls[0];
+            expect(transition).toMatchObject({
+                type: 'drawer',
+                height: { type: 'percentage', value: 0.6 },
+                width: { type: 'pixel', value: 320 },
+                dismissible: false,
+            });
+        });
+
         it('forwards onPresented(null, error) when PRESENTED carries an error', () => {
             let presentedPayload: any = null;
             const req = PresentationBuilder.placement('home')
@@ -302,12 +320,12 @@ describe('façade · integration with native bridge', () => {
                 presentation: fakePresentationPayload,
                 purchaseResult: 2, // restored (ordinal mapping)
                 plan: { vendorId: 'plan-monthly' },
-                closeReason: 'interactiveDismiss',
+                closeReason: 'backSystem',
             });
 
             expect(captured).not.toBeNull();
             expect(captured.purchaseResult).toBe('restored');
-            expect(captured.closeReason).toBe('interactiveDismiss');
+            expect(captured.closeReason).toBe('backSystem');
             expect(captured.plan).toMatchObject({ vendorId: 'plan-monthly' });
             // `presentation` is always populated so the app can identify the screen.
             expect(captured.presentation?.screenId).toBe('screen-abc');

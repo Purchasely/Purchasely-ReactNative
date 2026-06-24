@@ -305,7 +305,7 @@ function App(): React.JSX.Element {
     // -------------------------------------------------------------------------
     // presentation demo. Builds an ONBOARDING placement request, wires up
     // every lifecycle callback, then displays it. `display()` resolves at
-    // DISMISS with a 5-field `PresentationOutcome`.
+    // DISMISS with a 5-field `PLYPresentationOutcome`.
     //
     // To opt in, uncomment the `presentOnboarding()` call inside the
     // `useEffect` below.
