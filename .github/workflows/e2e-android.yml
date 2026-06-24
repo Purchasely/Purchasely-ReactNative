@@ -9,7 +9,11 @@ on:
     branches:
       - feat/sdk-v6-migration
     paths:
+      - 'packages/purchasely/android/build.gradle'
+      - 'packages/*/android/build.gradle'
       - '.github/workflows/e2e-android.yml'
+      - 'integration_test/**'
+      - 'example/src/E2ETestRunner.tsx'
 
 concurrency:
   group: e2e-android
