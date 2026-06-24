@@ -1,0 +1,87 @@
+name: E2E Android
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 2h00 UTC chaque nuit
+    - cron: '0 2 * * *'
+
+concurrency:
+  group: e2e-android
+  cancel-in-progress: true
+
+jobs:
+  e2e-android:
+    name: E2E Tests (Android T1-T10)
+    runs-on: macos-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'yarn'
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+        with:
+          gradle-version: wrapper
+          cache-read-only: false
+
+      - name: Cache Android build cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/build-cache
+          key: android-build-cache-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: android-build-cache-${{ runner.os }}-
+
+      - name: Install JS dependencies
+        run: yarn install --immutable
+
+      - name: Build JS SDK
+        run: yarn purchasely:prepare
+
+      - name: Build debug APK
+        env:
+          JAVA_OPTS: "-XX:MaxHeapSize=4g"
+        run: |
+          cd example/android
+          ./gradlew :app:assembleDebug --quiet
+
+      - name: Run E2E suite on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: arm64-v8a
+          profile: pixel_6
+          ram-size: 4096M
+          heap-size: 512M
+          disk-size: 8G
+          avd-name: e2e_avd
+          emulator-options: >-
+            -no-window
+            -no-audio
+            -no-boot-anim
+            -no-snapshot
+            -camera-back none
+            -camera-front none
+          disable-animations: true
+          script: bash integration_test/run_e2e.sh emulator-5554 --skip-build --debug
+
+      - name: Upload logcat on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logcat-${{ github.run_id }}
+          path: /tmp/e2e_rn_logcat_*.log
+          retention-days: 7

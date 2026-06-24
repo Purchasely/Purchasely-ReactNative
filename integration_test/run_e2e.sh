@@ -25,9 +25,11 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 # -- Arguments -----------------------------------------------------------------
 DEV="emulator-5554"
 SKIP_BUILD=0
+DEBUG_BUILD=0
 for arg in "$@"; do
   case "$arg" in
     --skip-build) SKIP_BUILD=1 ;;
+    --debug)      DEBUG_BUILD=1 ;;
     *) DEV="$arg" ;;
   esac
 done
@@ -41,7 +43,11 @@ warn() { echo -e "${YELLOW}[WRN]${NC} $*"; }
 err()  { echo -e "${RED}[ERR]${NC} $*"; }
 
 # -- Paths ---------------------------------------------------------------------
-APK="$REPO_ROOT/example/android/app/build/outputs/apk/release/app-release.apk"
+if [ "$DEBUG_BUILD" -eq 1 ]; then
+  APK="$REPO_ROOT/example/android/app/build/outputs/apk/debug/app-debug.apk"
+else
+  APK="$REPO_ROOT/example/android/app/build/outputs/apk/release/app-release.apk"
+fi
 TAP_DRIVER="$SCRIPT_DIR/tools/tap_purchase.sh"
 BACK_DRIVER="$SCRIPT_DIR/tools/press_back.sh"
 LOGCAT_FILE="/tmp/e2e_rn_logcat_$$.log"
@@ -78,11 +84,17 @@ if [ "$SKIP_BUILD" -eq 0 ]; then
   cd "$REPO_ROOT"
   yarn purchasely:prepare 2>&1 | tail -5
 
-  log "Building release APK (./gradlew assembleRelease)..."
-  cd "$REPO_ROOT/example/android"
-  # -x lintVitalRelease: Lint reports a false positive for ReactActivity
-  # (which does extend android.app.Activity via AppCompatActivity).
-  ./gradlew assembleRelease -x lintVitalRelease --quiet 2>&1 | tail -20
+  if [ "$DEBUG_BUILD" -eq 1 ]; then
+    log "Building debug APK (./gradlew assembleDebug)..."
+    cd "$REPO_ROOT/example/android"
+    ./gradlew assembleDebug --quiet 2>&1 | tail -20
+  else
+    log "Building release APK (./gradlew assembleRelease)..."
+    cd "$REPO_ROOT/example/android"
+    # -x lintVitalRelease: Lint reports a false positive for ReactActivity
+    # (which does extend android.app.Activity via AppCompatActivity).
+    ./gradlew assembleRelease -x lintVitalRelease --quiet 2>&1 | tail -20
+  fi
 
   if [ ! -f "$APK" ]; then
     err "APK not found at $APK"
