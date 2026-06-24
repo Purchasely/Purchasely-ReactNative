@@ -37,6 +37,8 @@ import io.purchasely.ext.presentation.preload
 import io.purchasely.models.PLYError
 import io.purchasely.views.presentation.models.PLYTransition
 import io.purchasely.views.presentation.models.PLYTransitionType
+import io.purchasely.views.presentation.models.PLYTransitionDimension
+import io.purchasely.views.presentation.models.PLYDimensionType
 import java.util.concurrent.ConcurrentHashMap
 
 class PurchaselyModule internal constructor(context: ReactApplicationContext) : ReactContextBaseJavaModule(context) {
@@ -622,7 +624,7 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
   }
 
   @ReactMethod
-  fun isDeeplinkHandled(deeplink: String?, promise: Promise) {
+  fun handleDeeplink(deeplink: String?, promise: Promise) {
     if (deeplink == null) {
       promise.reject(IllegalStateException("Deeplink must not be null"))
       return
@@ -784,12 +786,26 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
             // `inlinePaywall` not supported by PLYTransition — fall through.
             else -> PLYTransitionType.FULLSCREEN
           }
-          val heightPercentage =
-            if (tm.hasKey("heightPercentage") && !tm.isNull("heightPercentage")) {
-              tm.getDouble("heightPercentage").toFloat()
-            } else {
-              null
+          // v6: width/height are typed dimensions ({ type: 'pixel'|'percentage',
+          // value }), mirroring the native PLYTransitionDimension. The legacy
+          // `heightPercentage` field was removed from the cross-platform API.
+          fun readDimension(key: String): PLYTransitionDimension? {
+            if (!tm.hasKey(key) || tm.isNull(key)) return null
+            val dim = tm.getMap(key) ?: return null
+            val dimType = when (dim.getString("type")) {
+              "pixel" -> PLYDimensionType.PIXEL
+              else -> PLYDimensionType.PERCENTAGE
             }
+            val value =
+              if (dim.hasKey("value") && !dim.isNull("value")) {
+                dim.getDouble("value").toFloat()
+              } else {
+                0f
+              }
+            return PLYTransitionDimension(type = dimType, value = value)
+          }
+          val width = readDimension("width")
+          val height = readDimension("height")
           val dismissible =
             if (tm.hasKey("dismissible") && !tm.isNull("dismissible")) {
               tm.getBoolean("dismissible")
@@ -798,7 +814,8 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
             }
           PLYTransition(
             type = type,
-            heightPercentage = heightPercentage,
+            width = width,
+            height = height,
             dismissible = dismissible
           )
         }

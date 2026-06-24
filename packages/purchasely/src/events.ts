@@ -38,12 +38,7 @@ export interface PresentationLifecycleEvent {
     error?: { code?: string | number | null; message: string; domain?: string | null } | null;
     purchaseResult?: number | null;
     plan?: any;
-    closeReason?:
-        | 'button'
-        | 'backSystem'
-        | 'interactiveDismiss'
-        | 'programmatic'
-        | null;
+    closeReason?: 'button' | 'backSystem' | 'programmatic' | null;
 }
 
 /** Shape of an interceptor-triggered event sent from native. */

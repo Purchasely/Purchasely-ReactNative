@@ -25,20 +25,17 @@ import type {
  * Reason a Presentation was dismissed.
  *
  * - `button` — the user tapped a close button inside the paywall.
- * - `backSystem` — Android system back (gesture or button).
- * - `interactiveDismiss` — iOS interactive dismiss (swipe-down / nav pop).
+ * - `backSystem` — system back: the Android back gesture/button, or the iOS
+ *   interactive dismiss (swipe-down / nav pop), which both map here.
  * - `programmatic` — closed via `request.close()` / `Purchasely.close()`.
  *
- * Platform note: Android never reports `interactiveDismiss`; iOS never reports
- * `backSystem`. The union is the cross-platform superset.
+ * Mirrors the native `PLYCloseReason` (`button` / `back_system` /
+ * `programmatic`). Nullable in the outcome: when the native SDK does not report
+ * a reason, `closeReason` is `null`.
  */
-export type CloseReason =
-    | 'button'
-    | 'backSystem'
-    | 'interactiveDismiss'
-    | 'programmatic';
+export type CloseReason = 'button' | 'backSystem' | 'programmatic';
 
-/** Outcome of `purchaseResult` in {@link PresentationOutcome}. */
+/** Outcome of `purchaseResult` in {@link PLYPresentationOutcome}. */
 export type PurchaseResultKind = 'purchased' | 'cancelled' | 'restored';
 
 /** Error returned by the presentation lifecycle. */
@@ -48,11 +45,28 @@ export interface PresentationError {
     domain?: string | null;
 }
 
+/** Unit of a {@link PLYTransitionDimension}. */
+export type PLYDimensionType = 'pixel' | 'percentage';
+
+/**
+ * A transition dimension (width / height), mirroring the native
+ * `PLYTransitionDimension`. `value` is in pixels when `type` is `'pixel'`, or a
+ * 0–1 fraction when `type` is `'percentage'`.
+ */
+export interface PLYTransitionDimension {
+    type: PLYDimensionType;
+    value: number;
+}
+
 /**
  * Presentation transition mode.
  *
  * `inlinePaywall` is not supported by the legacy `PLYPresentationView` and is
  * exposed only for cross-platform parity.
+ *
+ * `width` / `height` mirror the native `PLYTransition` dimensions. The legacy
+ * `heightPercentage` field was removed in v6 — use `height` with a
+ * `{ type: 'percentage', value }` dimension instead.
  */
 export interface Transition {
     type:
@@ -62,7 +76,8 @@ export interface Transition {
         | 'drawer'
         | 'popin'
         | 'inlinePaywall';
-    heightPercentage?: number | null;
+    width?: PLYTransitionDimension | null;
+    height?: PLYTransitionDimension | null;
     dismissible?: boolean | null;
     backgroundColors?: {
         light?: string | null;
@@ -72,10 +87,10 @@ export interface Transition {
 
 /**
  * Outcome of a {@link Presentation} display, resolved when the presentation is
- * dismissed (Android-style). Five fields, mutually exclusive between
- * `error` and `closeReason`.
+ * dismissed. Mirrors the native `PLYPresentationOutcome`: five fields, mutually
+ * exclusive between `error` and `closeReason`.
  */
-export interface PresentationOutcome {
+export interface PLYPresentationOutcome {
     presentation?: Presentation | null;
     purchaseResult?: PurchaseResultKind | null;
     plan?: PurchaselyPlan | null;
@@ -186,7 +201,7 @@ export type InterceptorHandler = (
 
 /**
  * Internal helper — convert the legacy v5 `ProductResult` ordinal to the
- * string form for the {@link PresentationOutcome.purchaseResult}.
+ * string form for the {@link PLYPresentationOutcome.purchaseResult}.
  */
 export function purchaseResultFromOrdinal(
     value: ProductResult | number | null | undefined

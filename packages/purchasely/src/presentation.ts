@@ -4,7 +4,7 @@ import type { EmitterSubscription } from 'react-native';
 import type {
     Presentation,
     PresentationError,
-    PresentationOutcome,
+    PLYPresentationOutcome,
     Transition,
 } from './presentationTypes';
 import { purchaseResultFromOrdinal } from './presentationTypes';
@@ -62,11 +62,11 @@ function normalizeError(raw: any): PresentationError | null {
     };
 }
 
-/** Convert a native lifecycle event into a {@link PresentationOutcome}. */
+/** Convert a native lifecycle event into a {@link PLYPresentationOutcome}. */
 function eventToOutcome(
     event: PresentationLifecycleEvent,
     presentation: Presentation | null
-): PresentationOutcome {
+): PLYPresentationOutcome {
     const error = normalizeError(event.error);
     return {
         presentation,
@@ -93,7 +93,7 @@ interface PresentationCallbacks {
         error?: PresentationError | null
     ) => void;
     onCloseRequested?: () => void;
-    onDismissed?: (outcome: PresentationOutcome) => void;
+    onDismissed?: (outcome: PLYPresentationOutcome) => void;
 }
 
 interface BuilderConfig {
@@ -212,7 +212,7 @@ export class PresentationBuilder {
         return this;
     }
 
-    onDismissed(handler: (outcome: PresentationOutcome) => void): this {
+    onDismissed(handler: (outcome: PLYPresentationOutcome) => void): this {
         this.config.callbacks.onDismissed = handler;
         return this;
     }
@@ -285,16 +285,16 @@ export class PresentationRequest {
 
     /**
      * Display the presentation. Resolves at DISMISS with a
-     * {@link PresentationOutcome} (cf. contract P0.3). Subscribers can attach
+     * {@link PLYPresentationOutcome} (cf. contract P0.3). Subscribers can attach
      * their own `onPresented` / `onCloseRequested` callbacks via the builder.
      */
-    display(transition?: Transition | null): Promise<PresentationOutcome> {
+    display(transition?: Transition | null): Promise<PLYPresentationOutcome> {
         const requestId = this.ensureRequestId();
 
         // Allow multiple `display()` on the same request — clean up first.
         this.teardownSubscriptions();
 
-        return new Promise<PresentationOutcome>((resolve) => {
+        return new Promise<PLYPresentationOutcome>((resolve) => {
             this.bindLifecycleEvents(requestId, resolve);
 
             NativeModules.Purchasely.displayPresentation(
@@ -304,7 +304,7 @@ export class PresentationRequest {
             ).catch((nativeError: any) => {
                 const error = normalizeError(nativeError);
                 // Synthesize an outcome so consumers always receive one.
-                const outcome: PresentationOutcome = {
+                const outcome: PLYPresentationOutcome = {
                     presentation: this.livePresentation,
                     purchaseResult: null,
                     plan: null,
@@ -328,7 +328,7 @@ export class PresentationRequest {
      * for hot-swapping callbacks on a cached {@link Presentation}.
      */
     onDismissed(
-        handler: (outcome: PresentationOutcome) => void
+        handler: (outcome: PLYPresentationOutcome) => void
     ): this {
         this.config.callbacks.onDismissed = handler;
         return this;
@@ -382,7 +382,7 @@ export class PresentationRequest {
 
     private bindLifecycleEvents(
         requestId: string,
-        resolve: (outcome: PresentationOutcome) => void
+        resolve: (outcome: PLYPresentationOutcome) => void
     ): void {
         const onPresented = presentationEventEmitter.addListener(
             PURCHASELY_PRESENTATION_EVENTS.PRESENTED,
@@ -473,8 +473,8 @@ let defaultDismissSubscription: EmitterSubscription | null = null;
  * `setDefaultPresentationResultCallback` / `setDefaultPresentationResultHandler`
  * (it mirrors the native `Purchasely.setDefaultPresentationDismissHandler`).
  *
- * The handler receives the rich {@link PresentationOutcome}; its
- * {@link PresentationOutcome.presentation} field is always populated for this
+ * The handler receives the rich {@link PLYPresentationOutcome}; its
+ * {@link PLYPresentationOutcome.presentation} field is always populated for this
  * handler, so the app can tell which campaign/deeplink screen closed.
  *
  * Like the native SDK, only one handler is active at a time — calling this
@@ -494,7 +494,7 @@ let defaultDismissSubscription: EmitterSubscription | null = null;
  * ```
  */
 export function setDefaultPresentationDismissHandler(
-    handler: (outcome: PresentationOutcome) => void
+    handler: (outcome: PLYPresentationOutcome) => void
 ): EmitterSubscription {
     // Single global handler: drop the previous subscription before re-arming.
     if (defaultDismissSubscription) {

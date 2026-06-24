@@ -170,13 +170,13 @@ static NSNumber *purchaseResultOrdinal(PLYPurchaseResult result) {
 }
 
 /// Convert a `PLYCloseReason` to the cross-platform wire string consumed by the
-/// TS `CloseReason` union. `none` carries no reason, so it maps to nil. iOS
-/// reports `interactiveDismiss` (swipe-down / nav pop); it never reports
-/// Android's `backSystem`.
+/// TS `CloseReason` union (`button` / `backSystem` / `programmatic`). `none`
+/// carries no reason, so it maps to nil. iOS interactive dismiss (swipe-down /
+/// nav pop) maps to `backSystem` for parity with Android's system back.
 static NSString *closeReasonToRNString(PLYCloseReason reason) {
     switch (reason) {
         case PLYCloseReasonButton:             return @"button";
-        case PLYCloseReasonInteractiveDismiss: return @"interactiveDismiss";
+        case PLYCloseReasonInteractiveDismiss: return @"backSystem";
         case PLYCloseReasonProgrammatic:       return @"programmatic";
         case PLYCloseReasonNone:               return nil;
     }
@@ -435,7 +435,7 @@ RCT_EXPORT_METHOD(userLogin:(NSString * _Nonnull)userId
 	}];
 }
 
-RCT_EXPORT_METHOD(isDeeplinkHandled:(NSString * _Nullable) deeplink
+RCT_EXPORT_METHOD(handleDeeplink:(NSString * _Nullable) deeplink
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 {
@@ -1096,14 +1096,13 @@ RCT_EXPORT_METHOD(setDebugMode:(BOOL)enabled) {
 //    the cross-platform bridge contract
 //
 //  Mapping notes (iOS-specific workarounds — see contract P0.2 / P0.4 / P1.1):
-//    - The native iOS SDK currently surfaces a `PLYProductViewControllerResult` +
-//      `PLYPlan` via the legacy `fetchPresentationFor:contentId:fetchCompletion:`
-//      callbacks. The bridge contract requires a 5-field outcome (presentation,
-//      purchaseResult, plan, closeReason, error). The bridge synthesizes the
-//      missing fields:
+//    - The native iOS SDK delivers a `PLYPresentationOutcome` via the builder's
+//      `onDismissed` handler. The bridge maps it to the 5-field cross-platform
+//      outcome (presentation, purchaseResult, plan, closeReason, error):
 //        * `presentation` is captured from the loaded `PLYPresentation`.
-//        * `closeReason` is set to `nil` (iOS does not yet expose it).
-//        * `error` is propagated from the fetch completion handler.
+//        * `closeReason` maps `PLYCloseReason` → `button`/`backSystem`/
+//          `programmatic` (interactiveDismiss → `backSystem`); `none` → nil.
+//        * `error` is propagated from the outcome / fetch completion handler.
 //    - `screenId` maps to `presentation.id` until iOS exposes a dedicated
 //      `screenId` property.
 //    - `onPresented(presentation?, error?)` is synthesized after preload/display.
@@ -1231,6 +1230,7 @@ RCT_EXPORT_METHOD(displayPresentation:(NSString *)requestId
     __block PLYPurchaseResult capturedResult = PLYPurchaseResultCancelled;
     __block PLYPlan *capturedPlan = nil;
     __block BOOL hasPurchaseOutcome = NO;
+    __block PLYCloseReason capturedCloseReason = PLYCloseReasonNone;
 
     void (^emitDismissed)(NSError * _Nullable) = ^(NSError * _Nullable error) {
         PurchaselyRN *strongSelf = weakSelf;
@@ -1251,8 +1251,13 @@ RCT_EXPORT_METHOD(displayPresentation:(NSString *)requestId
         }
         if (error != nil) {
             body[@"error"] = presentationErrorToMap(error);
+        } else {
+            // Exclusion rule: only surface closeReason when there is no error.
+            NSString *closeReason = closeReasonToRNString(capturedCloseReason);
+            if (closeReason != nil) {
+                body[@"closeReason"] = closeReason;
+            }
         }
-        // closeReason stays absent on iOS until native exposes it (cf. P0.2).
         [strongSelf emitPresentationEvent:kPresentationEventDismissed body:body];
         @synchronized (kPresentationStateLock) {
             [kPresentationsByRequest removeObjectForKey:requestId];
@@ -1341,6 +1346,7 @@ RCT_EXPORT_METHOD(displayPresentation:(NSString *)requestId
         capturedResult = outcome.purchaseResult;
         capturedPlan = outcome.plan;
         hasPurchaseOutcome = YES;
+        capturedCloseReason = outcome.closeReason;
         if (outcome.presentation != nil) {
             capturedPresentation = outcome.presentation;
         }

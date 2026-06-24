@@ -56,7 +56,7 @@ export const HomeScreen: React.FC<NativeStackScreenProps<any>> = ({
     const onPressPresentation = async () => {
         try {
             // build a request for the placement, then display it.
-            // `display()` resolves at DISMISS with a PresentationOutcome.
+            // `display()` resolves at DISMISS with a PLYPresentationOutcome.
             const request = PresentationBuilder.placement('premium_support')
                 .backgroundColor('#FFFFFFFF')
                 .build()

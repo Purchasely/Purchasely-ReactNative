@@ -88,7 +88,7 @@ jest.mock('react-native', () => ({
             silentRestoreAllProducts: jest.fn().mockResolvedValue(true),
             userSubscriptions: jest.fn().mockResolvedValue([]),
             userSubscriptionsHistory: jest.fn().mockResolvedValue([]),
-            isDeeplinkHandled: jest.fn().mockResolvedValue(false),
+            handleDeeplink: jest.fn().mockResolvedValue(false),
             isEligibleForIntroOffer: jest.fn().mockResolvedValue(true),
             setUserAttributeWithString: jest.fn(),
             setUserAttributeWithNumber: jest.fn(),
@@ -533,11 +533,11 @@ describe('Purchasely SDK', () => {
     })
 
     describe('Deeplinks', () => {
-        it('should check if deeplink is handled', async () => {
-            const result = await Purchasely.isDeeplinkHandled('purchasely://premium')
+        it('should handle a deeplink', async () => {
+            const result = await Purchasely.handleDeeplink('purchasely://premium')
 
             expect(result).toBe(false)
-            expect(mockedPurchasely.isDeeplinkHandled).toHaveBeenCalledWith('purchasely://premium')
+            expect(mockedPurchasely.handleDeeplink).toHaveBeenCalledWith('purchasely://premium')
         })
     })
 

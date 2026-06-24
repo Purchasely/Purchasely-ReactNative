@@ -140,7 +140,7 @@ export const createMockPurchaselyModule = () => ({
     silentRestoreAllProducts: jest.fn().mockResolvedValue(true),
     userSubscriptions: jest.fn().mockResolvedValue([]),
     userSubscriptionsHistory: jest.fn().mockResolvedValue([]),
-    isDeeplinkHandled: jest.fn().mockResolvedValue(false),
+    handleDeeplink: jest.fn().mockResolvedValue(false),
     isEligibleForIntroOffer: jest.fn().mockResolvedValue(true),
     setUserAttributeWithString: jest.fn(),
     setUserAttributeWithNumber: jest.fn(),
