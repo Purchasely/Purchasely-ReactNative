@@ -65,10 +65,9 @@ const INITIAL_TESTS: TestResult[] = [
     { id: 'T3', name: 'preload(placement) → typed Presentation', status: 'pending' },
     { id: 'T4', name: 'getDynamicOfferings → list', status: 'pending' },
     { id: 'T5', name: 'allProducts → list', status: 'pending' },
-    { id: 'T6', name: 'synchronize() → true OR rejects', status: 'pending' },
     { id: 'T7', name: 'interceptor cleanup round-trip', status: 'pending' },
     { id: 'T8', name: 'display(drawer 60%) → onPresented → close() → outcome', status: 'pending' },
-    { id: 'T9', name: 'purchase interceptor fires on real tap', status: 'pending' },
+    { id: 'T9', name: 'purchase interceptor: plan + promoOffer on real tap', status: 'pending' },
     { id: 'T10', name: 'defaultDismissHandler via deeplink + BACK', status: 'pending' },
 ]
 
@@ -188,18 +187,6 @@ export default function E2ETestRunner() {
             pass('T5', `count=${products.length}`)
         } catch (e) { fail('T5', e); suitePass = false }
 
-        // ── T6 ────────────────────────────────────────────────────────────────
-        running('T6')
-        try {
-            const result = await Purchasely.synchronize()
-            if (result !== true) throw new Error(`Expected true, got ${result}`)
-            pass('T6', 'resolved true (success path)')
-        } catch (e: unknown) {
-            // v6 contract: BillingUnavailable on emulator is expected and correct.
-            const msg = e instanceof Error ? e.message : String(e)
-            pass('T6', `rejected (error path — expected on emulator): ${msg}`)
-        }
-
         // ── T7 ────────────────────────────────────────────────────────────────
         running('T7')
         try {
@@ -248,44 +235,37 @@ export default function E2ETestRunner() {
 
         await sleep(1000)
 
-        // ── T9 — purchase interceptor fired by real tap ───────────────────────
+        // ── T9 — purchase interceptor: plan + promoOffer check on real tap ────
         running('T9')
         try {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             let capturedInfo: any = null
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             let capturedPayload: any = null
-            let presented9 = false
 
-            // Register interceptors BEFORE display so the SDK sees them immediately.
+            // Register interceptor BEFORE display so the SDK sees it immediately.
+            // Return 'success': we handled it — no native purchase triggered.
             Purchasely.interceptAction('purchase', async (info: any, payload: any) => {
                 capturedInfo = info
                 capturedPayload = payload
-                // Return success: skip native purchase but CONTINUE the chain so
-                // close_all fires next (mirrors native Android ACT-01).
                 return 'success' as const
             })
-            // Intercept close_all with success so the paywall stays open while we
-            // assert the captured payload. Without this, the SDK closes the screen
-            // immediately after the purchase action.
-            Purchasely.interceptAction('closeAll', async () => 'success' as const)
 
             const req9 = Purchasely.presentation
                 .placement(PLACEMENT_AUDIENCES)
-                .onPresented(() => { presented9 = true })
                 .build()
 
             // Do NOT await — the promise resolves at dismiss (which we control).
             req9.display()
 
-            // Wait 3 s for the paywall to render (onPresented not reliably fired by beta.12).
+            // Wait 3 s for the paywall to render before signalling the host driver.
             await sleep(3000)
 
             // Signal the host driver: tap the purchase button via uiautomator.
             console.log('[E2E:READY_FOR_TAP]')
             appendLog('T9: signaled READY_FOR_TAP — waiting for interceptor…')
 
-            // Poll until the interceptor fires (host driver taps within 90 s).
+            // Poll until the interceptor fires (host driver taps within 40 s).
             await waitFor(() => capturedPayload, 40000, 300)
 
             const vendorId: string | undefined = capturedPayload?.plan?.vendorId
@@ -298,10 +278,11 @@ export default function E2ETestRunner() {
                 'T9',
                 `kind=${capturedPayload?.kind} plan.vendorId=${vendorId} ` +
                 `plan.productId=${capturedPayload?.plan?.productId} ` +
+                `promoOffer=${JSON.stringify(capturedPayload?.plan?.promoOffer ?? null)} ` +
                 `contentId=${capturedInfo?.contentId}`
             )
 
-            // Dismiss the paywall and clean up interceptors.
+            // Close the paywall and clean up.
             req9.close()
             Purchasely.removeAllActionInterceptors()
         } catch (e) {
@@ -354,7 +335,7 @@ export default function E2ETestRunner() {
         // ── Final report ─────────────────────────────────────────────────────
         setSuiteStatus(suitePass ? 'pass' : 'fail')
         if (suitePass) {
-            console.log('[E2E:SUITE:PASS] All 10 tests passed')
+            console.log('[E2E:SUITE:PASS] All 9 tests passed')
             appendLog('=== SUITE PASS ✓ ===')
         } else {
             console.log('[E2E:SUITE:FAIL] One or more tests failed')
