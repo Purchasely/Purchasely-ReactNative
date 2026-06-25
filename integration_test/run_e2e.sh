@@ -1,8 +1,8 @@
 #!/bin/bash
 # Purchasely React Native -- E2E test orchestrator
 #
-# Runs T1-T9 against a connected Android device/emulator.
-# The test logic (T1-T9) executes inside the RN JS context on-device;
+# Runs T1-T13 against a connected Android device/emulator.
+# The test logic (T1-T13) executes inside the RN JS context on-device;
 # UI drivers for T8/T9 are launched from the host when the device signals
 # readiness via LogCat markers.
 #
@@ -133,7 +133,7 @@ adb -s "$DEV" shell am start -n "$ACTIVITY" \
 log "Test runner launched -- monitoring LogCat..."
 
 # -- Monitor loop --------------------------------------------------------------
-TIMEOUT_SECS=360  # 6 minutes (T7/T8/T9 each have 40 s waits internally)
+TIMEOUT_SECS=420  # 7 minutes (T8/T9 have 40 s waits; T10-T13 add ~30 s total)
 START_TS=$(date +%s)
 TAP_DONE=0
 BACK_DONE=0
@@ -186,7 +186,7 @@ echo " Purchasely RN E2E -- test results"
 echo "==========================================="
 
 # Extract and print individual test results in order
-for id in T1 T2 T3 T4 T5 T6 T7 T8 T9; do
+for id in T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13; do
   PASS_LINE=$(grep "\[E2E:${id}:PASS\]" "$LOGCAT_FILE" 2>/dev/null | tail -1)
   FAIL_LINE=$(grep "\[E2E:${id}:FAIL\]" "$LOGCAT_FILE" 2>/dev/null | tail -1)
   if [ -n "$PASS_LINE" ]; then
