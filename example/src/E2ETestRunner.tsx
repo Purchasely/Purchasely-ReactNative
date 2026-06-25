@@ -1,13 +1,20 @@
 /**
- * E2E test runner — T1–T9 (React Native port of the Flutter integration tests).
+ * E2E test runner — T1–T13
  *
  * Renders as the root component when the app is launched with E2E_MODE=true.
- * Each test runs sequentially in a single SDK session. Drivers for T8/T9 are
- * coordinated via LogCat markers emitted to the host script (run_e2e.sh):
- *   [E2E:READY_FOR_TAP]  — paywall is up; host should tap the purchase button
- *   [E2E:READY_FOR_BACK] — paywall is up; host should press system BACK
+ * Each test runs sequentially in a single SDK session.
  *
- * Reference: ../integration_test/E2E_TEST_INDEX.md (Flutter ↔ RN mapping)
+ * Host-driven tests (require an external driver process):
+ *   T8: [E2E:READY_FOR_TAP]  — paywall displayed; host taps the purchase button
+ *   T9: [E2E:READY_FOR_BACK] — paywall displayed; host dismisses it
+ *                              Android: adb keyevent BACK via uiautomator
+ *                              iOS:     xcrun simctl io booted swipe (prepared, not yet active)
+ *
+ * Host scripts:
+ *   Android: integration_test/run_e2e.sh  (android-emulator-runner + uiautomator)
+ *   iOS:     integration_test/run_e2e_ios.sh (prepared, not yet in CI)
+ *
+ * Reference: integration_test/E2E_TEST_INDEX.md
  */
 
 import React, { useEffect, useState } from 'react'
@@ -19,12 +26,13 @@ import {
     View,
 } from 'react-native'
 import Purchasely, {
+    PLYPresentationType,
     type PLYPresentationOutcome,
     setDefaultPresentationDismissHandler,
     removeDefaultPresentationDismissHandler,
 } from 'react-native-purchasely'
 
-// ── Config (mirrors com.purchasely.integration.BaseIntegrationTest) ─────────
+// ── Config ───────────────────────────────────────────────────────────────────
 const API_KEY = '0ad0594b-3b3d-4fea-8ee1-4b5df91efe87'
 const PLACEMENT_AUDIENCES = 'integration_test_audiences'
 const DEEPLINK_AUDIENCES = `ply://ply/placements/${PLACEMENT_AUDIENCES}`
@@ -60,15 +68,19 @@ async function waitFor<T>(
 
 // ── Initial test list ─────────────────────────────────────────────────────────
 const INITIAL_TESTS: TestResult[] = [
-    { id: 'T1', name: 'getAnonymousUserId non-empty', status: 'pending' },
-    { id: 'T2', name: 'isAnonymous: true→login→false→logout→true', status: 'pending' },
-    { id: 'T3', name: 'preload(placement) → typed Presentation', status: 'pending' },
-    { id: 'T4', name: 'getDynamicOfferings → list', status: 'pending' },
-    { id: 'T5', name: 'allProducts → list', status: 'pending' },
-    { id: 'T6', name: 'interceptor cleanup round-trip', status: 'pending' },
-    { id: 'T7', name: 'display(drawer 60%) → onPresented → close() → outcome', status: 'pending' },
-    { id: 'T8', name: 'purchase interceptor: plan + promoOffer on real tap', status: 'pending' },
-    { id: 'T9', name: 'defaultDismissHandler via deeplink + BACK', status: 'pending' },
+    { id: 'T1',  name: 'getAnonymousUserId — non-empty + UUID format', status: 'pending' },
+    { id: 'T2',  name: 'isAnonymous: true→login→false→logout→true', status: 'pending' },
+    { id: 'T3',  name: 'preload → placementId + type + audienceId + plans[].planVendorId', status: 'pending' },
+    { id: 'T4',  name: 'getDynamicOfferings → array', status: 'pending' },
+    { id: 'T5',  name: 'allProducts → array', status: 'pending' },
+    { id: 'T6',  name: 'interceptor register → removeOne → removeAll (no error)', status: 'pending' },
+    { id: 'T7',  name: 'display(drawer 60%) → close() → outcome: closeReason + presentation props', status: 'pending' },
+    { id: 'T8',  name: 'purchase interceptor on real tap: plan.vendorId + offer', status: 'pending' },
+    { id: 'T9',  name: 'defaultDismissHandler + deeplink + BACK → outcome.presentation props', status: 'pending' },
+    { id: 'T10', name: 'addEventListener → PRESENTATION_VIEWED: placement_id + sdk_version', status: 'pending' },
+    { id: 'T11', name: 'PRESENTATION_CLOSED → placement_id + displayed_presentation', status: 'pending' },
+    { id: 'T12', name: 'programmatic close does NOT fire close/closeAll interceptor', status: 'pending' },
+    { id: 'T13', name: 'user attributes: set/get string + number + boolean + clear', status: 'pending' },
 ]
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -109,7 +121,7 @@ export default function E2ETestRunner() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
-    // ── Suite ────────────────────────────────────────────────────────────────
+    // ── Suite ─────────────────────────────────────────────────────────────────
     async function runSuite() {
         setSuiteStatus('running')
         console.log('[E2E:SUITE:START]')
@@ -118,12 +130,16 @@ export default function E2ETestRunner() {
         // ── SDK init ──────────────────────────────────────────────────────────
         let sdkOk = false
         try {
-            sdkOk = await Purchasely.builder(API_KEY)
+            // stores() is Android-only; storekitVersion() is iOS-only
+            const b = Purchasely.builder(API_KEY)
                 .runningMode('full')
                 .logLevel('debug')
-                .stores(['google'])
                 .allowDeeplink(true)
-                .start()
+            sdkOk = await (
+                Platform.OS === 'android'
+                    ? b.stores(['google'])
+                    : b.storekitVersion('storeKit2')
+            ).start()
         } catch (e) {
             console.error('[E2E:INIT:FAIL]', e)
         }
@@ -137,15 +153,17 @@ export default function E2ETestRunner() {
 
         let suitePass = true
 
-        // ── T1 ────────────────────────────────────────────────────────────────
+        // ── T1 — anonymous user ID ────────────────────────────────────────────
         running('T1')
         try {
             const id = await Purchasely.getAnonymousUserId()
             if (!id || id.length === 0) throw new Error('anonymousUserId is empty')
+            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+            if (!uuidRegex.test(id)) throw new Error(`anonymousUserId not UUID format: ${id}`)
             pass('T1', `id=${id}`)
         } catch (e) { fail('T1', e); suitePass = false }
 
-        // ── T2 ────────────────────────────────────────────────────────────────
+        // ── T2 — login / logout cycle ─────────────────────────────────────────
         running('T2')
         try {
             const a1 = await Purchasely.isAnonymous()
@@ -159,19 +177,41 @@ export default function E2ETestRunner() {
             pass('T2', 'true→false→true ✓')
         } catch (e) { fail('T2', e); suitePass = false }
 
-        // ── T3 ────────────────────────────────────────────────────────────────
+        // ── T3 — preload: presentation properties ─────────────────────────────
         running('T3')
         try {
             const req = Purchasely.presentation.placement(PLACEMENT_AUDIENCES).build()
             const pres = await req.preload()
+
             if (!pres.screenId || pres.screenId.length === 0) throw new Error('screenId is empty')
+            if (!pres.placementId) throw new Error('placementId is missing')
+            if (pres.placementId !== PLACEMENT_AUDIENCES) {
+                throw new Error(`placementId mismatch: expected "${PLACEMENT_AUDIENCES}", got "${pres.placementId}"`)
+            }
+
+            // Type must be NORMAL (active placement) or FALLBACK (network issue — still valid)
+            const validTypes = [PLYPresentationType.NORMAL, PLYPresentationType.FALLBACK]
+            if (pres.type != null && !validTypes.includes(pres.type)) {
+                throw new Error(`Unexpected type: ${pres.type} (expected NORMAL or FALLBACK)`)
+            }
+
+            if (!Array.isArray(pres.plans) || pres.plans.length === 0) {
+                throw new Error('plans array is empty or missing')
+            }
+            const firstPlan = pres.plans[0]
+            if (!firstPlan?.planVendorId) {
+                throw new Error(`plans[0].planVendorId missing; plan=${JSON.stringify(firstPlan)}`)
+            }
+
             pass(
                 'T3',
-                `screenId=${pres.screenId} type=${pres.type} plans=${pres.plans?.length ?? 0}`
+                `screenId=${pres.screenId} placementId=${pres.placementId} ` +
+                `type=${pres.type} audienceId=${pres.audienceId ?? 'null'} ` +
+                `plans=${pres.plans.length} plan[0].planVendorId=${firstPlan.planVendorId}`
             )
         } catch (e) { fail('T3', e); suitePass = false }
 
-        // ── T4 ────────────────────────────────────────────────────────────────
+        // ── T4 — dynamic offerings ────────────────────────────────────────────
         running('T4')
         try {
             const offerings = await Purchasely.getDynamicOfferings()
@@ -179,7 +219,7 @@ export default function E2ETestRunner() {
             pass('T4', `count=${offerings.length}`)
         } catch (e) { fail('T4', e); suitePass = false }
 
-        // ── T5 ────────────────────────────────────────────────────────────────
+        // ── T5 — all products ─────────────────────────────────────────────────
         running('T5')
         try {
             const products = await Purchasely.allProducts()
@@ -187,7 +227,7 @@ export default function E2ETestRunner() {
             pass('T5', `count=${products.length}`)
         } catch (e) { fail('T5', e); suitePass = false }
 
-        // ── T6 ────────────────────────────────────────────────────────────────
+        // ── T6 — interceptor cleanup round-trip ───────────────────────────────
         running('T6')
         try {
             Purchasely.interceptAction('purchase', async () => 'notHandled' as const)
@@ -197,45 +237,52 @@ export default function E2ETestRunner() {
             pass('T6', 'register→removeActionInterceptor→removeAll ✓')
         } catch (e) { fail('T6', e); suitePass = false }
 
-        // ── T7 — display(drawer 60%) + close() ───────────────────────────────
+        // ── T7 — display(drawer 60%) + close() → outcome properties ──────────
         running('T7')
         try {
-            const req8 = Purchasely.presentation
+            const req7 = Purchasely.presentation
                 .placement(PLACEMENT_AUDIENCES)
                 .build()
 
-            await req8.preload()
+            await req7.preload()
 
-            const displayPromise8 = req8.display({
+            const displayPromise7 = req7.display({
                 type: 'drawer',
                 height: { type: 'percentage', value: 0.6 },
                 dismissible: true,
             })
 
-            // Wait 3 s for the native drawer to render before closing programmatically.
-            // (onPresented is not reliably fired by sdk beta.12 — use a fixed delay.)
-            // Note: timers only fire while MainActivity is not paused; MainActivity.kt
-            // overrides onPause() to skip onHostPause() in E2E mode so sleep() works.
+            // Wait 3 s for the drawer to render before programmatic close.
             await sleep(3000)
+            req7.close()
 
-            // Programmatic close — exercises the onDismissed wiring fix.
-            req8.close()
-
-            const outcome8 = await Promise.race([
-                displayPromise8,
+            const outcome7 = await Promise.race([
+                displayPromise7,
                 sleep(15000).then<never>(() => { throw new Error('dismiss timeout after 15 s') }),
             ])
 
             const validReasons = ['programmatic', 'button', 'backSystem']
-            if (!validReasons.includes(outcome8.closeReason ?? '')) {
-                throw new Error(`Unexpected closeReason: "${outcome8.closeReason}"`)
+            if (!validReasons.includes(outcome7.closeReason ?? '')) {
+                throw new Error(`Unexpected closeReason: "${outcome7.closeReason}"`)
             }
-            pass('T7', `closeReason=${outcome8.closeReason} purchaseResult=${outcome8.purchaseResult}`)
+            if (!outcome7.presentation?.screenId) {
+                throw new Error(`outcome.presentation.screenId missing; presentation=${JSON.stringify(outcome7.presentation)}`)
+            }
+            if (!outcome7.presentation?.placementId) {
+                throw new Error(`outcome.presentation.placementId missing`)
+            }
+
+            pass(
+                'T7',
+                `closeReason=${outcome7.closeReason} ` +
+                `presentation.screenId=${outcome7.presentation.screenId} ` +
+                `presentation.placementId=${outcome7.presentation.placementId}`
+            )
         } catch (e) { fail('T7', e); suitePass = false }
 
         await sleep(1000)
 
-        // ── T8 — purchase interceptor: plan + promoOffer check on real tap ────
+        // ── T8 — purchase interceptor: plan + offer on real tap ───────────────
         running('T8')
         try {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -243,7 +290,6 @@ export default function E2ETestRunner() {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             let capturedPayload: any = null
 
-            // Register interceptor BEFORE display so the SDK sees it immediately.
             // Return 'success': we handled it — no native purchase triggered.
             Purchasely.interceptAction('purchase', async (info: any, payload: any) => {
                 capturedInfo = info
@@ -251,21 +297,17 @@ export default function E2ETestRunner() {
                 return 'success' as const
             })
 
-            const req9 = Purchasely.presentation
+            const req8 = Purchasely.presentation
                 .placement(PLACEMENT_AUDIENCES)
                 .build()
 
-            // Do NOT await — the promise resolves at dismiss (which we control).
-            req9.display()
+            req8.display()
 
             // Wait 3 s for the paywall to render before signalling the host driver.
             await sleep(3000)
-
-            // Signal the host driver: tap the purchase button via uiautomator.
             console.log('[E2E:READY_FOR_TAP]')
             appendLog('T8: signaled READY_FOR_TAP — waiting for interceptor…')
 
-            // Poll until the interceptor fires (host driver taps within 40 s).
             await waitFor(() => capturedPayload, 40000, 300)
 
             const vendorId: string | undefined = capturedPayload?.plan?.vendorId
@@ -274,16 +316,19 @@ export default function E2ETestRunner() {
                     `payload.plan.vendorId missing; payload=${JSON.stringify(capturedPayload)}`
                 )
             }
+
+            // offer is the promo offer attached to the purchase action (may be null)
+            const offer = capturedPayload?.offer ?? null
+
             pass(
                 'T8',
                 `kind=${capturedPayload?.kind} plan.vendorId=${vendorId} ` +
-                `plan.productId=${capturedPayload?.plan?.productId} ` +
-                `promoOffer=${JSON.stringify(capturedPayload?.plan?.promoOffer ?? null)} ` +
-                `contentId=${capturedInfo?.contentId}`
+                `plan.storeProductId=${capturedPayload?.plan?.storeProductId ?? 'n/a'} ` +
+                `offer=${offer != null ? JSON.stringify(offer) : 'none'} ` +
+                `contentId=${capturedInfo?.contentId ?? 'none'}`
             )
 
-            // Close the paywall and clean up.
-            req9.close()
+            req8.close()
             Purchasely.removeAllActionInterceptors()
         } catch (e) {
             fail('T8', e)
@@ -293,7 +338,7 @@ export default function E2ETestRunner() {
 
         await sleep(1500)
 
-        // ── T9 — global dismiss handler via deeplink + BACK ─────────────────
+        // ── T9 — defaultDismissHandler + deeplink + BACK → outcome props ──────
         running('T9')
         try {
             let globalOutcome: PLYPresentationOutcome | null = null
@@ -305,24 +350,29 @@ export default function E2ETestRunner() {
             const handled = await Purchasely.handleDeeplink(DEEPLINK_AUDIENCES)
             if (!handled) throw new Error('handleDeeplink returned false')
 
-            // Wait briefly for the paywall to render before signalling the driver.
             await sleep(2000)
-
-            // Signal the host driver: press system BACK.
             console.log('[E2E:READY_FOR_BACK]')
             appendLog('T9: signaled READY_FOR_BACK — waiting for dismiss handler…')
 
             await waitFor(() => globalOutcome, 40000, 300)
 
             const reason = globalOutcome!.closeReason
-            const validReasons10 = ['backSystem', 'programmatic', 'button']
-            if (!validReasons10.includes(reason ?? '')) {
+            const validReasons9 = ['backSystem', 'programmatic', 'button']
+            if (!validReasons9.includes(reason ?? '')) {
                 throw new Error(`Unexpected closeReason: "${reason}"`)
             }
+            if (!globalOutcome!.presentation?.screenId) {
+                throw new Error(`outcome.presentation.screenId missing`)
+            }
+            if (!globalOutcome!.presentation?.placementId) {
+                throw new Error(`outcome.presentation.placementId missing`)
+            }
+
             pass(
                 'T9',
                 `closeReason=${reason} ` +
-                `screenId=${globalOutcome!.presentation?.screenId}`
+                `presentation.screenId=${globalOutcome!.presentation?.screenId} ` +
+                `presentation.placementId=${globalOutcome!.presentation?.placementId}`
             )
 
             removeDefaultPresentationDismissHandler()
@@ -332,10 +382,162 @@ export default function E2ETestRunner() {
             removeDefaultPresentationDismissHandler()
         }
 
-        // ── Final report ─────────────────────────────────────────────────────
+        await sleep(1000)
+
+        // ── T10 — addEventListener → PRESENTATION_VIEWED ──────────────────────
+        running('T10')
+        try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            let viewedEvent: any = null
+            const listener10 = Purchasely.addEventListener((event: any) => {
+                if (event.name === 'PRESENTATION_VIEWED') viewedEvent = event
+            })
+
+            const req10 = Purchasely.presentation.placement(PLACEMENT_AUDIENCES).build()
+            req10.display()
+
+            await waitFor(() => viewedEvent, 15000, 300)
+
+            const placementId10 = viewedEvent.properties?.placement_id
+            const sdkVersion10 = viewedEvent.properties?.sdk_version
+            if (!placementId10) {
+                throw new Error(`PRESENTATION_VIEWED missing placement_id; props=${JSON.stringify(viewedEvent.properties)}`)
+            }
+            if (!sdkVersion10) {
+                throw new Error('PRESENTATION_VIEWED missing sdk_version')
+            }
+
+            pass(
+                'T10',
+                `PRESENTATION_VIEWED: placement_id=${placementId10} ` +
+                `sdk_version=${sdkVersion10} ` +
+                `audience_id=${viewedEvent.properties?.audience_id ?? 'null'}`
+            )
+
+            req10.close()
+            await sleep(500)
+            listener10.remove()
+        } catch (e) { fail('T10', e); suitePass = false }
+
+        await sleep(500)
+
+        // ── T11 — PRESENTATION_CLOSED → placement_id + displayed_presentation ─
+        running('T11')
+        try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            let viewedEvent11: any = null
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            let closedEvent11: any = null
+            const listener11 = Purchasely.addEventListener((event: any) => {
+                if (event.name === 'PRESENTATION_VIEWED') viewedEvent11 = event
+                if (event.name === 'PRESENTATION_CLOSED') closedEvent11 = event
+            })
+
+            const req11 = Purchasely.presentation.placement(PLACEMENT_AUDIENCES).build()
+            req11.display()
+
+            // Wait for presentation to appear before closing
+            await waitFor(() => viewedEvent11, 15000, 300)
+            await sleep(500)
+
+            req11.close()
+
+            await waitFor(() => closedEvent11, 10000, 300)
+
+            const placementId11 = closedEvent11.properties?.placement_id
+            const displayedPres11 = closedEvent11.properties?.displayed_presentation
+            if (!placementId11) {
+                throw new Error(`PRESENTATION_CLOSED missing placement_id; props=${JSON.stringify(closedEvent11.properties)}`)
+            }
+            if (!displayedPres11) {
+                throw new Error('PRESENTATION_CLOSED missing displayed_presentation')
+            }
+
+            pass(
+                'T11',
+                `PRESENTATION_CLOSED: placement_id=${placementId11} ` +
+                `displayed_presentation=${displayedPres11}`
+            )
+
+            listener11.remove()
+        } catch (e) { fail('T11', e); suitePass = false }
+
+        await sleep(500)
+
+        // ── T12 — programmatic close does NOT trigger close/closeAll interceptor
+        running('T12')
+        try {
+            let interceptorCalled = false
+
+            Purchasely.interceptAction('close', async () => {
+                interceptorCalled = true
+                return 'notHandled' as const
+            })
+            Purchasely.interceptAction('closeAll', async () => {
+                interceptorCalled = true
+                return 'notHandled' as const
+            })
+
+            const req12 = Purchasely.presentation.placement(PLACEMENT_AUDIENCES).build()
+            req12.display()
+            await sleep(3000)
+
+            // req.close() is programmatic — must bypass the interceptor
+            req12.close()
+            await sleep(2000)
+
+            Purchasely.removeAllActionInterceptors()
+
+            if (interceptorCalled) {
+                throw new Error('close/closeAll interceptor was triggered on programmatic close — unexpected')
+            }
+            pass('T12', 'close/closeAll interceptors NOT triggered by req.close() ✓')
+        } catch (e) {
+            fail('T12', e)
+            suitePass = false
+            Purchasely.removeAllActionInterceptors()
+        }
+
+        // ── T13 — user attributes: set / get / clear ──────────────────────────
+        running('T13')
+        try {
+            Purchasely.setUserAttributeWithString('e2e_str', 'hello_rn')
+            Purchasely.setUserAttributeWithNumber('e2e_num', 42)
+            Purchasely.setUserAttributeWithBoolean('e2e_bool', true)
+
+            await sleep(300) // let native bridge process the set calls
+
+            const strVal = await Purchasely.userAttribute('e2e_str')
+            const numVal = await Purchasely.userAttribute('e2e_num')
+            const boolVal = await Purchasely.userAttribute('e2e_bool')
+
+            if (strVal !== 'hello_rn') throw new Error(`str: expected 'hello_rn', got ${JSON.stringify(strVal)}`)
+            if (numVal !== 42) throw new Error(`num: expected 42, got ${JSON.stringify(numVal)}`)
+            if (boolVal !== true) throw new Error(`bool: expected true, got ${JSON.stringify(boolVal)}`)
+
+            // Clear and verify
+            Purchasely.clearUserAttribute('e2e_str')
+            Purchasely.clearUserAttribute('e2e_num')
+            Purchasely.clearUserAttribute('e2e_bool')
+
+            await sleep(300)
+
+            const strAfter = await Purchasely.userAttribute('e2e_str')
+            const numAfter = await Purchasely.userAttribute('e2e_num')
+            if (strAfter != null) throw new Error(`e2e_str not cleared, got ${JSON.stringify(strAfter)}`)
+            if (numAfter != null) throw new Error(`e2e_num not cleared, got ${JSON.stringify(numAfter)}`)
+
+            pass('T13', `set: str=hello_rn num=42 bool=true → cleared → null ✓`)
+        } catch (e) {
+            fail('T13', e)
+            suitePass = false
+            Purchasely.clearUserAttributes()
+        }
+
+        // ── Final report ──────────────────────────────────────────────────────
         setSuiteStatus(suitePass ? 'pass' : 'fail')
         if (suitePass) {
-            console.log('[E2E:SUITE:PASS] All 9 tests passed')
+            console.log('[E2E:SUITE:PASS] All 13 tests passed')
             appendLog('=== SUITE PASS ✓ ===')
         } else {
             console.log('[E2E:SUITE:FAIL] One or more tests failed')
@@ -430,7 +632,7 @@ const styles = StyleSheet.create({
     testId: {
         color: '#fff',
         fontWeight: '700',
-        width: 32,
+        width: 36,
         fontSize: 12,
     },
     testBody: { flex: 1, paddingHorizontal: 8 },
