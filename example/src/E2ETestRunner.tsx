@@ -1,8 +1,8 @@
 /**
- * E2E test runner — T1–T10 (React Native port of the Flutter integration tests).
+ * E2E test runner — T1–T9 (React Native port of the Flutter integration tests).
  *
  * Renders as the root component when the app is launched with E2E_MODE=true.
- * Each test runs sequentially in a single SDK session. Drivers for T9/T10 are
+ * Each test runs sequentially in a single SDK session. Drivers for T8/T9 are
  * coordinated via LogCat markers emitted to the host script (run_e2e.sh):
  *   [E2E:READY_FOR_TAP]  — paywall is up; host should tap the purchase button
  *   [E2E:READY_FOR_BACK] — paywall is up; host should press system BACK
@@ -65,10 +65,10 @@ const INITIAL_TESTS: TestResult[] = [
     { id: 'T3', name: 'preload(placement) → typed Presentation', status: 'pending' },
     { id: 'T4', name: 'getDynamicOfferings → list', status: 'pending' },
     { id: 'T5', name: 'allProducts → list', status: 'pending' },
-    { id: 'T7', name: 'interceptor cleanup round-trip', status: 'pending' },
-    { id: 'T8', name: 'display(drawer 60%) → onPresented → close() → outcome', status: 'pending' },
-    { id: 'T9', name: 'purchase interceptor: plan + promoOffer on real tap', status: 'pending' },
-    { id: 'T10', name: 'defaultDismissHandler via deeplink + BACK', status: 'pending' },
+    { id: 'T6', name: 'interceptor cleanup round-trip', status: 'pending' },
+    { id: 'T7', name: 'display(drawer 60%) → onPresented → close() → outcome', status: 'pending' },
+    { id: 'T8', name: 'purchase interceptor: plan + promoOffer on real tap', status: 'pending' },
+    { id: 'T9', name: 'defaultDismissHandler via deeplink + BACK', status: 'pending' },
 ]
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -187,18 +187,18 @@ export default function E2ETestRunner() {
             pass('T5', `count=${products.length}`)
         } catch (e) { fail('T5', e); suitePass = false }
 
-        // ── T7 ────────────────────────────────────────────────────────────────
-        running('T7')
+        // ── T6 ────────────────────────────────────────────────────────────────
+        running('T6')
         try {
             Purchasely.interceptAction('purchase', async () => 'notHandled' as const)
             Purchasely.interceptAction('navigate', async () => 'notHandled' as const)
             Purchasely.removeActionInterceptor('purchase')
             Purchasely.removeAllActionInterceptors()
-            pass('T7', 'register→removeActionInterceptor→removeAll ✓')
-        } catch (e) { fail('T7', e); suitePass = false }
+            pass('T6', 'register→removeActionInterceptor→removeAll ✓')
+        } catch (e) { fail('T6', e); suitePass = false }
 
-        // ── T8 — display(drawer 60%) + close() ───────────────────────────────
-        running('T8')
+        // ── T7 — display(drawer 60%) + close() ───────────────────────────────
+        running('T7')
         try {
             const req8 = Purchasely.presentation
                 .placement(PLACEMENT_AUDIENCES)
@@ -230,13 +230,13 @@ export default function E2ETestRunner() {
             if (!validReasons.includes(outcome8.closeReason ?? '')) {
                 throw new Error(`Unexpected closeReason: "${outcome8.closeReason}"`)
             }
-            pass('T8', `closeReason=${outcome8.closeReason} purchaseResult=${outcome8.purchaseResult}`)
-        } catch (e) { fail('T8', e); suitePass = false }
+            pass('T7', `closeReason=${outcome8.closeReason} purchaseResult=${outcome8.purchaseResult}`)
+        } catch (e) { fail('T7', e); suitePass = false }
 
         await sleep(1000)
 
-        // ── T9 — purchase interceptor: plan + promoOffer check on real tap ────
-        running('T9')
+        // ── T8 — purchase interceptor: plan + promoOffer check on real tap ────
+        running('T8')
         try {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             let capturedInfo: any = null
@@ -263,7 +263,7 @@ export default function E2ETestRunner() {
 
             // Signal the host driver: tap the purchase button via uiautomator.
             console.log('[E2E:READY_FOR_TAP]')
-            appendLog('T9: signaled READY_FOR_TAP — waiting for interceptor…')
+            appendLog('T8: signaled READY_FOR_TAP — waiting for interceptor…')
 
             // Poll until the interceptor fires (host driver taps within 40 s).
             await waitFor(() => capturedPayload, 40000, 300)
@@ -275,7 +275,7 @@ export default function E2ETestRunner() {
                 )
             }
             pass(
-                'T9',
+                'T8',
                 `kind=${capturedPayload?.kind} plan.vendorId=${vendorId} ` +
                 `plan.productId=${capturedPayload?.plan?.productId} ` +
                 `promoOffer=${JSON.stringify(capturedPayload?.plan?.promoOffer ?? null)} ` +
@@ -286,15 +286,15 @@ export default function E2ETestRunner() {
             req9.close()
             Purchasely.removeAllActionInterceptors()
         } catch (e) {
-            fail('T9', e)
+            fail('T8', e)
             suitePass = false
             Purchasely.removeAllActionInterceptors()
         }
 
         await sleep(1500)
 
-        // ── T10 — global dismiss handler via deeplink + BACK ─────────────────
-        running('T10')
+        // ── T9 — global dismiss handler via deeplink + BACK ─────────────────
+        running('T9')
         try {
             let globalOutcome: PLYPresentationOutcome | null = null
 
@@ -310,7 +310,7 @@ export default function E2ETestRunner() {
 
             // Signal the host driver: press system BACK.
             console.log('[E2E:READY_FOR_BACK]')
-            appendLog('T10: signaled READY_FOR_BACK — waiting for dismiss handler…')
+            appendLog('T9: signaled READY_FOR_BACK — waiting for dismiss handler…')
 
             await waitFor(() => globalOutcome, 40000, 300)
 
@@ -320,14 +320,14 @@ export default function E2ETestRunner() {
                 throw new Error(`Unexpected closeReason: "${reason}"`)
             }
             pass(
-                'T10',
+                'T9',
                 `closeReason=${reason} ` +
                 `screenId=${globalOutcome!.presentation?.screenId}`
             )
 
             removeDefaultPresentationDismissHandler()
         } catch (e) {
-            fail('T10', e)
+            fail('T9', e)
             suitePass = false
             removeDefaultPresentationDismissHandler()
         }
