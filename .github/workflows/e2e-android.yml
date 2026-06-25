@@ -14,6 +14,7 @@ on:
       - '.github/workflows/e2e-android.yml'
       - 'integration_test/**'
       - 'example/src/E2ETestRunner.tsx'
+      - 'example/android/app/build.gradle'
 
 concurrency:
   group: e2e-android
@@ -21,22 +22,19 @@ concurrency:
 
 jobs:
   e2e-android:
-    name: E2E Tests (Android T1-T10)
-    # Ubuntu: KVM hardware acceleration available → emulator boots in ~2 min.
-    # NOTE: iOS E2E (future) will use a separate job on macos-latest.
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
+    name: E2E Tests (Android T1-T13)
+    # Self-hosted Mac mini (M1/M4): ARM64 emulator, persistent AVD, no KVM needed.
+    # Falls back to 'any' available runner.
+    runs-on: ["self-hosted", "macOS", "mobile"]
+    timeout-minutes: 30
+
+    env:
+      AVD_NAME: "rn_e2e_api34"
+      AVD_PACKAGE: "system-images;android-34;google_apis;arm64-v8a"
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Enable KVM (required for Android emulator on Linux)
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
-            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
 
       - name: Setup Node.js 20
         uses: actions/setup-node@v4
@@ -56,45 +54,80 @@ jobs:
           gradle-version: wrapper
           cache-read-only: false
 
-      - name: Cache Android build cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.android/build-cache
-          key: android-build-cache-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: android-build-cache-${{ runner.os }}-
-
       - name: Install JS dependencies
         run: yarn install --immutable
 
       - name: Build JS SDK
         run: yarn purchasely:prepare
 
-      - name: Build debug APK
+      - name: Build debug APK (JS bundle embedded)
+        # -Pe2eBuild=true removes 'debug' from debuggableVariants so the JS bundle
+        # is embedded in the APK — Metro bundler not needed in CI.
         env:
           JAVA_OPTS: "-XX:MaxHeapSize=4g"
         run: |
           cd example/android
-          ./gradlew :app:assembleDebug --quiet
+          ./gradlew :app:assembleDebug -Pe2eBuild=true --quiet
 
-      - name: Run E2E suite on Android emulator
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 34
-          arch: x86_64
-          profile: pixel_6
-          ram-size: 4096M
-          heap-size: 512M
-          disk-size: 8G
-          avd-name: e2e_avd
-          emulator-options: >-
-            -no-window
-            -no-audio
-            -no-boot-anim
-            -no-snapshot
-            -camera-back none
-            -camera-front none
-          disable-animations: true
-          script: bash integration_test/run_e2e.sh emulator-5554 --skip-build --debug
+      - name: Install system image and create AVD if needed
+        run: |
+          set -euo pipefail
+          sdkmanager --install "$AVD_PACKAGE" || true
+          sdkmanager --install "emulator" || true
+          sdkmanager --install "platform-tools" || true
+          if ! avdmanager list avd | grep -q "$AVD_NAME"; then
+            echo "Creating AVD: $AVD_NAME"
+            echo "no" | avdmanager create avd \
+              --name "$AVD_NAME" \
+              --package "$AVD_PACKAGE" \
+              --device "pixel_6" \
+              --force
+          else
+            echo "AVD $AVD_NAME already exists — reusing"
+          fi
+
+      - name: Start Android emulator
+        run: |
+          set -euo pipefail
+          adb emu kill 2>/dev/null || true
+          pkill -9 qemu-system 2>/dev/null || true
+          sleep 2
+
+          $ANDROID_HOME/emulator/emulator \
+            -avd "$AVD_NAME" \
+            -no-window \
+            -no-audio \
+            -no-boot-anim \
+            -gpu swiftshader_indirect \
+            -no-snapshot \
+            &
+
+          adb wait-for-device
+
+          boot_completed=""
+          attempts=0
+          while [ "$boot_completed" != "1" ] && [ $attempts -lt 60 ]; do
+            boot_completed=$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)
+            [ "$boot_completed" != "1" ] && sleep 5 && attempts=$((attempts + 1))
+          done
+
+          [ "$boot_completed" = "1" ] || (echo "::error::Emulator failed to boot"; exit 1)
+          adb shell input keyevent 82
+
+      - name: Disable animations
+        run: |
+          adb shell settings put global window_animation_scale 0
+          adb shell settings put global transition_animation_scale 0
+          adb shell settings put global animator_duration_scale 0
+
+      - name: Run E2E suite
+        run: bash integration_test/run_e2e.sh emulator-5554 --skip-build --debug
+
+      - name: Stop emulator
+        if: always()
+        run: |
+          adb emu kill 2>/dev/null || true
+          pkill -9 qemu-system 2>/dev/null || true
 
       - name: Upload logcat on failure
         if: failure()

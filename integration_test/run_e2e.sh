@@ -176,7 +176,11 @@ while true; do
   sleep 0.5
 done
 
-# Wait for background drivers to finish (best-effort)
+# Kill logcat so `wait` doesn't hang indefinitely on it
+kill "$LOGCAT_PID" 2>/dev/null || true
+LOGCAT_PID=""
+
+# Wait for background drivers (tap/back) to finish
 wait 2>/dev/null || true
 
 # -- Report --------------------------------------------------------------------
