@@ -1,9 +1,9 @@
 #!/bin/bash
 # Purchasely React Native -- E2E test orchestrator
 #
-# Runs T1-T10 against a connected Android device/emulator.
-# The test logic (T1-T10) executes inside the RN JS context on-device;
-# UI drivers for T9/T10 are launched from the host when the device signals
+# Runs T1-T9 against a connected Android device/emulator.
+# The test logic (T1-T9) executes inside the RN JS context on-device;
+# UI drivers for T8/T9 are launched from the host when the device signals
 # readiness via LogCat markers.
 #
 # Usage:
@@ -133,7 +133,7 @@ adb -s "$DEV" shell am start -n "$ACTIVITY" \
 log "Test runner launched -- monitoring LogCat..."
 
 # -- Monitor loop --------------------------------------------------------------
-TIMEOUT_SECS=360  # 6 minutes (T8/T9/T10 each have 40 s waits internally)
+TIMEOUT_SECS=360  # 6 minutes (T7/T8/T9 each have 40 s waits internally)
 START_TS=$(date +%s)
 TAP_DONE=0
 BACK_DONE=0
@@ -149,17 +149,17 @@ while true; do
     break
   fi
 
-  # T9 tap signal
+  # T8 tap signal
   if [ "$TAP_DONE" -eq 0 ] && grep -q '\[E2E:READY_FOR_TAP\]' "$LOGCAT_FILE" 2>/dev/null; then
     TAP_DONE=1
-    log "T9: signaled -- launching tap driver in background..."
+    log "T8: signaled -- launching tap driver in background..."
     bash "$TAP_DRIVER" "$DEV" &
   fi
 
-  # T10 back signal
+  # T9 back signal
   if [ "$BACK_DONE" -eq 0 ] && grep -q '\[E2E:READY_FOR_BACK\]' "$LOGCAT_FILE" 2>/dev/null; then
     BACK_DONE=1
-    log "T10: signaled -- launching back driver in background..."
+    log "T9: signaled -- launching back driver in background..."
     bash "$BACK_DRIVER" "$DEV" &
   fi
 
@@ -186,7 +186,7 @@ echo " Purchasely RN E2E -- test results"
 echo "==========================================="
 
 # Extract and print individual test results in order
-for id in T1 T2 T3 T4 T5 T6 T7 T8 T9 T10; do
+for id in T1 T2 T3 T4 T5 T6 T7 T8 T9; do
   PASS_LINE=$(grep "\[E2E:${id}:PASS\]" "$LOGCAT_FILE" 2>/dev/null | tail -1)
   FAIL_LINE=$(grep "\[E2E:${id}:FAIL\]" "$LOGCAT_FILE" 2>/dev/null | tail -1)
   if [ -n "$PASS_LINE" ]; then
