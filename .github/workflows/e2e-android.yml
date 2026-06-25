@@ -23,9 +23,9 @@ concurrency:
 jobs:
   e2e-android:
     name: E2E Tests (Android T1-T13)
-    # Self-hosted Mac mini (M1/M4): ARM64 emulator, persistent AVD, no KVM needed.
-    # Falls back to 'any' available runner.
-    runs-on: ["self-hosted", "macOS", "mobile"]
+    # macOS 14 (Apple Silicon M1): ARM64 emulator runs natively, no KVM needed.
+    # Also compatible with iOS E2E (Xcode simulator) when we add that job.
+    runs-on: macos-14
     timeout-minutes: 30
 
     env:
