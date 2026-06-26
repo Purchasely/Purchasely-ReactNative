@@ -62,17 +62,26 @@ jobs:
       - name: Build JS SDK
         run: yarn purchasely:prepare
 
-      - name: Build debug APK (JS bundle embedded)
-        # -Pe2eBuild=true removes 'debug' from debuggableVariants so the JS bundle
-        # is embedded in the APK — Metro bundler not needed in CI.
+      - name: Build release APK (JS always bundled in release)
+        # Release builds always embed the JS bundle — no Metro bundler needed in CI.
+        # ProGuard is disabled in build.gradle (enableProguardInReleaseBuilds = false).
+        # -x lintVitalRelease skips lint step that false-positives on ReactActivity.
         env:
           JAVA_OPTS: "-XX:MaxHeapSize=4g"
         run: |
           cd example/android
-          ./gradlew :app:assembleDebug -Pe2eBuild=true --quiet
+          ./gradlew :app:assembleRelease -x lintVitalRelease
+          # Verify the JS bundle is embedded
+          APK="app/build/outputs/apk/release/app-release.apk"
+          if unzip -l "$APK" | grep -q "index.android.bundle"; then
+            echo "✅ JS bundle confirmed in APK"
+          else
+            echo "❌ JS bundle NOT found in APK"
+            exit 1
+          fi
 
       - name: Run E2E suite on emulator
-        # reactivecircuit/android-emulator-runner handles: system-image install,
+        # ReactiveCircus/android-emulator-runner handles: system-image install,
         # AVD creation, emulator start with KVM, boot wait, animations disable.
         uses: ReactiveCircus/android-emulator-runner@v2
         with:
@@ -82,7 +91,7 @@ jobs:
           avd-name: rn_e2e_api34
           disable-animations: true
           emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -no-snapshot
-          script: bash integration_test/run_e2e.sh emulator-5554 --skip-build --debug
+          script: bash integration_test/run_e2e.sh emulator-5554 --skip-build
 
       - name: Upload logcat on failure
         if: failure()

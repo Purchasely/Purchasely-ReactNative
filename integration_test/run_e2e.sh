@@ -209,7 +209,10 @@ if [ "$SUITE_RESULT" = "PASS" ]; then
 else
   err "E2E TESTS FAILED"
   echo ""
-  echo "Full LogCat (last 100 E2E lines):"
+  echo "--- E2E markers (last 100) ---"
   grep 'E2E:' "$LOGCAT_FILE" 2>/dev/null | tail -100
+  echo ""
+  echo "--- ReactNativeJS / crashes (last 60) ---"
+  grep -E "(ReactNativeJS|PURCHASELY|AndroidRuntime|FATAL|bundle|Unable to load|No bundle)" "$LOGCAT_FILE" 2>/dev/null | tail -60
   exit 1
 fi
