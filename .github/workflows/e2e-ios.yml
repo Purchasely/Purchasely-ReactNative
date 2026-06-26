@@ -1,0 +1,100 @@
+name: E2E iOS
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 2h30 UTC chaque nuit (décalé de l'E2E Android à 2h00)
+    - cron: '30 2 * * *'
+  push:
+    branches:
+      - feat/sdk-v6-migration
+    paths:
+      - 'packages/purchasely/react-native-purchasely.podspec'
+      - 'packages/purchasely/ios/**'
+      - '.github/workflows/e2e-ios.yml'
+      - 'integration_test/**'
+      - 'example/src/E2ETestRunner.tsx'
+      - 'example/ios/**'
+
+concurrency:
+  group: e2e-ios
+  cancel-in-progress: true
+
+jobs:
+  e2e-ios:
+    name: E2E Tests (iOS T1-T13)
+    # macOS requis : simulateur iOS + xcodebuild. Pas de HVF nécessaire (le
+    # simulateur iOS ne virtualise pas un OS invité, contrairement à l'émulateur
+    # Android ARM — c'est pourquoi Android tourne sur ubuntu + KVM).
+    runs-on: macos-14
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup (Node + Yarn)
+        uses: ./.github/actions/setup
+
+      - name: Build JS SDK
+        run: yarn prepare
+
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: |
+            example/ios/Pods
+            ~/.cocoapods
+            ~/Library/Caches/CocoaPods
+          key: ${{ runner.os }}-cocoapods-${{ hashFiles('example/ios/Podfile.lock', 'packages/purchasely/react-native-purchasely.podspec') }}
+          restore-keys: |
+            ${{ runner.os }}-cocoapods-
+
+      - name: Install CocoaPods
+        run: |
+          cd example/ios
+          pod install --repo-update
+        env:
+          NO_FLIPPER: 1
+
+      - name: Install idb (companion + client)
+        run: |
+          # idb_companion : tap Facebook (nécessite brew trust sur les brew récents).
+          brew tap facebook/fb
+          brew trust facebook/fb || true
+          brew install idb-companion
+          # fb-idb (client Python) ne supporte pas Python 3.14 (asyncio.get_event_loop
+          # y lève) — on l'isole dans un venv 3.11/3.12/3.13 déterministe et on
+          # exporte le binaire via $IDB (lu par les drivers tap/swipe).
+          PY=$(command -v python3.12 || command -v python3.11 || command -v python3.13 || command -v python3)
+          "$PY" -m venv "$RUNNER_TEMP/idbvenv"
+          "$RUNNER_TEMP/idbvenv/bin/pip" install -q --upgrade pip fb-idb
+          echo "IDB=$RUNNER_TEMP/idbvenv/bin/idb" >> "$GITHUB_ENV"
+          "$RUNNER_TEMP/idbvenv/bin/idb" --help >/dev/null && echo "✅ idb client OK"
+
+      - name: Boot iOS simulator
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 -c "
+          import sys, json
+          d = json.load(sys.stdin)['devices']
+          cands = [v for k, vs in d.items() if 'iOS' in k for v in vs if 'iPhone' in v['name']]
+          # iPhone 15/16 de préférence, sinon le dernier iPhone disponible
+          pref = [c for c in cands if any(n in c['name'] for n in ('iPhone 16', 'iPhone 15'))]
+          chosen = (pref or cands)[-1]
+          print(chosen['udid'])
+          ")
+          echo "Booting simulator $UDID"
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          echo "IOS_SIMULATOR_UDID=$UDID" >> "$GITHUB_ENV"
+
+      - name: Run E2E suite on simulator (build Release + T1-T13)
+        run: bash integration_test/run_e2e_ios.sh "$IOS_SIMULATOR_UDID"
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-e2e-logs-${{ github.run_id }}
+          path: /tmp/e2e_rn_ios_*.log
+          retention-days: 7

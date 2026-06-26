@@ -2,19 +2,27 @@
 # Purchasely React Native — E2E test orchestrator (iOS Simulator)
 #
 # Mirrors run_e2e.sh for Android. Runs T1-T13 against an iOS simulator.
-# T8/T9 use xcrun simctl and idb (or appium) for UI interaction.
+# The test logic (T1-T13) executes inside the RN JS context on-device; UI
+# drivers for T8/T9 are launched from the host when the device signals
+# readiness via log markers.
 #
-# Status: PREPARED — not yet active in CI. Will be wired into e2e-ios.yml
-#         once the iOS E2E workflow is enabled.
+# Build strategy (parity with Android): a *Release* build is used so the JS
+# bundle is embedded in the .app — no Metro bundler is required in CI. JS
+# console.log markers reach the host via `xcrun simctl launch --console`
+# (RN forwards console.* to the native logging hook → stderr).
 #
 # Usage:
-#   bash integration_test/run_e2e_ios.sh [--skip-build] [UDID]
+#   bash integration_test/run_e2e_ios.sh [--skip-build] [--debug] [UDID]
+#
+# Options:
+#   --skip-build   Re-use the last built .app (avoids the full xcodebuild)
+#   --debug        Build the Debug configuration (requires Metro running)
 #
 # Prerequisites:
 #   - Xcode + xcrun + simctl on PATH
-#   - idb_companion installed (brew install idb-companion) for UI drivers
+#   - idb + idb_companion (brew install idb-companion) for T8/T9 UI drivers
 #   - yarn (Node 20) in PATH
-#   - iOS Simulator booted (or pass UDID)
+#   - an iOS Simulator booted (or pass its UDID)
 
 set -uo pipefail
 
@@ -23,11 +31,13 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # ── Args ──────────────────────────────────────────────────────────────────────
 SKIP_BUILD=0
+DEBUG_BUILD=0
 UDID="${IOS_SIMULATOR_UDID:-}"
 
 for arg in "$@"; do
   case "$arg" in
     --skip-build) SKIP_BUILD=1 ;;
+    --debug)      DEBUG_BUILD=1 ;;
     *)            UDID="$arg" ;;
   esac
 done
@@ -47,74 +57,106 @@ if [ -z "$UDID" ]; then
       devs=[v for vs in d.values() for v in vs if v.get('state')=='Booted']; \
       print(devs[0]['udid'] if devs else '')" 2>/dev/null || true)
   if [ -z "$UDID" ]; then
-    err "No booted iOS simulator found. Boot one first or pass UDID."
+    err "No booted iOS simulator found. Boot one first or pass its UDID."
     exit 1
   fi
 fi
 log "Using simulator: $UDID"
 
 # ── Config ────────────────────────────────────────────────────────────────────
+# Xcode project: workspace/scheme/product are all named "example".
 APP_BUNDLE="com.purchasely.demo"
-APP_PATH="$REPO_ROOT/example/ios/build/Build/Products/Debug-iphonesimulator/PurchaselyDemo.app"
-LOGFILE="/tmp/e2e_rn_ios_logcat_$$.log"
-TAP_DRIVER="$SCRIPT_DIR/tools/tap_purchase_ios.sh"   # TODO: create (uses idb tap)
-BACK_DRIVER="$SCRIPT_DIR/tools/swipe_dismiss_ios.sh" # TODO: create (uses idb swipe)
+WORKSPACE="$REPO_ROOT/example/ios/example.xcworkspace"
+SCHEME="example"
+PROCESS_NAME="example"   # PRODUCT_NAME — used by `log stream` predicate
+if [ "$DEBUG_BUILD" -eq 1 ]; then
+  CONFIG="Debug"
+else
+  CONFIG="Release"
+fi
+DERIVED="$REPO_ROOT/example/ios/build"
+APP_PATH="$DERIVED/Build/Products/${CONFIG}-iphonesimulator/example.app"
+LOGFILE="/tmp/e2e_rn_ios_$$.log"
+TAP_DRIVER="$SCRIPT_DIR/tools/tap_purchase_ios.sh"
+BACK_DRIVER="$SCRIPT_DIR/tools/swipe_dismiss_ios.sh"
+
+# ── Ensure Node is available (NVM) ───────────────────────────────────────────
+if ! command -v node &>/dev/null; then
+  [ -s "$HOME/.nvm/nvm.sh" ] && . "$HOME/.nvm/nvm.sh"
+  nvm use 20 2>/dev/null || true
+fi
 
 # ── Build ─────────────────────────────────────────────────────────────────────
 if [ "$SKIP_BUILD" -eq 0 ]; then
-  log "Building JS SDK…"
+  log "Building JS SDK (yarn purchasely:prepare)..."
   cd "$REPO_ROOT"
   yarn purchasely:prepare 2>&1 | tail -5
 
-  log "Building iOS app (Debug)…"
+  log "Building iOS app ($CONFIG)..."
   cd "$REPO_ROOT/example/ios"
+  set -o pipefail
   xcodebuild \
-    -workspace PurchaselyDemo.xcworkspace \
-    -scheme PurchaselyDemo \
-    -configuration Debug \
+    -workspace "$WORKSPACE" \
+    -scheme "$SCHEME" \
+    -configuration "$CONFIG" \
     -sdk iphonesimulator \
     -destination "id=$UDID" \
     -derivedDataPath build \
-    CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO \
-    2>&1 | tail -30
-
+    CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
+    build 2>&1 | (xcbeautify 2>/dev/null || tail -40)
+  BUILD_RC=${PIPESTATUS[0]}
+  set +o pipefail
+  if [ "$BUILD_RC" -ne 0 ]; then
+    err "xcodebuild failed (rc=$BUILD_RC)"
+    exit 1
+  fi
   if [ ! -d "$APP_PATH" ]; then
     err "App not found at $APP_PATH"
     exit 1
   fi
-  ok "App built"
+  ok "App built: $APP_PATH"
 else
-  warn "--skip-build: skipping Xcode build"
+  warn "--skip-build: skipping xcodebuild"
+  if [ ! -d "$APP_PATH" ]; then
+    err "App not found at $APP_PATH — run without --skip-build first"
+    exit 1
+  fi
 fi
 
-# ── Install & launch ──────────────────────────────────────────────────────────
-log "Installing app on simulator $UDID…"
+# ── Install ───────────────────────────────────────────────────────────────────
+log "Installing app on $UDID..."
+xcrun simctl uninstall "$UDID" "$APP_BUNDLE" 2>/dev/null || true
 xcrun simctl install "$UDID" "$APP_PATH"
 ok "App installed"
 
-log "Clearing previous log stream…"
-# iOS simulator log streaming via xcrun simctl spawn
+# ── Launch with console capture ───────────────────────────────────────────────
+# `--console` attaches the app's stdout/stderr to this process; RN's
+# console.log/error reach stderr via the native logging hook, so the E2E
+# markers land in $LOGFILE. `E2E_MODE true` is read by AppDelegate.swift.
 xcrun simctl terminate "$UDID" "$APP_BUNDLE" 2>/dev/null || true
 sleep 1
+: > "$LOGFILE"
 
-log "Launching E2E runner…"
-xcrun simctl launch "$UDID" "$APP_BUNDLE" E2E_MODE true > "$LOGFILE" 2>&1 &
+log "Launching E2E runner on $UDID..."
+xcrun simctl launch --console --terminate-running-process \
+  "$UDID" "$APP_BUNDLE" E2E_MODE true >> "$LOGFILE" 2>&1 &
 LAUNCH_PID=$!
 
-# Capture simulator log
+# Secondary capture via unified logging (belt-and-suspenders for console.log).
 xcrun simctl spawn "$UDID" log stream \
-  --predicate "process == 'PurchaselyDemo'" \
+  --level debug \
+  --predicate "process == \"$PROCESS_NAME\"" \
   --style compact >> "$LOGFILE" 2>&1 &
 STREAM_PID=$!
 
 cleanup() {
   kill "$STREAM_PID" 2>/dev/null || true
-  kill "$LAUNCH_PID" 2>/dev/null || true
+  kill "$LAUNCH_PID"  2>/dev/null || true
   rm -f "$LOGFILE"
 }
 trap cleanup EXIT
 
-log "Monitoring logs for E2E markers…"
+log "Monitoring logs for E2E markers..."
 
 # ── Monitor loop ──────────────────────────────────────────────────────────────
 TIMEOUT_SECS=420
@@ -133,17 +175,15 @@ while true; do
   # T8 tap signal
   if [ "$TAP_DONE" -eq 0 ] && grep -q '\[E2E:READY_FOR_TAP\]' "$LOGFILE" 2>/dev/null; then
     TAP_DONE=1
-    log "T8: signaled — launching iOS tap driver…"
-    # TODO: bash "$TAP_DRIVER" "$UDID" &
-    warn "T8: iOS tap driver not yet implemented (idb tap)"
+    log "T8: signaled — launching iOS tap driver..."
+    bash "$TAP_DRIVER" "$UDID" &
   fi
 
   # T9 back/swipe signal
   if [ "$BACK_DONE" -eq 0 ] && grep -q '\[E2E:READY_FOR_BACK\]' "$LOGFILE" 2>/dev/null; then
     BACK_DONE=1
-    log "T9: signaled — launching iOS swipe-dismiss driver…"
-    # TODO: bash "$BACK_DRIVER" "$UDID" &
-    warn "T9: iOS swipe driver not yet implemented (idb swipe)"
+    log "T9: signaled — launching iOS swipe-dismiss driver..."
+    bash "$BACK_DRIVER" "$UDID" &
   fi
 
   if grep -q '\[E2E:SUITE:PASS\]' "$LOGFILE" 2>/dev/null; then
@@ -156,6 +196,10 @@ while true; do
   sleep 0.5
 done
 
+# Stop the streams so `wait` doesn't hang
+kill "$STREAM_PID" 2>/dev/null || true
+kill "$LAUNCH_PID"  2>/dev/null || true
+STREAM_PID=""; LAUNCH_PID=""
 wait 2>/dev/null || true
 
 # ── Report ────────────────────────────────────────────────────────────────────
@@ -183,7 +227,10 @@ if [ "$SUITE_RESULT" = "PASS" ]; then
 else
   err "E2E TESTS FAILED (iOS)"
   echo ""
-  echo "Last 100 E2E log lines:"
+  echo "--- E2E markers (last 100) ---"
   grep 'E2E:' "$LOGFILE" 2>/dev/null | tail -100
+  echo ""
+  echo "--- JS / crashes (last 60) ---"
+  grep -E "(ReactNativeJS|PURCHASELY|Purchasely|Fatal|Exception|bundle|RCTFatal)" "$LOGFILE" 2>/dev/null | tail -60
   exit 1
 fi
