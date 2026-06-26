@@ -6,7 +6,7 @@ Déclenchés par le script hôte → composant `E2ETestRunner.tsx` embarqué dan
 | Platform | Script hôte | CI workflow | Statut |
 |----------|-------------|-------------|--------|
 | Android | `run_e2e.sh` | `e2e-android.yml` | ✅ Actif |
-| iOS | `run_e2e_ios.sh` | `e2e-ios.yml` | 🔲 Préparé, pas encore en CI |
+| iOS | `run_e2e_ios.sh` | `e2e-ios.yml` | ✅ Actif |
 
 ---
 
@@ -137,7 +137,7 @@ Déclenchés par le script hôte → composant `E2ETestRunner.tsx` embarqué dan
 - `[E2E:T8:PASS]` / `[E2E:T8:FAIL]`
 
 **Driver host Android :** `tools/tap_purchase.sh` (UIAutomator → content-desc="action:purchase")
-**Driver host iOS :** `tools/tap_purchase_ios.sh` (TODO: idb tap)
+**Driver host iOS :** `tools/tap_purchase_ios.sh` (idb `ui describe-all` → tap du CTA en points)
 **Timeout waitFor :** 40 s
 
 ---
@@ -165,7 +165,7 @@ Déclenchés par le script hôte → composant `E2ETestRunner.tsx` embarqué dan
 - `[E2E:T9:PASS]` / `[E2E:T9:FAIL]`
 
 **Driver host Android :** `tools/press_back.sh`
-**Driver host iOS :** `tools/swipe_dismiss_ios.sh` (TODO)
+**Driver host iOS :** `tools/swipe_dismiss_ios.sh` (idb : bouton fermer sinon swipe-down)
 **Timeout waitFor :** 40 s
 
 ---
@@ -266,12 +266,13 @@ CI (ubuntu-latest + KVM)
               ├── surveille [E2E:READY_FOR_BACK] → press_back.sh      (T9)
               └── surveille [E2E:SUITE:PASS|FAIL] → exit 0|1
 
-Préparé (non actif) — iOS Simulator
+CI (macos-14 + simulateur iOS)
   └── run_e2e_ios.sh
-        ├── xcrun simctl install + launch
-        ├── xcrun simctl spawn log stream
-        ├── surveille [E2E:READY_FOR_TAP]  → tap_purchase_ios.sh  (TODO: idb tap)
-        ├── surveille [E2E:READY_FOR_BACK] → swipe_dismiss_ios.sh (TODO: idb swipe)
+        ├── build Release (bundle JS embarqué, pas de Metro)
+        ├── xcrun simctl install + launch --console (capture console.log)
+        ├── xcrun simctl spawn log stream (capture secondaire)
+        ├── surveille [E2E:READY_FOR_TAP]  → tap_purchase_ios.sh  (idb ui tap, points)
+        ├── surveille [E2E:READY_FOR_BACK] → swipe_dismiss_ios.sh (idb close/swipe)
         └── surveille [E2E:SUITE:PASS|FAIL] → exit 0|1
 ```
 
