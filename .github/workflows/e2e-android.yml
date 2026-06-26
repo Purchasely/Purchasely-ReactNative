@@ -23,14 +23,10 @@ concurrency:
 jobs:
   e2e-android:
     name: E2E Tests (Android T1-T13)
-    # ubuntu-latest: KVM disponible pour l'émulateur x86_64, rapide (~45s boot).
-    # macOS sera utilisé dans e2e-ios.yml pour les tests iOS.
+    # ubuntu-latest: KVM disponible pour x86_64, requis par reactivecircuit/android-emulator-runner.
+    # macOS sera utilisé dans e2e-ios.yml (simulateur iOS).
     runs-on: ubuntu-latest
     timeout-minutes: 30
-
-    env:
-      AVD_NAME: "rn_e2e_api34"
-      AVD_PACKAGE: "system-images;android-34;google_apis;x86_64"
 
     steps:
       - name: Checkout
@@ -75,68 +71,18 @@ jobs:
           cd example/android
           ./gradlew :app:assembleDebug -Pe2eBuild=true --quiet
 
-      - name: Setup Android SDK (cmdline-tools, sdkmanager, avdmanager)
-        uses: android-actions/setup-android@v4
-
-      - name: Install system image and create AVD if needed
-        run: |
-          set -euo pipefail
-          sdkmanager --install "$AVD_PACKAGE" || true
-          sdkmanager --install "emulator" || true
-          sdkmanager --install "platform-tools" || true
-          if ! avdmanager list avd | grep -q "$AVD_NAME"; then
-            echo "Creating AVD: $AVD_NAME"
-            echo "no" | avdmanager create avd \
-              --name "$AVD_NAME" \
-              --package "$AVD_PACKAGE" \
-              --device "pixel_6" \
-              --force
-          else
-            echo "AVD $AVD_NAME already exists — reusing"
-          fi
-
-      - name: Start Android emulator
-        run: |
-          set -euo pipefail
-          adb emu kill 2>/dev/null || true
-          pkill -9 qemu-system 2>/dev/null || true
-          sleep 2
-
-          $ANDROID_HOME/emulator/emulator \
-            -avd "$AVD_NAME" \
-            -no-window \
-            -no-audio \
-            -no-boot-anim \
-            -gpu swiftshader_indirect \
-            -no-snapshot \
-            &
-
-          adb wait-for-device
-
-          boot_completed=""
-          attempts=0
-          while [ "$boot_completed" != "1" ] && [ $attempts -lt 60 ]; do
-            boot_completed=$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)
-            [ "$boot_completed" != "1" ] && sleep 5 && attempts=$((attempts + 1))
-          done
-
-          [ "$boot_completed" = "1" ] || (echo "::error::Emulator failed to boot"; exit 1)
-          adb shell input keyevent 82
-
-      - name: Disable animations
-        run: |
-          adb shell settings put global window_animation_scale 0
-          adb shell settings put global transition_animation_scale 0
-          adb shell settings put global animator_duration_scale 0
-
-      - name: Run E2E suite
-        run: bash integration_test/run_e2e.sh emulator-5554 --skip-build --debug
-
-      - name: Stop emulator
-        if: always()
-        run: |
-          adb emu kill 2>/dev/null || true
-          pkill -9 qemu-system 2>/dev/null || true
+      - name: Run E2E suite on emulator
+        # reactivecircuit/android-emulator-runner handles: system-image install,
+        # AVD creation, emulator start with KVM, boot wait, animations disable.
+        uses: reactivecircuit/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          avd-name: rn_e2e_api34
+          disable-animations: true
+          emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -no-snapshot
+          script: bash integration_test/run_e2e.sh emulator-5554 --skip-build --debug
 
       - name: Upload logcat on failure
         if: failure()
