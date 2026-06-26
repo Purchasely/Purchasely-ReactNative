@@ -75,6 +75,9 @@ jobs:
           cd example/android
           ./gradlew :app:assembleDebug -Pe2eBuild=true --quiet
 
+      - name: Setup Android SDK (cmdline-tools, sdkmanager, avdmanager)
+        uses: android-actions/setup-android@v4
+
       - name: Install system image and create AVD if needed
         run: |
           set -euo pipefail
