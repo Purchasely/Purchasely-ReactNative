@@ -261,9 +261,15 @@ export default function E2ETestRunner() {
                 sleep(15000).then<never>(() => { throw new Error('dismiss timeout after 15 s') }),
             ])
 
-            const validReasons = ['programmatic', 'button', 'backSystem']
-            if (!validReasons.includes(outcome7.closeReason ?? '')) {
-                throw new Error(`Unexpected closeReason: "${outcome7.closeReason}"`)
+            // Programmatic close → closeReason MUST be exactly 'programmatic'
+            // (pinned, not merely "one of the valid reasons"), and since no
+            // purchase happened the outcome's purchaseResult MUST be 'cancelled'.
+            // This locks the v6 string-union contract on both platforms.
+            if (outcome7.closeReason !== 'programmatic') {
+                throw new Error(`closeReason expected 'programmatic', got "${outcome7.closeReason}"`)
+            }
+            if (outcome7.purchaseResult !== 'cancelled') {
+                throw new Error(`purchaseResult expected 'cancelled', got "${outcome7.purchaseResult}"`)
             }
             if (!outcome7.presentation?.screenId) {
                 throw new Error(`outcome.presentation.screenId missing; presentation=${JSON.stringify(outcome7.presentation)}`)
@@ -274,7 +280,7 @@ export default function E2ETestRunner() {
 
             pass(
                 'T7',
-                `closeReason=${outcome7.closeReason} ` +
+                `closeReason=${outcome7.closeReason} purchaseResult=${outcome7.purchaseResult} ` +
                 `presentation.screenId=${outcome7.presentation.screenId} ` +
                 `presentation.placementId=${outcome7.presentation.placementId}`
             )
@@ -356,10 +362,11 @@ export default function E2ETestRunner() {
 
             await waitFor(() => globalOutcome, 40000, 300)
 
+            // Dismissed via system back (Android BACK key / iOS swipe-down) →
+            // closeReason MUST be exactly 'backSystem' on both platforms.
             const reason = globalOutcome!.closeReason
-            const validReasons9 = ['backSystem', 'programmatic', 'button']
-            if (!validReasons9.includes(reason ?? '')) {
-                throw new Error(`Unexpected closeReason: "${reason}"`)
+            if (reason !== 'backSystem') {
+                throw new Error(`closeReason expected 'backSystem', got "${reason}"`)
             }
             if (!globalOutcome!.presentation?.screenId) {
                 throw new Error(`outcome.presentation.screenId missing`)

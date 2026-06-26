@@ -103,9 +103,10 @@ Déclenchés par le script hôte → composant `E2ETestRunner.tsx` embarqué dan
 | 3 | `await sleep(3000)` | drawer rendu |
 | 4 | `req.close()` | — |
 | 5 | Await `displayPromise` (timeout 15 s) | outcome reçu |
-| 6 | — | `closeReason` ∈ `['programmatic', 'button', 'backSystem']` |
-| 7 | — | `presentation.screenId` non-vide |
-| 8 | — | `presentation.placementId` non-vide |
+| 6 | — | `closeReason === 'programmatic'` (épinglé) |
+| 7 | — | `purchaseResult === 'cancelled'` (aucun achat) |
+| 8 | — | `presentation.screenId` non-vide |
+| 9 | — | `presentation.placementId` non-vide |
 
 **Marqueurs :** `[E2E:T7:PASS]` / `[E2E:T7:FAIL]` — **Driver host :** aucun
 
@@ -156,7 +157,7 @@ Déclenchés par le script hôte → composant `E2ETestRunner.tsx` embarqué dan
 | 4 | Émet `[E2E:READY_FOR_BACK]` | — |
 | 5 | Driver hôte presse BACK (Android) / swipe-dismiss (iOS) | handler appelé |
 | 6 | `waitFor(() => globalOutcome, 40000)` | outcome reçu |
-| 7 | — | `closeReason` ∈ `['backSystem', 'button', 'programmatic']` |
+| 7 | — | `closeReason === 'backSystem'` (épinglé — BACK Android / swipe iOS) |
 | 8 | — | `presentation.screenId` non-vide |
 | 9 | — | `presentation.placementId` non-vide |
 
