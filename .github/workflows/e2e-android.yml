@@ -23,18 +23,24 @@ concurrency:
 jobs:
   e2e-android:
     name: E2E Tests (Android T1-T13)
-    # macOS 14 (Apple Silicon M1): ARM64 emulator runs natively, no KVM needed.
-    # Also compatible with iOS E2E (Xcode simulator) when we add that job.
-    runs-on: macos-14
+    # ubuntu-latest: KVM disponible pour l'émulateur x86_64, rapide (~45s boot).
+    # macOS sera utilisé dans e2e-ios.yml pour les tests iOS.
+    runs-on: ubuntu-latest
     timeout-minutes: 30
 
     env:
       AVD_NAME: "rn_e2e_api34"
-      AVD_PACKAGE: "system-images;android-34;google_apis;arm64-v8a"
+      AVD_PACKAGE: "system-images;android-34;google_apis;x86_64"
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
 
       - name: Setup Node.js 20
         uses: actions/setup-node@v4
@@ -68,9 +74,6 @@ jobs:
         run: |
           cd example/android
           ./gradlew :app:assembleDebug -Pe2eBuild=true --quiet
-
-      - name: Setup Android SDK (cmdline-tools, sdkmanager, avdmanager)
-        uses: android-actions/setup-android@v4
 
       - name: Install system image and create AVD if needed
         run: |
