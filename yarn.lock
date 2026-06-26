@@ -85,7 +85,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@babel/core@npm:^7.24.4":
+"@babel/core@npm:^7.24.4, @babel/core@npm:^7.29.6":
   version: 7.29.7
   resolution: "@babel/core@npm:7.29.7"
   dependencies:
@@ -4452,13 +4452,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"async-limiter@npm:~1.0.0":
-  version: 1.0.1
-  resolution: "async-limiter@npm:1.0.1"
-  checksum: 2b849695b465d93ad44c116220dee29a5aeb63adac16c1088983c339b0de57d76e82533e8e364a93a9f997f28bbfc6a92948cefc120652bd07f3b59f8d75cf2b
-  languageName: node
-  linkType: hard
-
 "async-retry@npm:1.3.3":
   version: 1.3.3
   resolution: "async-retry@npm:1.3.3"
@@ -6844,7 +6837,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "example@workspace:example"
   dependencies:
-    "@babel/core": ^7.25.2
+    "@babel/core": ^7.29.6
     "@babel/preset-env": ^7.25.3
     "@babel/runtime": ^7.25.0
     "@purchasely/react-native-purchasely-google": "workspace:*"
@@ -9160,14 +9153,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"js-yaml@npm:^4.1.1":
-  version: 4.1.1
-  resolution: "js-yaml@npm:4.1.1"
+"js-yaml@npm:>=4.2.0":
+  version: 5.1.0
+  resolution: "js-yaml@npm:5.1.0"
   dependencies:
     argparse: ^2.0.1
   bin:
-    js-yaml: bin/js-yaml.js
-  checksum: ea2339c6930fe048ec31b007b3c90be2714ab3e7defcc2c27ebf30c74fd940358f29070b4345af0019ef151875bf3bc3f8644bea1bab0372652b5044813ac02d
+    js-yaml: bin/js-yaml.mjs
+  checksum: ed920d295619d5a79dc97cf6a83e6be6aa7c23d60eacfd349da1df43c31feaaee9d3630742d59ca230c3d574083989bd397fe8d60d5ddf503e80b54c8cdd35ee
   languageName: node
   linkType: hard
 
@@ -12793,16 +12786,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tar@npm:>=7.5.10":
-  version: 7.5.11
-  resolution: "tar@npm:7.5.11"
+"tar@npm:>=7.5.16":
+  version: 7.5.17
+  resolution: "tar@npm:7.5.17"
   dependencies:
     "@isaacs/fs-minipass": ^4.0.0
     chownr: ^3.0.0
     minipass: ^7.1.2
     minizlib: ^3.1.0
     yallist: ^5.0.0
-  checksum: 7f6785a85dd571b88985e493ec86f692962cbfa7b4017961fddfd2241e0ff3bcd89ed347f4c02b5433aa22b30cca5566e8711543df054fda8fd12425f505378f
+  checksum: f1b64247b7222df39468518588553677e6fff368c3b0ebc2a717a4fdaeaf38963e2930cdac6b9361ed9363f95b20df64e1128e9810b1df8ec2560310d71ec07d
   languageName: node
   linkType: hard
 
@@ -13654,18 +13647,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ws@npm:^6.2.3":
-  version: 6.2.3
-  resolution: "ws@npm:6.2.3"
-  dependencies:
-    async-limiter: ~1.0.0
-  checksum: bbc96ff5628832d80669a88fd117487bf070492dfaa50df77fa442a2b119792e772f4365521e0a8e025c0d51173c54fa91adab165c11b8e0674685fdd36844a5
-  languageName: node
-  linkType: hard
-
-"ws@npm:^7, ws@npm:^7.5.10":
-  version: 7.5.10
-  resolution: "ws@npm:7.5.10"
+"ws@npm:7.5.11":
+  version: 7.5.11
+  resolution: "ws@npm:7.5.11"
   peerDependencies:
     bufferutil: ^4.0.1
     utf-8-validate: ^5.0.2
@@ -13674,7 +13658,7 @@ __metadata:
       optional: true
     utf-8-validate:
       optional: true
-  checksum: f9bb062abf54cc8f02d94ca86dcd349c3945d63851f5d07a3a61c2fcb755b15a88e943a63cf580cbdb5b74436d67ef6b67f745b8f7c0814e411379138e1863cb
+  checksum: 3f32457a6019e6875cc0c2a037d4b4789da22a55b7be278e78845ec7614d28eaab9b36994cfdf9a18a48fe02f11c496168354b96b6ce202f65fe414cdf96f08c
   languageName: node
   linkType: hard
 
