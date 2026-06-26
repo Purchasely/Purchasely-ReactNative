@@ -74,7 +74,7 @@ jobs:
       - name: Run E2E suite on emulator
         # reactivecircuit/android-emulator-runner handles: system-image install,
         # AVD creation, emulator start with KVM, boot wait, animations disable.
-        uses: reactivecircuit/android-emulator-runner@v2
+        uses: ReactiveCircus/android-emulator-runner@v2
         with:
           api-level: 34
           arch: x86_64
