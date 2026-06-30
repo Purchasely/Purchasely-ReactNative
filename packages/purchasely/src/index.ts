@@ -8,11 +8,18 @@ import type {
   SignPromotionalOfferParameters,
   UserAttributesParameters,
 } from './interfaces';
-import { Attributes, LogLevels, PLYDataProcessingLegalBasis, PLYDataProcessingPurpose, PLYThemeMode } from './enums';
+import {
+  Attributes,
+  LogLevels,
+  PLYDataProcessingLegalBasis,
+  PLYDataProcessingPurpose,
+  PLYThemeMode,
+  PLYUserAttributeSource,
+  PLYUserAttributeType,
+} from './enums';
 import type {
   PurchaselyEvent,
   PurchaselyPlan,
-  PurchaselyPresentation,
   PurchaselyProduct,
   PurchaselyPromotionalOfferSignature,
   PurchaselySubscription,
@@ -49,6 +56,8 @@ const builder = (apiKey: string): PurchaselyBuilder => {
   return PurchaselyBuilder.apiKey(apiKey);
 };
 
+const apiKey = builder;
+
 function setUserAttributeWithDate(key: string, value: Date, legalBasis?: PLYDataProcessingLegalBasis): void {
   const dateAsString = value.toISOString();
   return NativeModules.Purchasely.setUserAttributeWithDate(key, dateAsString, legalBasis);
@@ -73,6 +82,11 @@ const addPurchasedListener = (callback: PurchaseListenerCallback) => {
 const removePurchasedListener = () => {
   return PurchaselyEventEmitter.removeAllListeners('PURCHASE_LISTENER');
 };
+
+const listenToEvents = addEventListener;
+const stopListeningToEvents = removeEventListener;
+const listenToPurchases = addPurchasedListener;
+const stopListeningToPurchases = removePurchasedListener;
 
 type UserAttributeSetListenerCallback = (
   userAttribute: PurchaselyUserAttribute
@@ -110,6 +124,47 @@ const removeUserAttributeRemovedListener = () => {
   return PurchaselyEventEmitter.removeAllListeners(
     'USER_ATTRIBUTE_REMOVED_LISTENER'
   );
+};
+
+export interface UserAttributeListener {
+  onUserAttributeSet?: (
+    key: string,
+    type: PLYUserAttributeType | null | undefined,
+    value: any,
+    source: PLYUserAttributeSource | null | undefined
+  ) => void;
+  onUserAttributeRemoved?: (
+    key: string,
+    source: PLYUserAttributeSource | null | undefined
+  ) => void;
+}
+
+const setUserAttributeListener = (listener: UserAttributeListener) => {
+  const setSubscription = addUserAttributeSetListener((attribute) => {
+    listener.onUserAttributeSet?.(
+      attribute.key,
+      attribute.type,
+      attribute.value,
+      attribute.source
+    );
+  });
+  const removedSubscription = addUserAttributeRemovedListener((attribute) => {
+    listener.onUserAttributeRemoved?.(
+      attribute.key,
+      attribute.source
+    );
+  });
+  return {
+    remove: () => {
+      setSubscription.remove();
+      removedSubscription.remove();
+    },
+  };
+};
+
+const clearUserAttributeListener = () => {
+  removeUserAttributeSetListener();
+  removeUserAttributeRemovedListener();
 };
 
 const purchaseWithPlanVendorId = ({
@@ -153,10 +208,6 @@ const decrementUserAttribute = ({
 
 const getConstants = (): Constants => {
   return constants;
-};
-
-const close = (): void => {
-  return NativeModules.Purchasely.close();
 };
 
 const getAnonymousUserId = (): Promise<string> => {
@@ -221,6 +272,14 @@ const synchronize = (): Promise<boolean> => {
   return NativeModules.Purchasely.synchronize();
 };
 
+const allowDeeplink = (allow: boolean): void => {
+  return NativeModules.Purchasely.allowDeeplink(allow);
+};
+
+const allowCampaigns = (allow: boolean): void => {
+  return NativeModules.Purchasely.allowCampaigns(allow);
+};
+
 const setLanguage = (language: string): void => {
   return NativeModules.Purchasely.setLanguage(language);
 };
@@ -236,6 +295,9 @@ const setUserAttributeWithString = (key: string, value: string, legalBasis?: PLY
 const setUserAttributeWithNumber = (key: string, value: number, legalBasis?: PLYDataProcessingLegalBasis): void => {
   return NativeModules.Purchasely.setUserAttributeWithNumber(key, value, legalBasis);
 };
+
+const setUserAttributeWithInt = setUserAttributeWithNumber;
+const setUserAttributeWithDouble = setUserAttributeWithNumber;
 
 const setUserAttributeWithBoolean = (key: string, value: boolean, legalBasis?: PLYDataProcessingLegalBasis): void => {
   return NativeModules.Purchasely.setUserAttributeWithBoolean(key, value, legalBasis);
@@ -265,7 +327,10 @@ const setUserAttributeWithBooleanArray = (
   return NativeModules.Purchasely.setUserAttributeWithBooleanArray(key, value, legalBasis);
 };
 
-const userAttributes = (): Promise<PurchaselyUserAttribute> => {
+const setUserAttributeWithIntArray = setUserAttributeWithNumberArray;
+const setUserAttributeWithDoubleArray = setUserAttributeWithNumberArray;
+
+const userAttributes = (): Promise<Record<string, any>> => {
   return NativeModules.Purchasely.userAttributes();
 };
 
@@ -279,18 +344,6 @@ const clearUserAttribute = (key: string): void => {
 
 const clearUserAttributes = (): void => {
   return NativeModules.Purchasely.clearUserAttributes();
-};
-
-const clientPresentationDisplayed = (
-  presentation: PurchaselyPresentation
-): void => {
-  return NativeModules.Purchasely.clientPresentationDisplayed(presentation);
-};
-
-const clientPresentationClosed = (
-  presentation: PurchaselyPresentation
-): void => {
-  return NativeModules.Purchasely.clientPresentationClosed(presentation);
 };
 
 const isAnonymous = (): Promise<boolean> => {
@@ -337,6 +390,7 @@ const setDebugMode = (debugMode: boolean): void => {
 const Purchasely = {
   // paywall API — the only supported way to display & intercept paywalls.
   builder,
+  apiKey,
   presentation: PLYPresentationBuilder,
   interceptAction: (
     kind: PLYPresentationActionKind,
@@ -351,19 +405,24 @@ const Purchasely = {
   // Core SDK — version-agnostic (user, products, subscriptions, attributes…).
   addEventListener,
   removeEventListener,
+  listenToEvents,
+  stopListeningToEvents,
   addPurchasedListener,
   removePurchasedListener,
+  listenToPurchases,
+  stopListeningToPurchases,
   addUserAttributeSetListener,
   removeUserAttributeSetListener,
   addUserAttributeRemovedListener,
   removeUserAttributeRemovedListener,
+  setUserAttributeListener,
+  clearUserAttributeListener,
   purchaseWithPlanVendorId,
   setUserAttributeWithDate,
   signPromotionalOffer,
   incrementUserAttribute,
   decrementUserAttribute,
   getConstants,
-  close,
   getAnonymousUserId,
   userLogin,
   userLogout,
@@ -378,20 +437,24 @@ const Purchasely = {
   userSubscriptionsHistory,
   handleDeeplink,
   synchronize,
+  allowDeeplink,
+  allowCampaigns,
   setLanguage,
   userDidConsumeSubscriptionContent,
   setUserAttributeWithString,
   setUserAttributeWithNumber,
+  setUserAttributeWithInt,
+  setUserAttributeWithDouble,
   setUserAttributeWithBoolean,
   setUserAttributeWithStringArray,
   setUserAttributeWithNumberArray,
+  setUserAttributeWithIntArray,
+  setUserAttributeWithDoubleArray,
   setUserAttributeWithBooleanArray,
   userAttributes,
   userAttribute,
   clearUserAttribute,
   clearUserAttributes,
-  clientPresentationDisplayed,
-  clientPresentationClosed,
   isAnonymous,
   isEligibleForIntroOffer,
   setThemeMode,

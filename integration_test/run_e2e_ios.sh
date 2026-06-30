@@ -1,7 +1,7 @@
 #!/bin/bash
 # Purchasely React Native — E2E test orchestrator (iOS Simulator)
 #
-# Mirrors run_e2e.sh for Android. Runs T1-T13 against an iOS simulator.
+# Mirrors run_e2e.sh for Android. Runs T1-T20 against an iOS simulator.
 # The test logic (T1-T13) executes inside the RN JS context on-device; UI
 # drivers for T8/T9 are launched from the host when the device signals
 # readiness via log markers.
@@ -159,7 +159,7 @@ trap cleanup EXIT
 log "Monitoring logs for E2E markers..."
 
 # ── Monitor loop ──────────────────────────────────────────────────────────────
-TIMEOUT_SECS=420
+TIMEOUT_SECS=600
 START_TS=$(date +%s)
 TAP_DONE=0
 BACK_DONE=0
@@ -208,7 +208,7 @@ echo "==========================================="
 echo " Purchasely RN E2E — iOS results"
 echo "==========================================="
 
-for id in T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13; do
+for id in T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13 T14 T15 T16 T17 T18 T19 T20; do
   PASS_LINE=$(grep "\[E2E:${id}:PASS\]" "$LOGFILE" 2>/dev/null | tail -1)
   FAIL_LINE=$(grep "\[E2E:${id}:FAIL\]" "$LOGFILE" 2>/dev/null | tail -1)
   if [ -n "$PASS_LINE" ]; then

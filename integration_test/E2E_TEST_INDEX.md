@@ -255,6 +255,143 @@ Déclenchés par le script hôte → composant `E2ETestRunner.tsx` embarqué dan
 
 ---
 
+## T14 — User attributes : types étendus (double / date / arrays)
+
+**Inspiré de :** `dart_ios_bridge_test.dart` T14 (Flutter v6)
+
+**Ce que ça teste :** round-trip `setUserAttributeWithDouble / Date / StringArray / IntArray / BooleanArray` → `userAttribute(key)`.
+
+| Step | Action | Assert |
+|------|--------|--------|
+| 1 | `setUserAttributeWithDouble('e2e_dbl', 3.14)` | — |
+| 2 | `setUserAttributeWithDate('e2e_date', new Date('2024-06-15T12:00:00.000Z'))` | — |
+| 3 | `setUserAttributeWithStringArray('e2e_str_arr', ['alpha','beta','gamma'])` | — |
+| 4 | `setUserAttributeWithIntArray('e2e_int_arr', [10,20,30])` | — |
+| 5 | `setUserAttributeWithBooleanArray('e2e_bool_arr', [true,false,true])` | — |
+| 6 | `await sleep(400)` | — |
+| 7 | `userAttribute('e2e_dbl')` | `~3.14` |
+| 8 | `userAttribute('e2e_date')` | `2024-06-15` |
+| 9 | `userAttribute('e2e_str_arr / e2e_int_arr / e2e_bool_arr')` | `length === 3` |
+| 10 | `clearUserAttribute` × 5 | — |
+
+**Marqueurs :** `[E2E:T14:PASS]` / `[E2E:T14:FAIL]` — **Driver host :** aucun
+
+---
+
+## T15 — User attributes : opérations bulk
+
+**Inspiré de :** `dart_ios_bridge_test.dart` T15
+
+**Ce que ça teste :** `userAttributes()` retourne une map contenant les attributs, `clearUserAttributes()` vide tout, `clearBuiltInAttributes()` ne throw pas.
+
+| Step | Action | Assert |
+|------|--------|--------|
+| 1 | `setUserAttributeWithString('bulk_a', 'hello')` | — |
+| 2 | `setUserAttributeWithInt('bulk_b', 99)` | — |
+| 3 | `await sleep(300)` | — |
+| 4 | `userAttributes()` | map contient `bulk_a === 'hello'` |
+| 5 | `clearUserAttributes()` | — |
+| 6 | `await sleep(300)` | — |
+| 7 | `userAttribute('bulk_a')` | `null` |
+| 8 | `clearBuiltInAttributes()` | — (no-throw) |
+
+**Marqueurs :** `[E2E:T15:PASS]` / `[E2E:T15:FAIL]` — **Driver host :** aucun
+
+---
+
+## T16 — Increment / decrement
+
+**Inspiré de :** `dart_ios_bridge_test.dart` T16
+
+**Ce que ça teste :** `incrementUserAttribute` / `decrementUserAttribute` modifient un compteur.
+
+| Step | Action | Assert |
+|------|--------|--------|
+| 1 | `clearUserAttribute('e2e_counter')` | — |
+| 2 | `incrementUserAttribute({ key: 'e2e_counter', value: 7 })` | — |
+| 3 | `userAttribute('e2e_counter')` → v1 | `typeof v1 === 'number'` |
+| 4 | `incrementUserAttribute({ key: 'e2e_counter', value: 3 })` | — |
+| 5 | `userAttribute('e2e_counter')` → v2 | `v2 > v1` |
+| 6 | `decrementUserAttribute({ key: 'e2e_counter', value: 4 })` | — |
+| 7 | `userAttribute('e2e_counter')` → v3 | `v3 < v2` |
+| 8 | `clearUserAttribute('e2e_counter')` | — |
+
+**Marqueurs :** `[E2E:T16:PASS]` / `[E2E:T16:FAIL]` — **Driver host :** aucun
+
+---
+
+## T17 — Catalogue : productWithIdentifier / planWithIdentifier / isEligibleForIntroOffer
+
+**Inspiré de :** `dart_ios_bridge_test.dart` T17
+
+**Ce que ça teste :** lookup par `vendorId` + check d'éligibilité intro.
+
+| Step | Action | Assert |
+|------|--------|--------|
+| 1 | `allProducts()` | tableau non-vide |
+| 2 | `productWithIdentifier(product.vendorId)` | `vendorId` + `name` non-vide |
+| 3 | `planWithIdentifier(plan.vendorId)` | `vendorId` match |
+| 4 | `isEligibleForIntroOffer(plan.vendorId)` | `boolean` |
+
+**Marqueurs :** `[E2E:T17:PASS]` / `[E2E:T17:FAIL]` — **Driver host :** aucun
+
+---
+
+## T18 — Dynamic offerings : CRUD
+
+**Inspiré de :** `dart_ios_bridge_test.dart` T18
+
+**Ce que ça teste :** `setDynamicOffering` → `getDynamicOfferings` → `removeDynamicOffering` → `clearDynamicOfferings`.
+
+| Step | Action | Assert |
+|------|--------|--------|
+| 1 | `presentation.placement(...).preload()` | `plans[0].planVendorId` |
+| 2 | `setDynamicOffering({ reference, planVendorId })` | `boolean` |
+| 3 | `getDynamicOfferings()` | tableau |
+| 4 | `removeDynamicOffering(reference)` | — |
+| 5 | `clearDynamicOfferings()` | — |
+
+**Marqueurs :** `[E2E:T18:PASS]` / `[E2E:T18:FAIL]` — **Driver host :** aucun
+
+---
+
+## T19 — Builder `screen(id)` + transitions modal / popin
+
+**Inspiré de :** `dart_ios_bridge_test.dart` T19
+
+**Ce que ça teste :** `PLYPresentationBuilder.screen(id).build().preload().display(transition)` puis close programmatique.
+
+| Step | Action | Assert |
+|------|--------|--------|
+| 1 | `placement(...).preload()` → récupère `screenId` | non-vide |
+| 2 | `screen(screenId).build().preload()` | `screenId` non-vide |
+| 3 | `display({ type: 'modal' })` puis `close()` | `outcome.presentation.screenId` non-vide |
+| 4 | `display({ type: 'popin', width, height })` puis `close()` | `outcome.presentation.screenId` non-vide |
+
+**Marqueurs :** `[E2E:T19:PASS]` / `[E2E:T19:FAIL]` — **Driver host :** aucun
+
+---
+
+## T20 — Config setters : smoke test
+
+**Inspiré de :** `dart_ios_bridge_test.dart` T20
+
+**Ce que ça teste :** `allowDeeplink` / `allowCampaigns` / `setLanguage` / `setThemeMode` / `setLogLevel` / `setDebugMode` / `revokeDataProcessingConsent` ne throw pas.
+
+| Step | Action | Assert |
+|------|--------|--------|
+| 1 | `allowDeeplink(true)` puis `false` | — (no-throw) |
+| 2 | `allowCampaigns(true)` puis `false` | — (no-throw) |
+| 3 | `setLanguage('en')` | — (no-throw) |
+| 4 | `setThemeMode(PLYThemeMode.SYSTEM)` | — (no-throw) |
+| 5 | `setLogLevel(LogLevels.DEBUG)` | — (no-throw) |
+| 6 | `setDebugMode(false)` | — (no-throw) |
+| 7 | `revokeDataProcessingConsent([...])` | — (no-throw) |
+
+**Marqueurs :** `[E2E:T20:PASS]` / `[E2E:T20:FAIL]` — **Driver host :** aucun
+
+---
+
 ## Architecture du runner
 
 ```
@@ -306,3 +443,10 @@ CI (macos-14 + simulateur iOS)
 | T11 | PRES-08, PRES-10 |
 | T12 | ACT-07 |
 | T13 | USER_ATTRIBUTES |
+| T14 | T14 (Flutter v6) |
+| T15 | T15 (Flutter v6) |
+| T16 | T16 (Flutter v6) |
+| T17 | T17 (Flutter v6) |
+| T18 | T18 (Flutter v6) |
+| T19 | T19 (Flutter v6) |
+| T20 | T20 (Flutter v6) |

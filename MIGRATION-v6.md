@@ -49,6 +49,20 @@ the methods that are **unchanged**.
 | `Purchasely.setPaywallActionInterceptorCallback(cb)` + `Purchasely.onProcessAction(bool)` | `Purchasely.interceptAction(kind, handler)` — handler returns `'success' \| 'failed' \| 'notHandled'` (no more `onProcessAction`) |
 | `Purchasely.setDefaultPresentationResultCallback(cb)` / `setDefaultPresentationResultHandler(cb)` | `Purchasely.setDefaultPresentationDismissHandler(outcome => …)` — global handler for presentations the SDK opens itself (campaigns, deeplinks, Promoted IAP). For paywalls **you** display, use `request.onDismissed(outcome => …)` instead. |
 | `Purchasely.readyToOpenDeeplink(true)` | `Purchasely.builder(apiKey).allowDeeplink(true).start()` |
+| `Purchasely.close()` (top-level) | `request.close()` on a `PLYPresentationRequest` |
+| `Purchasely.displaySubscriptionCancellationInstruction()` | **Removed** — cancellation UX is owned by the OS/App Store; the SDK no longer opens it. |
+| `Purchasely.clientPresentationDisplayed(...)` / `Purchasely.clientPresentationClosed(...)` | **Removed** — Client/BYOS presentations use the `PLYPresentationRequest` lifecycle (`display()` / `close()`). |
+| `FetchPresentationParameters` / `PresentPresentation*Parameters` / `PresentProductParameters` / `PresentPlanParameters` / `PaywallActionInterceptorResult` | **Removed** — replaced by the `PLYPresentationBuilder` / `interceptAction(kind, handler)` types. |
+| `setUserAttributeWithInt / setUserAttributeWithDouble` / `…WithIntArray / …WithDoubleArray` | **Added** — Flutter-compatible aliases of the `WithNumber / WithNumberArray` setters. |
+
+### New v6 helpers (Flutter parity)
+
+- `Purchasely.apiKey(key)` — alias of `Purchasely.builder(key)` (Flutter `Purchasely.apiKey(...)`).
+- `Purchasely.allowCampaigns(allow)` — runtime toggle for automatic campaigns (callable after `start()`).
+- `Purchasely.listenToEvents(cb)` / `Purchasely.stopListeningToEvents()` — Flutter-compatible aliases of `addEventListener` / `removeEventListener`.
+- `Purchasely.listenToPurchases(cb)` / `Purchasely.stopListeningToPurchases()` — Flutter-compatible aliases of `addPurchasedListener` / `removePurchasedListener`.
+- `Purchasely.setUserAttributeListener(listener)` / `Purchasely.clearUserAttributeListener()` — bundle the per-attribute set/remove listeners.
+- `Purchasely.getConstants()` is kept for backward compatibility.
 
 ---
 
@@ -359,10 +373,12 @@ awaitable result — see above). The following keep working exactly as in v5:
   `addPurchasedListener` / `removePurchasedListener`,
   `addUserAttributeSetListener` / `removeUserAttributeSetListener`,
   `addUserAttributeRemovedListener` / `removeUserAttributeRemovedListener`.
-- **Client (BYOS) presentations**: **`clientPresentationDisplayed`**,
-  **`clientPresentationClosed`** — unchanged.
+- **Client (BYOS) presentations**: handled via the `PLYPresentationRequest`
+  lifecycle (`preload()` → inspect `PLYPresentationType.CLIENT` → render your
+  own UI). The old `clientPresentationDisplayed` /
+  `clientPresentationClosed` helpers are removed.
 - **Misc**: `setLogLevel`, `setLanguage`, `setThemeMode`, `setDebugMode`,
-  `revokeDataProcessingConsent`, `getConstants`, `close`.
+  `revokeDataProcessingConsent`, `getConstants`.
 - **Embedded component**: `PLYPresentationView` — unchanged.
 
 ---

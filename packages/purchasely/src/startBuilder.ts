@@ -24,8 +24,8 @@ interface StartBuilderState {
     appUserId?: string | null;
     runningMode: RunningModeString;
     logLevel: LogLevelString;
-    allowDeeplink: boolean;
-    allowCampaigns: boolean;
+    allowDeeplink?: boolean | null;
+    allowCampaigns?: boolean | null;
     deeplink?: string | null;
     androidStores: AndroidStore[];
     storekitVersion: StorekitVersion;
@@ -35,9 +35,8 @@ interface StartBuilderState {
  * Cross-platform builder for `Purchasely.start()`.
  *
  * Mirrors the Android/iOS contract:
- * - `allowDeeplink` / `allowCampaigns` are part of the chain (Android-style).
- *   On iOS the bridge expands them to the equivalent class funcs while the
- *   native chain catches up.
+ * - `allowDeeplink` / `allowCampaigns` are optional chain modifiers.
+ *   When omitted we keep each native SDK's default/backend-configured value.
  * - `stores(...)` is Android-only.
  * - `storekitVersion(...)` is iOS-only.
  *
@@ -60,8 +59,6 @@ export class PurchaselyBuilder {
             apiKey: key,
             runningMode: 'observer',
             logLevel: 'error',
-            allowDeeplink: false,
-            allowCampaigns: true,
             androidStores: ['google'],
             storekitVersion: 'storeKit2',
         });
@@ -150,17 +147,22 @@ export class PurchaselyBuilder {
             bridgeVersion
         );
 
-        // Apply the chain-only options through the bridge.
-        if (NativeModules.Purchasely.applyStartOptions) {
-            NativeModules.Purchasely.applyStartOptions({
-                allowDeeplink: this.state.allowDeeplink,
-                allowCampaigns: this.state.allowCampaigns,
-            });
-        } else {
-            // Fallback for older native bridges still ignoring applyStartOptions.
-            NativeModules.Purchasely.readyToOpenDeeplink(
-                this.state.allowDeeplink
-            );
+        // Apply optional chain-only options through the bridge. Omitted options
+        // are intentionally absent so native defaults match Flutter v6.
+        const startOptions: Record<string, boolean> = {};
+        if (this.state.allowDeeplink !== undefined && this.state.allowDeeplink !== null) {
+            startOptions.allowDeeplink = this.state.allowDeeplink;
+        }
+        if (this.state.allowCampaigns !== undefined && this.state.allowCampaigns !== null) {
+            startOptions.allowCampaigns = this.state.allowCampaigns;
+        }
+        if (Object.keys(startOptions).length > 0) {
+            if (NativeModules.Purchasely.applyStartOptions) {
+                NativeModules.Purchasely.applyStartOptions(startOptions);
+            } else if (startOptions.allowDeeplink !== undefined) {
+                // Fallback for older native bridges still ignoring applyStartOptions.
+                NativeModules.Purchasely.readyToOpenDeeplink(startOptions.allowDeeplink);
+            }
         }
 
         // Replay a cold-start deeplink now that the SDK is configured.

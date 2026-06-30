@@ -373,7 +373,18 @@ describe('façade · integration with native bridge', () => {
                 requestId: 'req-1',
                 callbackId: 'cb-1',
                 kind: 'purchase',
-                info: { contentId: 'c1' },
+                info: {
+                    contentId: 'c1',
+                    presentation: {
+                        ...fakePresentationPayload,
+                        audienceId: 'audience-1',
+                        abTestId: 'ab-1',
+                        abTestVariantId: 'variant-1',
+                        campaignId: 'campaign-1',
+                        flowId: 'flow-1',
+                        metadata: { source: 'interceptor' },
+                    },
+                },
                 payload: { plan: { vendorId: 'monthly' } },
             });
 
@@ -381,7 +392,22 @@ describe('façade · integration with native bridge', () => {
 
             expect(handler).toHaveBeenCalledTimes(1);
             const [info, payload] = handler.mock.calls[0];
-            expect(info).toMatchObject({ contentId: 'c1' });
+            expect(info).toMatchObject({
+                contentId: 'c1',
+                presentation: {
+                    screenId: 'screen-abc',
+                    placementId: 'home',
+                    contentId: 'content-1',
+                    audienceId: 'audience-1',
+                    abTestId: 'ab-1',
+                    abTestVariantId: 'variant-1',
+                    campaignId: 'campaign-1',
+                    flowId: 'flow-1',
+                    language: 'fr',
+                    height: 720,
+                    metadata: { source: 'interceptor' },
+                },
+            });
             expect(payload).toMatchObject({
                 kind: 'purchase',
                 plan: { vendorId: 'monthly' },

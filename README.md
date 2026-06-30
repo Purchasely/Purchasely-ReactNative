@@ -79,10 +79,10 @@ import { Text, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Header } from 'react-native/Libraries/NewAppScreen';
 import { Section } from './Section.tsx';
-import { PLYPresentationView, PresentPresentationResult } from 'react-native-purchasely';
+import { PLYPresentationView } from 'react-native-purchasely';
 
 export const PaywallScreen: React.FC<NativeStackScreenProps<any>> = ({ navigation }) => {
-  const callback = (result: PresentPresentationResult) => {
+  const callback = (result: any) => {
     console.log('### Paywall closed, result is ' + result.result);
     navigation.goBack();
   };
@@ -93,7 +93,7 @@ export const PaywallScreen: React.FC<NativeStackScreenProps<any>> = ({ navigatio
       <PLYPresentationView
         placementId="ACCOUNT"
         flex={7}
-        onPresentationClosed={(res: PresentPresentationResult) => callback(res)}
+        onPresentationClosed={(res) => callback(res)}
       />
       <View style={{ flex: 3, justifyContent: 'center', alignItems: 'center' }}>
         <Section>

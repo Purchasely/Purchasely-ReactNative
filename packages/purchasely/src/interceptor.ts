@@ -24,21 +24,39 @@ const interceptorRegistry = new Map<
     { subscription: EmitterSubscription; handler: PLYActionInterceptorHandler }
 >();
 
+function normalizePresentation(raw: any): PLYPresentation | null {
+    if (!raw || typeof raw !== 'object') {
+        return null;
+    }
+    const screenId = raw.screenId ?? raw.id;
+    if (!screenId) {
+        return null;
+    }
+    return {
+        screenId,
+        id: screenId,
+        placementId: raw.placementId ?? null,
+        contentId: raw.contentId ?? null,
+        audienceId: raw.audienceId ?? null,
+        abTestId: raw.abTestId ?? null,
+        abTestVariantId: raw.abTestVariantId ?? null,
+        campaignId: raw.campaignId ?? null,
+        flowId: raw.flowId ?? null,
+        language: raw.language ?? null,
+        type: raw.type ?? null,
+        plans: raw.plans ?? null,
+        metadata: raw.metadata ?? null,
+        height: raw.height ?? null,
+    };
+}
+
 function normalizeInfo(raw: any): PLYInterceptorInfo {
     if (!raw) {
         return {};
     }
     return {
         contentId: raw.contentId ?? null,
-        presentation: raw.presentation
-            ? ({
-                  screenId: raw.presentation.screenId ?? raw.presentation.id,
-                  id: raw.presentation.screenId ?? raw.presentation.id,
-                  placementId: raw.presentation.placementId ?? null,
-                  contentId: raw.presentation.contentId ?? null,
-                  type: raw.presentation.type ?? null,
-              } as PLYPresentation)
-            : null,
+        presentation: normalizePresentation(raw.presentation),
     };
 }
 

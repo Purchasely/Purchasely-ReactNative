@@ -3,7 +3,6 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { Section } from './Section.tsx'
 import {
     PLYPresentationView,
-    PresentPresentationResult,
     ProductResult,
 } from 'react-native-purchasely'
 
@@ -18,7 +17,7 @@ export const PaywallScreen: React.FC<NativeStackScreenProps<any>> = ({
     console.log('### Paywall screen')
     console.log('placementId', placementId)
 
-    const callback = (result: PresentPresentationResult) => {
+    const callback = (result: any) => {
         console.log('### Paywall closed')
         console.log('### Result is ' + result.result)
         switch (result.result) {
@@ -62,9 +61,7 @@ export const PaywallScreen: React.FC<NativeStackScreenProps<any>> = ({
             <PLYPresentationView
                 flex={7}
                 placementId={placementId}
-                onPresentationClosed={(res: PresentPresentationResult) =>
-                    callback(res)
-                }
+                onPresentationClosed={(res) => callback(res)}
             />
 
             <View

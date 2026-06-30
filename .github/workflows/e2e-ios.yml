@@ -15,6 +15,14 @@ on:
       - 'integration_test/**'
       - 'example/src/E2ETestRunner.tsx'
       - 'example/ios/**'
+  pull_request:
+    paths:
+      - 'packages/purchasely/react-native-purchasely.podspec'
+      - 'packages/purchasely/ios/**'
+      - '.github/workflows/e2e-ios.yml'
+      - 'integration_test/**'
+      - 'example/src/E2ETestRunner.tsx'
+      - 'example/ios/**'
 
 concurrency:
   group: e2e-ios
@@ -22,7 +30,7 @@ concurrency:
 
 jobs:
   e2e-ios:
-    name: E2E Tests (iOS T1-T13)
+    name: E2E Tests (iOS T1-T20)
     # macOS requis : simulateur iOS + xcodebuild. Pas de HVF nécessaire (le
     # simulateur iOS ne virtualise pas un OS invité, contrairement à l'émulateur
     # Android ARM — c'est pourquoi Android tourne sur ubuntu + KVM).
@@ -95,7 +103,7 @@ jobs:
           xcrun simctl bootstatus "$UDID" -b
           echo "IOS_SIMULATOR_UDID=$UDID" >> "$GITHUB_ENV"
 
-      - name: Run E2E suite on simulator (build Release + T1-T13)
+      - name: Run E2E suite on simulator (build Release + T1-T20)
         run: bash integration_test/run_e2e_ios.sh "$IOS_SIMULATOR_UDID"
 
       - name: Upload logs on failure

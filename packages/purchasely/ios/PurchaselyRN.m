@@ -133,6 +133,12 @@ static NSDictionary *presentationToMap(id<PLYPresentation> presentation) {
     if (presentation.abTestVariantId != nil) {
         map[@"abTestVariantId"] = presentation.abTestVariantId;
     }
+    if ([presentation respondsToSelector:@selector(campaignId)] && presentation.campaignId != nil) {
+        map[@"campaignId"] = presentation.campaignId;
+    }
+    if ([presentation respondsToSelector:@selector(flowId)] && presentation.flowId != nil) {
+        map[@"flowId"] = presentation.flowId;
+    }
     if (presentation.language != nil) {
         map[@"language"] = presentation.language;
     }
@@ -674,8 +680,18 @@ RCT_REMAP_METHOD(getAnonymousUserId,
 }
 
 RCT_EXPORT_METHOD(readyToOpenDeeplink:(BOOL)ready) {
+    [self allowDeeplink:ready];
+}
+
+RCT_EXPORT_METHOD(allowDeeplink:(BOOL)allow) {
     dispatch_async(dispatch_get_main_queue(), ^{
-        [Purchasely allowDeeplink: ready];
+        [Purchasely allowDeeplink:allow];
+    });
+}
+
+RCT_EXPORT_METHOD(allowCampaigns:(BOOL)allow) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [Purchasely allowCampaigns:allow];
     });
 }
 
@@ -696,37 +712,6 @@ RCT_EXPORT_METHOD(signPromotionalOffer:(NSString * )storeProductId
             [self reject: reject with: nil];
         }
     });
-}
-
-- (id<PLYPresentation>) findPresentationLoadedFor:(NSString * _Nullable)presentationId
-                                      placementId:(NSString * _Nullable)placementId {
-    for (id<PLYPresentation> presentationLoaded in PurchaselyRN.presentationsLoaded) {
-        if ([presentationLoaded.id isEqualToString: presentationId] && [presentationLoaded.placementId isEqualToString: placementId]) {
-            return presentationLoaded;
-        }
-    }
-    return nil;
-}
-
-RCT_EXPORT_METHOD(clientPresentationDisplayed:(NSDictionary<NSString *, id> * _Nullable) presentationDictionary)
-{
-    if (presentationDictionary == nil) {
-        NSLog(@"Presentation cannot be null");
-        return;
-    }
-
-    id<PLYPresentation> presentationLoaded = [self findPresentationLoadedFor:(NSString *)[presentationDictionary objectForKey:@"id"] placementId:(NSString *)[presentationDictionary objectForKey:@"placementId"]];
-    [Purchasely clientPresentationOpenedWith:presentationLoaded];
-}
-
-RCT_EXPORT_METHOD(clientPresentationClosed:(NSDictionary<NSString *, id> * _Nullable) presentationDictionary)
-{
-    if (presentationDictionary == nil) {
-        NSLog(@"Presentation cannot be null");
-        return;
-    }
-    id<PLYPresentation> presentationLoaded = [self findPresentationLoadedFor:(NSString *)[presentationDictionary objectForKey:@"id"] placementId:(NSString *)[presentationDictionary objectForKey:@"placementId"]];
-    [Purchasely clientPresentationClosedWith:presentationLoaded];
 }
 
 RCT_EXPORT_METHOD(purchaseWithPlanVendorId:(NSString * _Nonnull)planVendorId
@@ -1652,16 +1637,11 @@ RCT_EXPORT_METHOD(applyStartOptions:(NSDictionary *)options) {
     if (![options isKindOfClass:[NSDictionary class]]) { return; }
     id allowDeeplink = options[@"allowDeeplink"];
     if ([allowDeeplink isKindOfClass:[NSNumber class]]) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [Purchasely allowDeeplink:[allowDeeplink boolValue]];
-        });
+        [self allowDeeplink:[allowDeeplink boolValue]];
     }
-    // `allowCampaigns` is honored on Android via the consent manager; on iOS
-    // the equivalent is not exposed publicly yet — JS clients receive the value
-    // back through the start payload but iOS does not yet act on it.
     id allowCampaigns = options[@"allowCampaigns"];
-    if ([allowCampaigns isKindOfClass:[NSNumber class]] && ![allowCampaigns boolValue]) {
-        RCTLogWarn(@"[Purchasely] allowCampaigns(false) is not bridged on iOS yet");
+    if ([allowCampaigns isKindOfClass:[NSNumber class]]) {
+        [self allowCampaigns:[allowCampaigns boolValue]];
     }
 }
 

@@ -82,6 +82,13 @@ jobs:
           cd example/android
           ./gradlew :app:assembleDebug $GRADLE_FLAGS
 
+      - name: Run Purchasely Android native unit tests
+        env:
+          JAVA_OPTS: "-XX:MaxHeapSize=4g"
+        run: |
+          cd example/android
+          ./gradlew :react-native-purchasely:testDebugUnitTest
+
   build-ios:
     runs-on: macos-latest
     steps:

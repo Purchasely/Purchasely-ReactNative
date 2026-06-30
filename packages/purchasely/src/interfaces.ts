@@ -1,5 +1,4 @@
 import type { PLYDataProcessingLegalBasis } from './enums';
-import type { PurchaselyPresentation } from './types';
 
 export interface Constants {
   logLevelDebug: number;
@@ -71,48 +70,6 @@ export interface StartParameters {
   userId?: string | null;
   logLevel: number;
   runningMode: number;
-}
-
-export interface FetchPresentationParameters {
-  placementId?: string | null;
-  presentationId?: string | null;
-  contentId?: string | null;
-}
-
-export interface PresentPresentationParameters {
-  presentation?: PurchaselyPresentation | null;
-  isFullscreen?: boolean;
-  loadingBackgroundColor?: string | null;
-}
-
-export interface PresentPresentationWithIdentifierParameters {
-  presentationVendorId?: string | null;
-  contentId?: string | null;
-  isFullscreen?: boolean;
-  loadingBackgroundColor?: string | null;
-}
-
-export interface PresentPresentationPlacementParameters {
-  placementVendorId?: string | null;
-  contentId?: string | null;
-  isFullscreen?: boolean;
-  loadingBackgroundColor?: string | null;
-}
-
-export interface PresentProductParameters {
-  productVendorId?: string | null;
-  presentationVendorId?: string | null;
-  contentId?: string | null;
-  isFullscreen?: boolean;
-  loadingBackgroundColor?: string | null;
-}
-
-export interface PresentPlanParameters {
-  planVendorId?: string | null;
-  presentationVendorId?: string | null;
-  contentId?: string | null;
-  isFullscreen?: boolean;
-  loadingBackgroundColor?: string | null;
 }
 
 export interface PurchasePlanParameters {
