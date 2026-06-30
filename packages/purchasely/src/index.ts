@@ -19,7 +19,7 @@ import type {
   PurchaselyUserAttribute,
 } from './types';
 import {
-  PresentationBuilder,
+  PLYPresentationBuilder,
   setDefaultPresentationDismissHandler,
   removeDefaultPresentationDismissHandler,
 } from './presentation';
@@ -29,9 +29,9 @@ import {
   removeActionInterceptor,
   removeAllActionInterceptors,
 } from './interceptor';
-import type { PresentationActionKind } from './presentationTypes';
+import type { PLYPresentationActionKind } from './presentationTypes';
 
-const purchaselyVersion = '6.0.0-rc.1';
+const purchaselyVersion = '6.0.0-rc.2';
 
 const constants = NativeModules.Purchasely.getConstants() as Constants;
 
@@ -337,9 +337,9 @@ const setDebugMode = (debugMode: boolean): void => {
 const Purchasely = {
   // paywall API — the only supported way to display & intercept paywalls.
   builder,
-  presentation: PresentationBuilder,
+  presentation: PLYPresentationBuilder,
   interceptAction: (
-    kind: PresentationActionKind,
+    kind: PLYPresentationActionKind,
     handler: Parameters<typeof interceptAction>[1]
   ) => interceptAction(kind, handler),
   removeActionInterceptor,
@@ -410,8 +410,8 @@ export * from './interfaces';
 export * from './presentationTypes';
 export { PURCHASELY_PRESENTATION_EVENTS } from './events';
 export {
-  PresentationBuilder,
-  PresentationRequest,
+  PLYPresentationBuilder,
+  PLYPresentationRequest,
   setDefaultPresentationDismissHandler,
   removeDefaultPresentationDismissHandler,
 } from './presentation';

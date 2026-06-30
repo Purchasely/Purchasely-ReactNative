@@ -1458,9 +1458,18 @@ RCT_EXPORT_METHOD(closePresentation:(NSString *)requestId) {
 }
 
 RCT_EXPORT_METHOD(goBackToPreviousScreen:(NSString *)requestId) {
-    // The legacy iOS SDK does not expose a `back()` primitive on the
-    // presentation controller. Bridge contract says: noop with a warn.
-    RCTLogWarn(@"[Purchasely] goBackToPreviousScreen(%@) is not yet bridged on iOS", requestId);
+    ensurePresentationState();
+    dispatch_async(dispatch_get_main_queue(), ^{
+        id<PLYPresentation> presentation = nil;
+        @synchronized (kPresentationStateLock) {
+            presentation = kPresentationsByRequest[requestId];
+        }
+        if (presentation != nil && [presentation respondsToSelector:@selector(back)]) {
+            [presentation back];
+        } else {
+            RCTLogWarn(@"[Purchasely] goBackToPreviousScreen(%@): no loaded presentation to navigate back", requestId);
+        }
+    });
 }
 
 #pragma mark - interceptors

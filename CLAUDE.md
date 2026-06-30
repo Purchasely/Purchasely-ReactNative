@@ -109,7 +109,6 @@ ReactNative_SDK/
 | `tsconfig.build.json` | Build-specific TypeScript config |
 | `.eslintrc.js` | ESLint configuration |
 | `.prettierrc` | Prettier formatting rules |
-| `turbo.json` | Turbo build orchestration |
 | `.yarnrc.yml` | Yarn 3 workspace settings |
 
 ---
@@ -713,5 +712,4 @@ example/src/App.tsx
 # Configuration
 package.json
 tsconfig.json
-turbo.json
 ```

@@ -26,6 +26,7 @@ interface StartBuilderState {
     logLevel: LogLevelString;
     allowDeeplink: boolean;
     allowCampaigns: boolean;
+    deeplink?: string | null;
     androidStores: AndroidStore[];
     storekitVersion: StorekitVersion;
 }
@@ -50,7 +51,7 @@ export class PurchaselyBuilder {
      *
      * @internal
      */
-    static bridgeVersion = '6.0.0';
+    static bridgeVersion = '6.0.0-rc.2';
 
     private constructor(private readonly state: StartBuilderState) {}
 
@@ -88,6 +89,20 @@ export class PurchaselyBuilder {
 
     allowCampaigns(allow: boolean): this {
         this.state.allowCampaigns = allow;
+        return this;
+    }
+
+    /**
+     * Cold-start deeplink: pass a deeplink URL captured at launch (e.g. from
+     * the Android intent / iOS scene connection options) so the SDK resolves it
+     * automatically once started. No separate `Purchasely.handleDeeplink()`
+     * call is needed — the deeplink is replayed after `start()` completes.
+     *
+     * Pass `null` (or omit the modifier) when the app was not launched from a
+     * deeplink. Non-Purchasely URLs are ignored by the native SDK.
+     */
+    handleDeeplink(deeplink: string | null): this {
+        this.state.deeplink = deeplink;
         return this;
     }
 
@@ -146,6 +161,11 @@ export class PurchaselyBuilder {
             NativeModules.Purchasely.readyToOpenDeeplink(
                 this.state.allowDeeplink
             );
+        }
+
+        // Replay a cold-start deeplink now that the SDK is configured.
+        if (this.state.deeplink) {
+            await NativeModules.Purchasely.handleDeeplink(this.state.deeplink);
         }
 
         return configured;

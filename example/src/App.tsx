@@ -4,10 +4,10 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { HomeScreen } from './Home.tsx'
 import Purchasely, {
     DynamicOffering,
-    InterceptResult,
+    PLYInterceptResult,
     PLYDataProcessingLegalBasis,
     PLYDataProcessingPurpose,
-    PresentationBuilder,
+    PLYPresentationBuilder,
     PurchaselyUserAttribute,
     removeAllActionInterceptors,
 } from 'react-native-purchasely'
@@ -232,7 +232,7 @@ function App(): React.JSX.Element {
         // 'success' tells the SDK the host app fully handled the action.
 
         // Navigate action — open the requested website yourself if needed.
-        Purchasely.interceptAction('navigate', async (info, payload): Promise<InterceptResult> => {
+        Purchasely.interceptAction('navigate', async (info, payload): Promise<PLYInterceptResult> => {
             console.log('User wants to navigate', info, payload)
             if (payload?.kind === 'navigate') {
                 console.log(
@@ -248,7 +248,7 @@ function App(): React.JSX.Element {
 
         // Login action — present your own login screen here. Returning
         // 'success' tells the SDK login is handled by the host app.
-        Purchasely.interceptAction('login', async (info): Promise<InterceptResult> => {
+        Purchasely.interceptAction('login', async (info): Promise<PLYInterceptResult> => {
             console.log('User wants to login', info)
             // Present your own screen for the user to log in, then return
             // 'success' once done — or 'notHandled' to keep the SDK default.
@@ -257,14 +257,14 @@ function App(): React.JSX.Element {
 
         // Purchase action — intercept the purchase if you handle it yourself,
         // otherwise return 'notHandled' to let Purchasely run the purchase.
-        Purchasely.interceptAction('purchase', async (info, payload): Promise<InterceptResult> => {
+        Purchasely.interceptAction('purchase', async (info, payload): Promise<PLYInterceptResult> => {
             console.log('User wants to purchase', info, payload)
             /**
              * To intercept the purchase, present your own screen and run your
              * own transaction, then return 'success' or 'failed'.
              * Returning 'notHandled' lets Purchasely run its default purchase
              * flow. To close the paywall programmatically afterwards, hold a
-             * reference to the PresentationRequest and call `request.close()`.
+             * reference to the PLYPresentationRequest and call `request.close()`.
              **/
             return 'notHandled'
         })
@@ -290,7 +290,7 @@ function App(): React.JSX.Element {
     // The `preload()` resolves once the screen is loaded (no UI shown yet).
     const preloadOnboarding = async () => {
         try {
-            const presentation = await PresentationBuilder.placement(
+            const presentation = await PLYPresentationBuilder.placement(
                 'ONBOARDING'
             )
                 .contentId(null)
@@ -312,7 +312,7 @@ function App(): React.JSX.Element {
     // -------------------------------------------------------------------------
     async function presentOnboarding() {
         // Build, present and react to lifecycle callbacks.
-        const request = PresentationBuilder.placement('ONBOARDING')
+        const request = PLYPresentationBuilder.placement('ONBOARDING')
             .contentId('content_123')
             .onLoaded((presentation) => {
                 console.info('[Purchasely] loaded', presentation.screenId)

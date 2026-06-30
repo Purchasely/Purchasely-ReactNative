@@ -2,14 +2,14 @@ import { NativeModules } from 'react-native';
 import type { EmitterSubscription } from 'react-native';
 
 import type {
-    Presentation,
-    PresentationError,
+    PLYPresentation,
+    PLYPresentationError,
     PLYPresentationOutcome,
-    Transition,
+    PLYTransition,
 } from './presentationTypes';
 import { purchaseResultFromOrdinal } from './presentationTypes';
 import { PURCHASELY_PRESENTATION_EVENTS, presentationEventEmitter } from './events';
-import type { PresentationLifecycleEvent } from './events';
+import type { PLYPresentationLifecycleEvent } from './events';
 
 /** Counter for generating bridge request ids. */
 let nextRequestId = 0;
@@ -18,8 +18,8 @@ const generateRequestId = (): string => {
     return `ply_req_${Date.now()}_${nextRequestId}`;
 };
 
-/** Normalize a native presentation payload to the {@link Presentation} shape. */
-function normalizePresentation(raw: any): Presentation | null {
+/** Normalize a native presentation payload to the {@link PLYPresentation} shape. */
+function normalizePresentation(raw: any): PLYPresentation | null {
     if (!raw || typeof raw !== 'object') {
         return null;
     }
@@ -39,6 +39,8 @@ function normalizePresentation(raw: any): Presentation | null {
         audienceId: raw.audienceId ?? null,
         abTestId: raw.abTestId ?? null,
         abTestVariantId: raw.abTestVariantId ?? null,
+        campaignId: raw.campaignId ?? null,
+        flowId: raw.flowId ?? null,
         language: raw.language ?? null,
         type: raw.type ?? null,
         plans: raw.plans ?? null,
@@ -47,8 +49,8 @@ function normalizePresentation(raw: any): Presentation | null {
     };
 }
 
-/** Normalize a native error payload to the {@link PresentationError} shape. */
-function normalizeError(raw: any): PresentationError | null {
+/** Normalize a native error payload to the {@link PLYPresentationError} shape. */
+function normalizeError(raw: any): PLYPresentationError | null {
     if (!raw) {
         return null;
     }
@@ -64,8 +66,8 @@ function normalizeError(raw: any): PresentationError | null {
 
 /** Convert a native lifecycle event into a {@link PLYPresentationOutcome}. */
 function eventToOutcome(
-    event: PresentationLifecycleEvent,
-    presentation: Presentation | null
+    event: PLYPresentationLifecycleEvent,
+    presentation: PLYPresentation | null
 ): PLYPresentationOutcome {
     const error = normalizeError(event.error);
     return {
@@ -79,18 +81,18 @@ function eventToOutcome(
 }
 
 /**
- * Holds the callbacks registered on a {@link PresentationBuilder}. They are
- * shared between the builder, the request and the live {@link Presentation}
+ * Holds the callbacks registered on a {@link PLYPresentationBuilder}. They are
+ * shared between the builder, the request and the live {@link PLYPresentation}
  * so that callbacks reassigned after `preload()` take effect.
  */
 interface PresentationCallbacks {
     onLoaded?: (
-        presentation: Presentation,
-        error?: PresentationError | null
+        presentation: PLYPresentation,
+        error?: PLYPresentationError | null
     ) => void;
     onPresented?: (
-        presentation?: Presentation | null,
-        error?: PresentationError | null
+        presentation?: PLYPresentation | null,
+        error?: PLYPresentationError | null
     ) => void;
     onCloseRequested?: () => void;
     onDismissed?: (outcome: PLYPresentationOutcome) => void;
@@ -114,14 +116,14 @@ interface BuilderConfig {
  *
  * @example
  * ```ts
- * const request = PresentationBuilder.placement('ONBOARDING')
+ * const request = PLYPresentationBuilder.placement('ONBOARDING')
  *   .onDismissed((outcome) => console.log(outcome))
  *   .build();
  *
  * const outcome = await request.display();
  * ```
  */
-export class PresentationBuilder {
+export class PLYPresentationBuilder {
     /** @internal */
     private readonly config: BuilderConfig;
 
@@ -130,8 +132,8 @@ export class PresentationBuilder {
     }
 
     /** Build a request that targets a placement vendor id. */
-    static placement(placementId: string): PresentationBuilder {
-        return new PresentationBuilder({
+    static placement(placementId: string): PLYPresentationBuilder {
+        return new PLYPresentationBuilder({
             placementId,
             callbacks: {},
         });
@@ -141,16 +143,16 @@ export class PresentationBuilder {
      * Build a request that targets a specific presentation by its screen id.
      * On iOS this maps to `PLYPresentationBuilder.from(presentationId:)`.
      */
-    static screen(screenId: string): PresentationBuilder {
-        return new PresentationBuilder({
+    static screen(screenId: string): PLYPresentationBuilder {
+        return new PLYPresentationBuilder({
             screenId,
             callbacks: {},
         });
     }
 
     /** Build a request that uses the SDK's default placement. */
-    static default(): PresentationBuilder {
-        return new PresentationBuilder({
+    static default(): PLYPresentationBuilder {
+        return new PLYPresentationBuilder({
             isDefault: true,
             callbacks: {},
         });
@@ -189,8 +191,8 @@ export class PresentationBuilder {
 
     onLoaded(
         handler: (
-            presentation: Presentation,
-            error?: PresentationError | null
+            presentation: PLYPresentation,
+            error?: PLYPresentationError | null
         ) => void
     ): this {
         this.config.callbacks.onLoaded = handler;
@@ -199,8 +201,8 @@ export class PresentationBuilder {
 
     onPresented(
         handler: (
-            presentation?: Presentation | null,
-            error?: PresentationError | null
+            presentation?: PLYPresentation | null,
+            error?: PLYPresentationError | null
         ) => void
     ): this {
         this.config.callbacks.onPresented = handler;
@@ -217,9 +219,9 @@ export class PresentationBuilder {
         return this;
     }
 
-    /** Convert the builder into a runnable {@link PresentationRequest}. */
-    build(): PresentationRequest {
-        return new PresentationRequest(this.config);
+    /** Convert the builder into a runnable {@link PLYPresentationRequest}. */
+    build(): PLYPresentationRequest {
+        return new PLYPresentationRequest(this.config);
     }
 }
 
@@ -227,7 +229,7 @@ export class PresentationBuilder {
  * Encapsulates a presentation request: it can be preloaded (without UI),
  * or displayed (which resolves at dismiss).
  */
-export class PresentationRequest {
+export class PLYPresentationRequest {
     /** @internal */
     private readonly config: BuilderConfig;
     /** @internal */
@@ -235,7 +237,7 @@ export class PresentationRequest {
     /** @internal */
     private subscriptions: EmitterSubscription[] = [];
     /** @internal */
-    private livePresentation: Presentation | null = null;
+    private livePresentation: PLYPresentation | null = null;
 
     constructor(config: BuilderConfig) {
         this.config = config;
@@ -245,13 +247,13 @@ export class PresentationRequest {
      * Preload the presentation. Resolves once the SDK reports the screen
      * is loaded (`onLoaded`). Rejects if the SDK fails before load.
      */
-    preload(): Promise<Presentation> {
+    preload(): Promise<PLYPresentation> {
         const requestId = this.ensureRequestId();
-        return new Promise<Presentation>((resolve, reject) => {
+        return new Promise<PLYPresentation>((resolve, reject) => {
             const loadedSubscription =
                 presentationEventEmitter.addListener(
                     PURCHASELY_PRESENTATION_EVENTS.LOADED,
-                    (event: PresentationLifecycleEvent) => {
+                    (event: PLYPresentationLifecycleEvent) => {
                         if (event.requestId !== requestId) {
                             return;
                         }
@@ -288,7 +290,7 @@ export class PresentationRequest {
      * {@link PLYPresentationOutcome} (cf. contract P0.3). Subscribers can attach
      * their own `onPresented` / `onCloseRequested` callbacks via the builder.
      */
-    display(transition?: Transition | null): Promise<PLYPresentationOutcome> {
+    display(transition?: PLYTransition | null): Promise<PLYPresentationOutcome> {
         const requestId = this.ensureRequestId();
 
         // Allow multiple `display()` on the same request — clean up first.
@@ -325,7 +327,7 @@ export class PresentationRequest {
 
     /**
      * Replace the dismissed-callback after `preload()` / `display()`. Useful
-     * for hot-swapping callbacks on a cached {@link Presentation}.
+     * for hot-swapping callbacks on a cached {@link PLYPresentation}.
      */
     onDismissed(
         handler: (outcome: PLYPresentationOutcome) => void
@@ -336,8 +338,8 @@ export class PresentationRequest {
 
     onPresented(
         handler: (
-            presentation?: Presentation | null,
-            error?: PresentationError | null
+            presentation?: PLYPresentation | null,
+            error?: PLYPresentationError | null
         ) => void
     ): this {
         this.config.callbacks.onPresented = handler;
@@ -353,10 +355,12 @@ export class PresentationRequest {
      * Programmatically close the presentation if it is currently visible.
      *
      * @remarks
-     * The native SDK does not yet expose a per-request close, so this currently
-     * dismisses **all** displayed presentations, not only this request. If your
-     * app stacks presentations (e.g. a product page inside an onboarding flow),
-     * calling `close()` on one will also dismiss the others.
+     * **iOS** closes the specific presentation identified by its `requestId`
+     * (falling back to closing all Purchasely screens when the request is no
+     * longer tracked). **Android** does not yet expose a per-request close, so
+     * it dismisses **all** displayed presentations, not only this request. If
+     * your app stacks presentations (e.g. a product page inside an onboarding
+     * flow), calling `close()` on one will also dismiss the others on Android.
      */
     close(): void {
         if (!this.requestId) {
@@ -386,7 +390,7 @@ export class PresentationRequest {
     ): void {
         const onPresented = presentationEventEmitter.addListener(
             PURCHASELY_PRESENTATION_EVENTS.PRESENTED,
-            (event: PresentationLifecycleEvent) => {
+            (event: PLYPresentationLifecycleEvent) => {
                 if (event.requestId !== requestId) {
                     return;
                 }
@@ -407,7 +411,7 @@ export class PresentationRequest {
         );
         const onCloseRequested = presentationEventEmitter.addListener(
             PURCHASELY_PRESENTATION_EVENTS.CLOSE_REQUESTED,
-            (event: PresentationLifecycleEvent) => {
+            (event: PLYPresentationLifecycleEvent) => {
                 if (event.requestId !== requestId) {
                     return;
                 }
@@ -418,7 +422,7 @@ export class PresentationRequest {
         );
         const onDismissed = presentationEventEmitter.addListener(
             PURCHASELY_PRESENTATION_EVENTS.DISMISSED,
-            (event: PresentationLifecycleEvent) => {
+            (event: PLYPresentationLifecycleEvent) => {
                 if (event.requestId !== requestId) {
                     return;
                 }
@@ -508,7 +512,7 @@ export function setDefaultPresentationDismissHandler(
 
     defaultDismissSubscription = presentationEventEmitter.addListener(
         PURCHASELY_PRESENTATION_EVENTS.DEFAULT_DISMISSED,
-        (event: PresentationLifecycleEvent) => {
+        (event: PLYPresentationLifecycleEvent) => {
             const presentation = normalizePresentation(event.presentation);
             handler(eventToOutcome(event, presentation));
         }
