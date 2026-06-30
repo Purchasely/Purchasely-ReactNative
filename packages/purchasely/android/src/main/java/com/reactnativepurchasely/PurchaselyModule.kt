@@ -414,12 +414,13 @@ fun setUserAttributeWithString(key: String, value: String, legalBasis: String?) 
 
 @ReactMethod
 fun setUserAttributeWithNumber(key: String, value: Double, legalBasis: String?) {
-  val lb = legalBasisFromString(legalBasis)
-  if (value.compareTo(value.toInt()) == 0) {
-    Purchasely.setUserAttribute(key, value.toInt(), lb)
-  } else {
-    Purchasely.setUserAttribute(key, value.toFloat(), lb)
-  }
+  // v6's Purchasely.setUserAttribute suspend overloads: int / float / String[] / ...
+  // The Kotlin coroutine bridge resolves the suspend overload via reflection, so
+  // an if/else with two different call sites confuses it and it picks the
+  // String[] overload — throwing "Cannot convert argument of type class
+  // [Ljava.lang.String;" on the very first call. Force the float overload
+  // explicitly (Kotlin doesn't do implicit Double→Float on suspend calls).
+  Purchasely.setUserAttribute(key, value.toFloat(), legalBasisFromString(legalBasis))
 }
 
 @ReactMethod
