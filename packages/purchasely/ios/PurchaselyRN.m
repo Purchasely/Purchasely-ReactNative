@@ -49,6 +49,14 @@ static NSMutableSet<NSString *> *kInterceptorKinds;
 /// writes are guarded by `@synchronized(kPresentationStateLock)`.
 static NSObject *kPresentationStateLock;
 
+/// Mirrors the Android bridge's `INTERCEPTOR_TIMEOUT_MS = 30_000L`. If JS never
+/// replies via `completeActionInterceptor:` (RN bridge reloaded, the JS event
+/// listener torn down, or the handler threw before completing), the stored
+/// callback is fired with `notHandled` after this delay so the native SDK's
+/// `completion` block is always invoked and the action is never frozen for the
+/// lifetime of the process.
+static const int64_t kInterceptorTimeoutSeconds = 30;
+
 static void ensurePresentationState(void) {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
@@ -1494,6 +1502,28 @@ RCT_EXPORT_METHOD(registerActionInterceptor:(NSString *)kind) {
                     }
                 };
             }
+
+            // Fallback timer mirroring the Android bridge: if JS never calls
+            // completeActionInterceptor: for this callbackId, fire the stored
+            // callback with `notHandled` so the SDK's `completion` block is always
+            // invoked and the action is never frozen. Whoever removes the entry
+            // first (this timer or completeActionInterceptor:) wins; the loser
+            // reads nil and no-ops, so the SDK completion can never fire twice.
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, kInterceptorTimeoutSeconds * NSEC_PER_SEC),
+                           dispatch_get_main_queue(), ^{
+                void (^timedOutCallback)(NSString *) = nil;
+                @synchronized (kPresentationStateLock) {
+                    timedOutCallback = kInterceptorCallbacks[callbackId];
+                    if (timedOutCallback != nil) {
+                        [kInterceptorCallbacks removeObjectForKey:callbackId];
+                    }
+                }
+                if (timedOutCallback != nil) {
+                    RCTLogWarn(@"[Purchasely] interceptor callback %@ timed out after %llds; falling back to notHandled",
+                               callbackId, (long long)kInterceptorTimeoutSeconds);
+                    timedOutCallback(@"notHandled");
+                }
+            });
 
             NSMutableDictionary *info = [NSMutableDictionary new];
             if (infos.contentId != nil) {
