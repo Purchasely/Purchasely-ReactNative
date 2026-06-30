@@ -5,14 +5,14 @@ import {
     PURCHASELY_PRESENTATION_EVENTS,
     presentationEventEmitter,
 } from './events';
-import type { ActionInterceptorEvent } from './events';
+import type { PLYActionInterceptorEvent } from './events';
 import type {
-    ActionPayload,
-    InterceptorHandler,
-    InterceptorInfo,
-    InterceptResult,
-    Presentation,
-    PresentationActionKind,
+    PLYActionPayload,
+    PLYActionInterceptorHandler,
+    PLYInterceptorInfo,
+    PLYInterceptResult,
+    PLYPresentation,
+    PLYPresentationActionKind,
 } from './presentationTypes';
 
 /**
@@ -20,11 +20,11 @@ import type {
  * subscribed at most once (matching the Android `interceptAction<T>` semantics).
  */
 const interceptorRegistry = new Map<
-    PresentationActionKind,
-    { subscription: EmitterSubscription; handler: InterceptorHandler }
+    PLYPresentationActionKind,
+    { subscription: EmitterSubscription; handler: PLYActionInterceptorHandler }
 >();
 
-function normalizeInfo(raw: any): InterceptorInfo {
+function normalizeInfo(raw: any): PLYInterceptorInfo {
     if (!raw) {
         return {};
     }
@@ -37,15 +37,15 @@ function normalizeInfo(raw: any): InterceptorInfo {
                   placementId: raw.presentation.placementId ?? null,
                   contentId: raw.presentation.contentId ?? null,
                   type: raw.presentation.type ?? null,
-              } as Presentation)
+              } as PLYPresentation)
             : null,
     };
 }
 
 function normalizePayload(
-    kind: PresentationActionKind,
+    kind: PLYPresentationActionKind,
     raw: any
-): ActionPayload | null {
+): PLYActionPayload | null {
     if (!raw) {
         if (
             kind === 'login' ||
@@ -105,7 +105,7 @@ function normalizePayload(
 /**
  * Register a typed interceptor for a given presentation action.
  *
- * The handler returns an {@link InterceptResult} indicating whether the SDK
+ * The handler returns an {@link PLYInterceptResult} indicating whether the SDK
  * should consider the action handled by the host app.
  *
  * @example
@@ -120,20 +120,20 @@ function normalizePayload(
  * ```
  */
 export function interceptAction(
-    kind: PresentationActionKind,
-    handler: InterceptorHandler
+    kind: PLYPresentationActionKind,
+    handler: PLYActionInterceptorHandler
 ): void {
     removeActionInterceptor(kind);
 
     const subscription = presentationEventEmitter.addListener(
         PURCHASELY_PRESENTATION_EVENTS.ACTION_INTERCEPTED,
-        async (event: ActionInterceptorEvent) => {
+        async (event: PLYActionInterceptorEvent) => {
             if (event.kind !== kind) {
                 return;
             }
             const info = normalizeInfo(event.info);
             const payload = normalizePayload(kind, event.payload);
-            let result: InterceptResult = 'notHandled';
+            let result: PLYInterceptResult = 'notHandled';
             try {
                 result = await handler(info, payload);
             } catch (e) {
@@ -152,7 +152,7 @@ export function interceptAction(
 }
 
 /** Remove a specific action interceptor. */
-export function removeActionInterceptor(kind: PresentationActionKind): void {
+export function removeActionInterceptor(kind: PLYPresentationActionKind): void {
     const entry = interceptorRegistry.get(kind);
     if (entry) {
         entry.subscription.remove();

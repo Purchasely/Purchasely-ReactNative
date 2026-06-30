@@ -179,7 +179,7 @@ describe('Purchasely SDK', () => {
                 null,
                 mockConstants.logLevelError,
                 mockConstants.runningModeObserver,
-                '6.0.0-rc.1'
+                '6.0.0-rc.2'
             )
             expect(mockedPurchasely.applyStartOptions).toHaveBeenCalledWith({
                 allowDeeplink: false,

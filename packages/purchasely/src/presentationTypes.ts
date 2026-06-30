@@ -3,7 +3,7 @@
  * See: the cross-platform bridge contract
  *
  * These types are exposed by the builder API
- * (`PresentationBuilder`, `Purchasely.interceptAction`, `Purchasely.builder()`).
+ * (`PLYPresentationBuilder`, `Purchasely.interceptAction`, `Purchasely.builder()`).
  *
  * The legacy v5 types in `types.ts` remain for backward compatibility.
  */
@@ -22,7 +22,7 @@ import type {
 } from './types';
 
 /**
- * Reason a Presentation was dismissed.
+ * Reason a PLYPresentation was dismissed.
  *
  * - `button` — the user tapped a close button inside the paywall.
  * - `backSystem` — system back: the Android back gesture/button, or the iOS
@@ -33,13 +33,13 @@ import type {
  * `programmatic`). Nullable in the outcome: when the native SDK does not report
  * a reason, `closeReason` is `null`.
  */
-export type CloseReason = 'button' | 'backSystem' | 'programmatic';
+export type PLYCloseReason = 'button' | 'backSystem' | 'programmatic';
 
 /** Outcome of `purchaseResult` in {@link PLYPresentationOutcome}. */
-export type PurchaseResultKind = 'purchased' | 'cancelled' | 'restored';
+export type PLYPurchaseResult = 'purchased' | 'cancelled' | 'restored';
 
 /** Error returned by the presentation lifecycle. */
-export interface PresentationError {
+export interface PLYPresentationError {
     code?: string | number | null;
     message: string;
     domain?: string | null;
@@ -59,7 +59,7 @@ export interface PLYTransitionDimension {
 }
 
 /**
- * Presentation transition mode.
+ * PLYPresentation transition mode.
  *
  * `inlinePaywall` is not supported by the legacy `PLYPresentationView` and is
  * exposed only for cross-platform parity.
@@ -68,7 +68,7 @@ export interface PLYTransitionDimension {
  * `heightPercentage` field was removed in v6 — use `height` with a
  * `{ type: 'percentage', value }` dimension instead.
  */
-export interface Transition {
+export interface PLYTransition {
     type:
         | 'fullScreen'
         | 'push'
@@ -86,33 +86,35 @@ export interface Transition {
 }
 
 /**
- * Outcome of a {@link Presentation} display, resolved when the presentation is
+ * Outcome of a {@link PLYPresentation} display, resolved when the presentation is
  * dismissed. Mirrors the native `PLYPresentationOutcome`: five fields, mutually
  * exclusive between `error` and `closeReason`.
  */
 export interface PLYPresentationOutcome {
-    presentation?: Presentation | null;
-    purchaseResult?: PurchaseResultKind | null;
+    presentation?: PLYPresentation | null;
+    purchaseResult?: PLYPurchaseResult | null;
     plan?: PurchaselyPlan | null;
-    closeReason?: CloseReason | null;
-    error?: PresentationError | null;
+    closeReason?: PLYCloseReason | null;
+    error?: PLYPresentationError | null;
 }
 
 /**
- * Cross-platform Presentation. The public identifier is `screenId`
+ * Cross-platform PLYPresentation. The public identifier is `screenId`
  * (mapped from iOS `presentation.id`). `id` is kept as an alias for
  * compatibility but is deprecated.
  */
-export interface Presentation {
+export interface PLYPresentation {
     /** Stable identifier of the screen. Maps to `presentation.id` on iOS. */
     screenId: string;
-    /** @deprecated use {@link Presentation.screenId}. Kept for compat. */
+    /** @deprecated use {@link PLYPresentation.screenId}. Kept for compat. */
     id?: string;
     placementId?: string | null;
     contentId?: string | null;
     audienceId?: string | null;
     abTestId?: string | null;
     abTestVariantId?: string | null;
+    campaignId?: string | null;
+    flowId?: string | null;
     language?: string | null;
     type?: PLYPresentationType | null;
     plans?: PLYPresentationPlan[] | null;
@@ -121,16 +123,16 @@ export interface Presentation {
 }
 
 /** Information surfaced when an interceptor is triggered. */
-export interface InterceptorInfo {
+export interface PLYInterceptorInfo {
     contentId?: string | null;
-    presentation?: Presentation | null;
+    presentation?: PLYPresentation | null;
 }
 
 /** Result of running a custom interceptor block. */
-export type InterceptResult = 'success' | 'failed' | 'notHandled';
+export type PLYInterceptResult = 'success' | 'failed' | 'notHandled';
 
 /** Known action kinds the interceptor can subscribe to. */
-export type PresentationActionKind =
+export type PLYPresentationActionKind =
     | 'close'
     | 'closeAll'
     | 'login'
@@ -143,14 +145,14 @@ export type PresentationActionKind =
     | 'webCheckout';
 
 /** Typed payload for the navigate action. */
-export interface NavigatePayload {
+export interface PLYNavigatePayload {
     kind: 'navigate';
     url: string;
     title?: string | null;
 }
 
 /** Typed payload for the purchase action. */
-export interface PurchasePayload {
+export interface PLYPurchasePayload {
     kind: 'purchase';
     plan: PurchaselyPlan;
     subscriptionOffer?: PurchaselySubscriptionOffer | null;
@@ -158,25 +160,25 @@ export interface PurchasePayload {
 }
 
 /** Typed payload for close / closeAll actions. */
-export interface ClosePayload {
+export interface PLYClosePayload {
     kind: 'close' | 'closeAll';
-    closeReason: CloseReason;
+    closeReason: PLYCloseReason;
 }
 
 /** Typed payload for the openPresentation action. */
-export interface OpenPresentationPayload {
+export interface PLYOpenPresentationPayload {
     kind: 'openPresentation';
     presentationId: string;
 }
 
 /** Typed payload for the openPlacement action. */
-export interface OpenPlacementPayload {
+export interface PLYOpenPlacementPayload {
     kind: 'openPlacement';
     placementId: string;
 }
 
 /** Typed payload for the webCheckout action. */
-export interface WebCheckoutPayload {
+export interface PLYWebCheckoutPayload {
     kind: 'webCheckout';
     url: string;
     clientReferenceId: string;
@@ -185,19 +187,19 @@ export interface WebCheckoutPayload {
 }
 
 /** Union of every known interceptor payload. */
-export type ActionPayload =
-    | NavigatePayload
-    | PurchasePayload
-    | ClosePayload
-    | OpenPresentationPayload
-    | OpenPlacementPayload
-    | WebCheckoutPayload;
+export type PLYActionPayload =
+    | PLYNavigatePayload
+    | PLYPurchasePayload
+    | PLYClosePayload
+    | PLYOpenPresentationPayload
+    | PLYOpenPlacementPayload
+    | PLYWebCheckoutPayload;
 
 /** Handler signature for action interception. */
-export type InterceptorHandler = (
-    info: InterceptorInfo,
-    payload: ActionPayload | null
-) => Promise<InterceptResult> | InterceptResult;
+export type PLYActionInterceptorHandler = (
+    info: PLYInterceptorInfo,
+    payload: PLYActionPayload | null
+) => Promise<PLYInterceptResult> | PLYInterceptResult;
 
 /**
  * Internal helper — convert the legacy v5 `ProductResult` ordinal to the
@@ -205,7 +207,7 @@ export type InterceptorHandler = (
  */
 export function purchaseResultFromOrdinal(
     value: ProductResult | number | null | undefined
-): PurchaseResultKind | null {
+): PLYPurchaseResult | null {
     if (value === null || value === undefined) {
         return null;
     }

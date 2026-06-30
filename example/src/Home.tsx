@@ -10,8 +10,8 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack'
 import Purchasely, {
     PLYPresentationType,
-    PresentationBuilder,
-    PresentationRequest,
+    PLYPresentationBuilder,
+    PLYPresentationRequest,
 } from 'react-native-purchasely'
 
 import DeviceInfo from 'react-native-device-info'
@@ -23,7 +23,7 @@ export const HomeScreen: React.FC<NativeStackScreenProps<any>> = ({
     const isDarkMode = useColorScheme() === 'dark'
     // Holds the most recently displayed presentation request so it can be closed or
     // navigated back programmatically (replaces the v5 show/hide/close calls).
-    const currentRequest = useRef<PresentationRequest | null>(null)
+    const currentRequest = useRef<PLYPresentationRequest | null>(null)
 
     const backgroundStyle = {
         backgroundColor: isDarkMode ? '#222222' : '#F3F3F3',
@@ -31,11 +31,11 @@ export const HomeScreen: React.FC<NativeStackScreenProps<any>> = ({
 
     // Boutons d'exemples
     const buttons = [
-        { title: 'Display Presentation', onPress: () => onPressPresentation() },
-        { title: 'Preload Presentation', onPress: () => onPressPreload() },
+        { title: 'Display PLYPresentation', onPress: () => onPressPresentation() },
+        { title: 'Preload PLYPresentation', onPress: () => onPressPreload() },
         { title: 'Display Nested View', onPress: () => onPressNestedView() },
         {
-            title: 'Close Presentation',
+            title: 'Close PLYPresentation',
             onPress: () => onPressClosePresentation(),
         },
         { title: 'Back', onPress: () => onPressBack() },
@@ -57,7 +57,7 @@ export const HomeScreen: React.FC<NativeStackScreenProps<any>> = ({
         try {
             // build a request for the placement, then display it.
             // `display()` resolves at DISMISS with a PLYPresentationOutcome.
-            const request = PresentationBuilder.placement('premium_support')
+            const request = PLYPresentationBuilder.placement('premium_support')
                 .backgroundColor('#FFFFFFFF')
                 .build()
             currentRequest.current = request
@@ -84,9 +84,9 @@ export const HomeScreen: React.FC<NativeStackScreenProps<any>> = ({
     const onPressPreload = async () => {
         try {
             // preload a placement without showing any UI yet. Resolves once
-            // the screen is loaded. Inspect the resolved Presentation to decide
+            // the screen is loaded. Inspect the resolved PLYPresentation to decide
             // whether to display a Purchasely paywall or your own screen.
-            const presentation = await PresentationBuilder.placement('FLOW')
+            const presentation = await PLYPresentationBuilder.placement('FLOW')
                 .contentId(null)
                 .build()
                 .preload()
@@ -112,7 +112,7 @@ export const HomeScreen: React.FC<NativeStackScreenProps<any>> = ({
             }
 
             // Display the preloaded Purchasely paywall.
-            const request = PresentationBuilder.placement('FLOW')
+            const request = PLYPresentationBuilder.placement('FLOW')
                 .contentId(null)
                 .build()
             currentRequest.current = request

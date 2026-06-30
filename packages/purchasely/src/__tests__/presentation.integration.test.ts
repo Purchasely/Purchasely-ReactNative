@@ -3,7 +3,7 @@
  *
  * Validates the JS ↔ native contract documented in
  * `the cross-platform bridge contract`:
- *   - PresentationBuilder → invokes `preloadPresentation`/`displayPresentation` with expected args
+ *   - PLYPresentationBuilder → invokes `preloadPresentation`/`displayPresentation` with expected args
  *   - Lifecycle events (LOADED, PRESENTED, CLOSE_REQUESTED, DISMISSED) flow
  *     through `NativeEventEmitter` and resolve the public promises/callbacks
  *   - Outcome carries the 5 fields (presentation, purchaseResult, plan,
@@ -69,7 +69,7 @@ jest.mock('react-native', () => {
 
 import { NativeModules } from 'react-native';
 import {
-    PresentationBuilder,
+    PLYPresentationBuilder,
     setDefaultPresentationDismissHandler,
     removeDefaultPresentationDismissHandler,
 } from '../presentation';
@@ -104,9 +104,9 @@ describe('façade · integration with native bridge', () => {
         removeDefaultPresentationDismissHandler();
     });
 
-    describe('PresentationBuilder.placement(...).preload()', () => {
+    describe('PLYPresentationBuilder.placement(...).preload()', () => {
         it('invokes preloadPresentation with placementId + contentId payload', async () => {
-            const req = PresentationBuilder.placement('home')
+            const req = PLYPresentationBuilder.placement('home')
                 .contentId('content-1')
                 .build();
 
@@ -133,7 +133,7 @@ describe('façade · integration with native bridge', () => {
         });
 
         it('rejects when native emits LOADED with an error', async () => {
-            const req = PresentationBuilder.placement('home').build();
+            const req = PLYPresentationBuilder.placement('home').build();
             const preloadPromise = req.preload();
             const [requestId] = native.preloadPresentation.mock.calls[0];
 
@@ -150,9 +150,9 @@ describe('façade · integration with native bridge', () => {
         });
     });
 
-    describe('PresentationBuilder.screen(...).build()', () => {
+    describe('PLYPresentationBuilder.screen(...).build()', () => {
         it('maps screenId → native presentationId field (bridge mapping P1.1)', () => {
-            const req = PresentationBuilder.screen('screen-xyz').build();
+            const req = PLYPresentationBuilder.screen('screen-xyz').build();
             req.preload();
 
             expect(native.preloadPresentation).toHaveBeenCalledTimes(1);
@@ -165,7 +165,7 @@ describe('façade · integration with native bridge', () => {
         });
     });
 
-    describe('PresentationBuilder.default().build()', () => {
+    describe('PLYPresentationBuilder.default().build()', () => {
         // Contract: `default()` carries no placementId/screenId. Both native
         // bridges resolve the SDK default presentation from that absence — iOS
         // takes its `else if (isDefault)` branch → `fetchPresentationWith:nil`,
@@ -173,7 +173,7 @@ describe('façade · integration with native bridge', () => {
         // must therefore reach native with null ids; regressing it silently
         // breaks `default()`.
         it('sends isDefault:true with null placement + presentation ids (preload)', () => {
-            const req = PresentationBuilder.default().build();
+            const req = PLYPresentationBuilder.default().build();
             req.preload();
 
             expect(native.preloadPresentation).toHaveBeenCalledTimes(1);
@@ -184,7 +184,7 @@ describe('façade · integration with native bridge', () => {
         });
 
         it('forwards the same default payload to displayPresentation', () => {
-            const req = PresentationBuilder.default().build();
+            const req = PLYPresentationBuilder.default().build();
             req.display();
 
             expect(native.displayPresentation).toHaveBeenCalledTimes(1);
@@ -195,18 +195,18 @@ describe('façade · integration with native bridge', () => {
         });
 
         it('placement()/screen() do not set isDefault', () => {
-            PresentationBuilder.placement('home').build().preload();
+            PLYPresentationBuilder.placement('home').build().preload();
             const [, payload] = native.preloadPresentation.mock.calls[0];
             expect(payload.isDefault).toBe(false);
         });
     });
 
-    describe('PresentationRequest.display() — outcome 5 fields', () => {
+    describe('PLYPresentationRequest.display() — outcome 5 fields', () => {
         it('resolves with the full outcome at DISMISS (not at trigger)', async () => {
             let presentedPayload: any = null;
             let closeRequestedFired = false;
 
-            const req = PresentationBuilder.placement('home')
+            const req = PLYPresentationBuilder.placement('home')
                 .onPresented((p, err) => {
                     presentedPayload = { p, err };
                 })
@@ -250,7 +250,7 @@ describe('façade · integration with native bridge', () => {
         });
 
         it('forwards the v6 transition dimensions (width/height) to native', () => {
-            const req = PresentationBuilder.placement('home').build();
+            const req = PLYPresentationBuilder.placement('home').build();
             req.display({
                 type: 'drawer',
                 height: { type: 'percentage', value: 0.6 },
@@ -269,7 +269,7 @@ describe('façade · integration with native bridge', () => {
 
         it('forwards onPresented(null, error) when PRESENTED carries an error', () => {
             let presentedPayload: any = null;
-            const req = PresentationBuilder.placement('home')
+            const req = PLYPresentationBuilder.placement('home')
                 .onPresented((p, err) => {
                     presentedPayload = { p, err };
                 })
@@ -289,7 +289,7 @@ describe('façade · integration with native bridge', () => {
         });
 
         it('returns an outcome.error envelope when DISMISSED carries an error', async () => {
-            const req = PresentationBuilder.placement('home').build();
+            const req = PLYPresentationBuilder.placement('home').build();
             const promise = req.display();
             const [requestId] = native.displayPresentation.mock.calls[0];
 

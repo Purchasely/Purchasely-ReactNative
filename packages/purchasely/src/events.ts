@@ -8,13 +8,13 @@ import { NativeEventEmitter, NativeModules } from 'react-native';
  * @internal
  */
 export const PURCHASELY_PRESENTATION_EVENTS = {
-    /** Presentation finished loading (resolves a `preload()` Promise). */
+    /** PLYPresentation finished loading (resolves a `preload()` Promise). */
     LOADED: 'PURCHASELY_PRESENTATION_LOADED',
-    /** Presentation became visible to the user (`onPresented` callback). */
+    /** PLYPresentation became visible to the user (`onPresented` callback). */
     PRESENTED: 'PURCHASELY_PRESENTATION_PRESENTED',
     /** User requested closing the presentation (`onCloseRequested`). */
     CLOSE_REQUESTED: 'PURCHASELY_PRESENTATION_CLOSE_REQUESTED',
-    /** Presentation dismissed — resolves the `display()` Promise. */
+    /** PLYPresentation dismissed — resolves the `display()` Promise. */
     DISMISSED: 'PURCHASELY_PRESENTATION_DISMISSED',
     /**
      * A presentation the app did NOT instantiate itself (campaign, deeplink,
@@ -22,7 +22,7 @@ export const PURCHASELY_PRESENTATION_EVENTS = {
      * `setDefaultPresentationDismissHandler` callback. Carries no `requestId`.
      */
     DEFAULT_DISMISSED: 'PURCHASELY_DEFAULT_PRESENTATION_DISMISSED',
-    /** Action interceptor fired and is awaiting an InterceptResult. */
+    /** Action interceptor fired and is awaiting an PLYInterceptResult. */
     ACTION_INTERCEPTED: 'PURCHASELY_ACTION_INTERCEPTED',
 } as const;
 
@@ -32,7 +32,7 @@ export const presentationEventEmitter = new NativeEventEmitter(
 );
 
 /** Shape of every lifecycle event payload. */
-export interface PresentationLifecycleEvent {
+export interface PLYPresentationLifecycleEvent {
     requestId: string;
     presentation?: any;
     error?: { code?: string | number | null; message: string; domain?: string | null } | null;
@@ -42,7 +42,7 @@ export interface PresentationLifecycleEvent {
 }
 
 /** Shape of an interceptor-triggered event sent from native. */
-export interface ActionInterceptorEvent {
+export interface PLYActionInterceptorEvent {
     requestId: string;
     callbackId: string;
     kind: string;
