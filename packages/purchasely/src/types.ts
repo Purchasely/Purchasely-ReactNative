@@ -1,22 +1,12 @@
 import {
   type PlanType,
-  PLYPaywallAction,
   PLYPresentationType,
   PLYUserAttributeSource,
   PLYUserAttributeType,
-  ProductResult,
   SubscriptionSource,
   PLYWebCheckoutProvider,
   PLYDataProcessingLegalBasis
 } from './enums';
-
-export type PLYPaywallInfo = {
-  presentationId?: string;
-  placementId?: string;
-  contentId?: string;
-  abTestId?: string;
-  abTestVariantId?: string;
-};
 
 export type PurchaselyPlan = {
   vendorId: string;
@@ -83,31 +73,6 @@ export type PurchaselySubscription = {
   subscriptionDurationInDays: number;
   subscriptionDurationInWeeks: number;
   subscriptionDurationInMonths: number;*/
-};
-
-export type PresentPresentationResult = {
-  result: ProductResult;
-  plan: PurchaselyPlan;
-};
-
-export type FetchPresentationResult = {
-  presentation: PurchaselyPresentation;
-};
-
-export type PaywallActionInterceptorResult = {
-  info: PLYPaywallInfo;
-  action: PLYPaywallAction;
-  parameters: {
-    clientReferenceId: string;
-    url: string;
-    title: string;
-    plan: PurchaselyPlan;
-    offer: PurchaselyOffer | null;
-    subscriptionOffer: PurchaselySubscriptionOffer | null;
-    presentation: string;
-    queryParameterKey: string;
-    webCheckoutProvider: PLYWebCheckoutProvider
-  };
 };
 
 export type PurchaselyEventsNames =

@@ -3,7 +3,6 @@ package com.reactnativepurchasely
 import android.net.Uri
 import android.os.Build
 import android.util.Log
-import androidx.fragment.app.FragmentActivity
 import com.facebook.react.bridge.*
 import com.facebook.react.modules.core.DeviceEventManagerModule.RCTDeviceEventEmitter
 import io.purchasely.billing.Store
@@ -222,11 +221,6 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   }
 
   @ReactMethod
-  fun close() {
-    Purchasely.close()
-  }
-
-  @ReactMethod
   fun signPromotionalOffer(storeProductId: String, storeOfferId: String, promise: Promise) {
     promise.reject("Not supported on Android")
   }
@@ -264,7 +258,17 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
 
   @ReactMethod
   fun readyToOpenDeeplink(ready: Boolean) {
-    Purchasely.allowDeeplink = ready
+    allowDeeplink(ready)
+  }
+
+  @ReactMethod
+  fun allowDeeplink(allow: Boolean) {
+    Purchasely.allowDeeplink = allow
+  }
+
+  @ReactMethod
+  fun allowCampaigns(allow: Boolean) {
+    Purchasely.allowCampaigns = allow
   }
 
   @ReactMethod
@@ -396,11 +400,6 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     )
   }
 
-  @ReactMethod
-  fun displaySubscriptionCancellationInstruction() {
-    Purchasely.displaySubscriptionCancellationInstruction(reactApplicationContext.currentActivity as FragmentActivity, 0)
-  }
-
   private fun legalBasisFromString(basis: String?): PLYDataProcessingLegalBasis {
   return when (basis?.uppercase(Locale.ROOT)) {
     "ESSENTIAL" -> PLYDataProcessingLegalBasis.ESSENTIAL
@@ -530,37 +529,6 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
   @ReactMethod
   fun clearUserAttributes() {
     Purchasely.clearUserAttributes()
-  }
-
-  @ReactMethod
-  fun clientPresentationDisplayed(presentationMap: ReadableMap?) {
-      if(presentationMap == null) {
-        PLYLogger.e("presentation cannot be null")
-        return
-      }
-
-    val requestedScreenId = presentationMap.getString("screenId") ?: presentationMap.getString("id")
-    val presentation = presentationsLoaded.firstOrNull { it.screenId == requestedScreenId }
-
-    if(presentation != null) {
-      Purchasely.clientPresentationDisplayed(presentation)
-    }
-  }
-
-  @ReactMethod
-  fun clientPresentationClosed(presentationMap: ReadableMap?) {
-    if(presentationMap == null) {
-      PLYLogger.e("presentation cannot be null")
-      return
-    }
-
-    val requestedScreenId = presentationMap.getString("screenId") ?: presentationMap.getString("id")
-    val presentation = presentationsLoaded.firstOrNull { it.screenId == requestedScreenId }
-
-    if(presentation != null) {
-      Purchasely.clientPresentationClosed(presentation)
-    }
-
   }
 
   @ReactMethod
@@ -1090,6 +1058,8 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
     runCatching { audienceId?.let { map.putString("audienceId", it) } }
     runCatching { abTestId?.let { map.putString("abTestId", it) } }
     runCatching { abTestVariantId?.let { map.putString("abTestVariantId", it) } }
+    runCatching { campaignId?.let { map.putString("campaignId", it) } }
+    runCatching { flowId?.let { map.putString("flowId", it) } }
     runCatching { language?.let { map.putString("language", it) } }
     runCatching { map.putInt("type", type.ordinal) }
     runCatching { map.putInt("height", height) }
@@ -1248,8 +1218,6 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
     /** Pending interceptor callbacks, resolved when JS calls completeActionInterceptor. */
     private val pendingActionInterceptors =
       ConcurrentHashMap<String, CompletableDeferred<PLYInterceptResult>>()
-
-    val presentationsLoaded = mutableListOf<PLYPresentation>()
 
     fun transformPlanToMap(plan: PLYPlan?): Map<String, Any?> {
       if(plan == null) return emptyMap()

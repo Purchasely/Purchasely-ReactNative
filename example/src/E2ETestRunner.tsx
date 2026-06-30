@@ -1,5 +1,5 @@
 /**
- * E2E test runner — T1–T13
+ * E2E test runner — T1–T20
  *
  * Renders as the root component when the app is launched with E2E_MODE=true.
  * Each test runs sequentially in a single SDK session.
@@ -26,7 +26,10 @@ import {
     View,
 } from 'react-native'
 import Purchasely, {
+    LogLevels,
+    PLYDataProcessingPurpose,
     PLYPresentationType,
+    PLYThemeMode,
     type PLYPresentationOutcome,
     setDefaultPresentationDismissHandler,
     removeDefaultPresentationDismissHandler,
@@ -81,6 +84,13 @@ const INITIAL_TESTS: TestResult[] = [
     { id: 'T11', name: 'PRESENTATION_CLOSED → placement_id + displayed_presentation', status: 'pending' },
     { id: 'T12', name: 'programmatic close does NOT fire close/closeAll interceptor', status: 'pending' },
     { id: 'T13', name: 'user attributes: set/get string + number + boolean + clear', status: 'pending' },
+    { id: 'T14', name: 'user attributes: double + date + arrays', status: 'pending' },
+    { id: 'T15', name: 'user attributes: bulk map + clear + clear built-ins', status: 'pending' },
+    { id: 'T16', name: 'user attributes: increment + decrement', status: 'pending' },
+    { id: 'T17', name: 'catalog lookup: product + plan + intro eligibility', status: 'pending' },
+    { id: 'T18', name: 'dynamic offerings: set/get/remove/clear', status: 'pending' },
+    { id: 'T19', name: 'presentation.screen(id) + modal/popin transitions', status: 'pending' },
+    { id: 'T20', name: 'config setters smoke test', status: 'pending' },
 ]
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -541,10 +551,241 @@ export default function E2ETestRunner() {
             Purchasely.clearUserAttributes()
         }
 
+        // ── T14 — extended user attribute types ───────────────────────────────
+        running('T14')
+        try {
+            Purchasely.setUserAttributeWithDouble('e2e_dbl', 3.14)
+            Purchasely.setUserAttributeWithDate('e2e_date', new Date('2024-06-15T12:00:00.000Z'))
+            Purchasely.setUserAttributeWithStringArray('e2e_str_arr', ['alpha', 'beta', 'gamma'])
+            Purchasely.setUserAttributeWithIntArray('e2e_int_arr', [10, 20, 30])
+            Purchasely.setUserAttributeWithBooleanArray('e2e_bool_arr', [true, false, true])
+
+            await sleep(400)
+
+            const rawDbl = await Purchasely.userAttribute('e2e_dbl')
+            if (typeof rawDbl !== 'number' || Math.abs(rawDbl - 3.14) > 0.01) {
+                throw new Error(`e2e_dbl expected ~3.14, got ${JSON.stringify(rawDbl)}`)
+            }
+
+            const dateVal = await Purchasely.userAttribute('e2e_date')
+            const date = typeof dateVal === 'string' ? new Date(dateVal) : null
+            if (!date || Number.isNaN(date.getTime())) {
+                throw new Error(`e2e_date expected ISO date string, got ${JSON.stringify(dateVal)}`)
+            }
+            if (date.getUTCFullYear() !== 2024 || date.getUTCMonth() !== 5 || date.getUTCDate() !== 15) {
+                throw new Error(`e2e_date expected 2024-06-15, got ${date.toISOString()}`)
+            }
+
+            const strArr = await Purchasely.userAttribute('e2e_str_arr')
+            const intArr = await Purchasely.userAttribute('e2e_int_arr')
+            const boolArr = await Purchasely.userAttribute('e2e_bool_arr')
+            if (!Array.isArray(strArr) || strArr.length !== 3) throw new Error(`e2e_str_arr invalid: ${JSON.stringify(strArr)}`)
+            if (!Array.isArray(intArr) || intArr.length !== 3) throw new Error(`e2e_int_arr invalid: ${JSON.stringify(intArr)}`)
+            if (!Array.isArray(boolArr) || boolArr.length !== 3) throw new Error(`e2e_bool_arr invalid: ${JSON.stringify(boolArr)}`)
+
+            for (const key of ['e2e_dbl', 'e2e_date', 'e2e_str_arr', 'e2e_int_arr', 'e2e_bool_arr']) {
+                Purchasely.clearUserAttribute(key)
+            }
+
+            pass('T14', `dbl=${rawDbl} date=${date.toISOString()} arrays=3/3/3 ✓`)
+        } catch (e) {
+            fail('T14', e)
+            suitePass = false
+            for (const key of ['e2e_dbl', 'e2e_date', 'e2e_str_arr', 'e2e_int_arr', 'e2e_bool_arr']) {
+                Purchasely.clearUserAttribute(key)
+            }
+        }
+
+        // ── T15 — user attributes bulk operations ─────────────────────────────
+        running('T15')
+        try {
+            Purchasely.setUserAttributeWithString('bulk_a', 'hello')
+            Purchasely.setUserAttributeWithInt('bulk_b', 99)
+            await sleep(300)
+
+            const all = await Purchasely.userAttributes()
+            if (!all || typeof all !== 'object' || Array.isArray(all)) {
+                throw new Error(`userAttributes expected object map, got ${JSON.stringify(all)}`)
+            }
+            if (all.bulk_a !== 'hello') {
+                throw new Error(`bulk_a expected 'hello', got ${JSON.stringify(all.bulk_a)}`)
+            }
+
+            Purchasely.clearUserAttributes()
+            await sleep(300)
+
+            const afterClear = await Purchasely.userAttribute('bulk_a')
+            if (afterClear != null) {
+                throw new Error(`bulk_a not cleared, got ${JSON.stringify(afterClear)}`)
+            }
+
+            Purchasely.clearBuiltInAttributes()
+            pass('T15', `userAttributes=${Object.keys(all).length} entries → clearUserAttributes + clearBuiltInAttributes ✓`)
+        } catch (e) {
+            fail('T15', e)
+            suitePass = false
+            Purchasely.clearUserAttributes()
+        }
+
+        // ── T16 — increment / decrement ───────────────────────────────────────
+        running('T16')
+        try {
+            Purchasely.clearUserAttribute('e2e_counter')
+            await sleep(300)
+
+            Purchasely.incrementUserAttribute({ key: 'e2e_counter', value: 7 })
+            await sleep(300)
+            const v1 = await Purchasely.userAttribute('e2e_counter')
+            if (typeof v1 !== 'number') throw new Error(`v1 expected number, got ${JSON.stringify(v1)}`)
+
+            Purchasely.incrementUserAttribute({ key: 'e2e_counter', value: 3 })
+            await sleep(300)
+            const v2 = await Purchasely.userAttribute('e2e_counter')
+            if (typeof v2 !== 'number' || v2 <= v1) {
+                throw new Error(`increment did not increase counter: v1=${JSON.stringify(v1)} v2=${JSON.stringify(v2)}`)
+            }
+
+            Purchasely.decrementUserAttribute({ key: 'e2e_counter', value: 4 })
+            await sleep(300)
+            const v3 = await Purchasely.userAttribute('e2e_counter')
+            if (typeof v3 !== 'number' || v3 >= v2) {
+                throw new Error(`decrement did not decrease counter: v2=${JSON.stringify(v2)} v3=${JSON.stringify(v3)}`)
+            }
+
+            Purchasely.clearUserAttribute('e2e_counter')
+            pass('T16', `counter: ${v1} → ${v2} → ${v3} ✓`)
+        } catch (e) {
+            fail('T16', e)
+            suitePass = false
+            Purchasely.clearUserAttribute('e2e_counter')
+        }
+
+        // ── T17 — product / plan lookup + intro eligibility ──────────────────
+        running('T17')
+        try {
+            const products = await Purchasely.allProducts()
+            if (!Array.isArray(products) || products.length === 0) {
+                throw new Error('allProducts returned no products')
+            }
+
+            const product = products[0]
+            const fetchedProduct = await Purchasely.productWithIdentifier(product.vendorId)
+            if (fetchedProduct.vendorId !== product.vendorId) {
+                throw new Error(`productWithIdentifier mismatch: ${fetchedProduct.vendorId} !== ${product.vendorId}`)
+            }
+            if (!fetchedProduct.name) throw new Error('productWithIdentifier returned empty name')
+
+            const plan = product.plans?.[0]
+            if (!plan?.vendorId) throw new Error('first product has no plan.vendorId')
+
+            const fetchedPlan = await Purchasely.planWithIdentifier(plan.vendorId)
+            if (!fetchedPlan || fetchedPlan.vendorId !== plan.vendorId) {
+                throw new Error(`planWithIdentifier mismatch: ${fetchedPlan?.vendorId} !== ${plan.vendorId}`)
+            }
+
+            const isEligible = await Purchasely.isEligibleForIntroOffer(plan.vendorId)
+            if (typeof isEligible !== 'boolean') throw new Error(`intro eligibility expected boolean, got ${JSON.stringify(isEligible)}`)
+
+            pass('T17', `product=${fetchedProduct.vendorId} plan=${fetchedPlan.vendorId} introEligible=${isEligible}`)
+        } catch (e) { fail('T17', e); suitePass = false }
+
+        // ── T18 — dynamic offerings CRUD ──────────────────────────────────────
+        running('T18')
+        try {
+            const presentation = await Purchasely.presentation
+                .placement(PLACEMENT_AUDIENCES)
+                .build()
+                .preload()
+            const planVendorId = presentation.plans?.[0]?.planVendorId
+            if (!planVendorId) throw new Error('presentation has no planVendorId for dynamic offering')
+
+            const ok = await Purchasely.setDynamicOffering({
+                reference: 'e2e_ref',
+                planVendorId,
+                offerVendorId: null,
+            })
+            if (typeof ok !== 'boolean') throw new Error(`setDynamicOffering expected boolean, got ${JSON.stringify(ok)}`)
+
+            await sleep(300)
+            const offerings = await Purchasely.getDynamicOfferings()
+            if (!Array.isArray(offerings)) throw new Error('getDynamicOfferings did not return array')
+
+            Purchasely.removeDynamicOffering('e2e_ref')
+            await sleep(300)
+            Purchasely.clearDynamicOfferings()
+
+            pass('T18', `setDynamicOffering=${ok} offerings=${offerings.length} remove+clear ✓`)
+        } catch (e) {
+            fail('T18', e)
+            suitePass = false
+            Purchasely.clearDynamicOfferings()
+        }
+
+        // ── T19 — screen(id) + modal / popin transitions ──────────────────────
+        running('T19')
+        try {
+            const byPlacement = await Purchasely.presentation
+                .placement(PLACEMENT_AUDIENCES)
+                .build()
+                .preload()
+            const screenId = byPlacement.screenId
+            if (!screenId) throw new Error('preloaded placement has no screenId')
+
+            const modalReq = Purchasely.presentation.screen(screenId).build()
+            const modalPresentation = await modalReq.preload()
+            if (!modalPresentation.screenId) throw new Error('screen(id) preload returned no screenId')
+            const modalPromise = modalReq.display({ type: 'modal', dismissible: true })
+            await sleep(2000)
+            modalReq.close()
+            const modalOutcome = await Promise.race([
+                modalPromise,
+                sleep(10000).then<never>(() => { throw new Error('modal dismiss timeout after 10 s') }),
+            ])
+            if (!modalOutcome.presentation?.screenId) throw new Error('modal outcome missing presentation.screenId')
+
+            const popinReq = Purchasely.presentation.screen(screenId).build()
+            await popinReq.preload()
+            const popinPromise = popinReq.display({
+                type: 'popin',
+                width: { type: 'pixel', value: 320 },
+                height: { type: 'percentage', value: 0.6 },
+                dismissible: true,
+            })
+            await sleep(2000)
+            popinReq.close()
+            const popinOutcome = await Promise.race([
+                popinPromise,
+                sleep(10000).then<never>(() => { throw new Error('popin dismiss timeout after 10 s') }),
+            ])
+            if (!popinOutcome.presentation?.screenId) throw new Error('popin outcome missing presentation.screenId')
+
+            pass('T19', `screen(${screenId}) modal=${modalOutcome.closeReason} popin=${popinOutcome.closeReason}`)
+        } catch (e) { fail('T19', e); suitePass = false }
+
+        // ── T20 — config setters smoke test ───────────────────────────────────
+        running('T20')
+        try {
+            Purchasely.allowDeeplink(true)
+            Purchasely.allowDeeplink(false)
+            Purchasely.allowCampaigns(true)
+            Purchasely.allowCampaigns(false)
+            Purchasely.setLanguage('en')
+            Purchasely.setThemeMode(PLYThemeMode.SYSTEM)
+            Purchasely.setLogLevel(LogLevels.DEBUG)
+            Purchasely.setDebugMode(false)
+            Purchasely.revokeDataProcessingConsent([PLYDataProcessingPurpose.ANALYTICS])
+
+            // Leave global flags enabled for any manual interactions after the suite.
+            Purchasely.allowDeeplink(true)
+            Purchasely.allowCampaigns(true)
+
+            pass('T20', 'allowDeeplink/allowCampaigns/setLanguage/setThemeMode/setLogLevel/setDebugMode/revokeDataProcessingConsent no-throw ✓')
+        } catch (e) { fail('T20', e); suitePass = false }
+
         // ── Final report ──────────────────────────────────────────────────────
         setSuiteStatus(suitePass ? 'pass' : 'fail')
         if (suitePass) {
-            console.log('[E2E:SUITE:PASS] All 13 tests passed')
+            console.log('[E2E:SUITE:PASS] All 20 tests passed')
             appendLog('=== SUITE PASS ✓ ===')
         } else {
             console.log('[E2E:SUITE:FAIL] One or more tests failed')

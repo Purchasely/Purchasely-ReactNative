@@ -18,7 +18,8 @@ jest.mock('react-native', () => ({
         Purchasely: {
             getConstants: jest.fn(() => mockConstants),
             start: jest.fn().mockResolvedValue(true),
-            close: jest.fn(),
+            allowDeeplink: jest.fn(),
+            allowCampaigns: jest.fn(),
             userLogin: jest.fn().mockResolvedValue(true),
             userLogout: jest.fn(),
             isAnonymous: jest.fn().mockResolvedValue(false),
@@ -111,8 +112,6 @@ jest.mock('react-native', () => ({
                 parameters: {},
             }),
             onProcessAction: jest.fn(),
-            clientPresentationDisplayed: jest.fn(),
-            clientPresentationClosed: jest.fn(),
             userDidConsumeSubscriptionContent: jest.fn(),
             setThemeMode: jest.fn(),
             setDynamicOffering: jest.fn().mockResolvedValue(true),
@@ -164,12 +163,7 @@ describe('Purchasely SDK', () => {
             expect(constants).toEqual(mockConstants)
         })
 
-        it('should call native close', () => {
-            Purchasely.close()
-            expect(mockedPurchasely.close).toHaveBeenCalled()
-        })
-
-        it('should start through the v6 builder with wrapper version and safe start options', async () => {
+        it('should start through the v6 builder without forcing optional start options', async () => {
             await Purchasely.builder('api-key').start()
 
             expect(mockedPurchasely.start).toHaveBeenCalledWith(
@@ -181,10 +175,32 @@ describe('Purchasely SDK', () => {
                 mockConstants.runningModeObserver,
                 '6.0.0-rc.2'
             )
+            expect(mockedPurchasely.applyStartOptions).not.toHaveBeenCalled()
+        })
+
+        it('should expose apiKey as the Flutter-compatible builder alias', async () => {
+            await Purchasely.apiKey('api-key').allowDeeplink(true).allowCampaigns(false).start()
+
+            expect(mockedPurchasely.start).toHaveBeenCalled()
             expect(mockedPurchasely.applyStartOptions).toHaveBeenCalledWith({
-                allowDeeplink: false,
-                allowCampaigns: true,
+                allowDeeplink: true,
+                allowCampaigns: false,
             })
+        })
+
+        it('should toggle deeplinks and campaigns at runtime', () => {
+            Purchasely.allowDeeplink(true)
+            Purchasely.allowCampaigns(false)
+
+            expect(mockedPurchasely.allowDeeplink).toHaveBeenCalledWith(true)
+            expect(mockedPurchasely.allowCampaigns).toHaveBeenCalledWith(false)
+        })
+
+        it('should not expose removed v5/top-level presentation APIs', () => {
+            expect((Purchasely as any).close).toBeUndefined()
+            expect((Purchasely as any).displaySubscriptionCancellationInstruction).toBeUndefined()
+            expect((Purchasely as any).clientPresentationDisplayed).toBeUndefined()
+            expect((Purchasely as any).clientPresentationClosed).toBeUndefined()
         })
     })
 
@@ -240,6 +256,34 @@ describe('Purchasely SDK', () => {
             expect(mockedPurchasely.setUserAttributeWithNumber).toHaveBeenCalledWith(
                 'age',
                 25,
+                undefined
+            )
+        })
+
+        it('should expose int/double aliases for Flutter parity', () => {
+            Purchasely.setUserAttributeWithInt('age', 25)
+            Purchasely.setUserAttributeWithDouble('weight', 78.2)
+            Purchasely.setUserAttributeWithIntArray('scores', [1, 2])
+            Purchasely.setUserAttributeWithDoubleArray('weights', [1.5, 2.5])
+
+            expect(mockedPurchasely.setUserAttributeWithNumber).toHaveBeenCalledWith(
+                'age',
+                25,
+                undefined
+            )
+            expect(mockedPurchasely.setUserAttributeWithNumber).toHaveBeenCalledWith(
+                'weight',
+                78.2,
+                undefined
+            )
+            expect(mockedPurchasely.setUserAttributeWithNumberArray).toHaveBeenCalledWith(
+                'scores',
+                [1, 2],
+                undefined
+            )
+            expect(mockedPurchasely.setUserAttributeWithNumberArray).toHaveBeenCalledWith(
+                'weights',
+                [1.5, 2.5],
                 undefined
             )
         })
@@ -354,20 +398,6 @@ describe('Purchasely SDK', () => {
         it('should clear built-in attributes', () => {
             Purchasely.clearBuiltInAttributes()
             expect(mockedPurchasely.clearBuiltInAttributes).toHaveBeenCalled()
-        })
-    })
-
-    describe('Presentations', () => {
-        it('should track client presentation displayed', () => {
-            const presentation = { id: 'pres-123', metadata: {}, height: null }
-            Purchasely.clientPresentationDisplayed(presentation as any)
-            expect(mockedPurchasely.clientPresentationDisplayed).toHaveBeenCalledWith(presentation)
-        })
-
-        it('should track client presentation closed', () => {
-            const presentation = { id: 'pres-123', metadata: {}, height: null }
-            Purchasely.clientPresentationClosed(presentation as any)
-            expect(mockedPurchasely.clientPresentationClosed).toHaveBeenCalledWith(presentation)
         })
     })
 
@@ -567,6 +597,27 @@ describe('Purchasely SDK', () => {
             expect(subscription).toBeDefined()
         })
 
+        it('should expose Flutter-compatible event listener aliases', () => {
+            const eventCallback = jest.fn()
+            const purchaseCallback = jest.fn()
+
+            Purchasely.listenToEvents(eventCallback)
+            Purchasely.listenToPurchases(purchaseCallback)
+            Purchasely.stopListeningToEvents()
+            Purchasely.stopListeningToPurchases()
+
+            expect(mockEventEmitter.addListener).toHaveBeenCalledWith(
+                'PURCHASELY_EVENTS',
+                eventCallback
+            )
+            expect(mockEventEmitter.addListener).toHaveBeenCalledWith(
+                'PURCHASE_LISTENER',
+                purchaseCallback
+            )
+            expect(mockEventEmitter.removeAllListeners).toHaveBeenCalledWith('PURCHASELY_EVENTS')
+            expect(mockEventEmitter.removeAllListeners).toHaveBeenCalledWith('PURCHASE_LISTENER')
+        })
+
         it('should remove event listeners', () => {
             Purchasely.removeEventListener()
 
@@ -618,6 +669,28 @@ describe('Purchasely SDK', () => {
         it('should remove user attribute removed listener', () => {
             Purchasely.removeUserAttributeRemovedListener()
 
+            expect(mockEventEmitter.removeAllListeners).toHaveBeenCalledWith('USER_ATTRIBUTE_REMOVED_LISTENER')
+        })
+
+        it('should expose a Flutter-compatible combined user attribute listener', () => {
+            const listener = {
+                onUserAttributeSet: jest.fn(),
+                onUserAttributeRemoved: jest.fn(),
+            }
+
+            Purchasely.setUserAttributeListener(listener)
+
+            expect(mockEventEmitter.addListener).toHaveBeenCalledWith(
+                'USER_ATTRIBUTE_SET_LISTENER',
+                expect.any(Function)
+            )
+            expect(mockEventEmitter.addListener).toHaveBeenCalledWith(
+                'USER_ATTRIBUTE_REMOVED_LISTENER',
+                expect.any(Function)
+            )
+
+            Purchasely.clearUserAttributeListener()
+            expect(mockEventEmitter.removeAllListeners).toHaveBeenCalledWith('USER_ATTRIBUTE_SET_LISTENER')
             expect(mockEventEmitter.removeAllListeners).toHaveBeenCalledWith('USER_ATTRIBUTE_REMOVED_LISTENER')
         })
     })

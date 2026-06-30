@@ -27,7 +27,7 @@ import type {
  * - `button` — the user tapped a close button inside the paywall.
  * - `backSystem` — system back: the Android back gesture/button, or the iOS
  *   interactive dismiss (swipe-down / nav pop), which both map here.
- * - `programmatic` — closed via `request.close()` / `Purchasely.close()`.
+ * - `programmatic` — closed via `request.close()`.
  *
  * Mirrors the native `PLYCloseReason` (`button` / `back_system` /
  * `programmatic`). Nullable in the outcome: when the native SDK does not report

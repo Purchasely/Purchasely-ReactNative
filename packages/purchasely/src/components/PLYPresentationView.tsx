@@ -6,14 +6,13 @@ import {
   requireNativeComponent,
   UIManager,
 } from 'react-native';
-import type { PresentPresentationResult } from '../';
 
 const PurchaselyView = requireNativeComponent('PurchaselyView');
 
 interface PLYPresentationViewProps {
   placementId?: string; // Made optional
   presentation?: any; // Made optional
-  onPresentationClosed?: (result: PresentPresentationResult) => void;
+  onPresentationClosed?: (result: any) => void;
   flex?: number;
 }
 
@@ -32,7 +31,7 @@ export const PLYPresentationView: React.FC<PLYPresentationViewProps> = ({
 
     const handleClose = async () => {
       try {
-        const result: PresentPresentationResult = await NativeModules.PurchaselyView.onPresentationClosed();
+        const result = await NativeModules.PurchaselyView.onPresentationClosed();
         if (!cancelled) {
           onPresentationClosed(result);
         }

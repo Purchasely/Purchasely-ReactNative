@@ -20,12 +20,9 @@ import type {
     PurchaselySubscription,
     PurchaselyPromotionalOfferSignature,
     PurchaselyUserAttribute,
-    PresentPresentationResult,
-    PaywallActionInterceptorResult,
     PurchaselyEvent,
     PurchaselyEventProperties,
     PurchaselyPresentation,
-    PLYPaywallInfo,
     PLYPresentationPlan,
     PLYPresentationMetadata,
     PurchaselyOffer,
@@ -34,9 +31,7 @@ import type {
 
 import {
     PlanType,
-    ProductResult,
     SubscriptionSource,
-    PLYPaywallAction,
     PLYPresentationType,
     PLYUserAttributeSource,
     PLYUserAttributeType,
@@ -217,63 +212,6 @@ describe('Purchasely Types', () => {
         })
     })
 
-    describe('PresentPresentationResult', () => {
-        it('should accept valid result object', () => {
-            const result: PresentPresentationResult = {
-                result: ProductResult.PRODUCT_RESULT_PURCHASED,
-                plan: {
-                    vendorId: 'plan-123',
-                    productId: 'product-123',
-                    name: 'Plan',
-                    type: PlanType.PLAN_TYPE_AUTO_RENEWING_SUBSCRIPTION,
-                    amount: 999,
-                    localizedAmount: '$9.99',
-                    currencyCode: 'USD',
-                    currencySymbol: '$',
-                    price: '$9.99',
-                    period: 'P1M',
-                    hasIntroductoryPrice: false,
-                    introPrice: '',
-                    introAmount: 0,
-                    introDuration: '',
-                    introPeriod: '',
-                    hasFreeTrial: false,
-                },
-            }
-
-            expect(result.result).toBe(ProductResult.PRODUCT_RESULT_PURCHASED)
-        })
-    })
-
-    describe('PaywallActionInterceptorResult', () => {
-        it('should accept valid interceptor result', () => {
-            const result: PaywallActionInterceptorResult = {
-                info: {
-                    presentationId: 'pres-123',
-                    placementId: 'placement-123',
-                    contentId: 'content-123',
-                    abTestId: 'ab-123',
-                    abTestVariantId: 'variant-a',
-                },
-                action: PLYPaywallAction.PURCHASE,
-                parameters: {
-                    clientReferenceId: 'ref-123',
-                    url: 'https://example.com',
-                    title: 'Purchase',
-                    plan: {} as any,
-                    offer: null,
-                    subscriptionOffer: null,
-                    presentation: 'pres-123',
-                    queryParameterKey: 'param',
-                    webCheckoutProvider: PLYWebCheckoutProvider.STRIPE,
-                },
-            }
-
-            expect(result.action).toBe(PLYPaywallAction.PURCHASE)
-            expect(result.info.presentationId).toBe('pres-123')
-        })
-    })
-
     describe('PurchaselyPresentation', () => {
         it('should accept valid presentation object', () => {
             const presentation: PurchaselyPresentation = {
@@ -400,26 +338,6 @@ describe('Purchasely Types', () => {
                 PLYWebCheckoutProvider.STRIPE
             )
             expect(properties.stripe_purchase_id).toBe('pi_test_123')
-        })
-    })
-
-    describe('PLYPaywallInfo', () => {
-        it('should accept valid paywall info', () => {
-            const info: PLYPaywallInfo = {
-                presentationId: 'pres-123',
-                placementId: 'placement-123',
-                contentId: 'content-123',
-                abTestId: 'ab-123',
-                abTestVariantId: 'variant-a',
-            }
-
-            expect(info.presentationId).toBe('pres-123')
-        })
-
-        it('should accept empty paywall info', () => {
-            const info: PLYPaywallInfo = {}
-
-            expect(info.presentationId).toBeUndefined()
         })
     })
 

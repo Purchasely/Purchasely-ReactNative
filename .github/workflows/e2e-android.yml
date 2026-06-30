@@ -15,6 +15,14 @@ on:
       - 'integration_test/**'
       - 'example/src/E2ETestRunner.tsx'
       - 'example/android/app/build.gradle'
+  pull_request:
+    paths:
+      - 'packages/purchasely/android/build.gradle'
+      - 'packages/*/android/build.gradle'
+      - '.github/workflows/e2e-android.yml'
+      - 'integration_test/**'
+      - 'example/src/E2ETestRunner.tsx'
+      - 'example/android/app/build.gradle'
 
 concurrency:
   group: e2e-android
@@ -22,7 +30,7 @@ concurrency:
 
 jobs:
   e2e-android:
-    name: E2E Tests (Android T1-T13)
+    name: E2E Tests (Android T1-T20)
     # ubuntu-latest: KVM disponible pour x86_64, requis par reactivecircuit/android-emulator-runner.
     # macOS sera utilisé dans e2e-ios.yml (simulateur iOS).
     runs-on: ubuntu-latest
@@ -80,7 +88,7 @@ jobs:
             exit 1
           fi
 
-      - name: Run E2E suite on emulator
+      - name: Run E2E suite on emulator (T1-T20)
         # ReactiveCircus/android-emulator-runner handles: system-image install,
         # AVD creation, emulator start with KVM, boot wait, animations disable.
         uses: ReactiveCircus/android-emulator-runner@v2
