@@ -23,12 +23,6 @@ react {
     //   If you add flavors like lite, prod, etc. you'll have to list your debuggableVariants.
     // debuggableVariants = ["liteDebug", "prodDebug"]
 
-    // In CI (E2E builds), remove 'debug' from debuggable variants so the JS bundle
-    // is embedded in the APK (no Metro bundler needed on the emulator).
-    if (project.hasProperty('e2eBuild')) {
-        debuggableVariants = []
-    }
-
     /* Bundling */
     //   A list containing the node command and its flags. Default is just 'node'.
     // nodeExecutableAndArgs = ["node"]
