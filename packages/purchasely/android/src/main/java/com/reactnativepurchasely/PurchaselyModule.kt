@@ -446,13 +446,20 @@ fun setUserAttributeWithDate(key: String, value: String, legalBasis: String?) {
 
 @ReactMethod
 fun setUserAttributeWithStringArray(key: String, value: ReadableArray, legalBasis: String?) {
-  val array = value.toArrayList().mapNotNull { it?.toString() }.toTypedArray()
+  // v6's Purchasely.setUserAttribute expects java.lang.String[] for string arrays.
+  // Keep the conversion client-side (ReadableArray → Array<String>) and pass the
+  // result through the suspend bridge via a typed `Array<String>` so the
+  // coroutine continuation can resolve the String[] overload correctly.
+  val array: Array<String> = value.toArrayList()
+    .mapNotNull { it?.toString() }
+    .toTypedArray()
   Purchasely.setUserAttribute(key, array, legalBasisFromString(legalBasis))
 }
 
 @ReactMethod
 fun setUserAttributeWithNumberArray(key: String, value: ReadableArray, legalBasis: String?) {
-  val array = value.toArrayList()
+  // v6's Purchasely.setUserAttribute expects java.lang.Float[] for number arrays.
+  val array: Array<Float> = value.toArrayList()
     .mapNotNull { it?.toString()?.toFloatOrNull() }
     .toTypedArray()
   Purchasely.setUserAttribute(key, array, legalBasisFromString(legalBasis))
@@ -460,7 +467,8 @@ fun setUserAttributeWithNumberArray(key: String, value: ReadableArray, legalBasi
 
 @ReactMethod
 fun setUserAttributeWithBooleanArray(key: String, value: ReadableArray, legalBasis: String?) {
-  val array = value.toArrayList()
+  // v6's Purchasely.setUserAttribute expects java.lang.Boolean[] for boolean arrays.
+  val array: Array<Boolean> = value.toArrayList()
     .mapNotNull {
       when (it) {
         is Boolean -> it
