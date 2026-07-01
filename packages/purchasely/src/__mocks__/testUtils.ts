@@ -83,37 +83,7 @@ export const createMockPurchaselyModule = () => ({
     setAttribute: jest.fn(),
     setLanguage: jest.fn(),
     synchronize: jest.fn().mockResolvedValue(true),
-    fetchPresentation: jest.fn().mockResolvedValue({
-        id: 'presentation-id',
-        placementId: 'placement-id',
-        type: 0,
-        plans: [],
-        metadata: {},
-        height: null,
-    }),
-    presentPresentation: jest.fn().mockResolvedValue({
-        result: 0,
-        plan: null,
-    }),
-    presentPresentationWithIdentifier: jest.fn().mockResolvedValue({
-        result: 0,
-        plan: null,
-    }),
-    presentPresentationForPlacement: jest.fn().mockResolvedValue({
-        result: 0,
-        plan: null,
-    }),
-    presentProductWithIdentifier: jest.fn().mockResolvedValue({
-        result: 0,
-        plan: null,
-    }),
-    presentPlanWithIdentifier: jest.fn().mockResolvedValue({
-        result: 0,
-        plan: null,
-    }),
     closePresentation: jest.fn(),
-    hidePresentation: jest.fn(),
-    showPresentation: jest.fn(),
     purchaseWithPlanVendorId: jest.fn().mockResolvedValue({
         vendorId: 'plan-id',
         productId: 'product-id',
@@ -159,12 +129,7 @@ export const createMockPurchaselyModule = () => ({
     clearUserAttributes: jest.fn(),
     clearBuiltInAttributes: jest.fn(),
     setDefaultPresentationDismissHandler: jest.fn(),
-    setPaywallActionInterceptor: jest.fn().mockResolvedValue({
-        info: {},
-        action: 'close',
-        parameters: {},
-    }),
-    onProcessAction: jest.fn(),
+    removeDefaultPresentationDismissHandler: jest.fn(),
     userDidConsumeSubscriptionContent: jest.fn(),
     setThemeMode: jest.fn(),
     setDynamicOffering: jest.fn().mockResolvedValue(true),

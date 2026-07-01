@@ -35,6 +35,7 @@ jest.mock('react-native', () => {
         unregisterActionInterceptor: jest.fn(),
         completeActionInterceptor: jest.fn(),
         setDefaultPresentationDismissHandler: jest.fn(),
+        removeDefaultPresentationDismissHandler: jest.fn(),
         applyStartOptions: jest.fn(),
         start: jest.fn().mockResolvedValue(true),
         readyToOpenDeeplink: jest.fn(),
