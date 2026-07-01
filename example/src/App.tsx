@@ -4,12 +4,12 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { HomeScreen } from './Home.tsx'
 import Purchasely, {
     DynamicOffering,
-    LogLevels,
+    PLYInterceptResult,
     PLYDataProcessingLegalBasis,
     PLYDataProcessingPurpose,
-    PLYPaywallAction,
+    PLYPresentationBuilder,
     PurchaselyUserAttribute,
-    RunningMode,
+    removeAllActionInterceptors,
 } from 'react-native-purchasely'
 import { PaywallScreen } from './Paywall.tsx'
 
@@ -19,19 +19,22 @@ function App(): React.JSX.Element {
     async function setupPurchasely() {
         var configured = false
         try {
-            // ApiKey and StoreKit1 attributes are mandatory
-            configured = await Purchasely.start({
-                apiKey: 'fcb39be4-2ba4-4db7-bde3-2a5a1e20745d',
-                storeKit1: false, // false to use StoreKit 2 and true to use StoreKit 1
-                logLevel: LogLevels.DEBUG, // to force log level for debug
-                userId: 'test-user-id', // if you know your user id
-                runningMode: RunningMode.FULL, // to set mode manually
-            })
+            // chained builder — the only supported way to start the SDK.
+            // `allowDeeplink(true)` replaces the legacy `readyToOpenDeeplink`.
+            configured = await Purchasely.builder(
+                'fcb39be4-2ba4-4db7-bde3-2a5a1e20745d'
+            )
+                .appUserId('test-user-id') // if you know your user id
+                .runningMode('full') // to set mode manually
+                .logLevel('debug') // to force log level for debug
+                .allowDeeplink(true) // safe to launch purchase flow from deeplinks
+                .allowCampaigns(true)
+                .storekitVersion('storeKit2') // iOS: 'storeKit2' or 'storeKit1'
+                .stores(['google']) // Android stores
+                .start()
         } catch (e) {
             console.log('Purchasely SDK configuration error:', e)
         }
-
-        // fetchPresentation()
 
         if (!configured) {
             console.error('Purchasely SDK initialization failed.')
@@ -41,9 +44,6 @@ function App(): React.JSX.Element {
 
         // logout the user
         Purchasely.userLogout()
-
-        //indicate to sdk it is safe to launch purchase flow
-        Purchasely.readyToOpenDeeplink(true)
 
         //force your language
         Purchasely.setLanguage('en')
@@ -226,58 +226,47 @@ function App(): React.JSX.Element {
         const offeringsEmpty: DynamicOffering[] = await Purchasely.getDynamicOfferings()
         console.log('Dynamic offerings:', offeringsEmpty)
 
-        // Set paywall action interceptor callback
-        Purchasely.setPaywallActionInterceptorCallback((result) => {
-            console.log('Received action from paywall')
-            console.log('Action:', result.action)
-            console.log('Parameters:', result.parameters)
-            console.log('Info:', result.info)
+        // Set paywall action interceptors. Each handler is typed by the
+        // action kind and must return 'success' | 'failed' | 'notHandled'.
+        // Returning 'notHandled' lets the SDK perform its default behavior;
+        // 'success' tells the SDK the host app fully handled the action.
 
-
-            switch (result.action) {
-                case PLYPaywallAction.NAVIGATE:
-                    console.log(
-                        'User wants to navigate to website ' +
-                            result.parameters.title +
-                            ' ' +
-                            result.parameters.url
-                    )
-                    Purchasely.onProcessAction(true)
-                    break
-                case PLYPaywallAction.LOGIN:
-                    console.log('User wants to login')
-                    //Present your own screen for user to log in
-                    Purchasely.hidePresentation()
-                    // Call this method to display Purchaely paywall
-                    // Purchasely.showPresentation()
-                    // Call this method to update Purchasely Paywall
-                    // Purchasely.onProcessAction(true);
-                    break
-                case PLYPaywallAction.PURCHASE:
-                    console.log('User wants to purchase')
-                    Purchasely.onProcessAction(true)
-                    //Purchasely.hidePresentation();
-
-                    /**
-                     * If you want to intercept it, hide presentation and display your screen
-                     * then call onProcessAction() to continue or stop purchasely purchase action like this
-                     *
-                     * First hide presentation to display your own screen
-                     * Purchasely.hidePresentation()
-                     *
-                     * Call this method to display Purchasely paywall
-                     * Purchasely.showPresentation()
-                     *
-                     * Call this method to update Purchasely Paywall
-                     * Purchasely.onProcessAction(true|false); // true to continue, false to stop
-                     *
-                     * Purchasely.closePresentation(); //when you want to close the paywall (after purchase for example)
-                     *
-                     **/
-                    break
-                default:
-                    Purchasely.onProcessAction(true)
+        // Navigate action — open the requested website yourself if needed.
+        Purchasely.interceptAction('navigate', async (info, payload): Promise<PLYInterceptResult> => {
+            console.log('User wants to navigate', info, payload)
+            if (payload?.kind === 'navigate') {
+                console.log(
+                    'User wants to navigate to website ' +
+                        payload.title +
+                        ' ' +
+                        payload.url
+                )
             }
+            // Let the SDK open the URL with its default behavior.
+            return 'notHandled'
+        })
+
+        // Login action — present your own login screen here. Returning
+        // 'success' tells the SDK login is handled by the host app.
+        Purchasely.interceptAction('login', async (info): Promise<PLYInterceptResult> => {
+            console.log('User wants to login', info)
+            // Present your own screen for the user to log in, then return
+            // 'success' once done — or 'notHandled' to keep the SDK default.
+            return 'notHandled'
+        })
+
+        // Purchase action — intercept the purchase if you handle it yourself,
+        // otherwise return 'notHandled' to let Purchasely run the purchase.
+        Purchasely.interceptAction('purchase', async (info, payload): Promise<PLYInterceptResult> => {
+            console.log('User wants to purchase', info, payload)
+            /**
+             * To intercept the purchase, present your own screen and run your
+             * own transaction, then return 'success' or 'failed'.
+             * Returning 'notHandled' lets Purchasely run its default purchase
+             * flow. To close the paywall programmatically afterwards, hold a
+             * reference to the PLYPresentationRequest and call `request.close()`.
+             **/
+            return 'notHandled'
         })
 
         // Set events listener
@@ -297,20 +286,71 @@ function App(): React.JSX.Element {
         })
     }
 
-    const fetchPresentation = async () => {
+    // Preload a placement so its paywall is ready before the user reaches it.
+    // The `preload()` resolves once the screen is loaded (no UI shown yet).
+    const preloadOnboarding = async () => {
         try {
-            await Purchasely.fetchPresentation({
-                placementId: 'ONBOARDING',
-                contentId: null,
-            })
+            const presentation = await PLYPresentationBuilder.placement(
+                'ONBOARDING'
+            )
+                .contentId(null)
+                .build()
+                .preload()
+            console.info('[Purchasely] preloaded', presentation.screenId)
         } catch (e) {
             console.error(e)
         }
     }
 
+    // -------------------------------------------------------------------------
+    // presentation demo. Builds an ONBOARDING placement request, wires up
+    // every lifecycle callback, then displays it. `display()` resolves at
+    // DISMISS with a 5-field `PLYPresentationOutcome`.
+    //
+    // To opt in, uncomment the `presentOnboarding()` call inside the
+    // `useEffect` below.
+    // -------------------------------------------------------------------------
+    async function presentOnboarding() {
+        // Build, present and react to lifecycle callbacks.
+        const request = PLYPresentationBuilder.placement('ONBOARDING')
+            .contentId('content_123')
+            .onLoaded((presentation) => {
+                console.info('[Purchasely] loaded', presentation.screenId)
+            })
+            .onPresented((presentation, error) => {
+                if (error) {
+                    console.error('[Purchasely] presented error', error)
+                    return
+                }
+                console.info('[Purchasely] presented', presentation?.screenId)
+            })
+            .onCloseRequested(() => {
+                console.info('[Purchasely] close requested by host')
+            })
+            .onDismissed((outcome) => {
+                console.info(
+                    '[Purchasely] dismissed',
+                    'purchaseResult=', outcome.purchaseResult,
+                    'plan=', outcome.plan?.vendorId,
+                    'closeReason=', outcome.closeReason,
+                    'error=', outcome.error?.message
+                )
+            })
+            .build()
+
+        const outcome = await request.display({ type: 'fullScreen' })
+        console.info('[Purchasely] display() resolved with outcome', outcome)
+
+        // Detach every interceptor previously registered.
+        removeAllActionInterceptors()
+    }
+
     useEffect(() => {
         setupPurchasely()
-        fetchPresentation()
+        preloadOnboarding()
+        // Uncomment to display the ONBOARDING paywall through the presentation pipeline
+        // once the SDK has been started by `setupPurchasely()` above.
+        // presentOnboarding()
     }, [])
 
     return (

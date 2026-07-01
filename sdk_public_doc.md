@@ -2,6 +2,12 @@
 
 This document provides comprehensive documentation for integrating and using the Purchasely React Native SDK with JavaScript/TypeScript.
 
+> **Upgrading from v5?** The v5 paywall API has been **removed** in v6 in favour
+> of the chainable builder API documented here. See
+> [`MIGRATION-v6.md`](./MIGRATION-v6.md) for the complete old→new mapping. The
+> Purchasely AI plugin and skills (`purchasely-integrate`, `purchasely-review`,
+> `purchasely-debug`) can apply the migration for you.
+
 ---
 
 ## Table of Contents
@@ -11,7 +17,7 @@ This document provides comprehensive documentation for integrating and using the
 3. [SDK Initialization](#sdk-initialization)
 4. [Displaying Paywalls](#displaying-paywalls)
 5. [Processing Transactions](#processing-transactions)
-6. [Paywall Action Interceptor](#paywall-action-interceptor)
+6. [Action Interceptor](#action-interceptor)
 7. [User Identification](#user-identification)
 8. [Subscription Status & Entitlements](#subscription-status--entitlements)
 9. [Custom User Attributes](#custom-user-attributes)
@@ -123,9 +129,9 @@ npm install @purchasely/react-native-purchasely-android-player --save
 ```json
 // package.json
 "dependencies": {
-  "react-native-purchasely": "5.0.0",
-  "@purchasely/react-native-purchasely-google": "5.0.0",
-  "@purchasely/react-native-purchasely-android-player": "5.0.0"
+  "react-native-purchasely": "6.0.0-rc.1",
+  "@purchasely/react-native-purchasely-google": "6.0.0-rc.1",
+  "@purchasely/react-native-purchasely-android-player": "6.0.0-rc.1"
 }
 ```
 
@@ -143,38 +149,45 @@ npm install @purchasely/react-native-purchasely-android-player --save
 Then initialize with the Google store:
 
 ```typescript
-await Purchasely.start({
-    apiKey: 'YOUR_API_KEY',
-    androidStores: ['Google'], // Requires @purchasely/react-native-purchasely-google
-    storeKit1: false,
-    // ...
-});
+await Purchasely.builder('YOUR_API_KEY')
+    .stores(['google']) // Requires @purchasely/react-native-purchasely-google
+    .storekitVersion('storeKit2')
+    .start();
 ```
 
 ---
 
 ## SDK Initialization
 
-Initialize the Purchasely SDK as early as possible in your application lifecycle.
+> **v6 — paywall API only.** Initialization, paywall display, and action
+> interception use the chainable builder API below. The v5 paywall methods
+> (`Purchasely.start({...})`, `startWithAPIKey`,
+> `presentPresentationForPlacement`, `fetchPresentation`,
+> `setPaywallActionInterceptorCallback`, `onProcessAction`,
+> `setDefaultPresentationResultCallback`, `readyToOpenDeeplink`, …) have been
+> **removed**. See [`MIGRATION-v6.md`](./MIGRATION-v6.md) for the complete
+> old→new mapping. All **core** methods (user, products, subscriptions,
+> attributes, listeners) are unchanged.
+
+Initialize the Purchasely SDK as early as possible in your application lifecycle
+using `Purchasely.builder(apiKey)`.
 
 ### Full Mode (Recommended)
 
 In `full` mode, Purchasely handles the entire purchase flow including transactions and receipts.
 
 ```typescript
-import Purchasely, { LogLevels, RunningMode } from 'react-native-purchasely';
+import Purchasely from 'react-native-purchasely';
 
-// Everything is optional except apiKey and storeKit1
-// Example with default values
+// Only the API key is required; every other option has a sensible default.
 try {
-    const configured = await Purchasely.start({
-        apiKey: 'YOUR_API_KEY',
-        storeKit1: false, // set to false to use StoreKit2, true to use StoreKit1
-        logLevel: LogLevels.ERROR, // set to DEBUG in development mode to see logs
-        userId: null, // if you know your user id, set it here
-        runningMode: RunningMode.Full, // select between Full and PaywallObserver
-        androidStores: ['Google'] // default is Google, don't forget to add the dependency
-    });
+    const configured = await Purchasely.builder('YOUR_API_KEY')
+        .runningMode('full')           // 'observer' (default) | 'full'
+        .logLevel('error')             // 'debug' in development to see logs
+        .appUserId(null)               // set your user id here if you know it
+        .stores(['google'])            // Android: 'google' | 'huawei' | 'amazon'
+        .storekitVersion('storeKit2')  // iOS: 'storeKit2' (recommended) | 'storeKit1'
+        .start();
 
     if (configured) {
         console.log('Purchasely SDK configured successfully');
@@ -184,22 +197,20 @@ try {
 }
 ```
 
-### PaywallObserver Mode
+### Observer (PaywallObserver) Mode
 
-Use `paywallObserver` mode if you have an existing in-app purchase infrastructure and want to use Purchasely only for paywall display and analytics.
+Use `observer` mode if you have an existing in-app purchase infrastructure and want to use Purchasely only for paywall display and analytics. **This is the default in v6.**
 
 ```typescript
-import Purchasely, { LogLevels, RunningMode } from 'react-native-purchasely';
+import Purchasely from 'react-native-purchasely';
 
 try {
-    const configured = await Purchasely.start({
-        apiKey: 'YOUR_API_KEY',
-        storeKit1: false,
-        logLevel: LogLevels.ERROR,
-        userId: null,
-        runningMode: RunningMode.PaywallObserver,
-        androidStores: ['Google']
-    });
+    const configured = await Purchasely.builder('YOUR_API_KEY')
+        .runningMode('observer')
+        .logLevel('error')
+        .stores(['google'])
+        .storekitVersion('storeKit2')
+        .start();
 } catch (e) {
     console.log('Purchasely SDK not configured properly');
 }
@@ -217,40 +228,58 @@ Purchasely paywalls are displayed using **placements**. A placement is a specifi
 
 ### Display a Placement
 
+`Purchasely.presentation.placement(id).build()` returns a `PresentationRequest`.
+Calling `display()` shows the paywall and resolves at **dismiss** with a
+`PLYPresentationOutcome`.
+
 ```typescript
-import Purchasely, { ProductResult } from 'react-native-purchasely';
+import Purchasely from 'react-native-purchasely';
 
 try {
-    const result = await Purchasely.presentPresentationForPlacement({
-        placementVendorId: 'ONBOARDING',
-        contentId: 'my_content_id', // optional: associate content with the purchase
-        isFullscreen: true,
-    });
+    const outcome = await Purchasely.presentation
+        .placement('ONBOARDING')
+        .contentId('my_content_id') // optional: associate content with the purchase
+        .build()
+        .display();
 
-    switch (result.result) {
-        case ProductResult.PRODUCT_RESULT_PURCHASED:
-        case ProductResult.PRODUCT_RESULT_RESTORED:
-            if (result.plan != null) {
-                console.log('User purchased ' + result.plan.name);
-                // Update entitlements to unlock content
-            }
-            break;
-        case ProductResult.PRODUCT_RESULT_CANCELLED:
-            console.log('User cancelled');
-            break;
+    // outcome: { presentation, purchaseResult, plan, closeReason, error }
+    if (outcome.error) {
+        console.error(outcome.error.message);
+    } else if (
+        outcome.purchaseResult === 'purchased' ||
+        outcome.purchaseResult === 'restored'
+    ) {
+        console.log('User purchased ' + outcome.plan?.name);
+        // Update entitlements to unlock content
+    } else {
+        console.log('User dismissed: ' + outcome.closeReason);
     }
 } catch (e) {
     console.error(e);
 }
 ```
 
+You can also target a specific screen, product, or plan:
+
+```typescript
+// Specific presentation by screen id
+await Purchasely.presentation.screen('SCREEN_ID').build().display();
+
+// Specific product (content) inside a screen
+await Purchasely.presentation.screen('SCREEN_ID').contentId('CONTENT_ID').build().display();
+```
+
 ### Display Results
 
-After displaying a placement, you receive a result indicating the user's action:
+`display()` resolves with a `PresentationOutcome`:
 
-- `PRODUCT_RESULT_PURCHASED`: User purchased a plan
-- `PRODUCT_RESULT_RESTORED`: User restored a previous purchase
-- `PRODUCT_RESULT_CANCELLED`: User did not complete a purchase
+| Field | Description |
+|-------|-------------|
+| `presentation` | The displayed presentation (or `null`) |
+| `purchaseResult` | `'purchased'` \| `'restored'` \| `'cancelled'` \| `null` |
+| `plan` | The purchased plan (when `purchaseResult` is `'purchased'`/`'restored'`) |
+| `closeReason` | `'button'` \| `'backSystem'` \| `'programmatic'` (when no purchase) |
+| `error` | Error object, mutually exclusive with `closeReason` |
 
 ---
 
@@ -262,124 +291,129 @@ In `full` mode, the Purchasely SDK automatically launches the native in-app purc
 
 ```typescript
 try {
-    const result = await Purchasely.presentPresentationForPlacement({
-        placementVendorId: 'onboarding',
-        isFullscreen: true,
-    });
+    const outcome = await Purchasely.presentation
+        .placement('onboarding')
+        .build()
+        .display();
 
-    switch (result.result) {
-        case ProductResult.PRODUCT_RESULT_PURCHASED:
-        case ProductResult.PRODUCT_RESULT_RESTORED:
-            if (result.plan != null) {
-                console.log('User purchased ' + result.plan.name);
-                // Update entitlements to unlock the access to the contents
-            }
-            break;
-        case ProductResult.PRODUCT_RESULT_CANCELLED:
-            break;
+    if (
+        outcome.purchaseResult === 'purchased' ||
+        outcome.purchaseResult === 'restored'
+    ) {
+        console.log('User purchased ' + outcome.plan?.name);
+        // Update entitlements to unlock the access to the contents
     }
 } catch (e) {
     console.error(e);
 }
 ```
 
-### PaywallObserver Mode with Paywall Action Interceptor
+### Observer Mode with Action Interceptor
 
-In `paywallObserver` mode, you handle purchases with your own infrastructure while using Purchasely for paywall display.
+In `observer` mode, you handle purchases with your own infrastructure while using Purchasely for paywall display. Use `Purchasely.interceptAction(kind, handler)` — the handler returns `'success' | 'failed' | 'notHandled'` (there is no more `onProcessAction`).
 
 ```typescript
-Purchasely.setPaywallActionInterceptorCallback((result) => {
-    if (result.action === PLYPaywallAction.PURCHASE) {
-        try {
-            // The store product id (sku) the user clicked on in the paywall
-            const storeProductId = result.parameters.plan.productId;
+import { Platform } from 'react-native';
 
-            if (Platform.OS === 'android') {
-                // Only for Android you can retrieve other information
-                const basePlanId = result.parameters.subscriptionOffer?.basePlanId;
-                const offerId = result.parameters.subscriptionOffer?.offerId;
-                const offerToken = result.parameters.subscriptionOffer?.offerToken;
-            }
+Purchasely.interceptAction('purchase', async (info, payload) => {
+    if (payload?.kind !== 'purchase') {
+        return 'notHandled';
+    }
+    try {
+        // The store product id (sku) the user clicked on in the paywall
+        const storeProductId = payload.plan.productId;
 
-            const success = await MyPurchaseSystem.purchase(storeProductId);
-            if (success) {
-                Purchasely.synchronize(); // Synchronize all purchases with Purchasely
-                Purchasely.onProcessAction(false); // Stop processing action
-            }
-        } catch (e) {
-            console.log(e);
-            Purchasely.onProcessAction(false);
+        if (Platform.OS === 'android') {
+            // Only for Android you can retrieve other information
+            const basePlanId = payload.subscriptionOffer?.basePlanId;
+            const offerId = payload.subscriptionOffer?.offerId;
+            const offerToken = payload.subscriptionOffer?.offerToken;
         }
-    } else if (result.action === PLYPaywallAction.RESTORE) {
-        try {
-            await MyPurchaseSystem.restorePurchases();
-            Purchasely.synchronize();
-            Purchasely.onProcessAction(false);
-        } catch (e) {
-            Purchasely.onProcessAction(false);
+
+        const success = await MyPurchaseSystem.purchase(storeProductId);
+        if (success) {
+            Purchasely.synchronize(); // Synchronize all purchases with Purchasely
+            return 'success';
         }
-    } else {
-        Purchasely.onProcessAction(true); // Continue other actions
+        return 'failed';
+    } catch (e) {
+        console.log(e);
+        return 'failed';
+    }
+});
+
+Purchasely.interceptAction('restore', async () => {
+    try {
+        await MyPurchaseSystem.restorePurchases();
+        Purchasely.synchronize();
+        return 'success';
+    } catch (e) {
+        return 'failed';
     }
 });
 ```
 
 ---
 
-## Paywall Action Interceptor
+## Action Interceptor
 
-The Paywall Action Interceptor allows you to intercept and handle user actions on the paywall.
+The action interceptor lets you intercept and handle user actions on the paywall. Register **one handler per action kind** with `Purchasely.interceptAction(kind, handler)`. The handler returns a result string that tells the SDK how the action was handled:
 
-### Available Actions
+- `'success'` — you handled the action successfully
+- `'failed'` — you tried to handle it but it failed
+- `'notHandled'` — let the SDK perform its default behaviour
 
-| Action | Description |
-|--------|-------------|
-| `PURCHASE` | User tapped a purchase button |
-| `RESTORE` | User tapped the restore button |
-| `LOGIN` | User tapped the login button |
-| `CLOSE` | User tapped the close button |
-| `NAVIGATE` | User wants to navigate to an external URL |
-| `OPEN_PRESENTATION` | User wants to open another presentation |
+### Available Action Kinds
+
+| Kind | Description |
+|------|-------------|
+| `purchase` | User tapped a purchase button |
+| `restore` | User tapped the restore button |
+| `login` | User tapped the login button |
+| `close` / `closeAll` | User tapped the close button |
+| `navigate` | User wants to navigate to an external URL |
+| `openPresentation` | User wants to open another presentation |
+| `openPlacement` | User wants to open another placement |
+| `promoCode` | User wants to enter a promo code |
+| `webCheckout` | User wants to start a web checkout |
 
 ### Implementation
 
 ```typescript
-import Purchasely, { PLYPaywallAction } from 'react-native-purchasely';
+import Purchasely from 'react-native-purchasely';
+import { Linking } from 'react-native';
 
-Purchasely.setPaywallActionInterceptorCallback((result) => {
-    console.log('Received action from paywall ' + result.info.presentationId);
-
-    if (result.action === PLYPaywallAction.NAVIGATE) {
-        console.log('User wants to navigate to ' + result.parameters.url);
-        Purchasely.onProcessAction(true);
-    } else if (result.action === PLYPaywallAction.CLOSE) {
-        console.log('User wants to close paywall');
-        Purchasely.onProcessAction(true);
-    } else if (result.action === PLYPaywallAction.LOGIN) {
-        console.log('User wants to login');
-        // Present your own screen for user to log in
-        Purchasely.closePresentation();
-        Purchasely.userLogin('MY_USER_ID');
-        // Call this method to update Purchasely Paywall
-        Purchasely.onProcessAction(true);
-    } else if (result.action === PLYPaywallAction.OPEN_PRESENTATION) {
-        console.log('User wants to open a new paywall');
-        Purchasely.onProcessAction(true);
-    } else if (result.action === PLYPaywallAction.PURCHASE) {
-        console.log('User wants to purchase');
-        // If you want to intercept it, close presentation and handle yourself
-        Purchasely.closePresentation();
-    } else if (result.action === PLYPaywallAction.RESTORE) {
-        console.log('User wants to restore purchases');
-        Purchasely.onProcessAction(true);
-    } else {
-        console.log('Action unknown ' + result.action);
-        Purchasely.onProcessAction(true);
+Purchasely.interceptAction('navigate', async (info, payload) => {
+    if (payload?.kind === 'navigate') {
+        console.log('User wants to navigate to ' + payload.url);
+        Linking.openURL(payload.url);
+        return 'success';
     }
+    return 'notHandled';
+});
+
+Purchasely.interceptAction('login', async () => {
+    console.log('User wants to login');
+    // Present your own screen for the user to log in
+    Purchasely.userLogin('MY_USER_ID');
+    return 'success';
+});
+
+Purchasely.interceptAction('purchase', async (info, payload) => {
+    if (payload?.kind === 'purchase') {
+        // If you want to handle the purchase yourself
+        return 'notHandled';
+    }
+    return 'notHandled';
 });
 ```
 
-> **Important**: Always call `Purchasely.onProcessAction(true/false)` to notify the SDK whether to continue processing the action.
+### Removing interceptors
+
+```typescript
+Purchasely.removeActionInterceptor('navigate');
+Purchasely.removeAllActionInterceptors();
+```
 
 ---
 
@@ -420,20 +454,14 @@ Purchasely.userLogout();
 
 ### Login from Paywall
 
-To handle the login button on the paywall:
+To handle the login button on the paywall, intercept the `login` action:
 
 ```typescript
-Purchasely.setPaywallActionInterceptorCallback((result) => {
-    if (result.action === PLYPaywallAction.LOGIN) {
-        console.log('User wants to login');
-        // Present your own screen for user to log in
-        Purchasely.closePresentation();
-        Purchasely.userLogin('MY_USER_ID');
-        // Call this method to update Purchasely Paywall
-        Purchasely.onProcessAction(true);
-    } else {
-        Purchasely.onProcessAction(true);
-    }
+Purchasely.interceptAction('login', async () => {
+    console.log('User wants to login');
+    // Present your own screen for the user to log in
+    Purchasely.userLogin('MY_USER_ID');
+    return 'success';
 });
 ```
 
@@ -578,14 +606,17 @@ Pre-fetch paywalls from the network before displaying them for a better user exp
 
 ### Implementation
 
+Build a `PresentationRequest`, `preload()` it to fetch the screen from the
+network, then `display()` the same request when you are ready to show it.
+
 ```typescript
-import Purchasely, { PLYPresentationType, ProductResult } from 'react-native-purchasely';
+import Purchasely, { PLYPresentationType } from 'react-native-purchasely';
 
 try {
-    // Fetch presentation to display
-    const presentation = await Purchasely.fetchPresentation({
-        placementId: 'ONBOARDING'
-    });
+    const request = Purchasely.presentation.placement('ONBOARDING').build();
+
+    // Preload resolves once the screen is loaded
+    const presentation = await request.preload();
 
     if (presentation.type == PLYPresentationType.DEACTIVATED) {
         // No paywall to display
@@ -593,26 +624,21 @@ try {
     }
 
     if (presentation.type == PLYPresentationType.CLIENT) {
-        // Display your own paywall
+        // Display your own paywall (BYOS)
         const planIds = presentation.plans;
         return;
     }
 
-    // Display Purchasely paywall
-    const result = await Purchasely.presentPresentation({
-        presentation: presentation
-    });
+    // Display the preloaded Purchasely paywall; resolves at dismiss
+    const outcome = await request.display();
 
-    switch (result.result) {
-        case ProductResult.PRODUCT_RESULT_PURCHASED:
-        case ProductResult.PRODUCT_RESULT_RESTORED:
-            if (result.plan != null) {
-                console.log('User purchased ' + result.plan.name);
-            }
-            break;
-        case ProductResult.PRODUCT_RESULT_CANCELLED:
-            console.log('User cancelled');
-            break;
+    if (
+        outcome.purchaseResult === 'purchased' ||
+        outcome.purchaseResult === 'restored'
+    ) {
+        console.log('User purchased ' + outcome.plan?.name);
+    } else {
+        console.log('Dismissed: ' + outcome.closeReason);
     }
 } catch (e) {
     console.error(e);
@@ -641,31 +667,40 @@ To enable Purchasely to display screens via deeplinks, you need to:
 ### Passing the Deeplink
 
 ```typescript
-Purchasely.isDeeplinkHandled('app://ply/presentations/')
+Purchasely.handleDeeplink('app://ply/presentations/')
     .then((value) => console.log('Deeplink handled by Purchasely? ' + value));
 ```
 
 ### Allowing the Display
 
-Once your app is ready (after splash screen, onboarding, login, etc.):
+Deeplink display is now allowed via the start builder (replaces
+`readyToOpenDeeplink(true)`):
 
 ```typescript
-Purchasely.readyToOpenDeeplink(true);
+await Purchasely.builder('YOUR_API_KEY')
+    .allowDeeplink(true)
+    .start();
 ```
 
 ### Setting the Default Presentation Handler
 
-Retrieve the result of user actions on paywalls opened via deeplinks:
+Retrieve the result of user actions on paywalls opened via deeplinks by
+attaching `onDismissed` to a default presentation request (replaces
+`setDefaultPresentationResultCallback`):
 
 ```typescript
-Purchasely.setDefaultPresentationResultCallback((result) => {
-    console.log('Presentation View Result: ' + result.result);
+Purchasely.presentation
+    .default()
+    .onDismissed((outcome) => {
+        console.log('Presentation dismissed: ' + outcome.purchaseResult);
 
-    if (result.plan != null) {
-        console.log('Plan Vendor ID: ' + result.plan.vendorId);
-        console.log('Plan Name: ' + result.plan.name);
-    }
-});
+        if (outcome.plan != null) {
+            console.log('Plan Vendor ID: ' + outcome.plan.vendorId);
+            console.log('Plan Name: ' + outcome.plan.name);
+        }
+    })
+    .build()
+    .display();
 ```
 
 ---
@@ -677,45 +712,44 @@ Purchasely.setDefaultPresentationResultCallback((result) => {
 Choose between StoreKit 1 and StoreKit 2 for iOS:
 
 ```typescript
-await Purchasely.start({
-    apiKey: 'YOUR_API_KEY',
-    storeKit1: false, // false = StoreKit 2, true = StoreKit 1
-    // ...
-});
+await Purchasely.builder('YOUR_API_KEY')
+    .storekitVersion('storeKit2') // 'storeKit2' = StoreKit 2, 'storeKit1' = StoreKit 1
+    .start();
 ```
 
-> **Recommendation**: Use StoreKit 2 (`storeKit1: false`) for new integrations.
+> **Recommendation**: Use StoreKit 2 (`storekitVersion('storeKit2')`) for new integrations.
 
 ### Android Stores
 
 Purchasely supports multiple Android stores:
 
 ```typescript
-await Purchasely.start({
-    apiKey: 'YOUR_API_KEY',
-    androidStores: ['Google'], // Options: 'Google', 'Huawei', 'Amazon'
-    // ...
-});
+await Purchasely.builder('YOUR_API_KEY')
+    .stores(['google']) // Options: 'google', 'huawei', 'amazon'
+    .start();
 ```
 
 To use multiple stores:
 
 ```typescript
-androidStores: ['Google', 'Huawei']
+.stores(['google', 'huawei'])
 ```
 
 > **Note**: Install the corresponding dependencies for each store you want to support.
 
 ### Android-Specific Purchase Parameters
 
-When intercepting purchases on Android, you can access additional parameters:
+When intercepting purchases on Android, you can access additional parameters from the typed `purchase` payload:
 
 ```typescript
-if (Platform.OS === 'android') {
-    const basePlanId = result.parameters.subscriptionOffer?.basePlanId;
-    const offerId = result.parameters.subscriptionOffer?.offerId;
-    const offerToken = result.parameters.subscriptionOffer?.offerToken;
-}
+Purchasely.interceptAction('purchase', async (info, payload) => {
+    if (payload?.kind === 'purchase' && Platform.OS === 'android') {
+        const basePlanId = payload.subscriptionOffer?.basePlanId;
+        const offerId = payload.subscriptionOffer?.offerId;
+        const offerToken = payload.subscriptionOffer?.offerToken;
+    }
+    return 'notHandled';
+});
 ```
 
 ---
@@ -724,7 +758,7 @@ if (Platform.OS === 'android') {
 
 ### Common Issues
 
-1. **SDK not configured**: Ensure you call `Purchasely.start()` before any other SDK methods.
+1. **SDK not configured**: Ensure you call `Purchasely.builder(apiKey)....start()` before any other SDK methods.
 
 2. **Purchases not working**: Verify that you've added the correct store dependencies and they're all at the same version.
 
@@ -740,11 +774,9 @@ if (Platform.OS === 'android') {
 Enable debug logging during development:
 
 ```typescript
-await Purchasely.start({
-    apiKey: 'YOUR_API_KEY',
-    logLevel: LogLevels.DEBUG, // Use ERROR in production
-    // ...
-});
+await Purchasely.builder('YOUR_API_KEY')
+    .logLevel('debug') // Use 'error' in production
+    .start();
 ```
 
 ---

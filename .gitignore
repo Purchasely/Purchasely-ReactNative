@@ -89,3 +89,6 @@ nitrogen/
 
 .nx/cache
 .nx/workspace-data
+jest_dx/
+node-compile-cache/
+**/coverage/

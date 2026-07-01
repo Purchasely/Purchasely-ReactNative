@@ -1,35 +1,44 @@
 package com.reactnativepurchasely
 
-import android.app.Activity
-import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.util.Log
-import androidx.fragment.app.FragmentActivity
 import com.facebook.react.bridge.*
 import com.facebook.react.modules.core.DeviceEventManagerModule.RCTDeviceEventEmitter
 import io.purchasely.billing.Store
 import io.purchasely.ext.*
 import io.purchasely.ext.EventListener
-import io.purchasely.models.PLYError
+import io.purchasely.ext.presentation.PLYPresentation
+import io.purchasely.ext.presentation.PLYPresentationType
 import io.purchasely.models.PLYPlan
-import io.purchasely.models.PLYPromoOffer
 import io.purchasely.models.PLYPresentationPlan
 import io.purchasely.storage.userData.PLYUserAttributeSource
 import io.purchasely.storage.userData.PLYUserAttributeType
 import io.purchasely.views.presentation.PLYThemeMode
-import io.purchasely.views.presentation.models.PLYTransition
-import io.purchasely.views.presentation.models.PLYTransitionType
 import io.purchasely.ext.PLYDataProcessingLegalBasis
 import io.purchasely.ext.PLYDataProcessingPurpose
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import java.lang.ref.WeakReference
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
+// cross-platform bridge (merged into this single module)
+import android.app.Activity
+import io.purchasely.ext.presentation.PLYCloseReason
+import io.purchasely.ext.presentation.PLYPresentationAction
+import io.purchasely.ext.presentation.PLYPresentationBase
+import io.purchasely.ext.presentation.PLYPresentationOutcome
+import io.purchasely.ext.presentation.PLYPurchaseResult
+import io.purchasely.ext.presentation.display
+import io.purchasely.ext.presentation.preload
+import io.purchasely.models.PLYError
+import io.purchasely.views.presentation.models.PLYTransition
+import io.purchasely.views.presentation.models.PLYTransitionType
+import io.purchasely.views.presentation.models.PLYTransitionDimension
+import io.purchasely.views.presentation.models.PLYDimensionType
+import java.util.concurrent.ConcurrentHashMap
 
 class PurchaselyModule internal constructor(context: ReactApplicationContext) : ReactContextBaseJavaModule(context) {
 
@@ -83,8 +92,11 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     constants["logLevelWarn"] = LogLevel.WARN.ordinal
     constants["logLevelInfo"] = LogLevel.INFO.ordinal
     constants["logLevelError"] = LogLevel.ERROR.ordinal
+    @Suppress("DEPRECATION")
     constants["productResultPurchased"] = PLYProductViewResult.PURCHASED.ordinal
+    @Suppress("DEPRECATION")
     constants["productResultCancelled"] = PLYProductViewResult.CANCELLED.ordinal
+    @Suppress("DEPRECATION")
     constants["productResultRestored"] = PLYProductViewResult.RESTORED.ordinal
     constants["firebaseAppInstanceId"] = Attribute.FIREBASE_APP_INSTANCE_ID.ordinal
     constants["airshipChannelId"] = Attribute.AIRSHIP_CHANNEL_ID.ordinal
@@ -170,19 +182,6 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     return result.toList()
   }
 
-  @Deprecated("Should use start method", ReplaceWith("start"))
-  @ReactMethod
-  fun startWithAPIKey(apiKey: String,
-                      stores: ReadableArray,
-                      userId: String?,
-                      logLevel: Int,
-                      runningMode: Int,
-                      bridgeVersion: String,
-                      promise: Promise) {
-
-    start(apiKey, stores, false, userId, logLevel, runningMode, bridgeVersion, promise)
-  }
-
   @ReactMethod
   fun start(apiKey: String,
             stores: ReadableArray,
@@ -199,8 +198,8 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
       .logLevel(LogLevel.values()[logLevel])
       .runningMode(when(runningMode) {
         runningModeTransactionOnly -> PLYRunningMode.Full
-        runningModeObserver -> PLYRunningMode.PaywallObserver
-        runningModePaywallObserver -> PLYRunningMode.PaywallObserver
+        runningModeObserver -> PLYRunningMode.Observer
+        runningModePaywallObserver -> PLYRunningMode.Observer
         else -> PLYRunningMode.Full
       })
       .build()
@@ -211,20 +210,14 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
 
     Purchasely.appTechnology = PLYAppTechnology.REACT_NATIVE
 
-    Purchasely.start { isConfigured, error ->
-      if(isConfigured) promise.resolve(true)
-      else promise.reject(error ?: IllegalStateException("Purchasely start failed"))
+    Purchasely.start { error ->
+      if(error == null) promise.resolve(true)
+      else promise.reject(error)
     }
 
     Purchasely.purchaseListener = purchaseListener
 
     Purchasely.userAttributeListener = userAttributeListener
-  }
-
-  @ReactMethod
-  fun close() {
-    productActivity = null
-    Purchasely.close()
   }
 
   @ReactMethod
@@ -265,7 +258,17 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
 
   @ReactMethod
   fun readyToOpenDeeplink(ready: Boolean) {
-    Purchasely.readyToOpenDeeplink = ready
+    allowDeeplink(ready)
+  }
+
+  @ReactMethod
+  fun allowDeeplink(allow: Boolean) {
+    Purchasely.allowDeeplink = allow
+  }
+
+  @ReactMethod
+  fun allowCampaigns(allow: Boolean) {
+    Purchasely.allowCampaigns = allow
   }
 
   @ReactMethod
@@ -280,164 +283,29 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   }
 
   @ReactMethod
-  fun setDefaultPresentationResultHandler(promise: Promise) {
-    defaultPurchasePromise = promise
-    Purchasely.setDefaultPresentationResultHandler { result, plan ->
-      sendPurchaseResult(result, plan)
+  fun setDefaultPresentationDismissHandler() {
+    // Global handler for presentations the app did NOT instantiate itself
+    // (campaigns, deeplinks, Promoted In-App Purchases). v6 renamed the native
+    // `setDefaultPresentationResultHandler` to `setDefaultPresentationDismissHandler`
+    // and now delivers a single rich `PLYPresentationOutcome`. The outcome is
+    // forwarded to JS through the dedicated DEFAULT_PRESENTATION_DISMISSED event.
+    Purchasely.setDefaultPresentationDismissHandler { outcome ->
+      emitDefaultPresentationDismissed(outcome)
     }
   }
 
   @ReactMethod
-  fun synchronize() {
-    Purchasely.synchronize()
-  }
-
-  @ReactMethod
-  fun fetchPresentation(placementId: String?,
-                        presentationId: String?,
-                        contentId: String?,
-                        promise: Promise) {
-
-
-    val properties = PLYPresentationProperties(
-      placementId = placementId,
-      presentationId = presentationId,
-      contentId = contentId)
-
-
-    Purchasely.fetchPresentation(properties = properties) { presentation: PLYPresentation?, error: PLYError? ->
-      GlobalScope.launch {
-        if(presentation != null) {
-          mutex.withLock {
-            presentationsLoaded.removeAll { it.id == presentation.id && it.placementId == presentation.placementId }
-            presentationsLoaded.add(presentation)
-            val map = presentation.toMap().mapValues {
-              val value = it.value
-              when(value) {
-                is PLYPresentationType -> value.ordinal
-                is PLYTransitionType -> value.ordinal
-                else -> value
-              }
-            }
-
-            val mutableMap = map.toMutableMap().apply {
-              this["metadata"] = presentation.metadata?.toMap()
-              this["plans"] = (this["plans"] as List<PLYPresentationPlan>).map { it.toMap() }
-              this["height"] = presentation.height ?: 0
-            }
-            promise.resolve(Arguments.makeNativeMap(mutableMap))
-          }
-        }
-        if(error != null) promise.reject(IllegalStateException(error.message ?: "Unable to fetch presentation"))
+  fun synchronize(promise: Promise) {
+    // v6 native SDK exposes onSuccess/onError callbacks. Bridge them to the JS
+    // promise so callers can `await Purchasely.synchronize()` and catch failures.
+    // Fire-and-forget callers (no await) stay source-compatible.
+    Purchasely.synchronize(
+      onSuccess = { promise.resolve(true) },
+      onError = { error ->
+        if (error == null) promise.reject("synchronize_error", "Synchronization failed")
+        else promise.reject(error)
       }
-    }
-  }
-
-  @ReactMethod
-  fun presentPresentation(presentationMap: ReadableMap?,
-                          isFullScreen: Boolean,
-                          loadingBackgroundColor: String?,
-                          promise: Promise) {
-    if (presentationMap == null) {
-      promise.reject(NullPointerException("presentation cannot be null"))
-      return
-    }
-
-    val presentation = presentationsLoaded.lastOrNull {
-      it.id == presentationMap.getString("id")
-      && it.placementId == presentationMap.getString("placementId")
-    }
-    if(presentation == null) {
-      promise.reject(NullPointerException("presentation not fond"))
-      return
-    }
-
-    purchasePromise = promise
-
-    reactApplicationContext.currentActivity?.let { activity ->
-      if (presentation.flowId != null) {
-        presentation.display(activity) { result, plan ->
-          sendPurchaseResult(result, plan)
-        }
-      } else {
-        val intent = PLYProductActivity.newIntent(activity, PLYPresentationProperties(), isFullScreen, loadingBackgroundColor).apply {
-          putExtra("presentation", presentation)
-        }
-        activity.startActivity(intent)
-      }
-    }
-  }
-
-  @ReactMethod
-  fun presentPresentationWithIdentifier(presentationVendorId: String?,
-                                        contentId: String?,
-                                        isFullScreen: Boolean,
-                                        loadingBackgroundColor: String?,
-                                        promise: Promise) {
-    purchasePromise = promise
-    reactApplicationContext.currentActivity?.let {
-      val properties = PLYPresentationProperties(
-        presentationId = presentationVendorId,
-        contentId = contentId
-      )
-      val intent = PLYProductActivity.newIntent(it, properties, isFullScreen, loadingBackgroundColor)
-      it.startActivity(intent)
-    }
-  }
-
-  @ReactMethod
-  fun presentPresentationForPlacement(placementVendorId: String?,
-                                      contentId: String?,
-                                      isFullScreen: Boolean,
-                                      loadingBackgroundColor: String?,
-                                      promise: Promise) {
-    purchasePromise = promise
-    reactApplicationContext.currentActivity?.let {
-      val properties = PLYPresentationProperties(
-        placementId = placementVendorId,
-        contentId = contentId
-      )
-      val intent = PLYProductActivity.newIntent(it, properties, isFullScreen, loadingBackgroundColor)
-      it.startActivity(intent)
-    }
-  }
-
-  @ReactMethod
-  fun presentProductWithIdentifier(productVendorId: String,
-                                   presentationVendorId: String?,
-                                   contentId: String?,
-                                   isFullScreen: Boolean,
-                                   loadingBackgroundColor: String?,
-                                   promise: Promise) {
-    purchasePromise = promise
-    reactApplicationContext.currentActivity?.let {
-      val properties = PLYPresentationProperties(
-        presentationId = presentationVendorId,
-        productId = productVendorId,
-        contentId = contentId
-      )
-      val intent = PLYProductActivity.newIntent(it, properties, isFullScreen, loadingBackgroundColor)
-      it.startActivity(intent)
-    }
-  }
-
-  @ReactMethod
-  fun presentPlanWithIdentifier(planVendorId: String,
-                                presentationVendorId: String?,
-                                contentId: String?,
-                                isFullScreen: Boolean,
-                                loadingBackgroundColor: String?,
-                                promise: Promise) {
-    purchasePromise = promise
-    reactApplicationContext.currentActivity?.let {
-      val properties = PLYPresentationProperties(
-        presentationId = presentationVendorId,
-        planId = planVendorId,
-        contentId = contentId
-      )
-      val intent = PLYProductActivity.newIntent(it, properties, isFullScreen, loadingBackgroundColor)
-      it.startActivity(intent)
-    }
+    )
   }
 
   @ReactMethod
@@ -532,11 +400,6 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     )
   }
 
-  @ReactMethod
-  fun displaySubscriptionCancellationInstruction() {
-    Purchasely.displaySubscriptionCancellationInstruction(reactApplicationContext.currentActivity as FragmentActivity, 0)
-  }
-
   private fun legalBasisFromString(basis: String?): PLYDataProcessingLegalBasis {
   return when (basis?.uppercase(Locale.ROOT)) {
     "ESSENTIAL" -> PLYDataProcessingLegalBasis.ESSENTIAL
@@ -551,12 +414,11 @@ fun setUserAttributeWithString(key: String, value: String, legalBasis: String?) 
 
 @ReactMethod
 fun setUserAttributeWithNumber(key: String, value: Double, legalBasis: String?) {
-  val lb = legalBasisFromString(legalBasis)
-  if (value.compareTo(value.toInt()) == 0) {
-    Purchasely.setUserAttribute(key, value.toInt(), lb)
-  } else {
-    Purchasely.setUserAttribute(key, value.toFloat(), lb)
-  }
+  // RN passes every JS number as a Double, but Purchasely.setUserAttribute has no
+  // Double overload — only (String, int, …) and (String, float, …). Kotlin does not
+  // implicitly narrow Double, so convert to Float explicitly to select the float
+  // overload (both overloads return Deferred; they are not suspend functions).
+  Purchasely.setUserAttribute(key, value.toFloat(), legalBasisFromString(legalBasis))
 }
 
 @ReactMethod
@@ -583,13 +445,20 @@ fun setUserAttributeWithDate(key: String, value: String, legalBasis: String?) {
 
 @ReactMethod
 fun setUserAttributeWithStringArray(key: String, value: ReadableArray, legalBasis: String?) {
-  val array = value.toArrayList().mapNotNull { it?.toString() }.toTypedArray()
+  // v6's Purchasely.setUserAttribute expects java.lang.String[] for string arrays.
+  // Keep the conversion client-side (ReadableArray → Array<String>) and pass the
+  // result through the suspend bridge via a typed `Array<String>` so the
+  // coroutine continuation can resolve the String[] overload correctly.
+  val array: Array<String> = value.toArrayList()
+    .mapNotNull { it?.toString() }
+    .toTypedArray()
   Purchasely.setUserAttribute(key, array, legalBasisFromString(legalBasis))
 }
 
 @ReactMethod
 fun setUserAttributeWithNumberArray(key: String, value: ReadableArray, legalBasis: String?) {
-  val array = value.toArrayList()
+  // v6's Purchasely.setUserAttribute expects java.lang.Float[] for number arrays.
+  val array: Array<Float> = value.toArrayList()
     .mapNotNull { it?.toString()?.toFloatOrNull() }
     .toTypedArray()
   Purchasely.setUserAttribute(key, array, legalBasisFromString(legalBasis))
@@ -597,7 +466,8 @@ fun setUserAttributeWithNumberArray(key: String, value: ReadableArray, legalBasi
 
 @ReactMethod
 fun setUserAttributeWithBooleanArray(key: String, value: ReadableArray, legalBasis: String?) {
-  val array = value.toArrayList()
+  // v6's Purchasely.setUserAttribute expects java.lang.Boolean[] for boolean arrays.
+  val array: Array<Boolean> = value.toArrayList()
     .mapNotNull {
       when (it) {
         is Boolean -> it
@@ -654,6 +524,13 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
       is Int -> value.toDouble()
       //awful but to keep same precision so 1.2f = 1.2 double and not 1.20000056
       is Float -> value.toString().toDouble()
+      // Array/List attributes (String[], Integer[], Float[], Boolean[], …) must be
+      // turned into a React Native WritableArray. A raw Java array handed to
+      // promise.resolve() / Arguments.makeNativeMap() throws
+      // "Cannot convert argument of type class [Ljava.lang.String;" (Arguments.kt).
+      // Normalize each element first so Int/Float land as Double, matching scalars.
+      is Array<*> -> Arguments.makeNativeArray(value.map { getUserAttributeValueForRN(it) })
+      is List<*> -> Arguments.makeNativeArray(value.map { getUserAttributeValueForRN(it) })
       else -> value
     }
   }
@@ -666,35 +543,6 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
   @ReactMethod
   fun clearUserAttributes() {
     Purchasely.clearUserAttributes()
-  }
-
-  @ReactMethod
-  fun clientPresentationDisplayed(presentationMap: ReadableMap?) {
-      if(presentationMap == null) {
-        PLYLogger.e("presentation cannot be null")
-        return
-      }
-
-    val presentation = presentationsLoaded.firstOrNull { it.id ==  presentationMap.getString("id")}
-
-    if(presentation != null) {
-      Purchasely.clientPresentationDisplayed(presentation)
-    }
-  }
-
-  @ReactMethod
-  fun clientPresentationClosed(presentationMap: ReadableMap?) {
-    if(presentationMap == null) {
-      PLYLogger.e("presentation cannot be null")
-      return
-    }
-
-    val presentation = presentationsLoaded.firstOrNull { it.id ==  presentationMap.getString("id")}
-
-    if(presentation != null) {
-      Purchasely.clientPresentationClosed(presentation)
-    }
-
   }
 
   @ReactMethod
@@ -758,57 +606,13 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
   }
 
   @ReactMethod
-  fun presentSubscriptions() {
-    val intent = Intent(reactApplicationContext.applicationContext, PLYSubscriptionsActivity::class.java)
-    reactApplicationContext.currentActivity?.startActivity(intent)
-  }
-
-  @ReactMethod
-  fun isDeeplinkHandled(deeplink: String?, promise: Promise) {
+  fun handleDeeplink(deeplink: String?, promise: Promise) {
     if (deeplink == null) {
       promise.reject(IllegalStateException("Deeplink must not be null"))
       return
     }
     val uri = Uri.parse(deeplink)
-    promise.resolve(Purchasely.isDeeplinkHandled(uri))
-  }
-
-  @ReactMethod
-  fun setPaywallActionInterceptor(promise: Promise) {
-    Purchasely.setPaywallActionsInterceptor { info, action, parameters, processAction ->
-      paywallActionHandler = processAction
-      paywallAction = action
-
-      val parametersForReact = hashMapOf<String, Any?>();
-      parametersForReact["title"] = parameters.title
-      parametersForReact["url"] = parameters.url?.toString()
-      parametersForReact["plan"] = transformPlanToMap(parameters.plan)
-      parametersForReact["offer"] = mapOf(
-        "vendorId" to parameters.offer?.vendorId,
-        "storeOfferId" to parameters.offer?.storeOfferId
-      )
-      parametersForReact["subscriptionOffer"] = parameters.subscriptionOffer?.toMap()
-      parametersForReact["presentation"] = parameters.presentation
-      parametersForReact["placement"] = parameters.placement
-      parametersForReact["closeReason"] = parameters.closeReason?.name
-      parametersForReact["clientReferenceId"] = parameters?.clientReferenceId
-      parametersForReact["queryParameterKey"] = parameters?.queryParameterKey
-      parametersForReact["webCheckoutProvider"] = parameters?.webCheckoutProvider?.name
-
-      promise.resolve(Arguments.makeNativeMap(
-        mapOf(
-          Pair("info", mapOf(
-            Pair("contentId", info?.contentId),
-            Pair("presentationId", info?.presentationId),
-            Pair("placementId", info?.placementId),
-            Pair("abTestId", info?.abTestId),
-            Pair("abTestVariantId", info?.abTestVariantId)
-          )),
-          Pair("action", action.value),
-          Pair("parameters", parametersForReact.filterNot { it.value == null })
-        )
-      ))
-    }
+    promise.resolve(Purchasely.handleDeeplink(uri, reactApplicationContext.currentActivity))
   }
 
   @ReactMethod
@@ -830,46 +634,6 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
   @ReactMethod
   fun isAnonymous(promise: Promise) {
     promise.resolve(Purchasely.isAnonymous())
-  }
-
-  @ReactMethod
-  fun showPresentation() {
-    CoroutineScope(Dispatchers.Main).launch {
-      if (productActivity?.relaunch(reactApplicationContext) == false) {
-        //wait for activity to relaunch
-        withContext(Dispatchers.Default) { delay(500) }
-      }
-    }
-  }
-
-  @ReactMethod
-  fun onProcessAction(processAction: Boolean) {
-    CoroutineScope(Dispatchers.Default).launch {
-      delay(500)
-      val activityHandler = productActivity?.activity?.get() ?: reactApplicationContext.currentActivity
-      withContext(Dispatchers.Main) {
-        activityHandler?.runOnUiThread {
-          paywallActionHandler?.invoke(processAction)
-        }
-      }
-    }
-  }
-
-  @ReactMethod
-  fun closePresentation() {
-    Purchasely.closeAllScreens()
-    productActivity = null
-  }
-
-  @ReactMethod
-  fun hidePresentation() {
-    val reactActivity = reactApplicationContext.currentActivity ?: return
-    val activity = productActivity?.activity?.get() ?: reactActivity
-    activity.startActivity(
-      Intent(activity, reactActivity::class.java).apply {
-        flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
-      }
-    )
   }
 
   @ReactMethod
@@ -940,6 +704,475 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
     Purchasely.debugMode = enabled
   }
 
+  // region presentation — cross-platform bridge methods
+  // See: the cross-platform bridge contract
+  //
+  // The bridge logic lives directly in this single native module. Lifecycle
+  // events are emitted over the existing RCTDeviceEventEmitter using the
+  // PURCHASELY_PRESENTATION_* event names. State + constants are in the companion object.
+
+  /** preload entry point. JS calls this with a requestId + builder payload. */
+  @ReactMethod
+  fun preloadPresentation(requestId: String, payload: ReadableMap?, promise: Promise) {
+    try {
+      val prepared = buildPreparedPresentation(payload)
+      activePresentationRequests[requestId] = prepared
+      wirePresentationCallbacks(requestId, prepared)
+
+      prepared.preload { loaded, error ->
+        val map = Arguments.createMap()
+        map.putString("requestId", requestId)
+        loaded?.let {
+          activeLoadedPresentations[requestId] = it
+          map.putMap("presentation", it.toRNMap())
+        }
+        error?.let { map.putMap("error", it.toRNMap()) }
+        sendEvent(reactApplicationContext, EVENT_PRESENTATION_LOADED, map)
+      }
+      promise.resolve(true)
+    } catch (e: Throwable) {
+      promise.reject("preload_failure", e.message, e)
+    }
+  }
+
+  /**
+   * display entry point. JS calls this with a requestId + builder payload
+   * (+ optional transition).
+   */
+  @ReactMethod
+  fun displayPresentation(
+    requestId: String,
+    payload: ReadableMap?,
+    transition: ReadableMap?,
+    promise: Promise
+  ) {
+    try {
+      val activity: Activity = reactApplicationContext.currentActivity
+        ?: throw IllegalStateException("No current activity to host the presentation")
+
+      val prepared = activePresentationRequests[requestId] ?: buildPreparedPresentation(payload).also {
+        activePresentationRequests[requestId] = it
+        wirePresentationCallbacks(requestId, it)
+      }
+
+      val plyTransition: PLYTransition? = transition?.let { tm ->
+        if (!tm.hasKey("type") || tm.isNull("type")) {
+          null
+        } else {
+          val type = when (tm.getString("type")) {
+            "fullScreen" -> PLYTransitionType.FULLSCREEN
+            "push" -> PLYTransitionType.PUSH
+            "modal" -> PLYTransitionType.MODAL
+            "drawer" -> PLYTransitionType.DRAWER
+            "popin" -> PLYTransitionType.POPIN
+            // `inlinePaywall` not supported by PLYTransition — fall through.
+            else -> PLYTransitionType.FULLSCREEN
+          }
+          // v6: width/height are typed dimensions ({ type: 'pixel'|'percentage',
+          // value }), mirroring the native PLYTransitionDimension. The legacy
+          // `heightPercentage` field was removed from the cross-platform API.
+          fun readDimension(key: String): PLYTransitionDimension? {
+            if (!tm.hasKey(key) || tm.isNull(key)) return null
+            val dim = tm.getMap(key) ?: return null
+            val dimType = when (dim.getString("type")) {
+              "pixel" -> PLYDimensionType.PIXEL
+              else -> PLYDimensionType.PERCENTAGE
+            }
+            val value =
+              if (dim.hasKey("value") && !dim.isNull("value")) {
+                dim.getDouble("value").toFloat()
+              } else {
+                0f
+              }
+            return PLYTransitionDimension(type = dimType, value = value)
+          }
+          val width = readDimension("width")
+          val height = readDimension("height")
+          val dismissible =
+            if (tm.hasKey("dismissible") && !tm.isNull("dismissible")) {
+              tm.getBoolean("dismissible")
+            } else {
+              true
+            }
+          PLYTransition(
+            type = type,
+            width = width,
+            height = height,
+            dismissible = dismissible
+          )
+        }
+      }
+
+      // The outcome is emitted to JS through `onDismissed` (wired in
+      // `wirePresentationCallbacks`), so the local `callback` is a noop. We still pass an
+      // outcome handler so the SDK does not log a missing-callback warning.
+      prepared.display(
+        context = activity,
+        transition = plyTransition,
+        presentation = { loaded -> activeLoadedPresentations[requestId] = loaded },
+        callback = { outcome -> emitPresentationDismissed(requestId, outcome) }
+      )
+
+      promise.resolve(true)
+    } catch (e: Throwable) {
+      // Reject only — the JS `.catch` on displayPresentation synthesizes the dismissed
+      // outcome (onPresented(null, error) + onDismissed), mirroring the iOS
+      // error path. Emitting a DISMISSED event here too would invoke the
+      // user-supplied onDismissed callback twice.
+      activePresentationRequests.remove(requestId)
+      promise.reject("display_failure", e.message, e)
+    }
+  }
+
+  @ReactMethod
+  fun closePresentation(requestId: String) {
+    activePresentationRequests.remove(requestId)
+    activeLoadedPresentations.remove(requestId)
+    // The SDK does not yet expose a per-request close, so this dismisses
+    // *every* displayed presentation, not just `requestId`. Warn the host when
+    // other requests are still active so tearing down a stacked presentation is
+    // not a silent surprise.
+    if (activePresentationRequests.isNotEmpty()) {
+      PLYLogger.w(
+        "[Purchasely] close($requestId) dismisses ALL displayed presentations " +
+          "(per-request close is not yet supported by the native SDK); " +
+          "${activePresentationRequests.size} other active request(s) will also be closed."
+      )
+    }
+    Purchasely.closeAllScreens()
+  }
+
+  @ReactMethod
+  fun goBackToPreviousScreen(requestId: String) {
+    val loaded = activeLoadedPresentations[requestId]
+    if (loaded == null) {
+      PLYLogger.w("[Purchasely] back($requestId) ignored: presentation is not loaded")
+      return
+    }
+    loaded.back()
+  }
+
+  /** Register an interceptor for a given action kind. */
+  @ReactMethod
+  fun registerActionInterceptor(kind: String) {
+    val actionType: Class<out PLYPresentationAction> = when (kind) {
+      "close" -> PLYPresentationAction.Close::class.java
+      "closeAll" -> PLYPresentationAction.CloseAll::class.java
+      "login" -> PLYPresentationAction.Login::class.java
+      "navigate" -> PLYPresentationAction.Navigate::class.java
+      "purchase" -> PLYPresentationAction.Purchase::class.java
+      "restore" -> PLYPresentationAction.Restore::class.java
+      "openPresentation" -> PLYPresentationAction.OpenPresentation::class.java
+      "openPlacement" -> PLYPresentationAction.OpenPlacement::class.java
+      "promoCode" -> PLYPresentationAction.PromoCode::class.java
+      "webCheckout" -> PLYPresentationAction.WebCheckout::class.java
+      else -> {
+        PLYLogger.w("[Purchasely] unknown interceptor kind: $kind")
+        return
+      }
+    }
+
+    Purchasely.interceptAction(actionType) { info, action, complete ->
+      val callbackId = UUID.randomUUID().toString()
+      val deferred = CompletableDeferred<PLYInterceptResult>()
+      pendingActionInterceptors[callbackId] = deferred
+
+      val payload = Arguments.createMap()
+      payload.putString("requestId", "")
+      payload.putString("callbackId", callbackId)
+      payload.putString("kind", kind)
+      payload.putMap("info", info.toRNMap())
+      payload.putMap("payload", action.toRNPayload())
+      sendEvent(reactApplicationContext, EVENT_ACTION_INTERCEPTED, payload)
+
+      CoroutineScope(Dispatchers.Main).launch {
+        // Bound the suspension: `withTimeoutOrNull` returns null if JS never
+        // calls back within INTERCEPTOR_TIMEOUT_MS, and `runCatching` guards
+        // against the deferred being cancelled. In every case we default to
+        // NOT_HANDLED and drop the pending entry so neither the SDK action nor
+        // the `complete` lambda is held alive forever.
+        val result = runCatching {
+          withTimeoutOrNull(INTERCEPTOR_TIMEOUT_MS) { deferred.await() }
+        }.getOrNull() ?: PLYInterceptResult.NOT_HANDLED
+        pendingActionInterceptors.remove(callbackId)
+        complete(result)
+      }
+    }
+  }
+
+  @ReactMethod
+  fun unregisterActionInterceptor(kind: String) {
+    val actionType: Class<out PLYPresentationAction>? = when (kind) {
+      "close" -> PLYPresentationAction.Close::class.java
+      "closeAll" -> PLYPresentationAction.CloseAll::class.java
+      "login" -> PLYPresentationAction.Login::class.java
+      "navigate" -> PLYPresentationAction.Navigate::class.java
+      "purchase" -> PLYPresentationAction.Purchase::class.java
+      "restore" -> PLYPresentationAction.Restore::class.java
+      "openPresentation" -> PLYPresentationAction.OpenPresentation::class.java
+      "openPlacement" -> PLYPresentationAction.OpenPlacement::class.java
+      "promoCode" -> PLYPresentationAction.PromoCode::class.java
+      "webCheckout" -> PLYPresentationAction.WebCheckout::class.java
+      else -> null
+    }
+    if (actionType == null) {
+      PLYLogger.w("[Purchasely] unknown interceptor kind: $kind")
+      return
+    }
+    runCatching {
+      Purchasely.removeActionInterceptor(actionType)
+    }.onFailure {
+      PLYLogger.w("[Purchasely] removeActionInterceptor($kind) failed: ${it.message}")
+    }
+  }
+
+  @ReactMethod
+  fun completeActionInterceptor(callbackId: String, result: String) {
+    val deferred = pendingActionInterceptors.remove(callbackId) ?: return
+    deferred.complete(
+      when (result) {
+        "success" -> PLYInterceptResult.SUCCESS
+        "failed" -> PLYInterceptResult.FAILED
+        else -> PLYInterceptResult.NOT_HANDLED
+      }
+    )
+  }
+
+  @ReactMethod
+  fun applyStartOptions(options: ReadableMap) {
+    if (options.hasKey("allowDeeplink") && !options.isNull("allowDeeplink")) {
+      Purchasely.allowDeeplink = options.getBoolean("allowDeeplink")
+    }
+    if (options.hasKey("allowCampaigns") && !options.isNull("allowCampaigns")) {
+      Purchasely.allowCampaigns = options.getBoolean("allowCampaigns")
+    }
+  }
+
+  // --- presentation private helpers ---
+
+  /**
+   * Build a [PLYPresentationBase.Prepared] from the JS payload.
+   *
+   * The JS `isDefault` flag (set by `PresentationBuilder.default()`) is
+   * intentionally **not** read here: a `default()` request carries no
+   * `placementId` and no `presentationId`, and the native SDK resolves the
+   * default presentation (`ply_default`) precisely from that absence —
+   * `PLYPresentationManager.getPresentation` routes a request with both ids
+   * null to `apiService.getPresentation(null)`, which substitutes
+   * `"ply_default"`. An empty builder is therefore the Android equivalent of
+   * iOS `fetchPresentationWith:nil`, so no `isDefault` branch is required.
+   */
+  private fun buildPreparedPresentation(payload: ReadableMap?): PLYPresentationBase.Prepared {
+    val builder = PLYPresentationBase.builder()
+    payload?.let { p ->
+      if (p.hasKey("placementId") && !p.isNull("placementId")) {
+        builder.placementId(p.getString("placementId")!!)
+      }
+      if (p.hasKey("presentationId") && !p.isNull("presentationId")) {
+        // The JS `screenId` is forwarded as the legacy native key `presentationId`.
+        builder.screenId(p.getString("presentationId")!!)
+      }
+      if (p.hasKey("contentId") && !p.isNull("contentId")) {
+        builder.contentId(p.getString("contentId"))
+      }
+      if (p.hasKey("displayCloseButton") && !p.isNull("displayCloseButton")) {
+        builder.displayCloseButton(p.getBoolean("displayCloseButton"))
+      }
+      if (p.hasKey("displayBackButton") && !p.isNull("displayBackButton")) {
+        builder.displayBackButton(p.getBoolean("displayBackButton"))
+      }
+      if (p.hasKey("backgroundColor") && !p.isNull("backgroundColor")) {
+        runCatching {
+          val color = android.graphics.Color.parseColor(p.getString("backgroundColor"))
+          builder.backgroundColor(color)
+        }.onFailure {
+          PLYLogger.w("[Purchasely] invalid backgroundColor: ${p.getString("backgroundColor")}")
+        }
+      }
+      if (p.hasKey("progressColor") && !p.isNull("progressColor")) {
+        runCatching {
+          val color = android.graphics.Color.parseColor(p.getString("progressColor"))
+          builder.progressColor(color)
+        }.onFailure {
+          PLYLogger.w("[Purchasely] invalid progressColor: ${p.getString("progressColor")}")
+        }
+      }
+    }
+    return builder.build()
+  }
+
+  private fun wirePresentationCallbacks(requestId: String, prepared: PLYPresentationBase.Prepared) {
+    prepared.onPresented = { presentation, error ->
+      val payload = Arguments.createMap()
+      payload.putString("requestId", requestId)
+      presentation?.let { payload.putMap("presentation", it.toRNMap()) }
+      error?.let { payload.putMap("error", it.toRNMap()) }
+      sendEvent(reactApplicationContext, EVENT_PRESENTATION_PRESENTED, payload)
+    }
+    prepared.onCloseRequested = {
+      val payload = Arguments.createMap()
+      payload.putString("requestId", requestId)
+      sendEvent(reactApplicationContext, EVENT_PRESENTATION_CLOSE_REQUESTED, payload)
+    }
+    prepared.onDismissed = { outcome: PLYPresentationOutcome ->
+      emitPresentationDismissed(requestId, outcome)
+    }
+  }
+
+  private fun emitPresentationDismissed(requestId: String, outcome: PLYPresentationOutcome) {
+    val payload = Arguments.createMap()
+    payload.putString("requestId", requestId)
+    outcome.presentation?.let { payload.putMap("presentation", it.toRNMap()) }
+    outcome.purchaseResult?.let { payload.putInt("purchaseResult", it.toRNOrdinal()) }
+    outcome.plan?.let {
+      payload.putMap("plan", Arguments.makeNativeMap(
+        transformPlanToMap(it).toMutableMap()
+      ))
+    }
+    outcome.closeReason?.let { payload.putString("closeReason", it.toRNString()) }
+    outcome.error?.let { payload.putMap("error", it.toRNMap()) }
+    sendEvent(reactApplicationContext, EVENT_PRESENTATION_DISMISSED, payload)
+    activePresentationRequests.remove(requestId)
+    activeLoadedPresentations.remove(requestId)
+  }
+
+  /**
+   * Emit the rich outcome of a presentation the app did NOT instantiate itself
+   * (campaign, deeplink, Promoted In-App Purchase) to the global
+   * `setDefaultPresentationDismissHandler` JS callback. Same payload shape as
+   * [emitPresentationDismissed] but without a `requestId` — the SDK, not the
+   * app, owns these presentations. The `presentation` field is always populated
+   * so JS can identify which campaign/deeplink screen closed.
+   */
+  private fun emitDefaultPresentationDismissed(outcome: PLYPresentationOutcome) {
+    val payload = Arguments.createMap()
+    outcome.presentation?.let { payload.putMap("presentation", it.toRNMap()) }
+    outcome.purchaseResult?.let { payload.putInt("purchaseResult", it.toRNOrdinal()) }
+    outcome.plan?.let {
+      payload.putMap("plan", Arguments.makeNativeMap(
+        transformPlanToMap(it).toMutableMap()
+      ))
+    }
+    outcome.closeReason?.let { payload.putString("closeReason", it.toRNString()) }
+    outcome.error?.let { payload.putMap("error", it.toRNMap()) }
+    sendEvent(reactApplicationContext, EVENT_DEFAULT_PRESENTATION_DISMISSED, payload)
+  }
+
+  /**
+   * Convert a [PLYPresentation] to a React-Native map. We expose the screenId
+   * (mapped from the SDK `screenId`) and keep `id` as alias for compat.
+   */
+  private fun PLYPresentation.toRNMap(): WritableMap {
+    val map = Arguments.createMap()
+    map.putString("screenId", screenId)
+    map.putString("id", screenId)
+    placementId?.let { map.putString("placementId", it) }
+    contentId?.let { map.putString("contentId", it) }
+    // Audience / AB-test ids live in the request payload; expose what we have.
+    runCatching { audienceId?.let { map.putString("audienceId", it) } }
+    runCatching { abTestId?.let { map.putString("abTestId", it) } }
+    runCatching { abTestVariantId?.let { map.putString("abTestVariantId", it) } }
+    runCatching { campaignId?.let { map.putString("campaignId", it) } }
+    runCatching { flowId?.let { map.putString("flowId", it) } }
+    runCatching { language?.let { map.putString("language", it) } }
+    runCatching { map.putInt("type", type.ordinal) }
+    runCatching { map.putInt("height", height) }
+    if (plans.isNotEmpty()) {
+      val planMaps = plans.map { Arguments.makeNativeMap(it.toMap()) }
+      map.putArray("plans", Arguments.makeNativeArray(planMaps))
+    }
+    metadata?.let { map.putMap("metadata", Arguments.makeNativeMap(it.toRNMetadataMap())) }
+    return map
+  }
+
+  private fun io.purchasely.ext.presentation.PLYPresentationMetadata.toRNMetadataMap(): Map<String, Any?> {
+    return keys().associateWith { key -> get(key) }
+  }
+
+  private fun PLYError.toRNMap(): WritableMap {
+    val map = Arguments.createMap()
+    map.putString("message", message ?: "Unknown error")
+    return map
+  }
+
+  private fun PLYCloseReason.toRNString(): String = when (this) {
+    PLYCloseReason.BUTTON -> "button"
+    PLYCloseReason.BACK_SYSTEM -> "backSystem"
+    PLYCloseReason.PROGRAMMATIC -> "programmatic"
+  }
+
+  private fun PLYPurchaseResult.toRNOrdinal(): Int = when (this) {
+    PLYPurchaseResult.PURCHASED -> 0
+    PLYPurchaseResult.CANCELLED -> 1
+    PLYPurchaseResult.RESTORED -> 2
+  }
+
+  private fun PLYInterceptorInfo.toRNMap(): WritableMap {
+    val map = Arguments.createMap()
+    contentId?.let { map.putString("contentId", it) }
+    presentation?.let { map.putMap("presentation", it.toRNMap()) }
+    return map
+  }
+
+  private fun PLYPresentationAction.toRNPayload(): WritableMap {
+    val payload = Arguments.createMap()
+    when (this) {
+      is PLYPresentationAction.Navigate -> {
+        payload.putString("url", url.toString())
+        title?.let { payload.putString("title", it) }
+      }
+      is PLYPresentationAction.Purchase -> {
+        payload.putMap(
+          "plan",
+          Arguments.makeNativeMap(
+            transformPlanToMap(plan).toMutableMap()
+          )
+        )
+        offer?.let {
+          val offerMap = Arguments.createMap()
+          it.vendorId?.let { v -> offerMap.putString("vendorId", v) }
+          it.storeOfferId?.let { v -> offerMap.putString("storeOfferId", v) }
+          payload.putMap("offer", offerMap)
+        }
+        subscriptionOffer?.let { so ->
+          val soMap = Arguments.createMap()
+          soMap.putString("subscriptionId", so.subscriptionId)
+          so.basePlanId?.let { soMap.putString("basePlanId", it) }
+          so.offerToken?.let { soMap.putString("offerToken", it) }
+          so.offerId?.let { soMap.putString("offerId", it) }
+          payload.putMap("subscriptionOffer", soMap)
+        }
+      }
+      is PLYPresentationAction.Close -> {
+        payload.putString("closeReason", closeReason.toRNString())
+      }
+      is PLYPresentationAction.CloseAll -> {
+        payload.putString("closeReason", closeReason.toRNString())
+      }
+      is PLYPresentationAction.OpenPresentation -> {
+        payload.putString("presentationId", presentationId)
+      }
+      is PLYPresentationAction.OpenPlacement -> {
+        payload.putString("placementId", placementId)
+      }
+      is PLYPresentationAction.WebCheckout -> {
+        payload.putString("url", url.toString())
+        payload.putString("clientReferenceId", clientReferenceId)
+        payload.putString("queryParameterKey", queryParameterKey)
+        payload.putString(
+          "webCheckoutProvider",
+          webCheckoutProvider.name.lowercase()
+        )
+      }
+      else -> {
+        // login, restore, promoCode → no extra payload.
+      }
+    }
+    return payload
+  }
+
+  // endregion
+
   private fun mapPurposesFromReadableArray(purposes: ReadableArray): Set<PLYDataProcessingPurpose> {
     val result = mutableSetOf<PLYDataProcessingPurpose>()
 
@@ -972,26 +1205,33 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
     private const val runningModePaywallObserver = 3
     private const val runningModeFull = 4
 
-    val presentationsLoaded = mutableListOf<PLYPresentation>()
+    // bridge — event names, interceptor timeout, and per-request state
+    // (kept in the companion to preserve the process-global semantics the
+    // former standalone bridge object had).
+    private const val EVENT_PRESENTATION_LOADED = "PURCHASELY_PRESENTATION_LOADED"
+    private const val EVENT_PRESENTATION_PRESENTED = "PURCHASELY_PRESENTATION_PRESENTED"
+    private const val EVENT_PRESENTATION_CLOSE_REQUESTED = "PURCHASELY_PRESENTATION_CLOSE_REQUESTED"
+    private const val EVENT_PRESENTATION_DISMISSED = "PURCHASELY_PRESENTATION_DISMISSED"
+    private const val EVENT_DEFAULT_PRESENTATION_DISMISSED = "PURCHASELY_DEFAULT_PRESENTATION_DISMISSED"
+    private const val EVENT_ACTION_INTERCEPTED = "PURCHASELY_ACTION_INTERCEPTED"
 
-    var productActivity: ProductActivity? = null
-    var purchasePromise: Promise? = null
-    var defaultPurchasePromise: Promise? = null
-    var paywallActionHandler: PLYCompletionHandler? = null
-    var paywallAction: PLYPresentationAction? = null
+    /**
+     * Upper bound on how long the bridge waits for JS to resolve an intercepted
+     * action via [completeActionInterceptor]. If the JS handler never calls back
+     * (e.g. the event listener was torn down by a bridge reload), we fall back to
+     * [PLYInterceptResult.NOT_HANDLED] so the SDK is never blocked indefinitely.
+     */
+    private const val INTERCEPTOR_TIMEOUT_MS = 30_000L
 
-    fun sendPurchaseResult(result: PLYProductViewResult, plan: PLYPlan?) {
-      val productViewResult = when(result) {
-        PLYProductViewResult.PURCHASED -> PLYProductViewResult.PURCHASED.ordinal
-        PLYProductViewResult.CANCELLED -> PLYProductViewResult.CANCELLED.ordinal
-        PLYProductViewResult.RESTORED -> PLYProductViewResult.RESTORED.ordinal
-      }
+    /** Active presentation requests, keyed by the JS-supplied requestId. */
+    private val activePresentationRequests = ConcurrentHashMap<String, PLYPresentationBase.Prepared>()
 
-      val map: MutableMap<String, Any?> = HashMap()
-      map["result"] = productViewResult
-      map["plan"] = transformPlanToMap(plan)
-      purchasePromise?.resolve(Arguments.makeNativeMap(map)) ?: defaultPurchasePromise?.resolve(Arguments.makeNativeMap(map))
-    }
+    /** Loaded presentations currently associated with a JS request id. */
+    private val activeLoadedPresentations = ConcurrentHashMap<String, PLYPresentation>()
+
+    /** Pending interceptor callbacks, resolved when JS calls completeActionInterceptor. */
+    private val pendingActionInterceptors =
+      ConcurrentHashMap<String, CompletableDeferred<PLYInterceptResult>>()
 
     fun transformPlanToMap(plan: PLYPlan?): Map<String, Any?> {
       if(plan == null) return emptyMap()
@@ -1009,62 +1249,19 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
     }
   }
 
-  class ProductActivity(
-    val presentation: PLYPresentation? = null,
-    val presentationId: String? = null,
-    val placementId: String? = null,
-    val productId: String? = null,
-    val planId: String? = null,
-    val contentId: String? = null,
-    val isFullScreen: Boolean = false,
-    val loadingBackgroundColor: String? = null) {
-
-    var activity: WeakReference<Activity>? = null
-
-
-    fun relaunch(reactApplicationContext: ReactApplicationContext) : Boolean {
-      val backgroundActivity = activity?.get()
-      return if(backgroundActivity != null
-          && !backgroundActivity.isFinishing
-          && !backgroundActivity.isDestroyed) {
-        reactApplicationContext.currentActivity?.let {
-          it.startActivity(
-            Intent(it, backgroundActivity::class.java).apply {
-              //flags = Intent.FLAG_ACTIVITY_NEW_TASK
-              flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
-            }
-          )
-        }
-        true
-      } else {
-        reactApplicationContext.currentActivity?.let {
-          val properties = PLYPresentationProperties(
-            presentationId = presentationId,
-            placementId = placementId,
-            productId = productId,
-            planId = planId,
-            contentId = contentId
-          )
-          val intent = PLYProductActivity.newIntent(it, properties, isFullScreen, loadingBackgroundColor).apply {
-            putExtra("presentation", presentation)
-          }
-          it.startActivity(intent)
-        }
-        return false
-      }
-    }
-  }
-
-  fun PLYPresentationPlan.toMap() : Map<String, String?> {
+  fun PLYPresentationPlan.toMap(): Map<String, Any?> {
     return mapOf(
       Pair("planVendorId", planVendorId),
       Pair("storeProductId", storeProductId),
       Pair("basePlanId", basePlanId),
-      Pair("storeOfferId", storeOfferId)
+      Pair("storeOfferId", storeOfferId),
+      Pair("offerId", storeOfferId),
+      Pair("offerVendorId", offerVendorId),
+      Pair("default", default)
     )
   }
 
-  suspend fun PLYPresentationMetadata.toMap() : Map<String, Any> {
+  suspend fun io.purchasely.ext.presentation.PLYPresentationMetadata.toMap(): Map<String, Any> {
     val metadata = mutableMapOf<String, Any>()
     this.keys()?.forEach { key ->
       val value = when (this.type(key)) {

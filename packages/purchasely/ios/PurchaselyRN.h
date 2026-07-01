@@ -15,15 +15,10 @@
 
 @property (class, nonatomic, copy) RCTPromiseResolveBlock purchaseResolve;
 
-@property (class, nonatomic, strong) NSMutableArray<PLYPresentation *> *presentationsLoaded;
+@property (class, nonatomic, strong) NSMutableArray<id<PLYPresentation>> *presentationsLoaded;
 
 @property (nonatomic, assign) Boolean shouldReopenPaywall;
 
 @property (nonatomic, assign) Boolean shouldEmit;
-
-@property void (^loginClosedHandler)(BOOL loggedIn);
-@property void (^authorizePurchaseHandler)(BOOL authorizePurchase);
-@property void (^onProcessActionHandler)(BOOL proceed);
-@property enum PLYPresentationAction paywallAction;
 
 @end

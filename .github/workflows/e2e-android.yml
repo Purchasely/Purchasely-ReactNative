@@ -1,0 +1,110 @@
+name: E2E Android
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 2h00 UTC chaque nuit
+    - cron: '0 2 * * *'
+  push:
+    branches:
+      - feat/sdk-v6-migration
+    paths:
+      - 'packages/purchasely/android/build.gradle'
+      - 'packages/*/android/build.gradle'
+      - '.github/workflows/e2e-android.yml'
+      - 'integration_test/**'
+      - 'example/src/E2ETestRunner.tsx'
+      - 'example/android/app/build.gradle'
+  pull_request:
+    paths:
+      - 'packages/purchasely/android/build.gradle'
+      - 'packages/*/android/build.gradle'
+      - '.github/workflows/e2e-android.yml'
+      - 'integration_test/**'
+      - 'example/src/E2ETestRunner.tsx'
+      - 'example/android/app/build.gradle'
+
+concurrency:
+  group: e2e-android
+  cancel-in-progress: true
+
+jobs:
+  e2e-android:
+    name: E2E Tests (Android T1-T20)
+    # ubuntu-latest: KVM disponible pour x86_64, requis par reactivecircuit/android-emulator-runner.
+    # macOS sera utilisé dans e2e-ios.yml (simulateur iOS).
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'yarn'
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+        with:
+          gradle-version: wrapper
+          cache-read-only: false
+
+      - name: Install JS dependencies
+        run: yarn install --immutable
+
+      - name: Build JS SDK
+        run: yarn purchasely:prepare
+
+      - name: Build release APK (JS always bundled in release)
+        # Release builds always embed the JS bundle — no Metro bundler needed in CI.
+        # ProGuard is disabled in build.gradle (enableProguardInReleaseBuilds = false).
+        # -x lintVitalRelease skips lint step that false-positives on ReactActivity.
+        env:
+          JAVA_OPTS: "-XX:MaxHeapSize=4g"
+        run: |
+          cd example/android
+          ./gradlew :app:assembleRelease -x lintVitalRelease
+          # Verify the JS bundle is embedded
+          APK="app/build/outputs/apk/release/app-release.apk"
+          if unzip -l "$APK" | grep -q "index.android.bundle"; then
+            echo "✅ JS bundle confirmed in APK"
+          else
+            echo "❌ JS bundle NOT found in APK"
+            exit 1
+          fi
+
+      - name: Run E2E suite on emulator (T1-T20)
+        # ReactiveCircus/android-emulator-runner handles: system-image install,
+        # AVD creation, emulator start with KVM, boot wait, animations disable.
+        uses: ReactiveCircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          avd-name: rn_e2e_api34
+          disable-animations: true
+          emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -no-snapshot
+          script: bash integration_test/run_e2e.sh emulator-5554 --skip-build
+
+      - name: Upload logcat on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logcat-${{ github.run_id }}
+          path: /tmp/e2e_rn_logcat_*.log
+          retention-days: 7

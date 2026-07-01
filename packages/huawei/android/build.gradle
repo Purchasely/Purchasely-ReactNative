@@ -53,6 +53,7 @@ android {
 }
 
 repositories {
+  mavenLocal()
   google()
   mavenCentral()
   maven { url 'https://developer.huawei.com/repo/' }
@@ -65,5 +66,5 @@ dependencies {
   api 'com.facebook.react:react-native:+'
   implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
 
-  implementation 'io.purchasely:huawei-services:5.7.4'
+  implementation 'io.purchasely:huawei-services:6.0.0-rc.2'
 }

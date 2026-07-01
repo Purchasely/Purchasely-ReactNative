@@ -31,5 +31,20 @@ target 'example' do
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+
+    # TODO(fmt-consteval): remove once React Native ships a fmt version that
+    # compiles under Xcode 26.x clang. Tracking: upstream fmt + RN bundled fmt.
+    # Xcode 26 / recent Clang reject fmt's consteval-based compile-time
+    # format-string checks ("call to consteval function ... is not a constant
+    # expression"). Disable fmt's consteval path on every target so the bundled
+    # fmt pod and its consumers (Folly, React-*) build under Xcode 26.x.
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |config|
+        defs = config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] || ['$(inherited)']
+        defs = [defs] unless defs.is_a?(Array)
+        defs << 'FMT_USE_CONSTEVAL=0' unless defs.include?('FMT_USE_CONSTEVAL=0')
+        config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] = defs
+      end
+    end
   end
 end

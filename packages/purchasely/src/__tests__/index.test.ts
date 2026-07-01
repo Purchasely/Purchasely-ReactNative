@@ -18,48 +18,19 @@ jest.mock('react-native', () => ({
         Purchasely: {
             getConstants: jest.fn(() => mockConstants),
             start: jest.fn().mockResolvedValue(true),
-            close: jest.fn(),
+            allowDeeplink: jest.fn(),
+            allowCampaigns: jest.fn(),
             userLogin: jest.fn().mockResolvedValue(true),
             userLogout: jest.fn(),
             isAnonymous: jest.fn().mockResolvedValue(false),
             getAnonymousUserId: jest.fn().mockResolvedValue('anonymous-user-id'),
             setLogLevel: jest.fn(),
             readyToOpenDeeplink: jest.fn(),
+            applyStartOptions: jest.fn(),
             setAttribute: jest.fn(),
             setLanguage: jest.fn(),
             synchronize: jest.fn(),
-            fetchPresentation: jest.fn().mockResolvedValue({
-                id: 'presentation-id',
-                placementId: 'placement-id',
-                type: 0,
-                plans: [],
-                metadata: {},
-                height: null,
-            }),
-            presentPresentation: jest.fn().mockResolvedValue({
-                result: 0,
-                plan: null,
-            }),
-            presentPresentationWithIdentifier: jest.fn().mockResolvedValue({
-                result: 0,
-                plan: null,
-            }),
-            presentPresentationForPlacement: jest.fn().mockResolvedValue({
-                result: 0,
-                plan: null,
-            }),
-            presentProductWithIdentifier: jest.fn().mockResolvedValue({
-                result: 0,
-                plan: null,
-            }),
-            presentPlanWithIdentifier: jest.fn().mockResolvedValue({
-                result: 0,
-                plan: null,
-            }),
             closePresentation: jest.fn(),
-            hidePresentation: jest.fn(),
-            showPresentation: jest.fn(),
-            presentSubscriptions: jest.fn(),
             purchaseWithPlanVendorId: jest.fn().mockResolvedValue({
                 vendorId: 'plan-id',
                 productId: 'product-id',
@@ -88,7 +59,7 @@ jest.mock('react-native', () => ({
             silentRestoreAllProducts: jest.fn().mockResolvedValue(true),
             userSubscriptions: jest.fn().mockResolvedValue([]),
             userSubscriptionsHistory: jest.fn().mockResolvedValue([]),
-            isDeeplinkHandled: jest.fn().mockResolvedValue(false),
+            handleDeeplink: jest.fn().mockResolvedValue(false),
             isEligibleForIntroOffer: jest.fn().mockResolvedValue(true),
             setUserAttributeWithString: jest.fn(),
             setUserAttributeWithNumber: jest.fn(),
@@ -104,18 +75,8 @@ jest.mock('react-native', () => ({
             clearUserAttribute: jest.fn(),
             clearUserAttributes: jest.fn(),
             clearBuiltInAttributes: jest.fn(),
-            setDefaultPresentationResultHandler: jest.fn().mockResolvedValue({
-                result: 0,
-                plan: null,
-            }),
-            setPaywallActionInterceptor: jest.fn().mockResolvedValue({
-                info: {},
-                action: 'close',
-                parameters: {},
-            }),
-            onProcessAction: jest.fn(),
-            clientPresentationDisplayed: jest.fn(),
-            clientPresentationClosed: jest.fn(),
+            setDefaultPresentationDismissHandler: jest.fn(),
+            removeDefaultPresentationDismissHandler: jest.fn(),
             userDidConsumeSubscriptionContent: jest.fn(),
             setThemeMode: jest.fn(),
             setDynamicOffering: jest.fn().mockResolvedValue(true),
@@ -150,7 +111,7 @@ jest.mock('react-native', () => ({
 
 // Now import Purchasely after mocking
 import Purchasely from '../index'
-import { LogLevels, RunningMode, PLYThemeMode, PLYDataProcessingLegalBasis, PLYDataProcessingPurpose } from '../enums'
+import { LogLevels, PLYThemeMode, PLYDataProcessingLegalBasis, PLYDataProcessingPurpose } from '../enums'
 import { NativeModules } from 'react-native'
 
 // Get reference to the mocked module
@@ -162,59 +123,49 @@ describe('Purchasely SDK', () => {
     })
 
     describe('Initialization', () => {
-        it('should call native start with correct parameters', async () => {
-            const params = {
-                apiKey: 'test-api-key',
-                androidStores: ['Google'],
-                storeKit1: false,
-                userId: 'test-user',
-                logLevel: LogLevels.DEBUG,
-                runningMode: RunningMode.FULL,
-            }
-
-            const result = await Purchasely.start(params)
-
-            expect(result).toBe(true)
-            expect(mockedPurchasely.start).toHaveBeenCalledWith(
-                'test-api-key',
-                ['Google'],
-                false,
-                'test-user',
-                mockConstants.logLevelDebug,
-                mockConstants.runningModeFull,
-                '5.7.3'
-            )
-        })
-
-        it('should use default values when optional params not provided', async () => {
-            const params = {
-                apiKey: 'test-api-key',
-                storeKit1: true,
-                logLevel: LogLevels.ERROR,
-                runningMode: RunningMode.FULL,
-            }
-
-            await Purchasely.start(params)
-
-            expect(mockedPurchasely.start).toHaveBeenCalledWith(
-                'test-api-key',
-                ['Google'],
-                true,
-                null,
-                mockConstants.logLevelError,
-                mockConstants.runningModeFull,
-                '5.7.3'
-            )
-        })
-
         it('should return constants from getConstants', () => {
             const constants = Purchasely.getConstants()
             expect(constants).toEqual(mockConstants)
         })
 
-        it('should call native close', () => {
-            Purchasely.close()
-            expect(mockedPurchasely.close).toHaveBeenCalled()
+        it('should start through the v6 builder without forcing optional start options', async () => {
+            await Purchasely.builder('api-key').start()
+
+            expect(mockedPurchasely.start).toHaveBeenCalledWith(
+                'api-key',
+                ['Google'],
+                false,
+                null,
+                mockConstants.logLevelError,
+                mockConstants.runningModeObserver,
+                '6.0.0-rc.2'
+            )
+            expect(mockedPurchasely.applyStartOptions).not.toHaveBeenCalled()
+        })
+
+        it('should expose apiKey as the Flutter-compatible builder alias', async () => {
+            await Purchasely.apiKey('api-key').allowDeeplink(true).allowCampaigns(false).start()
+
+            expect(mockedPurchasely.start).toHaveBeenCalled()
+            expect(mockedPurchasely.applyStartOptions).toHaveBeenCalledWith({
+                allowDeeplink: true,
+                allowCampaigns: false,
+            })
+        })
+
+        it('should toggle deeplinks and campaigns at runtime', () => {
+            Purchasely.allowDeeplink(true)
+            Purchasely.allowCampaigns(false)
+
+            expect(mockedPurchasely.allowDeeplink).toHaveBeenCalledWith(true)
+            expect(mockedPurchasely.allowCampaigns).toHaveBeenCalledWith(false)
+        })
+
+        it('should not expose removed v5/top-level presentation APIs', () => {
+            expect((Purchasely as any).close).toBeUndefined()
+            expect((Purchasely as any).displaySubscriptionCancellationInstruction).toBeUndefined()
+            expect((Purchasely as any).clientPresentationDisplayed).toBeUndefined()
+            expect((Purchasely as any).clientPresentationClosed).toBeUndefined()
         })
     })
 
@@ -270,6 +221,34 @@ describe('Purchasely SDK', () => {
             expect(mockedPurchasely.setUserAttributeWithNumber).toHaveBeenCalledWith(
                 'age',
                 25,
+                undefined
+            )
+        })
+
+        it('should expose int/double aliases for Flutter parity', () => {
+            Purchasely.setUserAttributeWithInt('age', 25)
+            Purchasely.setUserAttributeWithDouble('weight', 78.2)
+            Purchasely.setUserAttributeWithIntArray('scores', [1, 2])
+            Purchasely.setUserAttributeWithDoubleArray('weights', [1.5, 2.5])
+
+            expect(mockedPurchasely.setUserAttributeWithNumber).toHaveBeenCalledWith(
+                'age',
+                25,
+                undefined
+            )
+            expect(mockedPurchasely.setUserAttributeWithNumber).toHaveBeenCalledWith(
+                'weight',
+                78.2,
+                undefined
+            )
+            expect(mockedPurchasely.setUserAttributeWithNumberArray).toHaveBeenCalledWith(
+                'scores',
+                [1, 2],
+                undefined
+            )
+            expect(mockedPurchasely.setUserAttributeWithNumberArray).toHaveBeenCalledWith(
+                'weights',
+                [1.5, 2.5],
                 undefined
             )
         })
@@ -384,161 +363,6 @@ describe('Purchasely SDK', () => {
         it('should clear built-in attributes', () => {
             Purchasely.clearBuiltInAttributes()
             expect(mockedPurchasely.clearBuiltInAttributes).toHaveBeenCalled()
-        })
-    })
-
-    describe('Presentations', () => {
-        it('should fetch presentation with placementId', async () => {
-            const result = await Purchasely.fetchPresentation({ placementId: 'onboarding' })
-
-            expect(result.id).toBe('presentation-id')
-            expect(mockedPurchasely.fetchPresentation).toHaveBeenCalledWith(
-                'onboarding',
-                null,
-                null
-            )
-        })
-
-        it('should fetch presentation with presentationId', async () => {
-            await Purchasely.fetchPresentation({ presentationId: 'pres-123' })
-
-            expect(mockedPurchasely.fetchPresentation).toHaveBeenCalledWith(
-                null,
-                'pres-123',
-                null
-            )
-        })
-
-        it('should fetch presentation with contentId', async () => {
-            await Purchasely.fetchPresentation({
-                placementId: 'onboarding',
-                contentId: 'content-123'
-            })
-
-            expect(mockedPurchasely.fetchPresentation).toHaveBeenCalledWith(
-                'onboarding',
-                null,
-                'content-123'
-            )
-        })
-
-        it('should present presentation', async () => {
-            const presentation = { id: 'pres-123', metadata: {}, height: null }
-            await Purchasely.presentPresentation({ presentation })
-
-            expect(mockedPurchasely.presentPresentation).toHaveBeenCalledWith(
-                presentation,
-                false,
-                null
-            )
-        })
-
-        it('should present presentation fullscreen', async () => {
-            await Purchasely.presentPresentation({ isFullscreen: true })
-
-            expect(mockedPurchasely.presentPresentation).toHaveBeenCalledWith(
-                null,
-                true,
-                null
-            )
-        })
-
-        it('should present presentation with loading background color', async () => {
-            await Purchasely.presentPresentation({ loadingBackgroundColor: '#FF0000' })
-
-            expect(mockedPurchasely.presentPresentation).toHaveBeenCalledWith(
-                null,
-                false,
-                '#FF0000'
-            )
-        })
-
-        it('should present presentation with identifier', async () => {
-            await Purchasely.presentPresentationWithIdentifier({
-                presentationVendorId: 'premium',
-                isFullscreen: true
-            })
-
-            expect(mockedPurchasely.presentPresentationWithIdentifier).toHaveBeenCalledWith(
-                'premium',
-                null,
-                true,
-                null
-            )
-        })
-
-        it('should present presentation for placement', async () => {
-            await Purchasely.presentPresentationForPlacement({
-                placementVendorId: 'onboarding',
-                contentId: 'content-123'
-            })
-
-            expect(mockedPurchasely.presentPresentationForPlacement).toHaveBeenCalledWith(
-                'onboarding',
-                'content-123',
-                false,
-                null
-            )
-        })
-
-        it('should present product with identifier', async () => {
-            await Purchasely.presentProductWithIdentifier({
-                productVendorId: 'premium-product'
-            })
-
-            expect(mockedPurchasely.presentProductWithIdentifier).toHaveBeenCalledWith(
-                'premium-product',
-                null,
-                null,
-                false,
-                null
-            )
-        })
-
-        it('should present plan with identifier', async () => {
-            await Purchasely.presentPlanWithIdentifier({
-                planVendorId: 'monthly-plan'
-            })
-
-            expect(mockedPurchasely.presentPlanWithIdentifier).toHaveBeenCalledWith(
-                'monthly-plan',
-                null,
-                null,
-                false,
-                null
-            )
-        })
-
-        it('should close presentation', () => {
-            Purchasely.closePresentation()
-            expect(mockedPurchasely.closePresentation).toHaveBeenCalled()
-        })
-
-        it('should hide presentation', () => {
-            Purchasely.hidePresentation()
-            expect(mockedPurchasely.hidePresentation).toHaveBeenCalled()
-        })
-
-        it('should show presentation', () => {
-            Purchasely.showPresentation()
-            expect(mockedPurchasely.showPresentation).toHaveBeenCalled()
-        })
-
-        it('should present subscriptions', () => {
-            Purchasely.presentSubscriptions()
-            expect(mockedPurchasely.presentSubscriptions).toHaveBeenCalled()
-        })
-
-        it('should track client presentation displayed', () => {
-            const presentation = { id: 'pres-123', metadata: {}, height: null }
-            Purchasely.clientPresentationDisplayed(presentation as any)
-            expect(mockedPurchasely.clientPresentationDisplayed).toHaveBeenCalledWith(presentation)
-        })
-
-        it('should track client presentation closed', () => {
-            const presentation = { id: 'pres-123', metadata: {}, height: null }
-            Purchasely.clientPresentationClosed(presentation as any)
-            expect(mockedPurchasely.clientPresentationClosed).toHaveBeenCalledWith(presentation)
         })
     })
 
@@ -704,16 +528,11 @@ describe('Purchasely SDK', () => {
     })
 
     describe('Deeplinks', () => {
-        it('should set ready to open deeplink', () => {
-            Purchasely.readyToOpenDeeplink(true)
-            expect(mockedPurchasely.readyToOpenDeeplink).toHaveBeenCalledWith(true)
-        })
-
-        it('should check if deeplink is handled', async () => {
-            const result = await Purchasely.isDeeplinkHandled('purchasely://premium')
+        it('should handle a deeplink', async () => {
+            const result = await Purchasely.handleDeeplink('purchasely://premium')
 
             expect(result).toBe(false)
-            expect(mockedPurchasely.isDeeplinkHandled).toHaveBeenCalledWith('purchasely://premium')
+            expect(mockedPurchasely.handleDeeplink).toHaveBeenCalledWith('purchasely://premium')
         })
     })
 
@@ -741,6 +560,27 @@ describe('Purchasely SDK', () => {
                 callback
             )
             expect(subscription).toBeDefined()
+        })
+
+        it('should expose Flutter-compatible event listener aliases', () => {
+            const eventCallback = jest.fn()
+            const purchaseCallback = jest.fn()
+
+            Purchasely.listenToEvents(eventCallback)
+            Purchasely.listenToPurchases(purchaseCallback)
+            Purchasely.stopListeningToEvents()
+            Purchasely.stopListeningToPurchases()
+
+            expect(mockEventEmitter.addListener).toHaveBeenCalledWith(
+                'PURCHASELY_EVENTS',
+                eventCallback
+            )
+            expect(mockEventEmitter.addListener).toHaveBeenCalledWith(
+                'PURCHASE_LISTENER',
+                purchaseCallback
+            )
+            expect(mockEventEmitter.removeAllListeners).toHaveBeenCalledWith('PURCHASELY_EVENTS')
+            expect(mockEventEmitter.removeAllListeners).toHaveBeenCalledWith('PURCHASE_LISTENER')
         })
 
         it('should remove event listeners', () => {
@@ -796,22 +636,27 @@ describe('Purchasely SDK', () => {
 
             expect(mockEventEmitter.removeAllListeners).toHaveBeenCalledWith('USER_ATTRIBUTE_REMOVED_LISTENER')
         })
-    })
 
-    describe('Action Handlers', () => {
-        it('should call onProcessAction', () => {
-            Purchasely.onProcessAction(true)
-            expect(mockedPurchasely.onProcessAction).toHaveBeenCalledWith(true)
-        })
+        it('should expose a Flutter-compatible combined user attribute listener', () => {
+            const listener = {
+                onUserAttributeSet: jest.fn(),
+                onUserAttributeRemoved: jest.fn(),
+            }
 
-        it('should call setDefaultPresentationResultHandler', async () => {
-            await Purchasely.setDefaultPresentationResultHandler()
-            expect(mockedPurchasely.setDefaultPresentationResultHandler).toHaveBeenCalled()
-        })
+            Purchasely.setUserAttributeListener(listener)
 
-        it('should call setPaywallActionInterceptor', async () => {
-            await Purchasely.setPaywallActionInterceptor()
-            expect(mockedPurchasely.setPaywallActionInterceptor).toHaveBeenCalled()
+            expect(mockEventEmitter.addListener).toHaveBeenCalledWith(
+                'USER_ATTRIBUTE_SET_LISTENER',
+                expect.any(Function)
+            )
+            expect(mockEventEmitter.addListener).toHaveBeenCalledWith(
+                'USER_ATTRIBUTE_REMOVED_LISTENER',
+                expect.any(Function)
+            )
+
+            Purchasely.clearUserAttributeListener()
+            expect(mockEventEmitter.removeAllListeners).toHaveBeenCalledWith('USER_ATTRIBUTE_SET_LISTENER')
+            expect(mockEventEmitter.removeAllListeners).toHaveBeenCalledWith('USER_ATTRIBUTE_REMOVED_LISTENER')
         })
     })
 
@@ -819,6 +664,17 @@ describe('Purchasely SDK', () => {
         it('should call synchronize', () => {
             Purchasely.synchronize()
             expect(mockedPurchasely.synchronize).toHaveBeenCalled()
+        })
+
+        it('should resolve when the native synchronize succeeds', async () => {
+            mockedPurchasely.synchronize.mockResolvedValueOnce(true)
+            await expect(Purchasely.synchronize()).resolves.toBe(true)
+        })
+
+        it('should reject when the native synchronize fails', async () => {
+            const error = new Error('No store configured')
+            mockedPurchasely.synchronize.mockRejectedValueOnce(error)
+            await expect(Purchasely.synchronize()).rejects.toBe(error)
         })
     })
 })

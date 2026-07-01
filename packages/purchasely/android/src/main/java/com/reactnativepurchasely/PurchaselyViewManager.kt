@@ -20,20 +20,32 @@ import com.facebook.react.uimanager.ThemedReactContext
 import com.facebook.react.uimanager.ViewGroupManager
 import com.facebook.react.uimanager.annotations.ReactProp
 import com.facebook.react.uimanager.annotations.ReactPropGroup
-import io.purchasely.ext.PLYPresentation
-import io.purchasely.ext.PLYPresentationResultHandler
-import io.purchasely.ext.PLYPresentationProperties
-import io.purchasely.ext.PLYProductViewResult
-import io.purchasely.ext.Purchasely
+import io.purchasely.ext.presentation.PLYPresentationBase
+import io.purchasely.ext.presentation.PLYPresentationOutcome
+import io.purchasely.ext.presentation.PLYPurchaseResult
+import io.purchasely.ext.presentation.preload
 import io.purchasely.views.presentation.PLYPresentationView
 import android.content.res.Configuration
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
+/**
+ * View manager for `<PLYPresentationView />`. Hosts a `PLYPresentationView`
+ * inside a React-Native managed Fragment.
+ *
+ * The presentation is sourced either from a `placementId` prop or from a
+ * `presentation` map produced by the builder. Outcomes flow back to JS
+ * through the same `PURCHASELY_PRESENTATION_DISMISSED`-friendly shape used by the v5 view
+ * (`{ result, plan }`), preserving the existing `onPresentationClosed` contract.
+ */
 class PurchaselyViewManager(private val reactContext: ReactApplicationContext) : ViewGroupManager<FrameLayout>() {
 
   private var propWidth: Int? = null
   private var propHeight: Int? = null
   private var placementId: String? = null
-  private var presentation: PLYPresentation? = null
+  private var screenId: String? = null
 
   override fun getName(): String = "PurchaselyView"
 
@@ -47,9 +59,8 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
     }
   }
 
-  override fun getCommandsMap(): Map<String, Int>? {
-    return MapBuilder.of<String, Int>("create", COMMAND_CREATE)
-  }
+  override fun getCommandsMap(): Map<String, Int> =
+    MapBuilder.of<String, Int>("create", COMMAND_CREATE)
 
   override fun receiveCommand(root: FrameLayout, commandId: Int, args: ReadableArray?) {
     Log.d("PurchaselyView", "Received a command having commandId=$commandId.")
@@ -64,9 +75,7 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
 
   override fun receiveCommand(root: FrameLayout, commandId: String?, args: ReadableArray?) {
     super.receiveCommand(root, commandId, args)
-
     Log.d("PurchaselyView", "Received a command having commandId=$commandId.")
-    super.receiveCommand(root, commandId, args)
     val reactNativeViewId = args?.getInt(0) ?: return
     val commandIdInt = commandId?.toIntOrNull() ?: return
 
@@ -83,12 +92,10 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
     val parentView = root.findViewById<ViewGroup?>(reactNativeViewId) ?: return
     setupLayout(parentView)
 
-    // Ensuring the container has the expected id
     if (parentView.id != reactNativeViewId) {
       parentView.id = reactNativeViewId
     }
 
-    // Only transact when the container is attached to window
     if (!parentView.isAttachedToWindow) {
       parentView.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
         override fun onViewAttachedToWindow(v: View) {
@@ -104,26 +111,25 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
     val fm = activity.supportFragmentManager
     val existing = fm.findFragmentByTag(tag)
     if (existing != null && existing.isAdded) {
-      // Already attached to this container. nothing to do.
       return
     }
 
-    val fragment = PurchaselyFragment(presentation, placementId) { result, plan ->
-      val productViewResult = when(result) {
-        PLYProductViewResult.PURCHASED -> PLYProductViewResult.PURCHASED.ordinal
-        PLYProductViewResult.CANCELLED -> PLYProductViewResult.CANCELLED.ordinal
-        PLYProductViewResult.RESTORED -> PLYProductViewResult.RESTORED.ordinal
+    val outcomeHandler: (PLYPresentationOutcome) -> Unit = { outcome ->
+      val resultOrdinal = when (outcome.purchaseResult) {
+        PLYPurchaseResult.PURCHASED -> 0
+        PLYPurchaseResult.RESTORED -> 2
+        PLYPurchaseResult.CANCELLED -> 1
+        null -> 1
       }
-
       val map: MutableMap<String, Any?> = HashMap()
-      map["result"] = productViewResult
-      map["plan"] = PurchaselyModule.transformPlanToMap(plan)
-      (promiseView ?: PurchaselyModule.defaultPurchasePromise)
-        ?.resolve(Arguments.makeNativeMap(map))
+      map["result"] = resultOrdinal
+      map["plan"] = PurchaselyModule.transformPlanToMap(outcome.plan)
+      promiseView?.resolve(Arguments.makeNativeMap(map))
       promiseView = null
     }
 
-    // Safer transaction flags
+    val fragment = PurchaselyFragment(screenId, placementId, outcomeHandler)
+
     fm.beginTransaction()
       .setReorderingAllowed(true)
       .replace(reactNativeViewId, fragment, tag)
@@ -140,11 +146,7 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
     })
   }
 
-  /**
-   * Layout all children properly
-   */
   fun manuallyLayoutChildren(view: View) {
-    // propWidth and propHeight coming from react-native props
     for (i in 0 until (view as ViewGroup).childCount) {
       val child = view.getChildAt(i)
       val width: Int = propWidth ?: when {
@@ -159,7 +161,8 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
       }
       child.measure(
         View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
-        View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY))
+        View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY)
+      )
       child.layout(0, 0, width, height)
     }
   }
@@ -177,10 +180,9 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
 
   @ReactProp(name = "presentation")
   fun setPresentation(view: FrameLayout?, value: ReadableMap?) {
-    presentation = PurchaselyModule.presentationsLoaded.lastOrNull {
-      it.id == value?.getString("id")
-        && it.placementId == value?.getString("placementId")
-    }
+    // The JS layer forwards either `id` (legacy) or `screenId`.
+    screenId = value?.getString("screenId") ?: value?.getString("id")
+    placementId = placementId ?: value?.getString("placementId")
   }
 
   @ReactMethod
@@ -207,50 +209,53 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
     private var promiseView: Promise? = null
   }
 
-
   /**
-   * Purchasely Fragment to host the PLYPresentationView
+   * Fragment hosting a `PLYPresentationView`. The presentation is built
+   * lazily inside `onViewCreated` so the SDK can attach to the live Activity.
    */
   class PurchaselyFragment(
-    private val presentation: PLYPresentation?,
+    private val screenId: String?,
     private val placementId: String?,
-    private val callback: PLYPresentationResultHandler) : Fragment() {
+    private val callback: (PLYPresentationOutcome) -> Unit
+  ) : Fragment() {
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-      return FrameLayout(inflater.context)
-    }
+    override fun onCreateView(
+      inflater: LayoutInflater,
+      container: ViewGroup?,
+      savedInstanceState: Bundle?
+    ): View = FrameLayout(inflater.context)
 
-    private fun closeCallback() {
-      (view as ViewGroup).removeAllViews()
-      parentFragmentManager
-        .beginTransaction()
-        .remove(this)
-        .commitAllowingStateLoss()
-    }
+    private fun attachPurchaselyView(host: ViewGroup) {
+      val prepared: PLYPresentationBase.Prepared = PLYPresentationBase.builder()
+        .also { b ->
+          placementId?.let { b.placementId(it) }
+          screenId?.let { b.screenId(it) }
+        }
+        .onDismissed { outcome -> callback(outcome) }
+        .build()
 
-
-    private fun buildPurchaselyView(view: View): PLYPresentationView? {
-      val props = PLYPresentationProperties(
-        placementId = placementId,
-        onClose = { closeCallback() }
-      )
-      return if (presentation != null) {
-        presentation.buildView(view.context, properties = props, callback = callback)
-      } else {
-        Purchasely.presentationView(view.context, properties = props, callback = callback)
+      CoroutineScope(Dispatchers.Main).launch {
+        try {
+          val loaded = withContext(Dispatchers.Default) { prepared.preload() }
+          val pv: PLYPresentationView? =
+            loaded.buildView(host.context) { outcome -> callback(outcome) }
+          pv?.let { host.addView(it) }
+        } catch (e: Throwable) {
+          Log.w("PurchaselyView", "Unable to build presentation view: ${e.message}", e)
+        }
       }
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
       super.onViewCreated(view, savedInstanceState)
-      (view as ViewGroup).addView(buildPurchaselyView(view))
+      attachPurchaselyView(view as ViewGroup)
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
       super.onConfigurationChanged(newConfig)
       val host = view as? ViewGroup ?: return
       host.removeAllViews()
-      buildPurchaselyView(host)?.let { host.addView(it) }
+      attachPurchaselyView(host)
     }
   }
 }
