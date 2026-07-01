@@ -526,6 +526,13 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
       is Int -> value.toDouble()
       //awful but to keep same precision so 1.2f = 1.2 double and not 1.20000056
       is Float -> value.toString().toDouble()
+      // Array/List attributes (String[], Integer[], Float[], Boolean[], …) must be
+      // turned into a React Native WritableArray. A raw Java array handed to
+      // promise.resolve() / Arguments.makeNativeMap() throws
+      // "Cannot convert argument of type class [Ljava.lang.String;" (Arguments.kt).
+      // Normalize each element first so Int/Float land as Double, matching scalars.
+      is Array<*> -> Arguments.makeNativeArray(value.map { getUserAttributeValueForRN(it) })
+      is List<*> -> Arguments.makeNativeArray(value.map { getUserAttributeValueForRN(it) })
       else -> value
     }
   }
