@@ -1,5 +1,7 @@
 package com.reactnativepurchasely
 
+import com.facebook.react.bridge.Arguments
+import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import io.purchasely.ext.*
 import io.purchasely.ext.presentation.PLYPresentationType
@@ -12,6 +14,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.mockito.Mock
 import org.mockito.Mockito.mock
+import org.mockito.Mockito.mockStatic
+import org.mockito.Mockito.never
+import org.mockito.Mockito.verify
 import org.mockito.junit.MockitoJUnitRunner
 
 /**
@@ -404,6 +409,41 @@ class PurchaselyModuleTest {
         assertTrue(constants["productResultPurchased"]!! >= 0)
         assertTrue(constants["productResultCancelled"]!! >= 0)
         assertTrue(constants["productResultRestored"]!! >= 0)
+    }
+
+    // endregion
+
+    // region User attribute read — array conversion (regression: E2E T14)
+
+    /**
+     * Reading an array-typed attribute (String[]/Integer[]/Float[]/Boolean[]) must go
+     * through Arguments.makeNativeArray. Handing a raw Java array to promise.resolve()
+     * throws "Cannot convert argument of type class [Ljava.lang.String;" at runtime
+     * (Arguments.kt), which is what broke E2E T14 on device.
+     */
+    @Test
+    fun `userAttribute resolves array attributes as a native array, not a raw java array`() {
+        val promise = mock(Promise::class.java)
+        val rawArray: Any = arrayOf("alpha", "beta", "gamma") // java.lang.String[]
+
+        // WritableNativeArray is final + JNI-backed, so we can't mock its instances.
+        // We only assert the routing: the raw array is turned into a List and handed to
+        // Arguments.makeNativeArray (never resolved as-is).
+        val purchaselyStatic = mockStatic(Purchasely::class.java)
+        val argumentsStatic = mockStatic(Arguments::class.java)
+        try {
+            purchaselyStatic.`when`<Any> { Purchasely.userAttribute("e2e_str_arr") }
+                .thenReturn(rawArray)
+
+            purchaselyModule.userAttribute("e2e_str_arr", promise)
+
+            // The array must be normalized to a List and converted, not resolved raw.
+            argumentsStatic.verify { Arguments.makeNativeArray(listOf("alpha", "beta", "gamma")) }
+            verify(promise, never()).resolve(rawArray)
+        } finally {
+            argumentsStatic.close()
+            purchaselyStatic.close()
+        }
     }
 
     // endregion
