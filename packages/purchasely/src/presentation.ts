@@ -2,6 +2,7 @@ import { NativeModules } from 'react-native';
 import type { EmitterSubscription } from 'react-native';
 
 import type {
+    PLYLoadedPresentation,
     PLYPresentation,
     PLYPresentationError,
     PLYPresentationOutcome,
@@ -150,12 +151,27 @@ export class PLYPresentationBuilder {
         });
     }
 
-    /** Build a request that uses the SDK's default placement. */
-    static default(): PLYPresentationBuilder {
+    /**
+     * Build a request that uses the SDK's default placement.
+     *
+     * This is the canonical cross-platform factory (matches the Flutter SDK's
+     * `PLYPresentationBuilder.defaultSource()`). The {@link default} alias is
+     * kept for parity with the iOS native API.
+     */
+    static defaultSource(): PLYPresentationBuilder {
         return new PLYPresentationBuilder({
             isDefault: true,
             callbacks: {},
         });
+    }
+
+    /**
+     * Alias of {@link defaultSource} kept for parity with the iOS native API
+     * (which names this factory `default`). Prefer {@link defaultSource} as the
+     * canonical cross-platform name.
+     */
+    static default(): PLYPresentationBuilder {
+        return PLYPresentationBuilder.defaultSource();
     }
 
     contentId(id: string | null): this {
@@ -174,7 +190,12 @@ export class PLYPresentationBuilder {
     }
 
     /**
-     * Android only — no-op on iOS until native exposes the property.
+     * Toggle the paywall's close button.
+     *
+     * - **Android** — full toggle: `true` shows the button, `false` hides it.
+     * - **iOS** — removal only: only `false` has an effect (it hides the
+     *   button). Passing `true` is a no-op — the button follows the paywall's
+     *   own configuration.
      */
     displayCloseButton(show: boolean): this {
         this.config.displayCloseButton = show;
@@ -182,7 +203,12 @@ export class PLYPresentationBuilder {
     }
 
     /**
-     * Android only — no-op on iOS until native exposes the property.
+     * Toggle the paywall's back button.
+     *
+     * - **Android** — full toggle: `true` shows the button, `false` hides it.
+     * - **iOS** — removal only: only `false` has an effect (it hides the
+     *   button). Passing `true` is a no-op — the button follows the paywall's
+     *   own configuration.
      */
     displayBackButton(show: boolean): this {
         this.config.displayBackButton = show;
@@ -233,7 +259,7 @@ export class PLYPresentationRequest {
     /** @internal */
     private readonly config: BuilderConfig;
     /** @internal */
-    private requestId: string | null = null;
+    private _requestId: string | null = null;
     /** @internal */
     private subscriptions: EmitterSubscription[] = [];
     /** @internal */
@@ -244,12 +270,21 @@ export class PLYPresentationRequest {
     }
 
     /**
+     * The bridge request id assigned to this request, or `null` before the
+     * first `preload()` / `display()`. Consumed by the embedded presentation
+     * view to correlate native lifecycle events.
+     */
+    get requestId(): string | null {
+        return this._requestId;
+    }
+
+    /**
      * Preload the presentation. Resolves once the SDK reports the screen
      * is loaded (`onLoaded`). Rejects if the SDK fails before load.
      */
-    preload(): Promise<PLYPresentation> {
+    preload(): Promise<PLYLoadedPresentation> {
         const requestId = this.ensureRequestId();
-        return new Promise<PLYPresentation>((resolve, reject) => {
+        return new Promise<PLYLoadedPresentation>((resolve, reject) => {
             const loadedSubscription =
                 presentationEventEmitter.addListener(
                     PURCHASELY_PRESENTATION_EVENTS.LOADED,
@@ -270,7 +305,7 @@ export class PLYPresentationRequest {
                             return;
                         }
                         this.livePresentation = presentation;
-                        resolve(presentation);
+                        resolve(this.buildLoadedPresentation(presentation));
                     }
                 );
             this.subscriptions.push(loadedSubscription);
@@ -363,25 +398,43 @@ export class PLYPresentationRequest {
      * flow), calling `close()` on one will also dismiss the others on Android.
      */
     close(): void {
-        if (!this.requestId) {
+        if (!this._requestId) {
             return;
         }
-        NativeModules.Purchasely.closePresentation(this.requestId);
+        NativeModules.Purchasely.closePresentation(this._requestId);
     }
 
     /** Navigate back inside a multi-step (Flow) presentation. */
     back(): void {
-        if (!this.requestId) {
+        if (!this._requestId) {
             return;
         }
-        NativeModules.Purchasely.goBackToPreviousScreen(this.requestId);
+        NativeModules.Purchasely.goBackToPreviousScreen(this._requestId);
     }
 
     private ensureRequestId(): string {
-        if (!this.requestId) {
-            this.requestId = generateRequestId();
+        if (!this._requestId) {
+            this._requestId = generateRequestId();
         }
-        return this.requestId;
+        return this._requestId;
+    }
+
+    /**
+     * Wrap the loaded {@link PLYPresentation} data with the lifecycle methods
+     * (`display` / `close` / `back`), all delegating to this request. Mirrors
+     * the Flutter SDK, where `preload()` resolves a presentation that drives
+     * its own lifecycle.
+     */
+    private buildLoadedPresentation(
+        presentation: PLYPresentation
+    ): PLYLoadedPresentation {
+        return {
+            ...presentation,
+            display: (transition?: PLYTransition | null) =>
+                this.display(transition),
+            close: () => this.close(),
+            back: () => this.back(),
+        };
     }
 
     private bindLifecycleEvents(

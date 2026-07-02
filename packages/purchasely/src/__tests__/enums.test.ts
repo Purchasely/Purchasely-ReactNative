@@ -21,7 +21,6 @@ import {
     PlanType,
     RunningMode,
     PLYThemeMode,
-    PLYPaywallAction,
     PLYDataProcessingLegalBasis,
     PLYDataProcessingPurpose,
     PLYPresentationType,
@@ -29,6 +28,7 @@ import {
     PLYUserAttributeType,
     PLYWebCheckoutProvider,
 } from '../enums'
+import * as EnumsModule from '../enums'
 
 describe('Purchasely Enums', () => {
     describe('ProductResult', () => {
@@ -130,19 +130,21 @@ describe('Purchasely Enums', () => {
 
     describe('RunningMode', () => {
         it('should have correct enum values from constants', () => {
-            expect(RunningMode.TRANSACTION_ONLY).toBe(mockConstants.runningModeTransactionOnly)
             expect(RunningMode.OBSERVER).toBe(mockConstants.runningModeObserver)
-            expect(RunningMode.PAYWALL_OBSERVER).toBe(mockConstants.runningModePaywallObserver)
             expect(RunningMode.FULL).toBe(mockConstants.runningModeFull)
         })
 
-        it('should have all expected members', () => {
+        it('should only expose the two v6 members (observer, full)', () => {
             const members = Object.keys(RunningMode).filter(key => isNaN(Number(key)))
-            expect(members).toContain('TRANSACTION_ONLY')
             expect(members).toContain('OBSERVER')
-            expect(members).toContain('PAYWALL_OBSERVER')
             expect(members).toContain('FULL')
-            expect(members).toHaveLength(4)
+            expect(members).toHaveLength(2)
+        })
+
+        it('no longer exposes the removed v5 modes', () => {
+            const members = Object.keys(RunningMode).filter(key => isNaN(Number(key)))
+            expect(members).not.toContain('TRANSACTION_ONLY')
+            expect(members).not.toContain('PAYWALL_OBSERVER')
         })
     })
 
@@ -162,35 +164,9 @@ describe('Purchasely Enums', () => {
         })
     })
 
-    describe('PLYPaywallAction', () => {
-        it('should have string enum values', () => {
-            expect(PLYPaywallAction.CLOSE).toBe('close')
-            expect(PLYPaywallAction.CLOSE_ALL).toBe('closeAll')
-            expect(PLYPaywallAction.LOGIN).toBe('login')
-            expect(PLYPaywallAction.NAVIGATE).toBe('navigate')
-            expect(PLYPaywallAction.PURCHASE).toBe('purchase')
-            expect(PLYPaywallAction.RESTORE).toBe('restore')
-            expect(PLYPaywallAction.OPEN_PRESENTATION).toBe('open_presentation')
-            expect(PLYPaywallAction.OPEN_PLACEMENT).toBe('open_placement')
-            expect(PLYPaywallAction.PROMO_CODE).toBe('promo_code')
-            expect(PLYPaywallAction.OPEN_FLOW_STEP).toBe('open_flow_step')
-            expect(PLYPaywallAction.WEB_CHECKOUT).toBe('web_checkout')
-        })
-
-        it('should have all expected members', () => {
-            const values = Object.values(PLYPaywallAction)
-            expect(values).toContain('close')
-            expect(values).toContain('closeAll')
-            expect(values).toContain('login')
-            expect(values).toContain('navigate')
-            expect(values).toContain('purchase')
-            expect(values).toContain('restore')
-            expect(values).toContain('open_presentation')
-            expect(values).toContain('open_placement')
-            expect(values).toContain('promo_code')
-            expect(values).toContain('open_flow_step')
-            expect(values).toContain('web_checkout')
-            expect(values).toHaveLength(11)
+    describe('PLYPaywallAction (removed in v6)', () => {
+        it('is no longer exported — the only action vocabulary is PLYPresentationActionKind', () => {
+            expect((EnumsModule as Record<string, unknown>).PLYPaywallAction).toBeUndefined()
         })
     })
 

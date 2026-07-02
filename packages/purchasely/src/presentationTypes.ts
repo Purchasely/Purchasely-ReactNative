@@ -122,6 +122,26 @@ export interface PLYPresentation {
     height?: number | null;
 }
 
+/**
+ * A {@link PLYPresentation} that has been preloaded and can drive its own
+ * lifecycle. Returned by `PLYPresentationRequest.preload()`. In addition to the
+ * data fields of {@link PLYPresentation}, it exposes {@link display},
+ * {@link close} and {@link back}, which delegate to the originating
+ * `PLYPresentationRequest`. Mirrors the Flutter SDK, where the object resolved
+ * by `preload()` carries the presentation lifecycle methods.
+ */
+export interface PLYLoadedPresentation extends PLYPresentation {
+    /**
+     * Display this preloaded presentation. Resolves at dismiss with a
+     * {@link PLYPresentationOutcome}. Optionally takes a {@link PLYTransition}.
+     */
+    display(transition?: PLYTransition | null): Promise<PLYPresentationOutcome>;
+    /** Programmatically close the presentation if it is currently visible. */
+    close(): void;
+    /** Navigate back inside a multi-step (Flow) presentation. */
+    back(): void;
+}
+
 /** Information surfaced when an interceptor is triggered. */
 export interface PLYInterceptorInfo {
     contentId?: string | null;
