@@ -220,6 +220,27 @@ static PLYPresentationBuilder *presentationBuilderFor(NSString *placementId,
     return builder;
 }
 
+/// Apply the optional close/back button overrides from the JS builder payload.
+/// `displayCloseButton` / `displayBackButton` are tri-state: an absent key or a
+/// JSON `null` (bridged to `NSNull`) leaves the backend-defined visibility
+/// untouched, while a real boolean is forwarded to the native builder. This
+/// mirrors the Android bridge's `if (hasKey && !isNull) builder.displayXxx(...)`.
+/// The `isKindOfClass:[NSNumber class]` check is the tri-state guard: it is YES
+/// only for a real bridged boolean and NO for both `nil` and `NSNull`. iOS
+/// treats these as suppression-only (only `false` hides a backend-shown button),
+/// but we forward the value verbatim — the native SDK owns the semantics.
+static void applyPresentationDisplayOptions(PLYPresentationBuilder *builder, NSDictionary *payload) {
+    if (builder == nil) { return; }
+    id displayCloseButton = payload[@"displayCloseButton"];
+    if ([displayCloseButton isKindOfClass:[NSNumber class]]) {
+        [builder displayCloseButton:[displayCloseButton boolValue]];
+    }
+    id displayBackButton = payload[@"displayBackButton"];
+    if ([displayBackButton isKindOfClass:[NSNumber class]]) {
+        [builder displayBackButton:[displayBackButton boolValue]];
+    }
+}
+
 /// JS-facing running-mode ordinals. v6 removed `TransactionOnly` and
 /// `PaywallObserver` from the native `PLYRunningMode`, so we keep a stable
 /// cross-platform protocol here (same ordinals as Android `PurchaselyModule`)
@@ -1190,6 +1211,7 @@ RCT_EXPORT_METHOD(preloadPresentation:(NSString *)requestId
             resolve(@(YES));
             return;
         }
+        applyPresentationDisplayOptions(builder, payload);
         id<PLYPresentationRequest> request = [builder build];
         [request preloadWithCompletion:onFetchCompletion];
         resolve(@(YES));
@@ -1356,6 +1378,7 @@ RCT_EXPORT_METHOD(displayPresentation:(NSString *)requestId
             resolve(@(YES));
             return;
         }
+        applyPresentationDisplayOptions(builder, payload);
         [builder onDismissed:onDismissed];
         id<PLYPresentationRequest> request = [builder build];
         // Preload to obtain the controller, then show it ourselves so we keep
