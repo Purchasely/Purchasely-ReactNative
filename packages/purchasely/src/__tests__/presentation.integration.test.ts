@@ -202,6 +202,73 @@ describe('façade · integration with native bridge', () => {
         });
     });
 
+    describe('PLYPresentationBuilder.defaultSource().build()', () => {
+        // `defaultSource()` is the canonical cross-platform factory (Flutter
+        // parity); `default()` is a kept alias. Both must send isDefault:true
+        // with null ids so native resolves the SDK default presentation.
+        it('mirrors default(): isDefault:true with null placement + presentation ids', () => {
+            const req = PLYPresentationBuilder.defaultSource().build();
+            req.preload();
+
+            expect(native.preloadPresentation).toHaveBeenCalledTimes(1);
+            const [, payload] = native.preloadPresentation.mock.calls[0];
+            expect(payload.isDefault).toBe(true);
+            expect(payload.placementId).toBeNull();
+            expect(payload.presentationId).toBeNull();
+        });
+    });
+
+    describe('PLYLoadedPresentation lifecycle delegation', () => {
+        it('preload() resolves a presentation that delegates display/close/back to the request', async () => {
+            const req = PLYPresentationBuilder.placement('home').build();
+            const preloadPromise = req.preload();
+            const [requestId] = native.preloadPresentation.mock.calls[0];
+
+            emit(PURCHASELY_PRESENTATION_EVENTS.LOADED, {
+                requestId,
+                presentation: fakePresentationPayload,
+            });
+
+            const loaded = await preloadPromise;
+            // Data fields of PLYPresentation are still present.
+            expect(loaded.screenId).toBe('screen-abc');
+            expect(loaded.placementId).toBe('home');
+            // Lifecycle methods added by PLYLoadedPresentation.
+            expect(typeof loaded.display).toBe('function');
+            expect(typeof loaded.close).toBe('function');
+            expect(typeof loaded.back).toBe('function');
+
+            // display() on the loaded presentation drives the same request
+            // (same requestId reaches native).
+            const displayPromise = loaded.display({ type: 'modal' });
+            expect(native.displayPresentation).toHaveBeenCalledTimes(1);
+            const [displayRequestId, , transition] =
+                native.displayPresentation.mock.calls[0];
+            expect(displayRequestId).toBe(requestId);
+            expect(transition).toMatchObject({ type: 'modal' });
+
+            emit(PURCHASELY_PRESENTATION_EVENTS.DISMISSED, {
+                requestId,
+                closeReason: 'programmatic',
+            });
+            const outcome = await displayPromise;
+            expect(outcome.closeReason).toBe('programmatic');
+
+            // close() / back() delegate to the same request id.
+            loaded.close();
+            expect(native.closePresentation).toHaveBeenCalledWith(requestId);
+            loaded.back();
+            expect(native.goBackToPreviousScreen).toHaveBeenCalledWith(requestId);
+        });
+
+        it('exposes the request id publicly (used by the embedded view)', () => {
+            const req = PLYPresentationBuilder.placement('home').build();
+            expect(req.requestId).toBeNull();
+            req.preload();
+            expect(req.requestId).toMatch(/^ply_req_/);
+        });
+    });
+
     describe('PLYPresentationRequest.display() — outcome 5 fields', () => {
         it('resolves with the full outcome at DISMISS (not at trigger)', async () => {
             let presentedPayload: any = null;

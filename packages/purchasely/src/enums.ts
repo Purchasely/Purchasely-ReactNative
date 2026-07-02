@@ -55,10 +55,16 @@ export enum PlanType {
   PLAN_TYPE_UNKNOWN = constants.unknown,
 }
 
+/**
+ * SDK running mode. The v6 native SDKs (and the Flutter SDK) expose only two
+ * modes; the legacy v5 `TRANSACTION_ONLY` / `PAYWALL_OBSERVER` modes were
+ * removed.
+ *
+ * - `OBSERVER` — the host app owns the purchase flow; Purchasely only observes.
+ * - `FULL` — Purchasely owns the purchase flow.
+ */
 export enum RunningMode {
-  TRANSACTION_ONLY = constants.runningModeTransactionOnly,
   OBSERVER = constants.runningModeObserver,
-  PAYWALL_OBSERVER = constants.runningModePaywallObserver,
   FULL = constants.runningModeFull,
 }
 
@@ -66,20 +72,6 @@ export enum PLYThemeMode {
   LIGHT = constants.themeLight,
   DARK = constants.themeDark,
   SYSTEM = constants.themeSystem,
-}
-
-export enum PLYPaywallAction {
-  CLOSE = 'close',
-  CLOSE_ALL = 'closeAll',
-  LOGIN = 'login',
-  NAVIGATE = 'navigate',
-  PURCHASE = 'purchase',
-  RESTORE = 'restore',
-  OPEN_PRESENTATION = 'open_presentation',
-  OPEN_PLACEMENT = 'open_placement',
-  PROMO_CODE = 'promo_code',
-  OPEN_FLOW_STEP = 'open_flow_step',
-  WEB_CHECKOUT = 'web_checkout',
 }
 
 export enum PLYDataProcessingLegalBasis {
