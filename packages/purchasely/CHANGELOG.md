@@ -24,6 +24,12 @@ All notable changes to `react-native-purchasely` are documented in this file.
 - The action interceptor now normalises `info.presentation` against the full
   v6 contract (audience, AB-test, campaign, flow, language, plans, metadata,
   height) so handlers can rely on the same shape as `presentation.preload()`.
+- `<PLYPresentationView request={...} />`: the embedded view now accepts a
+  preloaded `PLYPresentationRequest`. It reuses the presentation already loaded
+  by `request.preload()` (resolved natively by the request's `requestId`)
+  instead of loading a second time — aligned with the native iOS/Android and
+  Flutter SDKs. `PLYPresentationRequest` exposes a public `requestId` getter for
+  this, and `onPresentationClosed` is now typed with `PLYPresentationViewResult`.
 
 ### Removed — obsolete v5 surface (Flutter parity)
 

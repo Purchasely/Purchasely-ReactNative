@@ -1229,6 +1229,14 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
     /** Loaded presentations currently associated with a JS request id. */
     private val activeLoadedPresentations = ConcurrentHashMap<String, PLYPresentation>()
 
+    /**
+     * Look up a presentation preloaded through [preloadPresentation] by its JS
+     * request id. Used by the embedded [PurchaselyViewManager] to reuse a
+     * presentation the JS layer already preloaded instead of loading a new one.
+     */
+    fun loadedPresentation(requestId: String): PLYPresentation? =
+      activeLoadedPresentations[requestId]
+
     /** Pending interceptor callbacks, resolved when JS calls completeActionInterceptor. */
     private val pendingActionInterceptors =
       ConcurrentHashMap<String, CompletableDeferred<PLYInterceptResult>>()
