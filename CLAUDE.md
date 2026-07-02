@@ -11,13 +11,13 @@
 
 | Property | Value |
 |----------|-------|
-| Current Version | 6.0.0-rc.1 |
-| React Native | 0.79.2 |
-| TypeScript | 5.2.2 (strict mode) |
-| Node.js | v20 (see `.nvmrc`) |
+| Current Version | 6.0.0-rc.2 |
+| React Native | 0.86.0 |
+| TypeScript | 5.8.3 (strict mode) |
+| Node.js | v22 (see `.nvmrc`) |
 | Package Manager | Yarn 3.6.1 (workspaces) |
-| Native iOS SDK | 6.0.0 |
-| Native Android SDK | 6.0.0 |
+| Native iOS SDK | 6.0.0-rc.2 |
+| Native Android SDK | 6.0.0-rc.2 |
 
 ### Supported App Stores
 - Apple App Store (iOS)
@@ -191,7 +191,7 @@ yarn player:clean
 | Type | Convention | Example |
 |------|------------|---------|
 | Components | PascalCase | `PLYPresentationView` |
-| Enums | PascalCase with PLY prefix | `PLYPresentationAction` |
+| Enums | PascalCase with PLY prefix | `PLYThemeMode` |
 | Private properties | Underscore prefix | `_view`, `_controller` |
 | Event constants | SCREAMING_SNAKE_CASE | `PURCHASELY_EVENTS` |
 | Functions | camelCase | `fetchPresentation` |
@@ -254,10 +254,11 @@ await Purchasely.builder('YOUR_API_KEY')
 
 ### Presentation Methods (v6 builders)
 
-`Purchasely.presentation` is the `PresentationBuilder`. `build()` returns a
-`PresentationRequest`; `display()` resolves at dismiss with a 5-field
-`PresentationOutcome` (`{ presentation, purchaseResult, plan, closeReason,
-error }`).
+`Purchasely.presentation` is the `PLYPresentationBuilder`. `build()` returns a
+`PLYPresentationRequest`; `display()` resolves at dismiss with a 5-field
+`PLYPresentationOutcome` (`{ presentation, purchaseResult, plan, closeReason,
+error }`). `preload()` resolves a `PLYLoadedPresentation` that also exposes
+`display()` / `close()` / `back()` delegating to its request.
 
 ```typescript
 // Preload a placement (was fetchPresentation)
@@ -367,11 +368,9 @@ enum LogLevels {
   ERROR
 }
 
-// Running modes
+// Running modes (v6: only two modes, builder takes 'observer' | 'full')
 enum RunningMode {
-  TRANSACTION_ONLY,  // Handle transactions only
-  OBSERVER,          // Observe transactions
-  PAYWALL_OBSERVER,  // Observe paywalls
+  OBSERVER,          // Observe transactions (default)
   FULL               // Full functionality
 }
 
@@ -404,12 +403,12 @@ Build orchestration with caching:
 ### Native Dependencies
 
 **iOS (CocoaPods):**
-- Purchasely SDK v6.0.0
+- Purchasely SDK v6.0.0-rc.2
 - Deployment target: iOS 13.4
 
 **Android (Gradle):**
-- io.purchasely:core:6.0.0
-- Min SDK: 21
+- io.purchasely:core:6.0.0-rc.2
+- Min SDK: 23
 - Kotlin: 2.1+
 - Java: 11
 

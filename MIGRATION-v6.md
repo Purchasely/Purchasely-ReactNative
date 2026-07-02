@@ -21,10 +21,11 @@ the methods that are **unchanged**.
 - The paywall surface is now built around three entry points exposed on the
   `Purchasely` default export:
   - `Purchasely.builder(apiKey)` — chainable SDK start.
-  - `Purchasely.presentation` — the `PresentationBuilder` (`.placement(id)`,
-    `.screen(id)`, `.default()`).
+  - `Purchasely.presentation` — the `PLYPresentationBuilder` (`.placement(id)`,
+    `.screen(id)`, `.defaultSource()`). `.default()` remains a valid alias of
+    `.defaultSource()` (it matches the iOS entry-point name).
   - `Purchasely.interceptAction(kind, handler)` — typed action interception.
-- `PresentationBuilder.build()` returns a **`PresentationRequest`** with a
+- `PLYPresentationBuilder.build()` returns a **`PLYPresentationRequest`** with a
   lifecycle (`preload()`, `display(transition?)`, `close()`, `back()`).
 - `display()` resolves at **dismiss** with a 5-field `PLYPresentationOutcome`
   (`{ presentation, purchaseResult, plan, closeReason, error }`).
@@ -98,8 +99,18 @@ const configured = await Purchasely.builder('YOUR_API_KEY')
   .allowCampaigns(true)        // automatic campaigns
   .stores(['google'])          // Android only: 'google' | 'huawei' | 'amazon'
   .storekitVersion('storeKit2')// iOS only: 'storeKit1' | 'storeKit2'
+  .handleDeeplink(coldStartUrl)// optional cold-start deeplink, see note below
   .start()
 ```
+
+> **Cold-start deeplink — `.handleDeeplink(deeplink)`.** Hand the SDK the
+> deeplink that launched the app from a cold start. At process launch the
+> deeplink listener is not registered yet, so the builder **stores the deeplink
+> and replays it once `start()` has completed** — a paywall opened by a deeplink
+> is therefore not lost during startup. For deeplinks received while the app is
+> already running, keep using the top-level `Purchasely.handleDeeplink(url)`
+> method (see
+> [Deeplinks](#deeplinks-campaigns--the-default-dismiss-handler)).
 
 > **⚠️ Major breaking change — the default `runningMode` is now `'observer'`
 > (v5 effectively defaulted to `full`).** This is a **silent behavioural change**:
@@ -172,6 +183,75 @@ await Purchasely.presentation.screen('SCREEN_ID').build().display()
 
 ---
 
+## Presentation builder options
+
+`Purchasely.presentation` (a `PLYPresentationBuilder`) chains modifiers before
+`.build()`:
+
+| Modifier | Effect |
+|----------|--------|
+| `.contentId(id)` | Preselects a product/plan content id (was the `contentId` parameter on the v5 present\* calls). |
+| `.backgroundColor(hex)` | Overrides the paywall background colour, e.g. `'#101828'`. |
+| `.progressColor(hex)` | Overrides the loading-indicator colour. |
+| `.displayCloseButton(bool)` | Toggles the close button. |
+| `.displayBackButton(bool)` | Toggles the back button. |
+
+```typescript
+await Purchasely.presentation
+  .placement('ONBOARDING')
+  .contentId('my_content_id')
+  .backgroundColor('#101828')
+  .progressColor('#FFFFFF')
+  .displayCloseButton(false)
+  .displayBackButton(false)
+  .build()
+  .display()
+```
+
+> **⚠️ Platform difference for the button/colour toggles.** On **Android** these
+> are **full toggles** — `true` shows the element, `false` hides it. On **iOS**
+> they are **removal-only**: only passing `false` has an effect (it hides the
+> element); passing `true` does **not** force-show an element the screen did not
+> already define. Design for the `false` case and treat the shown state as the
+> screen default.
+
+---
+
+## Display transitions — `display(transition?)`
+
+`request.display()` accepts an optional transition object describing **how** the
+paywall is presented:
+
+```typescript
+await request.display({
+  type: 'drawer',                          // presentation style, see table
+  dismissible: true,                       // allow interactive dismissal
+  width:  { type: 'percentage', value: 100 },
+  height: { type: 'percentage', value: 60 },
+  backgroundColors: { light: '#FFFFFF', dark: '#000000' },
+})
+```
+
+| `type` | Description |
+|--------|-------------|
+| `'fullScreen'` | Full-screen (default). |
+| `'push'` | Pushed onto the navigation stack. |
+| `'modal'` | Modal presentation. |
+| `'drawer'` | Bottom drawer sized by `width` / `height`. |
+| `'popin'` | Centered pop-in sized by `width` / `height`. |
+| `'inlinePaywall'` | Inline within your own layout. |
+
+- `width` / `height` are **dimension objects** — `{ type: 'pixel' | 'percentage', value }`
+  — and are used to size `drawer` / `popin` transitions.
+- `dismissible` (bool) controls whether the user can dismiss the transition
+  interactively.
+- `backgroundColors` sets the scrim/background per theme: `{ light, dark }`.
+
+> **v5 → v6 dimension change.** The v5 `heightPercentage` field is **replaced**
+> by `height: { type: 'percentage', value }` (and, symmetrically, `width`).
+
+---
+
 ## Pre-fetching (preload)
 
 ### Before (v5 — removed)
@@ -183,12 +263,27 @@ const result = await Purchasely.presentPresentation({ presentation })
 
 ### After (v6)
 
+`preload()` resolves with a **`PLYLoadedPresentation`** once the screen is fully
+loaded. It is a lightweight handle that **delegates back to the originating
+request**, so you can drive either the request or the loaded handle:
+
 ```typescript
 const request = Purchasely.presentation.placement('ONBOARDING').build()
-const presentation = await request.preload() // resolves when the screen is loaded
-// later, when ready to show it:
-const outcome = await request.display()
+
+const loaded = await request.preload()  // PLYLoadedPresentation, screen is ready
+// …later, when ready to show it (both forms are equivalent):
+const outcome = await loaded.display()  // or: await request.display()
 ```
+
+`PLYLoadedPresentation` exposes the same lifecycle as the request —
+`display(transition?)`, `close()` and `back()` — each delegating to the request
+it was preloaded from.
+
+> **Platform difference for `close()`.** On **Android**, `close()` dismisses
+> **all** currently displayed presentations (a limitation of the native SDK,
+> which does not yet expose a per-presentation close). On **iOS**, `close()`
+> dismisses only the targeted presentation. Account for this if you stack
+> presentations.
 
 ---
 
@@ -205,9 +300,10 @@ request.close()    // hide / close
 request.back()     // navigate back inside a multi-step (Flow) presentation
 ```
 
-> `request.close()` currently dismisses **all** displayed presentations (the
-> native SDK does not yet expose a per-request close). If you stack
-> presentations, closing one will dismiss the others.
+> **Platform difference for `close()`.** On **Android**, `request.close()`
+> currently dismisses **all** displayed presentations (the native SDK does not
+> yet expose a per-request close), so if you stack presentations, closing one
+> will dismiss the others. On **iOS**, only the targeted presentation is closed.
 
 ---
 
@@ -259,6 +355,10 @@ Purchasely.removeAllActionInterceptors()
 
 Known action kinds: `close`, `closeAll`, `login`, `navigate`, `purchase`,
 `restore`, `openPresentation`, `openPlacement`, `promoCode`, `webCheckout`.
+
+> The `kind` argument and the `payload.kind` discriminant are typed by the
+> `PLYPresentationActionKind` string union — this is the **only** action
+> vocabulary in v6. The v5 `PLYPaywallAction` enum has been **removed**.
 
 ---
 
