@@ -9,16 +9,22 @@ on:
     branches:
       - feat/sdk-v6-migration
     paths:
-      - 'packages/purchasely/react-native-purchasely.podspec'
+      # SDK source (shared JS bridge + native): changing the bridge must run E2E.
+      - 'packages/purchasely/src/**'
       - 'packages/purchasely/ios/**'
+      - 'packages/purchasely/android/src/**'
+      - 'packages/purchasely/react-native-purchasely.podspec'
       - '.github/workflows/e2e-ios.yml'
       - 'integration_test/**'
       - 'example/src/E2ETestRunner.tsx'
       - 'example/ios/**'
   pull_request:
     paths:
-      - 'packages/purchasely/react-native-purchasely.podspec'
+      # SDK source (shared JS bridge + native): changing the bridge must run E2E.
+      - 'packages/purchasely/src/**'
       - 'packages/purchasely/ios/**'
+      - 'packages/purchasely/android/src/**'
+      - 'packages/purchasely/react-native-purchasely.podspec'
       - '.github/workflows/e2e-ios.yml'
       - 'integration_test/**'
       - 'example/src/E2ETestRunner.tsx'
