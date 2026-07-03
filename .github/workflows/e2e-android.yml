@@ -9,6 +9,10 @@ on:
     branches:
       - feat/sdk-v6-migration
     paths:
+      # SDK source (shared JS bridge + native): changing the bridge must run E2E.
+      - 'packages/purchasely/src/**'
+      - 'packages/purchasely/ios/**'
+      - 'packages/purchasely/android/src/**'
       - 'packages/purchasely/android/build.gradle'
       - 'packages/*/android/build.gradle'
       - '.github/workflows/e2e-android.yml'
@@ -17,6 +21,10 @@ on:
       - 'example/android/app/build.gradle'
   pull_request:
     paths:
+      # SDK source (shared JS bridge + native): changing the bridge must run E2E.
+      - 'packages/purchasely/src/**'
+      - 'packages/purchasely/ios/**'
+      - 'packages/purchasely/android/src/**'
       - 'packages/purchasely/android/build.gradle'
       - 'packages/*/android/build.gradle'
       - '.github/workflows/e2e-android.yml'
