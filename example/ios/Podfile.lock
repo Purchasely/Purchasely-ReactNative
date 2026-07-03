@@ -1427,7 +1427,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - react-native-purchasely (6.0.0-rc.1):
+  - react-native-purchasely (6.0.0-rc.2):
     - Purchasely (= 6.0.0-rc.2)
     - React-Core
   - react-native-safe-area-context (5.5.2):
@@ -2235,7 +2235,7 @@ SPEC CHECKSUMS:
   React-Mapbuffer: ce449ccdf3b80384415b925606be8a4bdcfc65d3
   React-microtasksnativemodule: 2eb3f49d0d8e77b5343455eccd057010b8d38b6b
   React-mutationobservernativemodule: f0a0d5ae9b51caf7becbeabf836d716cfedb6bf2
-  react-native-purchasely: f9da1c86d6d125c0f0e8084397234e67d8411b15
+  react-native-purchasely: 8d2512c6ba1a01dfe1206f7866cd845086a4d69c
   react-native-safe-area-context: 3836dc43241ba89903508a442029e57f7491539f
   React-NativeModulesApple: a092d89b58f635ebfab88048b0eda9fb516819fd
   React-networking: 968bbbe73590149feb1e72b2af4f6a68e4796ece
