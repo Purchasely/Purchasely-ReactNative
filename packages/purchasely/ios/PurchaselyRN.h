@@ -26,4 +26,15 @@
 /// presentation the JS layer already preloaded (instead of loading it again).
 + (nullable id<PLYPresentation>)loadedPresentationForRequestId:(nonnull NSString *)requestId;
 
+/// Emit a `PRESENTATION_VIEWED` analytics event to JS for an embedded
+/// `PLYPresentationView` that has just appeared on screen. The iOS native SDK
+/// only fires this event through its own full-screen display flow
+/// (`display()` / `showController:`); a manually embedded controller renders
+/// correctly but never triggers it. Android's SDK DOES fire it for embedded
+/// views, so the embedded view calls this to reach cross-platform parity — the
+/// paywall is genuinely on screen at this point. No-op if the emitter is not
+/// observing.
++ (void)emitEmbeddedPresentationViewedForRequestId:(nullable NSString *)requestId
+                                        placementId:(nullable NSString *)placementId;
+
 @end
