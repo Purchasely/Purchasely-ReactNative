@@ -82,6 +82,22 @@ function eventToOutcome(
 }
 
 /**
+ * The currently registered global default-dismiss handler — the actual JS
+ * callback, kept at module scope separately from its native subscription (see
+ * {@link setDefaultPresentationDismissHandler} below).
+ *
+ * A live reference is needed here (not just the subscription) so a
+ * host-initiated `display()` whose request has **no** local `onDismissed` can
+ * fall back to it. This mirrors the Flutter/native routing rule
+ * (`bridge.dart#_handleOnDismissed`): on dismiss, route the outcome to the
+ * request's local `onDismissed` if present, otherwise to the global default
+ * handler. `null` when no default handler is registered.
+ */
+let currentDefaultDismissHandler:
+    | ((outcome: PLYPresentationOutcome) => void)
+    | null = null;
+
+/**
  * Holds the callbacks registered on a {@link PLYPresentationBuilder}. They are
  * shared between the builder, the request and the live {@link PLYPresentation}
  * so that callbacks reassigned after `preload()` take effect.
@@ -351,8 +367,12 @@ export class PLYPresentationRequest {
                 if (this.config.callbacks.onPresented) {
                     this.config.callbacks.onPresented(null, outcome.error);
                 }
+                // Same routing as the DISMISSED path: local `onDismissed` wins,
+                // otherwise fall back to the global default dismiss handler.
                 if (this.config.callbacks.onDismissed) {
                     this.config.callbacks.onDismissed(outcome);
+                } else if (currentDefaultDismissHandler) {
+                    currentDefaultDismissHandler(outcome);
                 }
                 resolve(outcome);
                 this.teardownSubscriptions();
@@ -483,8 +503,25 @@ export class PLYPresentationRequest {
                     normalizePresentation(event.presentation) ??
                     this.livePresentation;
                 const outcome = eventToOutcome(event, presentation);
+                // Routing (parity with Flutter `_handleOnDismissed` / native):
+                // prefer the request's local `onDismissed`; when none is set,
+                // fall back to the global default dismiss handler so a
+                // fire-and-forget `display()` (no local handler, promise not
+                // awaited) still delivers its outcome centrally. The promise
+                // ALWAYS resolves with the outcome regardless of routing.
+                //
+                // Anti-double-fire: the native DEFAULT_DISMISSED event — which
+                // also routes to the global handler (see
+                // setDefaultPresentationDismissHandler) — is emitted ONLY for
+                // SDK-opened presentations (campaign / deeplink / Promoted
+                // IAP). Those carry no `requestId` and have no JS request, so
+                // they never match this per-request DISMISSED branch. A given
+                // dismissal therefore reaches the default handler through
+                // exactly one path.
                 if (this.config.callbacks.onDismissed) {
                     this.config.callbacks.onDismissed(outcome);
+                } else if (currentDefaultDismissHandler) {
+                    currentDefaultDismissHandler(outcome);
                 }
                 resolve(outcome);
                 this.teardownSubscriptions();
@@ -524,15 +561,26 @@ export class PLYPresentationRequest {
 let defaultDismissSubscription: EmitterSubscription | null = null;
 
 /**
- * Register the global handler invoked when a presentation the app did **not**
- * instantiate itself — a campaign, a deeplink, or a Promoted In-App Purchase —
- * is dismissed. This is the v6 replacement for the removed
+ * Register the global handler invoked when a dismissed presentation is **not**
+ * handled locally. It receives two categories of dismissals (parity with the
+ * Flutter/native SDKs):
+ *
+ * 1. Presentations the app did **not** instantiate itself — a campaign, a
+ *    deeplink, or a Promoted In-App Purchase (delivered by native through a
+ *    dedicated event).
+ * 2. Presentations the app **did** display itself via `request.display()` but
+ *    for which it registered **no** local `onDismissed` callback. In that case
+ *    the outcome is still surfaced to the promise returned by `display()`, and
+ *    additionally routed here. If a local `onDismissed` **is** set, it wins and
+ *    this default handler is **not** called for that presentation.
+ *
+ * This is the v6 replacement for the removed
  * `setDefaultPresentationResultCallback` / `setDefaultPresentationResultHandler`
  * (it mirrors the native `Purchasely.setDefaultPresentationDismissHandler`).
  *
  * The handler receives the rich {@link PLYPresentationOutcome}; its
- * {@link PLYPresentationOutcome.presentation} field is always populated for this
- * handler, so the app can tell which campaign/deeplink screen closed.
+ * {@link PLYPresentationOutcome.presentation} field is populated whenever the
+ * SDK knows which screen closed, so the app can tell which paywall dismissed.
  *
  * Like the native SDK, only one handler is active at a time — calling this
  * again replaces the previous one. Returns the underlying
@@ -559,6 +607,10 @@ export function setDefaultPresentationDismissHandler(
         defaultDismissSubscription = null;
     }
 
+    // Keep a live reference so the per-request DISMISSED fallback (in
+    // PLYPresentationRequest) can reach it when no local `onDismissed` is set.
+    currentDefaultDismissHandler = handler;
+
     // Tell native to (re)register its global dismiss handler. Fire-and-forget:
     // outcomes arrive through DEFAULT_DISMISSED events, not this call's return.
     NativeModules.Purchasely.setDefaultPresentationDismissHandler();
@@ -580,4 +632,7 @@ export function removeDefaultPresentationDismissHandler(): void {
         defaultDismissSubscription.remove();
         defaultDismissSubscription = null;
     }
+    // Drop the live reference so the per-request DISMISSED fallback stops
+    // routing to it once the host removes its default handler.
+    currentDefaultDismissHandler = null;
 }

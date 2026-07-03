@@ -431,6 +431,132 @@ describe('façade · integration with native bridge', () => {
         });
     });
 
+    // Parity with the Flutter/native routing rule (bridge.dart#_handleOnDismissed):
+    // on dismiss, the outcome goes to the request's LOCAL `onDismissed` if set,
+    // otherwise to the GLOBAL default dismiss handler. In every case the
+    // `display()` promise resolves with the outcome.
+    //
+    // These mirror the Flutter reference E2E tests:
+    //   - default_dismiss_via_display_test.dart (T11): display() with NO local
+    //     onDismissed → default handler receives the outcome.
+    //   - local_dismiss_handler_test.dart (T12): local onDismissed set →
+    //     default handler NOT called.
+    describe('display() dismiss routing — default-handler fallback', () => {
+        it('(a) no local onDismissed + default set → default receives the outcome AND the promise resolves', async () => {
+            const defaultHandler = jest.fn();
+            setDefaultPresentationDismissHandler(defaultHandler);
+            // The native DEFAULT_DISMISSED registration call is fire-and-forget;
+            // the fallback below routes through the per-request DISMISSED event.
+            defaultHandler.mockClear();
+
+            // Host displays a presentation itself, without a local onDismissed.
+            const req = PLYPresentationBuilder.placement('home').build();
+            const displayPromise = req.display();
+            const [requestId] = native.displayPresentation.mock.calls[0];
+
+            emit(PURCHASELY_PRESENTATION_EVENTS.DISMISSED, {
+                requestId,
+                presentation: fakePresentationPayload,
+                purchaseResult: 0, // purchased
+                closeReason: 'backSystem',
+            });
+
+            // The promise still resolves with the full outcome…
+            const outcome = await displayPromise;
+            expect(outcome.closeReason).toBe('backSystem');
+            expect(outcome.purchaseResult).toBe('purchased');
+            expect(outcome.presentation?.screenId).toBe('screen-abc');
+
+            // …and the default handler received the same outcome (fallback).
+            expect(defaultHandler).toHaveBeenCalledTimes(1);
+            const forwarded = defaultHandler.mock.calls[0][0];
+            expect(forwarded.closeReason).toBe('backSystem');
+            expect(forwarded.purchaseResult).toBe('purchased');
+            expect(forwarded.presentation?.screenId).toBe('screen-abc');
+        });
+
+        it('(b) local onDismissed + default set → local wins, default NOT called', async () => {
+            const defaultHandler = jest.fn();
+            const localHandler = jest.fn();
+            setDefaultPresentationDismissHandler(defaultHandler);
+            defaultHandler.mockClear();
+
+            const req = PLYPresentationBuilder.placement('home')
+                .onDismissed(localHandler)
+                .build();
+            const displayPromise = req.display();
+            const [requestId] = native.displayPresentation.mock.calls[0];
+
+            emit(PURCHASELY_PRESENTATION_EVENTS.DISMISSED, {
+                requestId,
+                presentation: fakePresentationPayload,
+                closeReason: 'button',
+            });
+
+            const outcome = await displayPromise;
+            expect(outcome.closeReason).toBe('button');
+
+            // The local handler received the outcome…
+            expect(localHandler).toHaveBeenCalledTimes(1);
+            expect(localHandler.mock.calls[0][0].closeReason).toBe('button');
+            // …and the default handler stayed silent (local wins).
+            expect(defaultHandler).not.toHaveBeenCalled();
+        });
+
+        it('(c) neither local onDismissed nor default handler → promise resolves without error', async () => {
+            // No default handler registered (beforeEach cleared it) and no local
+            // onDismissed: the dismissal must not throw and must still resolve.
+            const req = PLYPresentationBuilder.placement('home').build();
+            const displayPromise = req.display();
+            const [requestId] = native.displayPresentation.mock.calls[0];
+
+            emit(PURCHASELY_PRESENTATION_EVENTS.DISMISSED, {
+                requestId,
+                presentation: fakePresentationPayload,
+                closeReason: 'programmatic',
+            });
+
+            const outcome = await displayPromise;
+            expect(outcome.closeReason).toBe('programmatic');
+            expect(outcome.error).toBeFalsy();
+        });
+
+        it('does not double-fire: an SDK-opened DEFAULT_DISMISSED reaches only the default handler, a host display() reaches only its per-request path', async () => {
+            const defaultHandler = jest.fn();
+            const localHandler = jest.fn();
+            setDefaultPresentationDismissHandler(defaultHandler);
+            defaultHandler.mockClear();
+
+            // Host-owned presentation with a LOCAL handler.
+            const req = PLYPresentationBuilder.placement('home')
+                .onDismissed(localHandler)
+                .build();
+            const displayPromise = req.display();
+            const [requestId] = native.displayPresentation.mock.calls[0];
+
+            // SDK-opened dismissal (campaign/deeplink) — carries NO requestId.
+            emit(PURCHASELY_PRESENTATION_EVENTS.DEFAULT_DISMISSED, {
+                presentation: fakePresentationPayload,
+                closeReason: 'backSystem',
+            });
+            // Host-owned dismissal — carries the request id.
+            emit(PURCHASELY_PRESENTATION_EVENTS.DISMISSED, {
+                requestId,
+                presentation: fakePresentationPayload,
+                closeReason: 'button',
+            });
+            await displayPromise;
+
+            // The default handler fired exactly once — for the SDK-opened event
+            // only (the host dismissal was consumed by the local handler).
+            expect(defaultHandler).toHaveBeenCalledTimes(1);
+            expect(defaultHandler.mock.calls[0][0].closeReason).toBe('backSystem');
+            // The local handler fired exactly once — for the host dismissal.
+            expect(localHandler).toHaveBeenCalledTimes(1);
+            expect(localHandler.mock.calls[0][0].closeReason).toBe('button');
+        });
+    });
+
     describe('Action interceptor lifecycle', () => {
         it('registers, dispatches and resolves an interceptor end-to-end', async () => {
             const handler = jest.fn().mockResolvedValue('success' as const);
