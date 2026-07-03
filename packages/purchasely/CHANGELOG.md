@@ -2,7 +2,7 @@
 
 All notable changes to `react-native-purchasely` are documented in this file.
 
-## [6.0.0-rc.2] — Unreleased
+## [6.0.0-rc.2] — 2026-07-03
 
 ### Added — v6 cross-platform builder API (Flutter parity)
 
