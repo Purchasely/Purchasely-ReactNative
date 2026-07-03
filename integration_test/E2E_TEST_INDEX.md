@@ -392,6 +392,163 @@ Déclenchés par le script hôte → composant `E2ETestRunner.tsx` embarqué dan
 
 ---
 
+## T21 — synchronize() résout OU rejette proprement (pas de hang)
+
+**Inspiré de :** Flutter catalog **T6** (`dart_android_bridge_test.dart` / `dart_ios_bridge_test.dart`)
+
+**Ce que ça teste :** contrat v6 de `synchronize()` : la promesse **résout** (`true` en succès) **ou rejette** avec l'erreur store native. Sur émulateur sans Play billing, elle rejette avec `BillingUnavailable` — les deux issues passent ; seul un **hang** (jamais réglée) échoue.
+
+| Step | Action | Assert |
+|------|--------|--------|
+| 1 | `Promise.race([synchronize(), timeout(20 s)])` | règle sous 20 s |
+| 2 | résolution | PASS (`result` loggé) |
+| 3 | rejet ≠ timeout | PASS (erreur store loggée) |
+| 4 | timeout 20 s atteint | FAIL (hang) |
+
+**Marqueurs :** `[E2E:T21:PASS]` / `[E2E:T21:FAIL]` — **Driver host :** aucun
+
+**Divergence vs Flutter :** Flutter attend `Future<bool>` et `expect` résout `true` OU `throws PlatformException`. RN ajoute un timeout de 20 s côté test pour transformer un hang en FAIL explicite plutôt que de bloquer toute la suite (Flutter s'appuie sur le timeout global du runner).
+
+---
+
+## T22 — Default dismiss handler attrape un display() fire-and-forget
+
+**Inspiré de :** `default_dismiss_via_display_test.dart` + `default_dismiss_via_display_ios_test.dart` (Flutter catalog **T11**)
+
+**Ce que ça teste :** un `display()` **ouvert par l'app**, **non-awaité** et **sans `onDismissed` local**, route sa fermeture vers le handler global `setDefaultPresentationDismissHandler`. (Test écrit contre le comportement cible du routing local→default.)
+
+| Step | Action | Assert |
+|------|--------|--------|
+| 1 | `setDefaultPresentationDismissHandler(cb)` | — |
+| 2 | `req = presentation.placement(...).build()` (sans `onDismissed`) | — |
+| 3 | `req.display()` (fire-and-forget, pas d'`await`) | — |
+| 4 | `await sleep(3000)` | paywall rendu |
+| 5 | `req.close()` | fermeture programmatique |
+| 6 | `waitFor(() => defaultOutcome, 15000)` | handler global appelé |
+| 7 | — | `closeReason === 'programmatic'` (épinglé) |
+| 8 | — | `presentation.screenId` non-vide |
+
+**Marqueurs :** `[E2E:T22:PASS]` / `[E2E:T22:FAIL]` — **Driver host :** aucun
+
+**Divergence vs Flutter :** le test Flutter dismisse via un driver hôte (BACK Android → `backSystem` / tap close iOS → `button`) et accepte `anyOf`. La version RN dismisse via `req.close()` (programmatique) — pas de driver — donc `closeReason` est épinglé à `'programmatic'`, assertion plus stricte que l'`anyOf` Flutter.
+
+---
+
+## T23 — onDismissed local gagne sur le default handler
+
+**Inspiré de :** `local_dismiss_handler_test.dart` (+ `_ios`) (Flutter catalog **T12**)
+
+**Ce que ça teste :** default handler ET `onDismissed` local posés → seul le local (et le futur `display()` awaité) reçoivent l'outcome ; le default reste **silencieux**.
+
+| Step | Action | Assert |
+|------|--------|--------|
+| 1 | `setDefaultPresentationDismissHandler(cb)` | — |
+| 2 | `req = placement(...).onDismissed(local).build()` | — |
+| 3 | `p = req.display()` (awaité via `Promise.race`) | — |
+| 4 | `await sleep(3000)` puis `req.close()` | — |
+| 5 | `await p` (timeout 15 s) | outcome awaité reçu |
+| 6 | — | `localOutcome` reçu (non-null) |
+| 7 | — | `outcome.closeReason === 'programmatic'` |
+| 8 | `await sleep(1000)` | — |
+| 9 | — | `defaultOutcome === null` (default silencieux) |
+
+**Marqueurs :** `[E2E:T23:PASS]` / `[E2E:T23:FAIL]` — **Driver host :** aucun
+
+**Divergence vs Flutter :** dismiss programmatique (`req.close()`) au lieu du BACK/tap piloté → `closeReason` épinglé `'programmatic'` (Flutter : `anyOf`).
+
+---
+
+## T24 — User attribute listener : événements set + removed
+
+**Inspiré de :** `user_attribute_listener_test.dart` (Flutter — plateforme-agnostique)
+
+**Ce que ça teste :** `setUserAttributeListener({onUserAttributeSet, onUserAttributeRemoved})` reçoit un événement **set** (key/type/value/source) quand on pose un attribut, puis un événement **removed** (key) quand on le clear. Chaîne complète JS → EventEmitter natif → callback.
+
+| Step | Action | Assert |
+|------|--------|--------|
+| 1 | `setUserAttributeListener({...})` | — |
+| 2 | `await sleep(1000)` | handshake EventChannel |
+| 3 | `setUserAttributeWithString('e2e_listener_attr', 'hello_listener')` | — |
+| 4 | `waitFor(() => lastSet, 15000)` | set reçu |
+| 5 | — | `lastSet.value === 'hello_listener'` |
+| 6 | `clearUserAttribute('e2e_listener_attr')` | — |
+| 7 | `waitFor(() => lastRemovedKey, 15000)` | removed reçu |
+| 8 | cleanup : `attrListener.remove()` + `clearUserAttribute` | — |
+
+**Marqueurs :** `[E2E:T24:PASS]` / `[E2E:T24:FAIL]` — **Driver host :** aucun
+
+**Note API RN :** `setUserAttributeListener` (index.ts, lecture seule) enveloppe `addUserAttributeSetListener` / `addUserAttributeRemovedListener` et renvoie `{ remove }`. Callback set = `(key, type, value, source)` ; callback removed = `(key, source)`.
+
+---
+
+## T25 — Vue embarquée `<PLYPresentationView request={…}>` : rendu
+
+**Inspiré de :** `inline_paywall_test.dart` + `INLINE_PAYWALL_CLOSE.md` (Flutter — Android + iOS)
+
+**Ce que ça teste :** on précharge un `request`, on **monte** la vue embarquée dans le runner via la prop `request` (le natif résout la présentation préchargée par `requestId`, pas de second preload), on **attend le rendu** (event `PRESENTATION_VIEWED`), puis on ferme.
+
+| Step | Action | Assert |
+|------|--------|--------|
+| 1 | `addEventListener(...)` (capture `PRESENTATION_VIEWED`) | — |
+| 2 | `req = placement(...).build()` ; `await req.preload()` | — |
+| 3 | `setInlineRequest(req)` → monte `<PLYPresentationView request={req}>` | — |
+| 4 | `waitFor(() => viewedEvent, 30000)` | vue embarquée rendue |
+| 5 | `req.close()` + `await sleep(1500)` | teardown programmatique |
+| 6 | — | `onPresentationClosed observed` (best-effort, loggé) |
+| 7 | cleanup : `setInlineRequest(null)` + `listener.remove()` | — |
+
+**Marqueurs :** `[E2E:T25:PASS]` / `[E2E:T25:FAIL]` — **Driver host :** aucun
+
+**Piège de fermeture inline (voir `INLINE_PAYWALL_CLOSE.md`) :** sous instrumentation, un **tap** sur la croix native de la vue **embarquée** n'est PAS délivré (le binding de test possède le routage des pointeurs de sa fenêtre ; le forwarding hybrid-composition Android / `UiKitView` iOS ne se comporte pas comme en prod). Seul le **rendu** est testable en E2E ; le callback `onPresentationClosed(result:{result,plan})` déclenché par la croix est vérifié dans l'app réelle. T25 épingle donc le rendu (assertion dure) et logge `onPresentationClosed observed=false` en note explicite (pas un échec).
+
+---
+
+## T26 — Lifecycle `PLYLoadedPresentation` : display / close → outcome
+
+**Inspiré de :** nouvelle API v6 du jour (`preload()` renvoie un objet pilotant son propre cycle de vie ; parité Flutter)
+
+**Ce que ça teste :** `const loaded = await req.preload()` → `loaded.display({type:'modal'})` → `loaded.close()` → l'outcome arrive via la promesse de `display`, `closeReason 'programmatic'`. Les méthodes `display/close/back` de l'objet préchargé délèguent au `PLYPresentationRequest` d'origine.
+
+| Step | Action | Assert |
+|------|--------|--------|
+| 1 | `loaded = await req.preload()` | `loaded.screenId` non-vide |
+| 2 | `p = loaded.display({ type:'modal', dismissible:true })` | — |
+| 3 | `await sleep(2500)` puis `loaded.close()` | — |
+| 4 | `await p` (timeout 15 s) | outcome reçu |
+| 5 | — | `closeReason === 'programmatic'` |
+| 6 | — | `outcome.presentation.screenId` non-vide |
+
+**Marqueurs :** `[E2E:T26:PASS]` / `[E2E:T26:FAIL]` — **Driver host :** aucun
+
+---
+
+## T27 — Deeplink cold-start via `builder.handleDeeplink()` avant `start()`
+
+**Inspiré de :** `deeplink_cold_start_test.dart` (Flutter — plateforme-agnostique)
+
+**Ce que ça teste :** le modifieur builder `.handleDeeplink(url)` **avant** `.start()` : le SDK rejoue le deeplink après configuration et **auto-ouvre** le paywall, émettant `DEEPLINK_OPENED → PRESENTATION_LOADED → PRESENTATION_VIEWED`. Aucun `Purchasely.handleDeeplink(...)` manuel (ça, c'est T9).
+
+**Contrainte :** modifier le builder d'init **avant** `start()` exige un **process neuf** → T27 tourne dans une **phase dédiée** (pas en cours de session). On s'abonne aux events **avant** `start()` pour ne pas rater la rafale de démarrage ; le process est détruit à la fin (pas de dismiss/driver nécessaire).
+
+| Step | Action | Assert |
+|------|--------|--------|
+| 1 | `addEventListener(...)` (avant start, capture les 3 events) | — |
+| 2 | `builder(API_KEY).…handleDeeplink(DEEPLINK_AUDIENCES).start()` | `true` |
+| 3 | `waitFor(() => DEEPLINK_OPENED && PRESENTATION_VIEWED, 60000)` | rafale reçue |
+| 4 | — | `DEEPLINK_OPENED.properties.deeplink_identifier` contient le placement |
+| 5 | — | `indexOf(DEEPLINK_OPENED) < indexOf(PRESENTATION_VIEWED)` |
+| 6 | — | `PRESENTATION_VIEWED.properties.sdk_version` non-vide |
+
+**Marqueurs :**
+- **Android (porté / réel) :** phase dédiée `E2E_PHASE=deeplink_coldstart` (relaunch par `run_e2e.sh`) → `[E2E:T27:PASS]` / `[E2E:T27:FAIL]`. Dans la suite principale, T27 émet `[E2E:T27:SKIP]` (déféré à la phase).
+- **iOS (skip explicite) :** `[E2E:T27:SKIP]`. `AppDelegate.swift` ne transmet que `e2eMode` (pas de pont launch-arg → initialProp pour une phase) ; câbler ce pont est **hors périmètre** `example/src`. Android-only pour l'instant.
+
+**Driver host :** aucun. **Phase host Android :** `run_e2e.sh` relance l'app avec `--es E2E_PHASE deeplink_coldstart` après la suite principale et surveille `[E2E:T27:PASS|FAIL]`.
+
+**Divergence vs Flutter :** Flutter teste dans un `testWidgets` isolé (chaque test Flutter démarre son propre process/binding) — le cold-start y est naturel. RN partage une seule session pour T1-T26, d'où la **phase dédiée** (2ᵉ launch Android). Assertions allégées vs Flutter : on exige `DEEPLINK_OPENED` + `PRESENTATION_VIEWED` (invariants cross-platform robustes) et on capture `PRESENTATION_LOADED` sans le rendre obligatoire.
+
+---
+
 ## Architecture du runner
 
 ```
@@ -402,15 +559,19 @@ CI (ubuntu-latest + KVM)
               ├── lance logcat en background
               ├── surveille [E2E:READY_FOR_TAP]  → tap_purchase.sh    (T8)
               ├── surveille [E2E:READY_FOR_BACK] → press_back.sh      (T9)
-              └── surveille [E2E:SUITE:PASS|FAIL] → exit 0|1
+              ├── surveille [E2E:SUITE:PASS|FAIL] (suite principale T1-T26)
+              ├── si PASS → relaunch --es E2E_PHASE deeplink_coldstart (process neuf)
+              │              └── surveille [E2E:T27:PASS|FAIL]          (T27 cold-start)
+              └── exit 0 si (suite PASS ET T27 ≠ FAIL), sinon 1
 
-CI (macos-14 + simulateur iOS)
+CI (macos-15 + simulateur iOS)
   └── run_e2e_ios.sh
         ├── build Release (bundle JS embarqué, pas de Metro)
         ├── xcrun simctl install + launch --console (capture console.log)
         ├── xcrun simctl spawn log stream (capture secondaire)
         ├── surveille [E2E:READY_FOR_TAP]  → tap_purchase_ios.sh  (idb ui tap, points)
         ├── surveille [E2E:READY_FOR_BACK] → swipe_dismiss_ios.sh (idb close/swipe)
+        ├── T27 → [E2E:T27:SKIP] (pas de pont phase iOS ; hors périmètre)
         └── surveille [E2E:SUITE:PASS|FAIL] → exit 0|1
 ```
 
@@ -418,12 +579,13 @@ CI (macos-14 + simulateur iOS)
 
 | Marqueur | Signification |
 |----------|---------------|
-| `[E2E:SUITE:START]` | début de la suite |
+| `[E2E:SUITE:START]` | début de la suite (peut porter `phase=deeplink_coldstart`) |
 | `[E2E:Tn:PASS] <détails>` | test Tn réussi |
 | `[E2E:Tn:FAIL] <message>` | test Tn échoué |
+| `[E2E:Tn:SKIP] <raison>` | test Tn sauté (ex. T27 déféré à sa phase / skip iOS) |
 | `[E2E:READY_FOR_TAP]` | paywall T8 affiché, driver peut taper |
 | `[E2E:READY_FOR_BACK]` | paywall T9 affiché, driver peut dismisser |
-| `[E2E:SUITE:PASS]` | tous les tests sont passés |
+| `[E2E:SUITE:PASS]` | tous les tests de la phase sont passés |
 | `[E2E:SUITE:FAIL]` | au moins un test a échoué |
 
 ## Mapping avec les scénarios Android
@@ -450,3 +612,17 @@ CI (macos-14 + simulateur iOS)
 | T18 | T18 (Flutter v6) |
 | T19 | T19 (Flutter v6) |
 | T20 | T20 (Flutter v6) |
+
+## Mapping avec le catalogue cross-wrapper Flutter (T21-T27)
+
+| Test RN | Réf Flutter catalog | Fichier(s) de test Flutter | Plateformes RN |
+|---------|---------------------|----------------------------|----------------|
+| T21 | catalog **T6** (`synchronize()`) | `dart_android_bridge_test.dart`, `dart_ios_bridge_test.dart` | Android + iOS |
+| T22 | catalog **T11** (default dismiss via display) | `default_dismiss_via_display_test.dart`, `default_dismiss_via_display_ios_test.dart` | Android + iOS |
+| T23 | catalog **T12** (local wins over default) | `local_dismiss_handler_test.dart`, `local_dismiss_handler_ios_test.dart` | Android + iOS |
+| T24 | — (listener utilitaire) | `user_attribute_listener_test.dart` | Android + iOS |
+| T25 | — (vue embarquée) | `inline_paywall_test.dart` + `INLINE_PAYWALL_CLOSE.md` | Android + iOS (rendu ; close inline = app réelle) |
+| T26 | — (lifecycle preload, parité Flutter) | `dart_android_bridge_test.dart` (T8 display path) | Android + iOS |
+| T27 | — (deeplink cold-start builder) | `deeplink_cold_start_test.dart` | **Android** (phase dédiée) ; iOS = `SKIP` explicite |
+
+> Divergences notables vs Flutter : T22/T23 utilisent une fermeture **programmatique** (`req.close()`) au lieu d'un driver hôte → `closeReason` épinglé `'programmatic'` (Flutter accepte `anyOf`). T25 ne vérifie que le **rendu** inline (tap natif non pilotable sous instrumentation — cf. `INLINE_PAYWALL_CLOSE.md`). T27 tourne en **phase process-neuf** côté Android (une seule session RN pour T1-T26) et est **skippé** sur iOS (pas de pont launch-arg → initialProp dans `AppDelegate`, hors périmètre `example/src`).
