@@ -1,8 +1,15 @@
 /**
- * E2E test runner — T1–T20
+ * E2E test runner — T1–T27
  *
  * Renders as the root component when the app is launched with E2E_MODE=true.
- * Each test runs sequentially in a single SDK session.
+ * The main suite (T1–T26) runs sequentially in a single SDK session; T27
+ * (cold-start deeplink) needs a fresh process and runs as a dedicated phase.
+ *
+ * Phase routing (Android only): `MainActivity` forwards the `E2E_PHASE` intent
+ * extra as a `phase` initial prop. When `phase === 'deeplink_coldstart'` the
+ * runner runs ONLY the T27 cold-start flow (init builder chains
+ * `.handleDeeplink()` BEFORE `start()`). iOS `AppDelegate` forwards only
+ * `e2eMode` (no phase bridge), so T27 is skipped on iOS.
  *
  * Host-driven tests (require an external driver process):
  *   T8: [E2E:READY_FOR_TAP]  — paywall displayed; host taps the purchase button
@@ -10,14 +17,17 @@
  *                              Android: adb keyevent BACK via uiautomator
  *                              iOS:     xcrun simctl io booted swipe (prepared, not yet active)
  *
+ * T21–T27 are all driver-free (programmatic close / analytics events); only
+ * T27 requires the dedicated cold-start phase launch (Android).
+ *
  * Host scripts:
  *   Android: integration_test/run_e2e.sh  (android-emulator-runner + uiautomator)
- *   iOS:     integration_test/run_e2e_ios.sh (prepared, not yet in CI)
+ *   iOS:     integration_test/run_e2e_ios.sh
  *
  * Reference: integration_test/E2E_TEST_INDEX.md
  */
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import {
     Platform,
     ScrollView,
@@ -30,7 +40,10 @@ import Purchasely, {
     PLYDataProcessingPurpose,
     PLYPresentationType,
     PLYThemeMode,
+    PLYPresentationView,
     type PLYPresentationOutcome,
+    type PLYPresentationRequest,
+    type PLYPresentationViewResult,
     setDefaultPresentationDismissHandler,
     removeDefaultPresentationDismissHandler,
 } from 'react-native-purchasely'
@@ -40,8 +53,13 @@ const API_KEY = '0ad0594b-3b3d-4fea-8ee1-4b5df91efe87'
 const PLACEMENT_AUDIENCES = 'integration_test_audiences'
 const DEEPLINK_AUDIENCES = `ply://ply/placements/${PLACEMENT_AUDIENCES}`
 
+// Dedicated phase (Android): launched by run_e2e.sh with
+// `am start … --es E2E_PHASE deeplink_coldstart` in a fresh process so the
+// start builder can chain `.handleDeeplink()` BEFORE `start()` (see T27).
+const COLDSTART_PHASE = 'deeplink_coldstart'
+
 // ── Types ────────────────────────────────────────────────────────────────────
-type TestStatus = 'pending' | 'running' | 'pass' | 'fail'
+type TestStatus = 'pending' | 'running' | 'pass' | 'fail' | 'skip'
 
 interface TestResult {
     id: string
@@ -91,13 +109,26 @@ const INITIAL_TESTS: TestResult[] = [
     { id: 'T18', name: 'dynamic offerings: set/get/remove/clear', status: 'pending' },
     { id: 'T19', name: 'presentation.screen(id) + modal/popin transitions', status: 'pending' },
     { id: 'T20', name: 'config setters smoke test', status: 'pending' },
+    { id: 'T21', name: 'synchronize() resolves OR rejects cleanly (no hang)', status: 'pending' },
+    { id: 'T22', name: 'default dismiss handler catches fire-and-forget display()', status: 'pending' },
+    { id: 'T23', name: 'local onDismissed wins over the default handler', status: 'pending' },
+    { id: 'T24', name: 'user attribute listener: set + removed events', status: 'pending' },
+    { id: 'T25', name: 'embedded <PLYPresentationView request={…}> renders', status: 'pending' },
+    { id: 'T26', name: 'PLYLoadedPresentation lifecycle: display/close → outcome', status: 'pending' },
+    { id: 'T27', name: 'cold-start deeplink via builder .handleDeeplink() before start()', status: 'pending' },
 ]
 
 // ── Component ─────────────────────────────────────────────────────────────────
-export default function E2ETestRunner() {
+export default function E2ETestRunner(props: { phase?: string } = {}) {
+    // Android forwards the E2E_PHASE intent extra as `phase`; iOS/default => 'all'.
+    const phase = props.phase ?? 'all'
     const [tests, setTests] = useState<TestResult[]>(INITIAL_TESTS)
     const [suiteStatus, setSuiteStatus] = useState<'running' | 'pass' | 'fail' | 'idle'>('idle')
     const [log, setLog] = useState<string[]>([])
+    // T25: the embedded paywall request whose native view is currently mounted.
+    const [inlineRequest, setInlineRequest] = useState<PLYPresentationRequest | null>(null)
+    // T25: last result delivered to the embedded view's onPresentationClosed.
+    const inlineClosedRef = useRef<PLYPresentationViewResult | null>(null)
 
     function updateTest(id: string, patch: Partial<TestResult>) {
         setTests((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)))
@@ -126,8 +157,18 @@ export default function E2ETestRunner() {
         appendLog(`⏳ ${id}…`)
     }
 
+    function skip(id: string, reason: string) {
+        updateTest(id, { status: 'skip', details: reason })
+        console.log(`[E2E:${id}:SKIP] ${reason}`)
+        appendLog(`⊘ ${id}: ${reason}`)
+    }
+
     useEffect(() => {
-        runSuite()
+        if (phase === COLDSTART_PHASE) {
+            runColdStartPhase()
+        } else {
+            runSuite()
+        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
@@ -782,14 +823,370 @@ export default function E2ETestRunner() {
             pass('T20', 'allowDeeplink/allowCampaigns/setLanguage/setThemeMode/setLogLevel/setDebugMode/revokeDataProcessingConsent no-throw ✓')
         } catch (e) { fail('T20', e); suitePass = false }
 
+        // ── T21 — synchronize() resolves OR rejects cleanly (no hang) ─────────
+        // Ref: Flutter catalog T6 (dart_*_bridge_test). On a bare emulator with
+        // no Play billing, synchronize() propagates the native store error
+        // (BillingUnavailable) — the v6 contract. Either resolution or a clean
+        // rejection passes; a hang (never settling) fails.
+        running('T21')
+        try {
+            let detail: string
+            try {
+                const r = await Promise.race([
+                    Purchasely.synchronize(),
+                    sleep(20000).then<never>(() => {
+                        throw new Error('__HANG__')
+                    }),
+                ])
+                detail = `resolved (result=${JSON.stringify(r)})`
+            } catch (e) {
+                const msg = e instanceof Error ? e.message : String(e)
+                if (msg === '__HANG__') {
+                    throw new Error('synchronize() did not settle within 20 s (hang)')
+                }
+                detail = `rejected cleanly (store error: ${msg})`
+            }
+            pass('T21', `synchronize() ${detail}`)
+        } catch (e) { fail('T21', e); suitePass = false }
+
+        // ── T22 — default dismiss handler catches a fire-and-forget display() ──
+        // Ref: default_dismiss_via_display_test.dart (+ _ios). A host-opened
+        // display() with NO local onDismissed and NOT awaited must route its
+        // dismissal to the global default handler. Here the dismissal is a
+        // programmatic req.close() → closeReason 'programmatic'.
+        running('T22')
+        try {
+            let defaultOutcome22: PLYPresentationOutcome | null = null
+            setDefaultPresentationDismissHandler((outcome: PLYPresentationOutcome) => {
+                defaultOutcome22 = outcome
+            })
+
+            // No onDismissed on the builder; do NOT await display() (fire-and-forget).
+            const req22 = Purchasely.presentation.placement(PLACEMENT_AUDIENCES).build()
+            req22.display()
+
+            await sleep(3000) // let the paywall render
+            req22.close() // programmatic dismissal
+
+            await waitFor(() => defaultOutcome22, 15000, 300)
+
+            const reason22 = defaultOutcome22!.closeReason
+            if (reason22 !== 'programmatic') {
+                throw new Error(`closeReason expected 'programmatic', got "${reason22}"`)
+            }
+            if (!defaultOutcome22!.presentation?.screenId) {
+                throw new Error('default outcome missing presentation.screenId')
+            }
+            pass(
+                'T22',
+                `default handler caught fire-and-forget display(): ` +
+                `closeReason=${reason22} ` +
+                `presentation.screenId=${defaultOutcome22!.presentation?.screenId}`
+            )
+            removeDefaultPresentationDismissHandler()
+        } catch (e) {
+            fail('T22', e)
+            suitePass = false
+            removeDefaultPresentationDismissHandler()
+        }
+
+        await sleep(1000)
+
+        // ── T23 — local onDismissed wins over the default handler ─────────────
+        // Ref: local_dismiss_handler_test.dart. Both a global default handler AND
+        // a per-request onDismissed are set: only the local one (and the awaited
+        // display() future) receive the outcome; the default handler stays silent.
+        running('T23')
+        try {
+            let defaultOutcome23: PLYPresentationOutcome | null = null
+            let localOutcome23: PLYPresentationOutcome | null = null
+
+            setDefaultPresentationDismissHandler((outcome: PLYPresentationOutcome) => {
+                defaultOutcome23 = outcome
+            })
+
+            const req23 = Purchasely.presentation
+                .placement(PLACEMENT_AUDIENCES)
+                .onDismissed((outcome) => {
+                    localOutcome23 = outcome
+                })
+                .build()
+
+            const displayPromise23 = req23.display()
+            await sleep(3000)
+            req23.close()
+
+            const outcome23 = await Promise.race([
+                displayPromise23,
+                sleep(15000).then<never>(() => {
+                    throw new Error('dismiss timeout after 15 s')
+                }),
+            ])
+
+            if (!localOutcome23) {
+                throw new Error('local onDismissed did not fire')
+            }
+            if (outcome23.closeReason !== 'programmatic') {
+                throw new Error(`awaited outcome closeReason expected 'programmatic', got "${outcome23.closeReason}"`)
+            }
+            // Give any (erroneous) default dispatch a moment before asserting silence.
+            await sleep(1000)
+            if (defaultOutcome23 != null) {
+                throw new Error('default handler fired even though a local onDismissed was set')
+            }
+
+            pass(
+                'T23',
+                `local onDismissed won (closeReason=${outcome23.closeReason}); ` +
+                `default handler stayed silent`
+            )
+            removeDefaultPresentationDismissHandler()
+        } catch (e) {
+            fail('T23', e)
+            suitePass = false
+            removeDefaultPresentationDismissHandler()
+        }
+
+        // ── T24 — user attribute listener: set + removed events ────────────────
+        // Ref: user_attribute_listener_test.dart. setUserAttributeListener wires
+        // onUserAttributeSet / onUserAttributeRemoved; setting an attribute emits
+        // a set event (key/type/value/source), clearing emits a removed event.
+        running('T24')
+        const T24_KEY = 'e2e_listener_attr'
+        try {
+            let lastSet24: { key: string; type: any; value: any; source: any } | null = null
+            let lastRemovedKey24: string | null = null
+
+            const attrListener = Purchasely.setUserAttributeListener({
+                onUserAttributeSet: (key, type, value, source) => {
+                    if (key === T24_KEY) lastSet24 = { key, type, value, source }
+                },
+                onUserAttributeRemoved: (key) => {
+                    if (key === T24_KEY) lastRemovedKey24 = key
+                },
+            })
+
+            try {
+                // Let the native EventChannel subscription settle before emitting.
+                await sleep(1000)
+
+                // --- set ---
+                Purchasely.setUserAttributeWithString(T24_KEY, 'hello_listener')
+                await waitFor(() => lastSet24, 15000, 250)
+                if (lastSet24!.value !== 'hello_listener') {
+                    throw new Error(`set value expected 'hello_listener', got ${JSON.stringify(lastSet24!.value)}`)
+                }
+
+                // --- removed ---
+                Purchasely.clearUserAttribute(T24_KEY)
+                await waitFor(() => lastRemovedKey24, 15000, 250)
+
+                pass(
+                    'T24',
+                    `set(${lastSet24!.key}=${JSON.stringify(lastSet24!.value)} ` +
+                    `type=${lastSet24!.type} source=${lastSet24!.source}) → ` +
+                    `removed(${lastRemovedKey24})`
+                )
+            } finally {
+                attrListener.remove()
+                Purchasely.clearUserAttribute(T24_KEY)
+            }
+        } catch (e) { fail('T24', e); suitePass = false }
+
+        // ── T25 — embedded <PLYPresentationView request={…}> renders ──────────
+        // Ref: inline_paywall_test.dart + INLINE_PAYWALL_CLOSE.md. The RENDER
+        // path is the testable one: mounting the embedded view via the `request`
+        // prop resolves the preloaded presentation by requestId and emits
+        // PRESENTATION_VIEWED. Native inline close TAPS are NOT delivered to the
+        // embedded view under instrumentation (proven in INLINE_PAYWALL_CLOSE.md),
+        // so onPresentationClosed is best-effort here and verified in the real app.
+        running('T25')
+        try {
+            inlineClosedRef.current = null
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            let viewedEvent25: any = null
+            const listener25 = Purchasely.addEventListener((event: any) => {
+                if (event.name === 'PRESENTATION_VIEWED') viewedEvent25 = event
+            })
+
+            try {
+                const req25 = Purchasely.presentation.placement(PLACEMENT_AUDIENCES).build()
+                await req25.preload()
+
+                // Mount the embedded paywall via the `request` prop.
+                setInlineRequest(req25)
+
+                const viewed25 = await waitFor(() => viewedEvent25, 30000, 300)
+
+                // Programmatic teardown; observe onPresentationClosed best-effort.
+                req25.close()
+                await sleep(1500)
+                const closeObserved = inlineClosedRef.current != null
+
+                pass(
+                    'T25',
+                    `inline <PLYPresentationView request> rendered ` +
+                    `placement_id=${viewed25.properties?.placement_id ?? 'n/a'} ` +
+                    `onPresentationClosed observed=${closeObserved}` +
+                    (closeObserved
+                        ? ''
+                        : ' (native inline close verified in real app — not drivable under instrumentation)')
+                )
+            } finally {
+                setInlineRequest(null)
+                listener25.remove()
+            }
+        } catch (e) {
+            fail('T25', e)
+            suitePass = false
+            setInlineRequest(null)
+        }
+
+        await sleep(1000)
+
+        // ── T26 — PLYLoadedPresentation lifecycle: display/close → outcome ─────
+        // The object resolved by preload() drives its OWN lifecycle
+        // (loaded.display / loaded.close / loaded.back), delegating to the
+        // originating request. Programmatic close → closeReason 'programmatic'.
+        running('T26')
+        try {
+            const req26 = Purchasely.presentation.placement(PLACEMENT_AUDIENCES).build()
+            const loaded = await req26.preload()
+            if (!loaded.screenId) throw new Error('preload returned no screenId')
+
+            const displayPromise26 = loaded.display({ type: 'modal', dismissible: true })
+            await sleep(2500)
+            loaded.close()
+
+            const outcome26 = await Promise.race([
+                displayPromise26,
+                sleep(15000).then<never>(() => {
+                    throw new Error('loaded.display() dismiss timeout after 15 s')
+                }),
+            ])
+
+            if (outcome26.closeReason !== 'programmatic') {
+                throw new Error(`closeReason expected 'programmatic', got "${outcome26.closeReason}"`)
+            }
+            if (!outcome26.presentation?.screenId) {
+                throw new Error('outcome missing presentation.screenId')
+            }
+            pass(
+                'T26',
+                `loaded.display({modal}) → loaded.close() → ` +
+                `closeReason=${outcome26.closeReason} ` +
+                `presentation.screenId=${outcome26.presentation?.screenId}`
+            )
+        } catch (e) { fail('T26', e); suitePass = false }
+
+        // ── T27 — cold-start deeplink (deferred / skipped in the main suite) ───
+        // Ref: deeplink_cold_start_test.dart. The builder modifier
+        // `.handleDeeplink(url)` replays a launch-time deeplink after start(),
+        // which the SDK auto-opens. This requires a FRESH process (the init
+        // builder must chain .handleDeeplink() BEFORE start()), so it runs as a
+        // dedicated cold-start phase, not mid-session.
+        //   • Android: run_e2e.sh relaunches with E2E_PHASE=deeplink_coldstart →
+        //     runColdStartPhase() below emits [E2E:T27:PASS|FAIL].
+        //   • iOS: AppDelegate forwards only e2eMode (no phase/deeplink bridge;
+        //     wiring it is outside the example/src perimeter) → explicit SKIP.
+        if (Platform.OS === 'android') {
+            skip('T27', 'runs in dedicated cold-start phase (E2E_PHASE=deeplink_coldstart) — see phase [E2E:T27:PASS|FAIL]')
+        } else {
+            skip('T27', 'iOS: cold-start deeplink phase needs an AppDelegate launch-arg → initialProp bridge (out of scope); Android-only for now')
+        }
+
         // ── Final report ──────────────────────────────────────────────────────
         setSuiteStatus(suitePass ? 'pass' : 'fail')
         if (suitePass) {
-            console.log('[E2E:SUITE:PASS] All 20 tests passed')
+            console.log('[E2E:SUITE:PASS] All main-suite tests passed (T1-T26; T27 in cold-start phase)')
             appendLog('=== SUITE PASS ✓ ===')
         } else {
             console.log('[E2E:SUITE:FAIL] One or more tests failed')
             appendLog('=== SUITE FAIL ✗ ===')
+        }
+    }
+
+    // ── T27 — cold-start deeplink phase (own process) ──────────────────────────
+    // Launched by run_e2e.sh with E2E_PHASE=deeplink_coldstart on a FRESH app
+    // process. The SDK is (re)started here with `.handleDeeplink()` chained on the
+    // builder BEFORE start(); the SDK then auto-opens the paywall, firing
+    // DEEPLINK_OPENED → PRESENTATION_LOADED → PRESENTATION_VIEWED. We subscribe
+    // to events BEFORE start() so the startup burst is not missed. The process is
+    // torn down at the end, so no dismissal/driver is needed.
+    async function runColdStartPhase() {
+        setSuiteStatus('running')
+        console.log('[E2E:SUITE:START] phase=deeplink_coldstart')
+        appendLog('=== T27 cold-start deeplink phase ===')
+
+        running('T27')
+        let phasePass = true
+        try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const seen: Record<string, any> = {}
+            const order: string[] = []
+            const tracked = ['DEEPLINK_OPENED', 'PRESENTATION_LOADED', 'PRESENTATION_VIEWED']
+            const listener = Purchasely.addEventListener((event: any) => {
+                if (tracked.includes(event.name) && !(event.name in seen)) {
+                    seen[event.name] = event
+                    order.push(event.name)
+                }
+            })
+
+            try {
+                // The cold-start deeplink is passed to the builder — NOT replayed
+                // by a manual Purchasely.handleDeeplink(...) call (that is T9).
+                const b = Purchasely.builder(API_KEY)
+                    .runningMode('full')
+                    .logLevel('debug')
+                    .allowDeeplink(true)
+                    .handleDeeplink(DEEPLINK_AUDIENCES)
+                const sdkOk = await (
+                    Platform.OS === 'android'
+                        ? b.stores(['google'])
+                        : b.storekitVersion('storeKit2')
+                ).start()
+                if (!sdkOk) throw new Error('SDK init failed in cold-start phase')
+
+                // Poll for the robust cross-platform invariant: DEEPLINK_OPENED and
+                // PRESENTATION_VIEWED both fired (network fetch + render take time).
+                await waitFor(
+                    () => (seen.DEEPLINK_OPENED && seen.PRESENTATION_VIEWED ? true : null),
+                    60000,
+                    300
+                )
+
+                const deeplinkId = seen.DEEPLINK_OPENED?.properties?.deeplink_identifier
+                if (!deeplinkId) throw new Error('DEEPLINK_OPENED missing deeplink_identifier')
+                if (!String(deeplinkId).includes(PLACEMENT_AUDIENCES)) {
+                    throw new Error(`deeplink_identifier "${deeplinkId}" does not reference ${PLACEMENT_AUDIENCES}`)
+                }
+
+                const iDeeplink = order.indexOf('DEEPLINK_OPENED')
+                const iViewed = order.indexOf('PRESENTATION_VIEWED')
+                if (!(iDeeplink >= 0 && iDeeplink < iViewed)) {
+                    throw new Error(`DEEPLINK_OPENED must precede PRESENTATION_VIEWED; order=${order.join('→')}`)
+                }
+
+                const sdkVersion = seen.PRESENTATION_VIEWED?.properties?.sdk_version
+                if (!sdkVersion) throw new Error('PRESENTATION_VIEWED missing sdk_version')
+
+                pass(
+                    'T27',
+                    `cold-start deeplink: order=${order.join('→')} ` +
+                    `deeplink_identifier=${deeplinkId} sdk_version=${sdkVersion}`
+                )
+            } finally {
+                listener.remove()
+            }
+        } catch (e) { fail('T27', e); phasePass = false }
+
+        setSuiteStatus(phasePass ? 'pass' : 'fail')
+        if (phasePass) {
+            console.log('[E2E:SUITE:PASS] cold-start deeplink phase (T27)')
+            appendLog('=== T27 PHASE PASS ✓ ===')
+        } else {
+            console.log('[E2E:SUITE:FAIL] cold-start deeplink phase (T27)')
+            appendLog('=== T27 PHASE FAIL ✗ ===')
         }
     }
 
@@ -802,6 +1199,7 @@ export default function E2ETestRunner() {
             : '#1565c0'
 
     return (
+        <View style={styles.root}>
         <ScrollView style={styles.container}>
             <View style={[styles.header, { backgroundColor: suiteBg }]}>
                 <Text style={styles.headerText}>
@@ -823,6 +1221,7 @@ export default function E2ETestRunner() {
                         t.status === 'pass' && styles.testPass,
                         t.status === 'fail' && styles.testFail,
                         t.status === 'running' && styles.testRunning,
+                        t.status === 'skip' && styles.testSkip,
                     ]}
                 >
                     <Text style={styles.testId}>{t.id}</Text>
@@ -839,6 +1238,7 @@ export default function E2ETestRunner() {
                         {t.status === 'running' && '⟳'}
                         {t.status === 'pass' && '✓'}
                         {t.status === 'fail' && '✗'}
+                        {t.status === 'skip' && '⊘'}
                     </Text>
                 </View>
             ))}
@@ -852,12 +1252,41 @@ export default function E2ETestRunner() {
                 ))}
             </View>
         </ScrollView>
+
+        {/* T25: embedded paywall overlay — mounted only while the inline view is
+            under test. The native view resolves the preloaded request by
+            requestId (no second preload). */}
+        {inlineRequest && (
+            <View style={styles.inlineOverlay}>
+                <PLYPresentationView
+                    request={inlineRequest}
+                    flex={1}
+                    onPresentationClosed={(result) => {
+                        inlineClosedRef.current = result
+                        console.log(
+                            '[E2E:T25] inline onPresentationClosed',
+                            JSON.stringify(result)
+                        )
+                    }}
+                />
+            </View>
+        )}
+        </View>
     )
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
+    root: { flex: 1, backgroundColor: '#121212' },
     container: { flex: 1, backgroundColor: '#121212' },
+    inlineOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: '#000',
+    },
     header: {
         padding: 20,
         paddingTop: 50,
@@ -877,6 +1306,7 @@ const styles = StyleSheet.create({
     testPass: { backgroundColor: '#1b5e20' },
     testFail: { backgroundColor: '#7f0000' },
     testRunning: { backgroundColor: '#1a237e' },
+    testSkip: { backgroundColor: '#37474f' },
     testId: {
         color: '#fff',
         fontWeight: '700',

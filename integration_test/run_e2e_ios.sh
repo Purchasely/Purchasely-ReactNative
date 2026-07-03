@@ -1,10 +1,15 @@
 #!/bin/bash
 # Purchasely React Native — E2E test orchestrator (iOS Simulator)
 #
-# Mirrors run_e2e.sh for Android. Runs T1-T20 against an iOS simulator.
-# The test logic (T1-T13) executes inside the RN JS context on-device; UI
+# Mirrors run_e2e.sh for Android. Runs T1-T26 against an iOS simulator.
+# The test logic executes inside the RN JS context on-device; UI
 # drivers for T8/T9 are launched from the host when the device signals
 # readiness via log markers.
+#
+# T27 (cold-start deeplink) is SKIPPED on iOS: it needs a launch-arg →
+# initialProp bridge in AppDelegate to route the runner to its cold-start phase
+# (Android uses the E2E_PHASE intent extra). Wiring that is outside the
+# example/src perimeter, so the runner emits [E2E:T27:SKIP] on iOS.
 #
 # Build strategy (parity with Android): a *Release* build is used so the JS
 # bundle is embedded in the .app — no Metro bundler is required in CI. JS
@@ -208,13 +213,16 @@ echo "==========================================="
 echo " Purchasely RN E2E — iOS results"
 echo "==========================================="
 
-for id in T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13 T14 T15 T16 T17 T18 T19 T20; do
+for id in T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13 T14 T15 T16 T17 T18 T19 T20 T21 T22 T23 T24 T25 T26 T27; do
   PASS_LINE=$(grep "\[E2E:${id}:PASS\]" "$LOGFILE" 2>/dev/null | tail -1)
   FAIL_LINE=$(grep "\[E2E:${id}:FAIL\]" "$LOGFILE" 2>/dev/null | tail -1)
+  SKIP_LINE=$(grep "\[E2E:${id}:SKIP\]" "$LOGFILE" 2>/dev/null | tail -1)
   if [ -n "$PASS_LINE" ]; then
     ok "$id  $(echo "$PASS_LINE" | sed "s/.*\[E2E:${id}:PASS\] //")"
   elif [ -n "$FAIL_LINE" ]; then
     err "$id  $(echo "$FAIL_LINE" | sed "s/.*\[E2E:${id}:FAIL\] //")"
+  elif [ -n "$SKIP_LINE" ]; then
+    warn "$id  SKIP $(echo "$SKIP_LINE" | sed "s/.*\[E2E:${id}:SKIP\] //")"
   else
     warn "$id  (no result logged)"
   fi

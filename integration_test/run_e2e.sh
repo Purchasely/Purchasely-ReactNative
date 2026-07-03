@@ -1,10 +1,16 @@
 #!/bin/bash
 # Purchasely React Native -- E2E test orchestrator
 #
-# Runs T1-T20 against a connected Android device/emulator.
-# The test logic (T1-T20) executes inside the RN JS context on-device;
+# Runs T1-T26 against a connected Android device/emulator, then T27 (cold-start
+# deeplink) as a dedicated second phase on a fresh process.
+# The test logic executes inside the RN JS context on-device;
 # UI drivers for T8/T9 are launched from the host when the device signals
 # readiness via LogCat markers.
+#
+# T27 needs its own process because the SDK init builder must chain
+# `.handleDeeplink()` BEFORE start(); the app is relaunched with the intent
+# extra E2E_PHASE=deeplink_coldstart, which MainActivity forwards as a `phase`
+# initial prop (routing the runner to its cold-start-only flow).
 #
 # Usage:
 #   bash integration_test/run_e2e.sh [device_serial] [--skip-build]
@@ -133,7 +139,7 @@ adb -s "$DEV" shell am start -n "$ACTIVITY" \
 log "Test runner launched -- monitoring LogCat..."
 
 # -- Monitor loop --------------------------------------------------------------
-TIMEOUT_SECS=600  # 10 minutes (T8/T9 have 40 s waits; T14-T20 add catalog/display checks)
+TIMEOUT_SECS=600  # 10 minutes (T8/T9 have 40 s waits; T14-T26 add catalog/display/attr checks)
 START_TS=$(date +%s)
 TAP_DONE=0
 BACK_DONE=0
@@ -176,6 +182,33 @@ while true; do
   sleep 0.5
 done
 
+# -- T27 cold-start deeplink phase (fresh process) -----------------------------
+# T27 chains .handleDeeplink() on the start builder BEFORE start(), which needs
+# a brand-new process. Relaunch with E2E_PHASE=deeplink_coldstart; the runner
+# then runs ONLY the cold-start flow and emits [E2E:T27:PASS|FAIL]. Only
+# attempted when the main suite passed (a failed main run already exits 1).
+T27_RESULT="SKIP"
+if [ "$SUITE_RESULT" = "PASS" ]; then
+  log "T27: launching cold-start deeplink phase (E2E_PHASE=deeplink_coldstart)..."
+  adb -s "$DEV" shell am force-stop "$PKG" 2>/dev/null || true
+  sleep 1
+  adb -s "$DEV" shell am start -n "$ACTIVITY" \
+    --es E2E_MODE true \
+    --es E2E_PHASE deeplink_coldstart
+  T27_START=$(date +%s)
+  while true; do
+    if [ $(( $(date +%s) - T27_START )) -ge 150 ]; then
+      err "T27: timeout waiting for cold-start deeplink result"
+      T27_RESULT="FAIL"; break
+    fi
+    # Match only PASS/FAIL (the main suite already logged [E2E:T27:SKIP]).
+    if grep -q '\[E2E:T27:PASS\]' "$LOGCAT_FILE" 2>/dev/null; then T27_RESULT="PASS"; break; fi
+    if grep -q '\[E2E:T27:FAIL\]' "$LOGCAT_FILE" 2>/dev/null; then T27_RESULT="FAIL"; break; fi
+    sleep 0.5
+  done
+  [ "$T27_RESULT" = "PASS" ] && ok "T27: cold-start deeplink phase PASSED"
+fi
+
 # Kill logcat so `wait` doesn't hang indefinitely on it
 kill "$LOGCAT_PID" 2>/dev/null || true
 LOGCAT_PID=""
@@ -189,21 +222,26 @@ echo "==========================================="
 echo " Purchasely RN E2E -- test results"
 echo "==========================================="
 
-# Extract and print individual test results in order
-for id in T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13 T14 T15 T16 T17 T18 T19 T20; do
+# Extract and print individual test results in order. T27 (cold-start phase)
+# logs a [E2E:T27:SKIP] in the main suite and its real PASS/FAIL in the phase
+# run — PASS is checked first so it takes precedence.
+for id in T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13 T14 T15 T16 T17 T18 T19 T20 T21 T22 T23 T24 T25 T26 T27; do
   PASS_LINE=$(grep "\[E2E:${id}:PASS\]" "$LOGCAT_FILE" 2>/dev/null | tail -1)
   FAIL_LINE=$(grep "\[E2E:${id}:FAIL\]" "$LOGCAT_FILE" 2>/dev/null | tail -1)
+  SKIP_LINE=$(grep "\[E2E:${id}:SKIP\]" "$LOGCAT_FILE" 2>/dev/null | tail -1)
   if [ -n "$PASS_LINE" ]; then
     ok "$id  $(echo "$PASS_LINE" | sed "s/.*\[E2E:${id}:PASS\] //")"
   elif [ -n "$FAIL_LINE" ]; then
     err "$id  $(echo "$FAIL_LINE" | sed "s/.*\[E2E:${id}:FAIL\] //")"
+  elif [ -n "$SKIP_LINE" ]; then
+    warn "$id  SKIP $(echo "$SKIP_LINE" | sed "s/.*\[E2E:${id}:SKIP\] //")"
   else
     warn "$id  (no result logged)"
   fi
 done
 
 echo "==========================================="
-if [ "$SUITE_RESULT" = "PASS" ]; then
+if [ "$SUITE_RESULT" = "PASS" ] && [ "$T27_RESULT" != "FAIL" ]; then
   ok "ALL E2E TESTS PASSED"
   exit 0
 else
