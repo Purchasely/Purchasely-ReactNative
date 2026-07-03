@@ -275,6 +275,9 @@ RCT_EXPORT_MODULE(Purchasely);
 static NSMutableArray<id<PLYPresentation>> *_presentationsLoaded;
 static RCTPromiseResolveBlock _purchaseResolve;
 static UIViewController *_sharedViewController;
+// Weak handle to the active event-emitting module instance, so the embedded
+// `PurchaselyView` (a separate UIView) can surface a PRESENTATION_VIEWED event.
+static __weak PurchaselyRN *_sharedEmitter;
 
 + (UIViewController *)sharedViewController {
     if (!_sharedViewController) {
@@ -1041,11 +1044,30 @@ RCT_EXPORT_METHOD(setDebugMode:(BOOL)enabled) {
 - (void)startObserving
 {
   self.shouldEmit = YES;
+  _sharedEmitter = self;
 }
 
 - (void)stopObserving
 {
   self.shouldEmit = NO;
+}
+
++ (void)emitEmbeddedPresentationViewedForRequestId:(NSString *)requestId
+                                        placementId:(NSString *)placementId {
+    PurchaselyRN *emitter = _sharedEmitter;
+    if (emitter == nil || !emitter.shouldEmit) { return; }
+
+    NSString *resolvedPlacement = placementId;
+    if (resolvedPlacement == nil && requestId != nil) {
+        resolvedPlacement = [self loadedPresentationForRequestId:requestId].placementId;
+    }
+
+    NSMutableDictionary<NSString *, id> *properties = [NSMutableDictionary new];
+    if (resolvedPlacement != nil) {
+        properties[@"placement_id"] = resolvedPlacement;
+    }
+    NSDictionary<NSString *, id> *body = @{@"name": @"PRESENTATION_VIEWED", @"properties": properties};
+    [emitter sendEventWithName:@"PURCHASELY_EVENTS" body:body];
 }
 
 - (void)eventTriggered:(enum PLYEvent)event properties:(NSDictionary<NSString *, id> * _Nullable)properties {
