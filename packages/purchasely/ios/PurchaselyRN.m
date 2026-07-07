@@ -26,6 +26,17 @@
 + (void)setDefaultPresentationDismissHandler:(void (^)(PLYPresentationOutcome *outcome))handler;
 @end
 
+// v6 renames `clientPresentationOpenedWith:` to `clientPresentationDisplayedWith:`
+// (`clientPresentationClosedWith:` is unchanged). The 6.0.0-rc.2 pod we build
+// against still ships the old selector, so we forward-declare the new one and
+// pick at runtime with `respondsToSelector:`.
+@interface Purchasely (PLYClientPresentation)
++ (void)clientPresentationDisplayedWith:(id<PLYPresentation> _Nullable)presentation;
+// Old rc.2 selector, re-declared so the fallback still compiles once the
+// native SDK removes it from its public header.
++ (void)clientPresentationOpenedWith:(id<PLYPresentation> _Nullable)presentation;
+@end
+
 #pragma mark - event names
 
 static NSString *const kPresentationEventLoaded = @"PURCHASELY_PRESENTATION_LOADED";
@@ -1507,6 +1518,65 @@ RCT_EXPORT_METHOD(goBackToPreviousScreen:(NSString *)requestId) {
         } else {
             RCTLogWarn(@"[Purchasely] goBackToPreviousScreen(%@): no loaded presentation to navigate back", requestId);
         }
+    });
+}
+
+#pragma mark - client (BYOS) presentations
+
+/// Resolve a loaded native presentation from the identifiers JS sends
+/// (`screenId`, with `placementId` as fallback). v6's `PLYPresentation` is a
+/// protocol that cannot be rebuilt from a dictionary, so the instance is looked
+/// up in the per-request registry populated by preload/display.
+static id<PLYPresentation> loadedClientPresentationForMap(NSDictionary *map) {
+    if (![map isKindOfClass:[NSDictionary class]]) { return nil; }
+    ensurePresentationState();
+    NSString *screenId = [map[@"screenId"] isKindOfClass:[NSString class]] ? map[@"screenId"] : nil;
+    if (screenId == nil && [map[@"id"] isKindOfClass:[NSString class]]) {
+        screenId = map[@"id"];
+    }
+    NSString *placementId = [map[@"placementId"] isKindOfClass:[NSString class]] ? map[@"placementId"] : nil;
+    @synchronized (kPresentationStateLock) {
+        for (id<PLYPresentation> presentation in kPresentationsByRequest.allValues) {
+            if (screenId != nil && [presentation.id isEqualToString:screenId]) {
+                return presentation;
+            }
+        }
+        if (screenId == nil && placementId != nil) {
+            for (id<PLYPresentation> presentation in kPresentationsByRequest.allValues) {
+                if ([presentation.placementId isEqualToString:placementId]) {
+                    return presentation;
+                }
+            }
+        }
+    }
+    return nil;
+}
+
+RCT_EXPORT_METHOD(clientPresentationDisplayed:(NSDictionary<NSString *, id> * _Nullable)presentationMap) {
+    id<PLYPresentation> presentation = loadedClientPresentationForMap(presentationMap);
+    if (presentation == nil) {
+        RCTLogWarn(@"[Purchasely] clientPresentationDisplayed: no loaded presentation matches %@ — preload it first with Purchasely.presentation…build().preload()", presentationMap);
+        return;
+    }
+    dispatch_async(dispatch_get_main_queue(), ^{
+        // v6 renamed the native call (clientPresentationOpened → Displayed);
+        // fall back to the rc.2 selector when the new one is unavailable.
+        if ([Purchasely respondsToSelector:@selector(clientPresentationDisplayedWith:)]) {
+            [Purchasely clientPresentationDisplayedWith:presentation];
+        } else {
+            [Purchasely clientPresentationOpenedWith:presentation];
+        }
+    });
+}
+
+RCT_EXPORT_METHOD(clientPresentationClosed:(NSDictionary<NSString *, id> * _Nullable)presentationMap) {
+    id<PLYPresentation> presentation = loadedClientPresentationForMap(presentationMap);
+    if (presentation == nil) {
+        RCTLogWarn(@"[Purchasely] clientPresentationClosed: no loaded presentation matches %@ — preload it first with Purchasely.presentation…build().preload()", presentationMap);
+        return;
+    }
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [Purchasely clientPresentationClosedWith:presentation];
     });
 }
 

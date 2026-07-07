@@ -852,6 +852,52 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
     loaded.back()
   }
 
+  /**
+   * Resolve a loaded native presentation from the identifiers JS sends
+   * (`screenId`, with `placementId` as fallback). A v6 presentation cannot be
+   * rebuilt from a JS map, so the instance is looked up in the per-request
+   * registry populated by preload/display.
+   */
+  private fun loadedClientPresentation(presentationMap: ReadableMap?): PLYPresentation? {
+    if (presentationMap == null) {
+      PLYLogger.e("presentation cannot be null")
+      return null
+    }
+    val screenId = presentationMap.getString("screenId") ?: presentationMap.getString("id")
+    val placementId = presentationMap.getString("placementId")
+    return activeLoadedPresentations.values.firstOrNull {
+      screenId != null && it.screenId == screenId
+    } ?: activeLoadedPresentations.values.firstOrNull {
+      screenId == null && placementId != null && it.placementId == placementId
+    }
+  }
+
+  @ReactMethod
+  fun clientPresentationDisplayed(presentationMap: ReadableMap?) {
+    val presentation = loadedClientPresentation(presentationMap)
+    if (presentation == null) {
+      PLYLogger.w(
+        "[Purchasely] clientPresentationDisplayed: no loaded presentation matches " +
+          "$presentationMap — preload it first with Purchasely.presentation…build().preload()"
+      )
+      return
+    }
+    Purchasely.clientPresentationDisplayed(presentation)
+  }
+
+  @ReactMethod
+  fun clientPresentationClosed(presentationMap: ReadableMap?) {
+    val presentation = loadedClientPresentation(presentationMap)
+    if (presentation == null) {
+      PLYLogger.w(
+        "[Purchasely] clientPresentationClosed: no loaded presentation matches " +
+          "$presentationMap — preload it first with Purchasely.presentation…build().preload()"
+      )
+      return
+    }
+    Purchasely.clientPresentationClosed(presentation)
+  }
+
   /** Register an interceptor for a given action kind. */
   @ReactMethod
   fun registerActionInterceptor(kind: String) {

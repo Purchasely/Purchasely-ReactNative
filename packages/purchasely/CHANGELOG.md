@@ -2,6 +2,20 @@
 
 All notable changes to `react-native-purchasely` are documented in this file.
 
+## [Unreleased]
+
+### Fixed
+
+- `Purchasely.clientPresentationDisplayed(presentation)` /
+  `Purchasely.clientPresentationClosed(presentation)` are **kept** (they had
+  been wrongly removed by the v6 migration — the native SDKs keep this API).
+  Same JS signature as v5: pass the presentation resolved by
+  `request.preload()`. The bridges resolve the loaded native presentation from
+  their per-request registry by `screenId` (fallback `placementId`); if none
+  matches, a warning is logged and the call is a no-op. On iOS the underlying
+  native call was renamed (`clientPresentationOpened` →
+  `clientPresentationDisplayed`); Android is unchanged.
+
 ## [6.0.0-rc.2] — 2026-07-03
 
 ### Added — v6 cross-platform builder API (Flutter parity)
@@ -37,9 +51,6 @@ All notable changes to `react-native-purchasely` are documented in this file.
   `PLYPresentationRequest`.
 - `Purchasely.displaySubscriptionCancellationInstruction()` — removed on
   RN to match Flutter v6 (cancellation UX is owned by the OS/App Store).
-- `Purchasely.clientPresentationDisplayed(...)` /
-  `Purchasely.clientPresentationClosed(...)` — Client/BYOS presentations use
-  the `PLYPresentationRequest` lifecycle (`display()` / `close()`).
 - Public types: `FetchPresentationParameters`,
   `PresentPresentationParameters`, `PresentPresentationWithIdentifierParameters`,
   `PresentPresentationPlacementParameters`, `PresentProductParameters`,
@@ -151,8 +162,9 @@ the purchase flow). Pass `.runningMode('full')` to keep the previous behaviour.
 
 **Unchanged**: all CORE methods (user, products, subscription data, attributes,
 listeners) and the embedded `PLYPresentationView` component behave exactly as in 5.x.
-Client/BYOS presentations now use the v6 `PLYPresentationRequest` lifecycle instead
-of `clientPresentationDisplayed` / `clientPresentationClosed`.
+Client/BYOS presentations keep `clientPresentationDisplayed` /
+`clientPresentationClosed`; preload through the v6 `PLYPresentationRequest`
+lifecycle, render your own UI, then notify with these two methods.
 
 ### iOS TODOs (tracked in the bridge code)
 

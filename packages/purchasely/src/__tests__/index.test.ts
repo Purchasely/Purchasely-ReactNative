@@ -74,6 +74,8 @@ jest.mock('react-native', () => ({
             userAttribute: jest.fn().mockResolvedValue(null),
             clearUserAttribute: jest.fn(),
             clearUserAttributes: jest.fn(),
+            clientPresentationDisplayed: jest.fn(),
+            clientPresentationClosed: jest.fn(),
             clearBuiltInAttributes: jest.fn(),
             setDefaultPresentationDismissHandler: jest.fn(),
             removeDefaultPresentationDismissHandler: jest.fn(),
@@ -164,8 +166,25 @@ describe('Purchasely SDK', () => {
         it('should not expose removed v5/top-level presentation APIs', () => {
             expect((Purchasely as any).close).toBeUndefined()
             expect((Purchasely as any).displaySubscriptionCancellationInstruction).toBeUndefined()
-            expect((Purchasely as any).clientPresentationDisplayed).toBeUndefined()
-            expect((Purchasely as any).clientPresentationClosed).toBeUndefined()
+        })
+
+        it('should keep the client (BYOS) presentation API', () => {
+            const presentation = {
+                screenId: 'SCREEN_ID',
+                placementId: 'PLACEMENT_ID',
+            } as any
+
+            Purchasely.clientPresentationDisplayed(presentation)
+            Purchasely.clientPresentationClosed(presentation)
+
+            expect(mockedPurchasely.clientPresentationDisplayed).toHaveBeenCalledWith({
+                screenId: 'SCREEN_ID',
+                placementId: 'PLACEMENT_ID',
+            })
+            expect(mockedPurchasely.clientPresentationClosed).toHaveBeenCalledWith({
+                screenId: 'SCREEN_ID',
+                placementId: 'PLACEMENT_ID',
+            })
         })
     })
 

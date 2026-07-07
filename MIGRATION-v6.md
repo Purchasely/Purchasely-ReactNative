@@ -52,7 +52,7 @@ the methods that are **unchanged**.
 | `Purchasely.readyToOpenDeeplink(true)` | `Purchasely.builder(apiKey).allowDeeplink(true).start()` |
 | `Purchasely.close()` (top-level) | `request.close()` on a `PLYPresentationRequest` |
 | `Purchasely.displaySubscriptionCancellationInstruction()` | **Removed** — cancellation UX is owned by the OS/App Store; the SDK no longer opens it. |
-| `Purchasely.clientPresentationDisplayed(...)` / `Purchasely.clientPresentationClosed(...)` | **Removed** — Client/BYOS presentations use the `PLYPresentationRequest` lifecycle (`display()` / `close()`). |
+| `Purchasely.clientPresentationDisplayed(...)` / `Purchasely.clientPresentationClosed(...)` | **Kept — NOT removed.** Same JS API as v5; pass the presentation obtained from `preload()`. Only the underlying iOS native call was renamed (`clientPresentationOpened` → `clientPresentationDisplayed`), which is invisible to JS. |
 | `FetchPresentationParameters` / `PresentPresentation*Parameters` / `PresentProductParameters` / `PresentPlanParameters` / `PaywallActionInterceptorResult` | **Removed** — replaced by the `PLYPresentationBuilder` / `interceptAction(kind, handler)` types. |
 | `setUserAttributeWithInt / setUserAttributeWithDouble` / `…WithIntArray / …WithDoubleArray` | **Added** — Flutter-compatible aliases of the `WithNumber / WithNumberArray` setters. |
 
@@ -473,10 +473,13 @@ awaitable result — see above). The following keep working exactly as in v5:
   `addPurchasedListener` / `removePurchasedListener`,
   `addUserAttributeSetListener` / `removeUserAttributeSetListener`,
   `addUserAttributeRemovedListener` / `removeUserAttributeRemovedListener`.
-- **Client (BYOS) presentations**: handled via the `PLYPresentationRequest`
-  lifecycle (`preload()` → inspect `PLYPresentationType.CLIENT` → render your
-  own UI). The old `clientPresentationDisplayed` /
-  `clientPresentationClosed` helpers are removed.
+- **Client (BYOS) presentations**: `clientPresentationDisplayed(presentation)`
+  / `clientPresentationClosed(presentation)` — unchanged. Preload via the
+  request lifecycle (`preload()` → inspect `PLYPresentationType.CLIENT` →
+  render your own UI), then notify Purchasely with these two methods, passing
+  the presentation resolved by `preload()`. (Internally, the iOS native call
+  was renamed `clientPresentationOpened` → `clientPresentationDisplayed`; no
+  JS change.)
 - **Misc**: `setLogLevel`, `setLanguage`, `setThemeMode`, `setDebugMode`,
   `revokeDataProcessingConsent`, `getConstants`.
 - **Embedded component**: `PLYPresentationView` — unchanged.

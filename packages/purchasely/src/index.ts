@@ -36,7 +36,10 @@ import {
   removeActionInterceptor,
   removeAllActionInterceptors,
 } from './interceptor';
-import type { PLYPresentationActionKind } from './presentationTypes';
+import type {
+  PLYPresentation,
+  PLYPresentationActionKind,
+} from './presentationTypes';
 
 const purchaselyVersion = '6.0.0-rc.2';
 
@@ -346,6 +349,40 @@ const clearUserAttributes = (): void => {
   return NativeModules.Purchasely.clearUserAttributes();
 };
 
+/**
+ * Reduce a presentation to the identifiers the native bridges use to look up
+ * the loaded native presentation. A `PLYLoadedPresentation` also carries
+ * functions (`display` / `close` / `back`) which the RN bridge cannot
+ * serialize, so only plain fields are sent.
+ */
+const clientPresentationPayload = (presentation: PLYPresentation) => ({
+  screenId: presentation.screenId ?? presentation.id ?? null,
+  placementId: presentation.placementId ?? null,
+});
+
+/**
+ * Notify Purchasely that a client (BYOS) paywall built from a preloaded
+ * `PLYPresentationType.CLIENT` presentation is now displayed.
+ *
+ * Pass the presentation obtained from
+ * `Purchasely.presentation…build().preload()`.
+ */
+const clientPresentationDisplayed = (presentation: PLYPresentation): void => {
+  return NativeModules.Purchasely.clientPresentationDisplayed(
+    clientPresentationPayload(presentation)
+  );
+};
+
+/**
+ * Notify Purchasely that a client (BYOS) paywall previously reported through
+ * {@link clientPresentationDisplayed} has been closed.
+ */
+const clientPresentationClosed = (presentation: PLYPresentation): void => {
+  return NativeModules.Purchasely.clientPresentationClosed(
+    clientPresentationPayload(presentation)
+  );
+};
+
 const isAnonymous = (): Promise<boolean> => {
   return NativeModules.Purchasely.isAnonymous();
 };
@@ -402,6 +439,10 @@ const Purchasely = {
   // (campaigns, deeplinks, Promoted In-App Purchases).
   setDefaultPresentationDismissHandler,
   removeDefaultPresentationDismissHandler,
+  // Client (BYOS) presentations — notify Purchasely when your own paywall UI
+  // (built from a preloaded CLIENT presentation) is shown / closed.
+  clientPresentationDisplayed,
+  clientPresentationClosed,
   // Core SDK — version-agnostic (user, products, subscriptions, attributes…).
   addEventListener,
   removeEventListener,
