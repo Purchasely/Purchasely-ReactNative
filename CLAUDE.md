@@ -16,8 +16,8 @@
 | TypeScript | 5.8.3 (strict mode) |
 | Node.js | v22 (see `.nvmrc`) |
 | Package Manager | Yarn 3.6.1 (workspaces) |
-| Native iOS SDK | 6.0.0-rc.2 |
-| Native Android SDK | 6.0.0-rc.2 |
+| Native iOS SDK | 6.0.0-rc.3 |
+| Native Android SDK | 6.0.0-rc.3 |
 
 ### Supported App Stores
 - Apple App Store (iOS)
@@ -403,11 +403,11 @@ Build orchestration with caching:
 ### Native Dependencies
 
 **iOS (CocoaPods):**
-- Purchasely SDK v6.0.0-rc.2
+- Purchasely SDK v6.0.0-rc.3
 - Deployment target: iOS 13.4
 
 **Android (Gradle):**
-- io.purchasely:core:6.0.0-rc.2
+- io.purchasely:core:6.0.0-rc.3
 - Min SDK: 23
 - Kotlin: 2.1+
 - Java: 11

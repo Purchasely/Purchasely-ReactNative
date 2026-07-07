@@ -3,7 +3,7 @@ PODS:
   - hermes-engine (250829098.0.14):
     - hermes-engine/Pre-built (= 250829098.0.14)
   - hermes-engine/Pre-built (250829098.0.14)
-  - Purchasely (6.0.0-rc.2)
+  - Purchasely (6.0.0-rc.3)
   - RCTDeprecation (0.86.0)
   - RCTRequired (0.86.0)
   - RCTSwiftUI (0.86.0)
@@ -1428,7 +1428,7 @@ PODS:
     - ReactNativeDependencies
     - Yoga
   - react-native-purchasely (6.0.0-rc.2):
-    - Purchasely (= 6.0.0-rc.2)
+    - Purchasely (= 6.0.0-rc.3)
     - React-Core
   - react-native-safe-area-context (5.5.2):
     - hermes-engine

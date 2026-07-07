@@ -13,30 +13,6 @@
 #import "Purchasely_Hybrid.h"
 #import "UIColor+PLYHelper.h"
 
-#pragma mark - forward declarations
-
-// v6 renames the global default-presentation handler from
-// `setDefaultPresentationResultHandler:` (block: result, plan) to
-// `setDefaultPresentationDismissHandler:` (block: PLYPresentationOutcome).
-// The CocoaPods release we currently build against may predate that rename, so
-// we forward-declare the new selector here and guard the call site with
-// `respondsToSelector:`. Once the native SDK ships the rename, the handler
-// activates automatically — no further bridge change required.
-@interface Purchasely (PLYDefaultDismissHandler)
-+ (void)setDefaultPresentationDismissHandler:(void (^)(PLYPresentationOutcome *outcome))handler;
-@end
-
-// v6 renames `clientPresentationOpenedWith:` to `clientPresentationDisplayedWith:`
-// (`clientPresentationClosedWith:` is unchanged). The 6.0.0-rc.2 pod we build
-// against still ships the old selector, so we forward-declare the new one and
-// pick at runtime with `respondsToSelector:`.
-@interface Purchasely (PLYClientPresentation)
-+ (void)clientPresentationDisplayedWith:(id<PLYPresentation> _Nullable)presentation;
-// Old rc.2 selector, re-declared so the fallback still compiles once the
-// native SDK removes it from its public header.
-+ (void)clientPresentationOpenedWith:(id<PLYPresentation> _Nullable)presentation;
-@end
-
 #pragma mark - event names
 
 static NSString *const kPresentationEventLoaded = @"PURCHASELY_PRESENTATION_LOADED";
@@ -1470,13 +1446,7 @@ RCT_EXPORT_METHOD(setDefaultPresentationDismissHandler) {
     };
 
     dispatch_async(dispatch_get_main_queue(), ^{
-        // Guard against SDK builds that predate the v6 rename (see the
-        // forward-declared category at the top of this file).
-        if ([Purchasely respondsToSelector:@selector(setDefaultPresentationDismissHandler:)]) {
-            [Purchasely setDefaultPresentationDismissHandler:handler];
-        } else {
-            RCTLogWarn(@"[Purchasely] setDefaultPresentationDismissHandler is unavailable in this native SDK build; the global default dismiss handler will not fire.");
-        }
+        [Purchasely setDefaultPresentationDismissHandler:handler];
     });
 }
 
@@ -1559,13 +1529,7 @@ RCT_EXPORT_METHOD(clientPresentationDisplayed:(NSDictionary<NSString *, id> * _N
         return;
     }
     dispatch_async(dispatch_get_main_queue(), ^{
-        // v6 renamed the native call (clientPresentationOpened → Displayed);
-        // fall back to the rc.2 selector when the new one is unavailable.
-        if ([Purchasely respondsToSelector:@selector(clientPresentationDisplayedWith:)]) {
-            [Purchasely clientPresentationDisplayedWith:presentation];
-        } else {
-            [Purchasely clientPresentationOpenedWith:presentation];
-        }
+        [Purchasely clientPresentationDisplayedWith:presentation];
     });
 }
 

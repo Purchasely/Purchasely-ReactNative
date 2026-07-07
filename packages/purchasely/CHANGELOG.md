@@ -4,6 +4,14 @@ All notable changes to `react-native-purchasely` are documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Native SDKs bumped to **6.0.0-rc.3** (iOS pod `Purchasely`, Android
+  `io.purchasely:*`). The rc.3 header ships the renamed iOS entry points
+  (`clientPresentationDisplayed(with:)`, `setDefaultPresentationDismissHandler`),
+  so the bridge now calls them directly — the runtime
+  `respondsToSelector:` guards and rc.2 fallbacks were removed.
+
 ### Fixed
 
 - `Purchasely.clientPresentationDisplayed(presentation)` /
