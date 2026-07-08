@@ -31,5 +31,18 @@ target 'example' do
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+
+    # ponytail: fmt (bundled by Folly/RN 0.79) unconditionally redefines
+    # FMT_USE_CONSTEVAL from __cplusplus, so -DFMT_USE_CONSTEVAL=0 is ignored.
+    # Xcode 26's clang supports consteval under c++20, and fmt's consteval
+    # path there is broken. Building fmt itself as c++17 avoids that branch.
+    # Upgrade path: bump RN past the fmt version that fixes this, then drop.
+    installer.pods_project.targets.each do |target|
+      next unless target.name == 'fmt'
+
+      target.build_configurations.each do |build_config|
+        build_config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++17'
+      end
+    end
   end
 end
