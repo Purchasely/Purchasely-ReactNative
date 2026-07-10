@@ -100,11 +100,11 @@ export interface PLYPresentationOutcome {
 
 /**
  * Cross-platform PLYPresentation. The public identifier is `screenId`
- * (mapped from iOS `presentation.id`). `id` is kept as an alias for
+ * (mapped from iOS `presentation.screenId`). `id` is kept as an alias for
  * compatibility but is deprecated.
  */
 export interface PLYPresentation {
-    /** Stable identifier of the screen. Maps to `presentation.id` on iOS. */
+    /** Stable identifier of the screen. Maps to `presentation.screenId` on iOS. */
     screenId: string;
     /** @deprecated use {@link PLYPresentation.screenId}. Kept for compat. */
     id?: string;

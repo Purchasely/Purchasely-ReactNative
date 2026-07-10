@@ -98,15 +98,15 @@ static NSString *stringFromWebCheckoutProvider(PLYWebCheckoutProvider provider) 
 }
 
 /// Convert a `PLYPresentation` to the cross-platform map.
-/// On iOS we map `presentation.id` to `screenId` and keep `id` as alias (P1.1).
+/// Keep `id` as a JavaScript alias of the native `screenId` (P1.1).
 static NSDictionary *presentationToMap(id<PLYPresentation> presentation) {
     if (presentation == nil) {
         return nil;
     }
     NSMutableDictionary *map = [NSMutableDictionary new];
-    if (presentation.id != nil) {
-        map[@"screenId"] = presentation.id;
-        map[@"id"] = presentation.id;
+    if (presentation.screenId != nil) {
+        map[@"screenId"] = presentation.screenId;
+        map[@"id"] = presentation.screenId;
     }
     if (presentation.placementId != nil) {
         map[@"placementId"] = presentation.placementId;
@@ -318,9 +318,9 @@ static __weak PurchaselyRN *_sharedEmitter;
 		@"logLevelInfo": @(PLYLogLevelInfo),
     @"logLevelWarn": @(PLYLogLevelWarn),
 		@"logLevelError": @(PLYLogLevelError),
-		@"productResultPurchased": @(PLYProductViewControllerResultPurchased),
-		@"productResultCancelled": @(PLYProductViewControllerResultCancelled),
-		@"productResultRestored": @(PLYProductViewControllerResultRestored),
+		@"productResultPurchased": purchaseResultOrdinal(PLYPurchaseResultPurchased),
+		@"productResultCancelled": purchaseResultOrdinal(PLYPurchaseResultCancelled),
+		@"productResultRestored": purchaseResultOrdinal(PLYPurchaseResultRestored),
 		@"sourceAppStore": @(PLYSubscriptionSourceAppleAppStore),
 		@"sourcePlayStore": @(PLYSubscriptionSourceGooglePlayStore),
 		@"sourceHuaweiAppGallery": @(PLYSubscriptionSourceHuaweiAppGallery),
@@ -1134,8 +1134,7 @@ RCT_EXPORT_METHOD(setDebugMode:(BOOL)enabled) {
 //        * `closeReason` maps `PLYCloseReason` → `button`/`backSystem`/
 //          `programmatic` (interactiveDismiss → `backSystem`); `none` → nil.
 //        * `error` is propagated from the outcome / fetch completion handler.
-//    - `screenId` maps to `presentation.id` until iOS exposes a dedicated
-//      `screenId` property.
+//    - `screenId` maps directly to the native presentation screen identifier.
 //    - `onPresented(presentation?, error?)` is synthesized after preload/display.
 //    - The Promise returned by `display()` resolves at DISMISS (not at trigger),
 //      matching the Android contract.
@@ -1507,7 +1506,7 @@ static id<PLYPresentation> loadedClientPresentationForMap(NSDictionary *map) {
     NSString *placementId = [map[@"placementId"] isKindOfClass:[NSString class]] ? map[@"placementId"] : nil;
     @synchronized (kPresentationStateLock) {
         for (id<PLYPresentation> presentation in kPresentationsByRequest.allValues) {
-            if (screenId != nil && [presentation.id isEqualToString:screenId]) {
+            if (screenId != nil && [presentation.screenId isEqualToString:screenId]) {
                 return presentation;
             }
         }
@@ -1733,5 +1732,4 @@ RCT_EXPORT_METHOD(applyStartOptions:(NSDictionary *)options) {
 }
 
 @end
-
 

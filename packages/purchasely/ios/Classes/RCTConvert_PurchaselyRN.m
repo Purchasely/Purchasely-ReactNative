@@ -18,10 +18,10 @@ RCT_ENUM_CONVERTER(PLYLogLevel, (@{ @"logLevelDebug": @(PLYLogLevelDebug),
                                  @"logLevelError": @(PLYLogLevelError)}),
                    PLYLogLevelError, integerValue)
 
-RCT_ENUM_CONVERTER(PLYProductViewControllerResult, (@{ @"productResultPurchased": @(PLYProductViewControllerResultPurchased),
-                                                       @"productResultCancelled": @(PLYProductViewControllerResultCancelled),
-                                                       @"productResultRestored": @(PLYProductViewControllerResultRestored)}),
-                   PLYProductViewControllerResultPurchased, integerValue)
+RCT_ENUM_CONVERTER(PLYPurchaseResult, (@{ @"productResultPurchased": @(PLYPurchaseResultPurchased),
+                                         @"productResultCancelled": @(PLYPurchaseResultCancelled),
+                                         @"productResultRestored": @(PLYPurchaseResultRestored)}),
+                   PLYPurchaseResultPurchased, integerValue)
 
 RCT_ENUM_CONVERTER(PLYAttribute, (@{@"amplitudeUserId": @(PLYAttributeAmplitudeUserId),
                                     @"amplitudeDeviceId": @(PLYAttributeAmplitudeDeviceId),

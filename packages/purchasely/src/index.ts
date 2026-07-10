@@ -41,7 +41,7 @@ import type {
   PLYPresentationActionKind,
 } from './presentationTypes';
 
-const purchaselyVersion = '6.0.0-rc.2';
+const purchaselyVersion = '6.0.0-rc.3';
 
 const constants = NativeModules.Purchasely.getConstants() as Constants;
 

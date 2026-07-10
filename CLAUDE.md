@@ -11,7 +11,7 @@
 
 | Property | Value |
 |----------|-------|
-| Current Version | 6.0.0-rc.2 |
+| Current Version | 6.0.0-rc.3 |
 | React Native | 0.86.0 |
 | TypeScript | 5.8.3 (strict mode) |
 | Node.js | v22 (see `.nvmrc`) |
@@ -393,23 +393,21 @@ Each package uses Builder Bob to generate:
 - `lib/module/` - ESM build
 - `lib/typescript/` - TypeScript declarations
 
-### Turbo Pipeline
+### Workspace Build Pipeline
 
-Build orchestration with caching:
-- `build` - Main build task
-- `build:android` - Android native build
-- `build:ios` - iOS native build
+Yarn workspaces run package builds directly with `yarn all:prepare`; the CI
+Android and iOS jobs invoke Gradle and `xcodebuild` directly.
 
 ### Native Dependencies
 
 **iOS (CocoaPods):**
 - Purchasely SDK v6.0.0-rc.3
-- Deployment target: iOS 13.4
+- Deployment target: iOS 15.1
 
 **Android (Gradle):**
 - io.purchasely:core:6.0.0-rc.3
 - Min SDK: 23
-- Kotlin: 2.1+
+- Kotlin: 2.3.21+
 - Java: 11
 
 ---

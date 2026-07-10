@@ -4,6 +4,8 @@ All notable changes to `react-native-purchasely` are documented in this file.
 
 ## [Unreleased]
 
+## [6.0.0-rc.3] — 2026-07-10
+
 ### Changed
 
 - Native SDKs bumped to **6.0.0-rc.3** (iOS pod `Purchasely`, Android
@@ -11,6 +13,11 @@ All notable changes to `react-native-purchasely` are documented in this file.
   (`clientPresentationDisplayed(with:)`, `setDefaultPresentationDismissHandler`),
   so the bridge now calls them directly — the runtime
   `respondsToSelector:` guards and rc.2 fallbacks were removed.
+- Android packages and the example app now use Kotlin **2.3.21**, matching the
+  metadata version used to publish the rc.3 native Android SDK.
+- The iOS bridge now consumes rc.3's `screenId` and `PLYPurchaseResult` APIs
+  while preserving the existing JavaScript result ordinals; the pod deployment
+  target is **iOS 15.1**, matching React Native 0.86.
 
 ### Fixed
 

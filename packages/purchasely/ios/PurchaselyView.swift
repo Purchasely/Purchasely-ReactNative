@@ -184,7 +184,7 @@ class PurchaselyView: UIView {
       guard let presentation = presentation,
               let presentationPlacementId = presentation.placementId,
               let loadedPresentations = PurchaselyRN.presentationsLoaded as? [PLYPresentation],
-              let presentationLoaded = loadedPresentations.filter({ $0.id == presentation.id && $0.placementId == presentationPlacementId }).first,
+              let presentationLoaded = loadedPresentations.filter({ $0.screenId == presentation.id && $0.placementId == presentationPlacementId }).first,
               let presentationLoadedController = presentationLoaded.controller else {
           return self.createNativeViewController(placementId: effectivePlacementId)
         }
@@ -204,7 +204,7 @@ class PurchaselyView: UIView {
 
   private func removeLoadedPresentation(presentation: PurchaselyPresentation) {
     var presentationsLoaded = (PurchaselyRN.presentationsLoaded as? [PLYPresentation]) ?? []
-    if let indexToRemove = presentationsLoaded.firstIndex(where: { $0.id == presentation.id }) {
+    if let indexToRemove = presentationsLoaded.firstIndex(where: { $0.screenId == presentation.id }) {
         presentationsLoaded.remove(at: indexToRemove)
     }
     PurchaselyRN.presentationsLoaded = NSMutableArray(array: presentationsLoaded)
@@ -244,15 +244,14 @@ class PurchaselyView: UIView {
   }
 
   /// Map a v6 `PLYPurchaseResult` to the `ProductResult` ordinal JS expects.
-  /// Kept in sync with the `productResult*` constants exported by PurchaselyRN
-  /// (which are backed by `PLYProductViewControllerResult`, not `PLYPurchaseResult`).
-  private func productResultOrdinal(_ result: PLYPurchaseResult) -> Int {
+  /// Kept in sync with the legacy `productResult*` ordinals exported by PurchaselyRN.
+  func productResultOrdinal(_ result: PLYPurchaseResult) -> Int {
     switch result {
-    case .purchased: return PLYProductViewControllerResult.purchased.rawValue
-    case .cancelled: return PLYProductViewControllerResult.cancelled.rawValue
-    case .restored:  return PLYProductViewControllerResult.restored.rawValue
-    case .none:      return PLYProductViewControllerResult.cancelled.rawValue
-    @unknown default: return PLYProductViewControllerResult.cancelled.rawValue
+    case .purchased: return 0
+    case .cancelled: return 1
+    case .restored:  return 2
+    case .none:      return 1
+    @unknown default: return 1
     }
   }
 

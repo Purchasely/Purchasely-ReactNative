@@ -1427,7 +1427,10 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - react-native-purchasely (6.0.0-rc.2):
+  - react-native-purchasely (6.0.0-rc.3):
+    - Purchasely (= 6.0.0-rc.3)
+    - React-Core
+  - react-native-purchasely/Tests (6.0.0-rc.3):
     - Purchasely (= 6.0.0-rc.3)
     - React-Core
   - react-native-safe-area-context (5.5.2):
@@ -1989,6 +1992,7 @@ DEPENDENCIES:
   - React-microtasksnativemodule (from `../node_modules/react-native/ReactCommon/react/nativemodule/microtasks`)
   - React-mutationobservernativemodule (from `../node_modules/react-native/ReactCommon/react/nativemodule/mutationobserver`)
   - react-native-purchasely (from `../node_modules/react-native-purchasely`)
+  - react-native-purchasely/Tests (from `../node_modules/react-native-purchasely`)
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
   - React-NativeModulesApple (from `../node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios`)
   - React-networking (from `../node_modules/react-native/ReactCommon/react/networking`)
@@ -2196,8 +2200,8 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   FBLazyVector: b3e7ad108f0d882e30445c5527d774e3fd432f3d
-  hermes-engine: 7fa7794edc84e91e759bb4fe5095fe8bc63f8ceb
-  Purchasely: 055a06197235922eb9e888a3d903931996b31add
+  hermes-engine: 65dfaeaf2bff6bb376ba6d10606221a33c7434a1
+  Purchasely: ffb024d48dbb2f381cef14c9e3051d1026b7fbce
   RCTDeprecation: 2a74a2c57675e64419bd89078efde81f7c1de90b
   RCTRequired: 30451112e6fef4e6f31b4e7eee0845156e35e4b0
   RCTSwiftUI: 5aaf0b07e747ba749dc6acc94d8bd41eea4b570f
@@ -2235,7 +2239,7 @@ SPEC CHECKSUMS:
   React-Mapbuffer: ce449ccdf3b80384415b925606be8a4bdcfc65d3
   React-microtasksnativemodule: 2eb3f49d0d8e77b5343455eccd057010b8d38b6b
   React-mutationobservernativemodule: f0a0d5ae9b51caf7becbeabf836d716cfedb6bf2
-  react-native-purchasely: 8d2512c6ba1a01dfe1206f7866cd845086a4d69c
+  react-native-purchasely: 224e2f372b70ddf3a15ffbaede62bb489be0e902
   react-native-safe-area-context: 3836dc43241ba89903508a442029e57f7491539f
   React-NativeModulesApple: a092d89b58f635ebfab88048b0eda9fb516819fd
   React-networking: 968bbbe73590149feb1e72b2af4f6a68e4796ece
@@ -2276,6 +2280,6 @@ SPEC CHECKSUMS:
   RNScreens: 991cc417cd396602a6cf59a42139e5a9d91462a9
   Yoga: fe50ab299e578f397fef753cf309c6703a4db29b
 
-PODFILE CHECKSUM: 55093811dc39d754f7662215c3733976858956e0
+PODFILE CHECKSUM: 415ffeb938406fb3d697d7124e5777c2516a9209
 
 COCOAPODS: 1.16.2

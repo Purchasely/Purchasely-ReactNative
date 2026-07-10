@@ -477,12 +477,14 @@ This SDK's verified toolchain pins per React Native version. Use as a known-good
 |------------|-------|-----------------|------------|----------------|--------|--------------------|---------|--------|-------------------------------|
 | 0.79.2 | 19.0.0 | v20 | ^5.2.2 | ^18.2.x | 8.12 | 35 | 15.1 | 15.x | 15.0.1 |
 | 0.83.x | 19.x | v20.19.4 | ^5.x | ^19.x | 8.14 | 35 | 15.1 | 2.1.21 | 18.x |
-| 0.86.0 | 19.2.3 | v22 | ^5.8.3 | ^19.2.0 | 9.3.1 | 36 | 15.1 | 2.1.21 | 20.1.0 |
+| 0.86.0 | 19.2.3 | v22 | ^5.8.3 | ^19.2.0 | 9.3.1 | 36 | 15.1 | 2.3.21 | 20.1.0 |
 
 > Verified build: `:app:assembleDebug` green with NDK 27.1.12297006, `react-native-screens@^4.16` (New-Arch C++), and the `rnc-cli` permission `postinstall` in place.
 
 **RN 0.86.0 notes:**
 - Node minimum raised to **22.11** (bump `.nvmrc` to `v22` and every `engines.node`).
+- Purchasely Android SDK **6.0.0-rc.3** is compiled with Kotlin **2.3.21**;
+  consumers and the example app must use a compatible Kotlin Gradle plugin.
 - `@react-native/*` packages (babel-preset, eslint-config, metro-config, typescript-config) and the example app all move to `0.86.0`; `@react-native-community/cli*` to `20.1.0`.
 - Metro: `@react-native/metro-config@0.86.0` pulls metro `^0.84.x`, so bump `metro-cache` / `metro-config` devDeps to `^0.84.0` to avoid a duplicated metro tree.
 - iOS `IPHONEOS_DEPLOYMENT_TARGET` stays **15.1** (`min_ios_version_supported` in RN 0.86 is still 15.1 — no pbxproj change needed).

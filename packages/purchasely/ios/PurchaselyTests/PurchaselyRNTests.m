@@ -79,9 +79,12 @@
 - (void)testProductResultConstants {
     NSDictionary *constants = [self.purchaselyModule constantsToExport];
 
-    XCTAssertNotNil(constants[@"productResultPurchased"], @"productResultPurchased should exist");
-    XCTAssertNotNil(constants[@"productResultCancelled"], @"productResultCancelled should exist");
-    XCTAssertNotNil(constants[@"productResultRestored"], @"productResultRestored should exist");
+    XCTAssertEqualObjects(constants[@"productResultPurchased"], @0,
+                          @"purchased must preserve the JS ProductResult ordinal");
+    XCTAssertEqualObjects(constants[@"productResultCancelled"], @1,
+                          @"cancelled must preserve the JS ProductResult ordinal");
+    XCTAssertEqualObjects(constants[@"productResultRestored"], @2,
+                          @"restored must preserve the JS ProductResult ordinal");
 }
 
 - (void)testSubscriptionSourceConstants {
