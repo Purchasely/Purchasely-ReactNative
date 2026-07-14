@@ -135,6 +135,73 @@ jobs:
             -configuration Debug \
             -destination 'generic/platform=iOS' \
             -derivedDataPath example/ios/DerivedData \
+          CODE_SIGNING_ALLOWED=NO \
+          build
+
+  build-rn-0-86-android:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Build local v6 packages
+        run: yarn all:prepare
+
+      - name: Install RN 0.86 test project dependencies
+        working-directory: test-projects/rn-purchasely-test
+        run: npm ci --ignore-scripts
+
+      - name: Install JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Accept Android SDK licenses
+        run: yes | sdkmanager --licenses
+
+      - name: Install Android SDK build requirements
+        run: sdkmanager "platforms;android-36" "build-tools;35.0.0" "ndk;27.1.12297006"
+
+      - name: Build RN 0.86 test project for Android
+        working-directory: test-projects/rn-purchasely-test/android
+        run: ./gradlew :app:assembleDebug
+
+  build-rn-0-86-ios:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Build local v6 packages
+        run: yarn all:prepare
+
+      - name: Install RN 0.86 test project dependencies
+        working-directory: test-projects/rn-purchasely-test
+        run: npm ci --ignore-scripts
+
+      - name: Install CocoaPods dependencies
+        working-directory: test-projects/rn-purchasely-test/ios
+        run: pod install --repo-update
+
+      - name: Build RN 0.86 test project for iOS
+        working-directory: test-projects/rn-purchasely-test/ios
+        run: |
+          xcodebuild \
+            -workspace RNPurchaselyTest.xcworkspace \
+            -scheme RNPurchaselyTest \
+            -configuration Debug \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath DerivedData \
             CODE_SIGNING_ALLOWED=NO \
             build
 
