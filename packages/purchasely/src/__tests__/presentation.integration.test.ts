@@ -74,8 +74,13 @@ import {
     setDefaultPresentationDismissHandler,
     removeDefaultPresentationDismissHandler,
 } from '../presentation';
-import { interceptAction, removeActionInterceptor } from '../interceptor';
+import {
+    interceptAction,
+    removeActionInterceptor,
+    removeAllActionInterceptors,
+} from '../interceptor';
 import { PURCHASELY_PRESENTATION_EVENTS } from '../events';
+import { purchaseResultFromOrdinal } from '../presentationTypes';
 
 const native = NativeModules.Purchasely as any;
 const emit = native.__testEmit as (e: string, p: any) => void;
@@ -218,6 +223,110 @@ describe('façade · integration with native bridge', () => {
         });
     });
 
+    describe('PLYPresentationBuilder chain modifiers (contentId/backgroundColor/progressColor/displayCloseButton/displayBackButton)', () => {
+        it('forwards all builder-configured display options in the preload payload', () => {
+            const req = PLYPresentationBuilder.placement('home')
+                .contentId('content-1')
+                .backgroundColor('#FFFFFF')
+                .progressColor('#FF0000')
+                .displayCloseButton(false)
+                .displayBackButton(true)
+                .build();
+            req.preload();
+
+            const [, payload] = native.preloadPresentation.mock.calls[0];
+            expect(payload).toMatchObject({
+                contentId: 'content-1',
+                backgroundColor: '#FFFFFF',
+                progressColor: '#FF0000',
+                displayCloseButton: false,
+                displayBackButton: true,
+            });
+        });
+
+        it('forwards the same options to displayPresentation', () => {
+            const req = PLYPresentationBuilder.placement('home')
+                .backgroundColor('#000000')
+                .displayCloseButton(true)
+                .build();
+            req.display();
+
+            const [, payload] = native.displayPresentation.mock.calls[0];
+            expect(payload).toMatchObject({
+                backgroundColor: '#000000',
+                displayCloseButton: true,
+            });
+        });
+
+        it('defaults every optional display option to null when not configured', () => {
+            const req = PLYPresentationBuilder.placement('home').build();
+            req.preload();
+
+            const [, payload] = native.preloadPresentation.mock.calls[0];
+            expect(payload).toMatchObject({
+                contentId: null,
+                backgroundColor: null,
+                progressColor: null,
+                displayCloseButton: null,
+                displayBackButton: null,
+            });
+        });
+    });
+
+    describe('PLYPresentationBuilder#onLoaded', () => {
+        it('invokes the builder-configured onLoaded callback with the presentation and a null error on success', async () => {
+            const onLoaded = jest.fn();
+            const req = PLYPresentationBuilder.placement('home').onLoaded(onLoaded).build();
+            const preloadPromise = req.preload();
+            const [requestId] = native.preloadPresentation.mock.calls[0];
+
+            emit(PURCHASELY_PRESENTATION_EVENTS.LOADED, {
+                requestId,
+                presentation: fakePresentationPayload,
+            });
+            await preloadPromise;
+
+            expect(onLoaded).toHaveBeenCalledTimes(1);
+            const [presentation, error] = onLoaded.mock.calls[0];
+            expect(presentation.screenId).toBe('screen-abc');
+            expect(error).toBeNull();
+        });
+
+        it('forwards the normalized error to onLoaded when LOADED carries one alongside a presentation', async () => {
+            const onLoaded = jest.fn();
+            const req = PLYPresentationBuilder.placement('home').onLoaded(onLoaded).build();
+            req.preload().catch(() => {});
+            const [requestId] = native.preloadPresentation.mock.calls[0];
+
+            // Presentation still present — onLoaded fires per contract, error is passed through.
+            emit(PURCHASELY_PRESENTATION_EVENTS.LOADED, {
+                requestId,
+                presentation: fakePresentationPayload,
+                error: { message: 'partial failure' },
+            });
+            await new Promise((r) => setImmediate(r));
+
+            expect(onLoaded).toHaveBeenCalledTimes(1);
+            expect(onLoaded.mock.calls[0][1]).toMatchObject({ message: 'partial failure' });
+        });
+
+        it('does not invoke onLoaded and rejects preload() when LOADED carries no presentation', async () => {
+            const onLoaded = jest.fn();
+            const req = PLYPresentationBuilder.placement('home').onLoaded(onLoaded).build();
+            const preloadPromise = req.preload();
+            const [requestId] = native.preloadPresentation.mock.calls[0];
+
+            emit(PURCHASELY_PRESENTATION_EVENTS.LOADED, {
+                requestId,
+                presentation: null,
+                error: { message: 'no screen' },
+            });
+
+            await expect(preloadPromise).rejects.toMatchObject({ message: 'no screen' });
+            expect(onLoaded).not.toHaveBeenCalled();
+        });
+    });
+
     describe('PLYLoadedPresentation lifecycle delegation', () => {
         it('preload() resolves a presentation that delegates display/close/back to the request', async () => {
             const req = PLYPresentationBuilder.placement('home').build();
@@ -266,6 +375,83 @@ describe('façade · integration with native bridge', () => {
             expect(req.requestId).toBeNull();
             req.preload();
             expect(req.requestId).toMatch(/^ply_req_/);
+        });
+    });
+
+    describe('PLYPresentationRequest#onDismissed / #onPresented / #onCloseRequested (post-build hot-swap)', () => {
+        it('request.onDismissed() replaces the callback set on the builder', async () => {
+            const builderHandler = jest.fn();
+            const req = PLYPresentationBuilder.placement('home')
+                .onDismissed(builderHandler)
+                .build();
+
+            const hotSwapHandler = jest.fn();
+            req.onDismissed(hotSwapHandler);
+
+            const displayPromise = req.display();
+            const [requestId] = native.displayPresentation.mock.calls[0];
+            emit(PURCHASELY_PRESENTATION_EVENTS.DISMISSED, {
+                requestId,
+                closeReason: 'button',
+            });
+            await displayPromise;
+
+            expect(hotSwapHandler).toHaveBeenCalledTimes(1);
+            expect(builderHandler).not.toHaveBeenCalled();
+        });
+
+        it('request.onPresented() replaces the callback set on the builder', () => {
+            const builderHandler = jest.fn();
+            const req = PLYPresentationBuilder.placement('home')
+                .onPresented(builderHandler)
+                .build();
+
+            const hotSwapHandler = jest.fn();
+            req.onPresented(hotSwapHandler);
+
+            req.display();
+            const [requestId] = native.displayPresentation.mock.calls[0];
+            emit(PURCHASELY_PRESENTATION_EVENTS.PRESENTED, {
+                requestId,
+                presentation: fakePresentationPayload,
+            });
+
+            expect(hotSwapHandler).toHaveBeenCalledTimes(1);
+            expect(builderHandler).not.toHaveBeenCalled();
+        });
+
+        it('request.onCloseRequested() replaces the callback set on the builder', () => {
+            const builderHandler = jest.fn();
+            const req = PLYPresentationBuilder.placement('home')
+                .onCloseRequested(builderHandler)
+                .build();
+
+            const hotSwapHandler = jest.fn();
+            req.onCloseRequested(hotSwapHandler);
+
+            req.display();
+            const [requestId] = native.displayPresentation.mock.calls[0];
+            emit(PURCHASELY_PRESENTATION_EVENTS.CLOSE_REQUESTED, { requestId });
+
+            expect(hotSwapHandler).toHaveBeenCalledTimes(1);
+            expect(builderHandler).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('purchaseResultFromOrdinal (exported helper)', () => {
+        it('maps the 3 known ordinals to their string form', () => {
+            expect(purchaseResultFromOrdinal(0)).toBe('purchased');
+            expect(purchaseResultFromOrdinal(1)).toBe('cancelled');
+            expect(purchaseResultFromOrdinal(2)).toBe('restored');
+        });
+
+        it('returns null for null/undefined input', () => {
+            expect(purchaseResultFromOrdinal(null)).toBeNull();
+            expect(purchaseResultFromOrdinal(undefined)).toBeNull();
+        });
+
+        it('returns null for an out-of-range ordinal', () => {
+            expect(purchaseResultFromOrdinal(99)).toBeNull();
         });
     });
 
@@ -652,6 +838,212 @@ describe('façade · integration with native bridge', () => {
             native.registerActionInterceptor.mockClear();
             removeActionInterceptor('login');
             expect(native.unregisterActionInterceptor).toHaveBeenCalledWith('login');
+        });
+
+        it('removeAllActionInterceptors unregisters every kind that was registered', () => {
+            interceptAction('purchase', jest.fn());
+            interceptAction('login', jest.fn());
+            interceptAction('restore', jest.fn());
+            native.unregisterActionInterceptor.mockClear();
+
+            removeAllActionInterceptors();
+
+            expect(native.unregisterActionInterceptor).toHaveBeenCalledWith('purchase');
+            expect(native.unregisterActionInterceptor).toHaveBeenCalledWith('login');
+            expect(native.unregisterActionInterceptor).toHaveBeenCalledWith('restore');
+            expect(native.unregisterActionInterceptor).toHaveBeenCalledTimes(3);
+        });
+
+        describe('the 3 PLYInterceptResult outcomes', () => {
+            it('propagates an explicit "failed" return to completeActionInterceptor', async () => {
+                const handler = jest.fn().mockResolvedValue('failed' as const);
+                interceptAction('purchase', handler);
+
+                emit(PURCHASELY_PRESENTATION_EVENTS.ACTION_INTERCEPTED, {
+                    requestId: 'req-failed',
+                    callbackId: 'cb-failed',
+                    kind: 'purchase',
+                    info: {},
+                    payload: { plan: { vendorId: 'monthly' } },
+                });
+                await new Promise((r) => setImmediate(r));
+
+                expect(native.completeActionInterceptor).toHaveBeenCalledWith('cb-failed', 'failed');
+            });
+
+            it('propagates an explicit "notHandled" return to completeActionInterceptor', async () => {
+                const handler = jest.fn().mockResolvedValue('notHandled' as const);
+                interceptAction('login', handler);
+
+                emit(PURCHASELY_PRESENTATION_EVENTS.ACTION_INTERCEPTED, {
+                    requestId: 'req-nothandled',
+                    callbackId: 'cb-nothandled',
+                    kind: 'login',
+                    info: {},
+                });
+                await new Promise((r) => setImmediate(r));
+
+                expect(native.completeActionInterceptor).toHaveBeenCalledWith('cb-nothandled', 'notHandled');
+            });
+
+            it('maps a handler that throws to "failed" (never lets the rejection escape)', async () => {
+                const handler = jest.fn().mockRejectedValue(new Error('boom'));
+                interceptAction('restore', handler);
+
+                emit(PURCHASELY_PRESENTATION_EVENTS.ACTION_INTERCEPTED, {
+                    requestId: 'req-throw',
+                    callbackId: 'cb-throw',
+                    kind: 'restore',
+                    info: {},
+                });
+                await new Promise((r) => setImmediate(r));
+
+                expect(handler).toHaveBeenCalledTimes(1);
+                expect(native.completeActionInterceptor).toHaveBeenCalledWith('cb-throw', 'failed');
+            });
+        });
+
+        describe('typed payload normalization per action kind', () => {
+            it('navigate: forwards url + title', async () => {
+                const handler = jest.fn().mockResolvedValue('success' as const);
+                interceptAction('navigate', handler);
+
+                emit(PURCHASELY_PRESENTATION_EVENTS.ACTION_INTERCEPTED, {
+                    requestId: 'req-nav',
+                    callbackId: 'cb-nav',
+                    kind: 'navigate',
+                    info: {},
+                    payload: { url: 'https://example.com', title: 'Terms' },
+                });
+                await new Promise((r) => setImmediate(r));
+
+                const [, payload] = handler.mock.calls[0];
+                expect(payload).toMatchObject({
+                    kind: 'navigate',
+                    url: 'https://example.com',
+                    title: 'Terms',
+                });
+            });
+
+            it('close: defaults closeReason to "programmatic" when native omits it', async () => {
+                const handler = jest.fn().mockResolvedValue('success' as const);
+                interceptAction('close', handler);
+
+                emit(PURCHASELY_PRESENTATION_EVENTS.ACTION_INTERCEPTED, {
+                    requestId: 'req-close',
+                    callbackId: 'cb-close',
+                    kind: 'close',
+                    info: {},
+                    payload: {},
+                });
+                await new Promise((r) => setImmediate(r));
+
+                const [, payload] = handler.mock.calls[0];
+                expect(payload).toMatchObject({ kind: 'close', closeReason: 'programmatic' });
+            });
+
+            it('closeAll: forwards an explicit closeReason', async () => {
+                const handler = jest.fn().mockResolvedValue('success' as const);
+                interceptAction('closeAll', handler);
+
+                emit(PURCHASELY_PRESENTATION_EVENTS.ACTION_INTERCEPTED, {
+                    requestId: 'req-closeall',
+                    callbackId: 'cb-closeall',
+                    kind: 'closeAll',
+                    info: {},
+                    payload: { closeReason: 'backSystem' },
+                });
+                await new Promise((r) => setImmediate(r));
+
+                const [, payload] = handler.mock.calls[0];
+                expect(payload).toMatchObject({ kind: 'closeAll', closeReason: 'backSystem' });
+            });
+
+            it('openPresentation: reads presentationId, falling back to the legacy `presentation` field', async () => {
+                const handler = jest.fn().mockResolvedValue('success' as const);
+                interceptAction('openPresentation', handler);
+
+                emit(PURCHASELY_PRESENTATION_EVENTS.ACTION_INTERCEPTED, {
+                    requestId: 'req-openpres',
+                    callbackId: 'cb-openpres',
+                    kind: 'openPresentation',
+                    info: {},
+                    payload: { presentation: 'screen-legacy' },
+                });
+                await new Promise((r) => setImmediate(r));
+
+                const [, payload] = handler.mock.calls[0];
+                expect(payload).toMatchObject({
+                    kind: 'openPresentation',
+                    presentationId: 'screen-legacy',
+                });
+            });
+
+            it('openPlacement: reads placementId, falling back to the legacy `placement` field', async () => {
+                const handler = jest.fn().mockResolvedValue('success' as const);
+                interceptAction('openPlacement', handler);
+
+                emit(PURCHASELY_PRESENTATION_EVENTS.ACTION_INTERCEPTED, {
+                    requestId: 'req-openplacement',
+                    callbackId: 'cb-openplacement',
+                    kind: 'openPlacement',
+                    info: {},
+                    payload: { placement: 'home-legacy' },
+                });
+                await new Promise((r) => setImmediate(r));
+
+                const [, payload] = handler.mock.calls[0];
+                expect(payload).toMatchObject({
+                    kind: 'openPlacement',
+                    placementId: 'home-legacy',
+                });
+            });
+
+            it('webCheckout: forwards all fields and defaults webCheckoutProvider to "other"', async () => {
+                const handler = jest.fn().mockResolvedValue('success' as const);
+                interceptAction('webCheckout', handler);
+
+                emit(PURCHASELY_PRESENTATION_EVENTS.ACTION_INTERCEPTED, {
+                    requestId: 'req-checkout',
+                    callbackId: 'cb-checkout',
+                    kind: 'webCheckout',
+                    info: {},
+                    payload: {
+                        url: 'https://checkout.example.com',
+                        clientReferenceId: 'client-1',
+                        queryParameterKey: 'session_id',
+                    },
+                });
+                await new Promise((r) => setImmediate(r));
+
+                const [, payload] = handler.mock.calls[0];
+                expect(payload).toMatchObject({
+                    kind: 'webCheckout',
+                    url: 'https://checkout.example.com',
+                    clientReferenceId: 'client-1',
+                    queryParameterKey: 'session_id',
+                    webCheckoutProvider: 'other',
+                });
+            });
+
+            it.each(['login', 'restore', 'promoCode'] as const)(
+                '%s: payload is null when native sends no payload',
+                async (kind) => {
+                    const handler = jest.fn().mockResolvedValue('notHandled' as const);
+                    interceptAction(kind, handler);
+
+                    emit(PURCHASELY_PRESENTATION_EVENTS.ACTION_INTERCEPTED, {
+                        requestId: `req-${kind}`,
+                        callbackId: `cb-${kind}`,
+                        kind,
+                        info: {},
+                    });
+                    await new Promise((r) => setImmediate(r));
+
+                    const [, payload] = handler.mock.calls[0];
+                    expect(payload).toBeNull();
+                }
+            );
         });
     });
 });
