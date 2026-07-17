@@ -250,6 +250,16 @@ await request.display({
 > **v5 → v6 dimension change.** The v5 `heightPercentage` field is **replaced**
 > by `height: { type: 'percentage', value }` (and, symmetrically, `width`).
 
+> **iOS ceiling on `width` / pixel `height` (SDK 6.0.0-rc.3).** iOS now uses the
+> real v6 display path (`type`, `height` as a percentage, `dismissible`,
+> `backgroundColors` all honoured) instead of a hardcoded legacy screen type.
+> However the native SDK only bridges a legacy 0–1 `heightPercentage` to
+> Objective-C in this release — not the typed pixel/percentage `PLYDimension`
+> Swift API. So on iOS: `height: { type: 'percentage', value }` works;
+> `height: { type: 'pixel', ... }` and `width` (any type) are accepted but
+> silently ignored (native falls back to its own content-hugging sizing), with
+> a console warning. Android honours `width` / `height` for both units.
+
 ---
 
 ## Pre-fetching (preload)

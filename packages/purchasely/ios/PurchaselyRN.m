@@ -255,6 +255,92 @@ static PLYRunningMode runningModeFromOrdinal(NSInteger ordinal) {
     }
 }
 
+/// Parse the JS `PLYTransition` payload (the optional argument to
+/// `request.display(transition?)`) into the native `PLYTransition`. Mirrors
+/// the Flutter iOS plugin's `parseTransition`/`parseDimension`
+/// (SwiftPurchaselyFlutterPlugin.swift), adapted to what the pinned 6.0.0-rc.3
+/// SDK actually bridges to Objective-C.
+///
+/// `PLYTransition` in Purchasely-Swift.h only exposes, to Objective-C:
+/// `initWithType:heightPercentage:backgroundColors:dismissible:` — a legacy
+/// 0…1 `heightPercentage` — NOT the typed pixel/percentage `PLYDimension` the
+/// Swift-only `drawer(height:dismissible:)` / `popin(width:height:dismissible:)`
+/// factories take. `PLYDimension` itself has no Objective-C-visible factory at
+/// all. So from this Objective-C bridge:
+///   - `type` maps fully (fullScreen/push/modal/drawer/popin/inlinePaywall).
+///   - `height` maps when `{ type: 'percentage', value }` — same 0…1 ratio
+///     shape as the native legacy `heightPercentage`. A `{ type: 'pixel' }`
+///     height cannot be forwarded through this Objective-C ceiling; it is
+///     dropped (native falls back to its own content-hugging sizing) and a
+///     warning is logged.
+///   - `width` has no Objective-C-bridged native setter at all in rc.3 — it
+///     is always dropped, with a warning when the caller provided one.
+///   - `dismissible` and `backgroundColors` map fully.
+static PLYTransition *plyTransitionFromMap(NSDictionary *map) {
+    if (![map isKindOfClass:[NSDictionary class]]) {
+        // No override — let the backend-defined presentation.transition apply.
+        return nil;
+    }
+
+    NSString *typeString = [map[@"type"] isKindOfClass:[NSString class]] ? map[@"type"] : nil;
+    enum PLYTransitionType type = PLYTransitionTypeFullScreen;
+    if ([typeString isEqualToString:@"push"]) {
+        type = PLYTransitionTypePush;
+    } else if ([typeString isEqualToString:@"modal"]) {
+        type = PLYTransitionTypeModal;
+    } else if ([typeString isEqualToString:@"drawer"]) {
+        type = PLYTransitionTypeDrawer;
+    } else if ([typeString isEqualToString:@"popin"]) {
+        type = PLYTransitionTypePopin;
+    } else if ([typeString isEqualToString:@"inlinePaywall"]) {
+        type = PLYTransitionTypeInlinePaywall;
+    } else if (typeString != nil && ![typeString isEqualToString:@"fullScreen"]) {
+        RCTLogWarn(@"[Purchasely] unknown transition.type '%@', defaulting to fullScreen", typeString);
+    }
+
+    NSNumber *heightPercentage = nil;
+    id height = map[@"height"];
+    if ([height isKindOfClass:[NSDictionary class]]) {
+        NSDictionary *heightMap = height;
+        NSString *dimType = [heightMap[@"type"] isKindOfClass:[NSString class]] ? heightMap[@"type"] : nil;
+        id value = heightMap[@"value"];
+        if ([dimType isEqualToString:@"percentage"] && [value isKindOfClass:[NSNumber class]]) {
+            heightPercentage = value;
+        } else if ([dimType isEqualToString:@"pixel"]) {
+            RCTLogWarn(@"[Purchasely] transition.height with type 'pixel' is not supported by the iOS "
+                       @"bridge in SDK 6.0.0-rc.3 (only a legacy 0-1 heightPercentage bridges to "
+                       @"Objective-C) — ignoring, native default sizing applies");
+        }
+    }
+    id width = map[@"width"];
+    if (width != nil && width != (id)[NSNull null]) {
+        RCTLogWarn(@"[Purchasely] transition.width is not supported by the iOS bridge in SDK "
+                   @"6.0.0-rc.3 (no Objective-C-bridged native setter) — ignoring");
+    }
+
+    PLYColors *backgroundColors = nil;
+    id backgroundColorsMap = map[@"backgroundColors"];
+    if ([backgroundColorsMap isKindOfClass:[NSDictionary class]]) {
+        NSDictionary *colors = backgroundColorsMap;
+        UIColor *light = [colors[@"light"] isKindOfClass:[NSString class]] ? [UIColor ply_fromHex:colors[@"light"]] : nil;
+        UIColor *dark = [colors[@"dark"] isKindOfClass:[NSString class]] ? [UIColor ply_fromHex:colors[@"dark"]] : nil;
+        if (light != nil || dark != nil) {
+            backgroundColors = [[PLYColors alloc] initWithLightColor:light darkColor:dark];
+        }
+    }
+
+    BOOL dismissible = YES;
+    id dismissibleValue = map[@"dismissible"];
+    if ([dismissibleValue isKindOfClass:[NSNumber class]]) {
+        dismissible = [dismissibleValue boolValue];
+    }
+
+    return [[PLYTransition alloc] initWithType:type
+                               heightPercentage:heightPercentage
+                               backgroundColors:backgroundColors
+                                    dismissible:dismissible];
+}
+
 @implementation PurchaselyRN
 
 RCT_EXPORT_MODULE(Purchasely);
@@ -1341,33 +1427,17 @@ RCT_EXPORT_METHOD(displayPresentation:(NSString *)requestId
         @synchronized (kPresentationStateLock) {
             kPresentationsByRequest[requestId] = presentation;
         }
+        strongSelf.presentedPresentationViewController = presentation.controller;
 
-        // Emit onPresented (no native callback for it yet — we fire after the
-        // controller becomes available).
+        // v6: by the time this completion fires, `displayWithTransition:
+        // completion:` has already triggered the display (handed the
+        // presentation off to UIKit) — there is no separate native "visible"
+        // callback wired at this layer, so onPresented is emitted here,
+        // mirroring the Android contract (`wirePresentationCallbacks`).
         NSMutableDictionary *presented = [NSMutableDictionary new];
         presented[@"requestId"] = requestId;
         presented[@"presentation"] = presentationToMap(presentation);
         [strongSelf emitPresentationEvent:kPresentationEventPresented body:presented];
-
-        UIViewController *controller = presentation.controller;
-        if (controller == nil) {
-            NSError *err = [NSError errorWithDomain:@"io.purchasely.presentation"
-                                               code:500
-                                           userInfo:@{NSLocalizedDescriptionKey: @"Presentation has no controller"}];
-            emitDismissed(err);
-            return;
-        }
-
-        // Apply the transition `dismissible` flag if provided.
-        if ([transition isKindOfClass:[NSDictionary class]]) {
-            id dismissible = transition[@"dismissible"];
-            if ([dismissible isKindOfClass:[NSNumber class]]) {
-                controller.modalInPresentation = ![dismissible boolValue];
-            }
-        }
-
-        strongSelf.presentedPresentationViewController = controller;
-        [Purchasely showController:controller type:PLYUIControllerTypeProductPage from:nil];
     };
 
     // v6: the dismiss outcome (purchaseResult, plan, closeReason, error) is
@@ -1397,10 +1467,16 @@ RCT_EXPORT_METHOD(displayPresentation:(NSString *)requestId
         applyPresentationDisplayOptions(builder, payload);
         [builder onDismissed:onDismissed];
         id<PLYPresentationRequest> request = [builder build];
-        // Preload to obtain the controller, then show it ourselves so we keep
-        // control over the transition flag and `presentedPresentationViewController`
-        // tracking (`onFetchCompletion` calls `showController:`).
-        [request preloadWithCompletion:onFetchCompletion];
+        // v6: display through the SDK's own path (`displayWithTransition:
+        // completion:`), which owns triggering the presentation itself —
+        // instead of the legacy `showController:type:from:` (a
+        // `PLYUIControllerType` targeting SubscriptionList/ProductPage/
+        // WebPage/CancellationSurvey, unrelated legacy-screen API this bridge
+        // should not depend on). Passing `nil` for `transition` honors the
+        // backend-defined `presentation.transition`, matching
+        // `display(completion:)`.
+        PLYTransition *nativeTransition = plyTransitionFromMap(transition);
+        [request displayWithTransition:nativeTransition completion:onFetchCompletion];
         resolve(@(YES));
     });
 }
