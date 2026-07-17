@@ -1,6 +1,7 @@
 package com.reactnativepurchasely
 
 import com.facebook.react.bridge.Arguments
+import com.facebook.react.bridge.JavaOnlyArray
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import io.purchasely.ext.*
@@ -445,6 +446,54 @@ class PurchaselyModuleTest {
             verify(promise, never()).resolve(rawArray)
         } finally {
             argumentsStatic.close()
+            purchaselyStatic.close()
+        }
+    }
+
+    // endregion
+
+    // region revokeDataProcessingConsent wire-string mapping (REC-15 / ENM-12)
+
+    /**
+     * [REC-15 / ENM-12] Pins mapPurposesFromReadableArray's mapping to the
+     * native PLYDataProcessingPurpose enum, and locks in the "align en
+     * douceur" widening: RN's own kebab-case singular strings AND the
+     * SCREAMING_SNAKE_CASE plural convention used by the other Purchasely
+     * SDKs must both resolve to the same native purpose.
+     */
+    @Test
+    fun `revokeDataProcessingConsent accepts both kebab-case and SCREAMING_SNAKE_CASE wire strings`() {
+        val purchaselyStatic = mockStatic(Purchasely::class.java)
+        try {
+            purchaselyModule.revokeDataProcessingConsent(JavaOnlyArray.of("third-party-integration"))
+            purchaselyStatic.verify {
+                Purchasely.revokeDataProcessingConsent(setOf(PLYDataProcessingPurpose.ThirdPartyIntegrations))
+            }
+
+            purchaselyModule.revokeDataProcessingConsent(JavaOnlyArray.of("THIRD_PARTY_INTEGRATIONS"))
+            purchaselyStatic.verify {
+                Purchasely.revokeDataProcessingConsent(setOf(PLYDataProcessingPurpose.ThirdPartyIntegrations))
+            }
+
+            purchaselyModule.revokeDataProcessingConsent(JavaOnlyArray.of("ALL_NON_ESSENTIALS"))
+            purchaselyStatic.verify {
+                Purchasely.revokeDataProcessingConsent(setOf(PLYDataProcessingPurpose.AllNonEssentials))
+            }
+
+            purchaselyModule.revokeDataProcessingConsent(
+                JavaOnlyArray.of("ANALYTICS", "IDENTIFIED_ANALYTICS", "CAMPAIGNS", "PERSONALIZATION")
+            )
+            purchaselyStatic.verify {
+                Purchasely.revokeDataProcessingConsent(
+                    setOf(
+                        PLYDataProcessingPurpose.Analytics,
+                        PLYDataProcessingPurpose.IdentifiedAnalytics,
+                        PLYDataProcessingPurpose.Campaigns,
+                        PLYDataProcessingPurpose.Personalization
+                    )
+                )
+            }
+        } finally {
             purchaselyStatic.close()
         }
     }

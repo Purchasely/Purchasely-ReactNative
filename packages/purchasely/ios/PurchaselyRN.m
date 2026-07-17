@@ -1045,16 +1045,28 @@ RCT_EXPORT_METHOD(clearDynamicOfferings)
     });
 }
 
+// [REC-15 / ENM-12] RN's own wire strings are kebab-case singular (e.g.
+// "third-party-integration"), while the other Purchasely SDKs use
+// SCREAMING_SNAKE_CASE plural (e.g. "THIRD_PARTY_INTEGRATIONS"). Verified
+// this bridge's mapping to the native PLYDataProcessingPurpose enum is
+// internally consistent and correct for its documented kebab strings — the
+// raw string never reaches the backend directly, only the resulting native
+// enum does, so this is not a GDPR wire-format leak. Widen acceptance to
+// also recognize the SCREAMING_SNAKE_CASE / plural convention, so either
+// naming works, without changing behavior for the existing kebab strings.
 - (NSSet<PLYDataProcessingPurpose *> *)mapPurposesFromStrings:(NSArray<NSString *> *)strings {
   NSMutableSet<PLYDataProcessingPurpose *> *result = [NSMutableSet set];
-  
-  if ([strings containsObject:@"all-non-essentials"]) {
-      [result addObject:PLYDataProcessingPurpose.allNonEssentials];
-      return result;
-  }
-  
+
   for (NSString *purpose in strings) {
-    NSString *p = purpose.lowercaseString;
+    NSString *p = [purpose.lowercaseString stringByReplacingOccurrencesOfString:@"_" withString:@"-"];
+    if ([p isEqualToString:@"third-party-integrations"]) {
+      p = @"third-party-integration";
+    }
+
+    if ([p isEqualToString:@"all-non-essentials"]) {
+      return [NSSet setWithObject:PLYDataProcessingPurpose.allNonEssentials];
+    }
+
     if ([p isEqualToString:@"analytics"]) {
       [result addObject:PLYDataProcessingPurpose.analytics];
     } else if ([p isEqualToString:@"identified-analytics"]) {
@@ -1065,11 +1077,9 @@ RCT_EXPORT_METHOD(clearDynamicOfferings)
       [result addObject:PLYDataProcessingPurpose.personalization];
     } else if ([p isEqualToString:@"third-party-integration"]) {
       [result addObject:PLYDataProcessingPurpose.thirdPartyIntegrations];
-    } else if ([p isEqualToString:@"all-non-essentials"]) {
-      [result addObject:PLYDataProcessingPurpose.allNonEssentials];
     }
   }
-  
+
   return result;
 }
 

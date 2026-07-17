@@ -1255,21 +1255,29 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
 
   // endregion
 
+  // [REC-15 / ENM-12] RN's own wire strings are kebab-case singular (e.g.
+  // "third-party-integration"), while the other Purchasely SDKs use
+  // SCREAMING_SNAKE_CASE plural (e.g. "THIRD_PARTY_INTEGRATIONS"). Verified
+  // this bridge's mapping to the native PLYDataProcessingPurpose enum is
+  // internally consistent and correct for its documented kebab strings — the
+  // raw string never reaches the backend directly, only the resulting
+  // native enum does, so this is not a GDPR wire-format leak. Widen
+  // acceptance to also recognize the SCREAMING_SNAKE_CASE / plural
+  // convention, so either naming works, without changing behavior for the
+  // existing kebab strings.
   private fun mapPurposesFromReadableArray(purposes: ReadableArray): Set<PLYDataProcessingPurpose> {
     val result = mutableSetOf<PLYDataProcessingPurpose>()
 
-    // Check if any element equals "all-non-essentials"
-    for (i in 0 until purposes.size()) {
-      if (purposes.getString(i) == "all-non-essentials") {
-        result.add(PLYDataProcessingPurpose.AllNonEssentials)
-        return result
-      }
-    }
-
     purposes.toArrayList().forEach { any ->
-      val s = (any as? String)?.lowercase(Locale.ROOT) ?: return@forEach
-      when (s) {
-        "all-non-essentials" -> result.add(PLYDataProcessingPurpose.AllNonEssentials)
+      val raw = (any as? String) ?: return@forEach
+      var normalized = raw.lowercase(Locale.ROOT).replace('_', '-')
+      if (normalized == "third-party-integrations") normalized = "third-party-integration"
+
+      if (normalized == "all-non-essentials") {
+        return setOf(PLYDataProcessingPurpose.AllNonEssentials)
+      }
+
+      when (normalized) {
         "analytics" -> result.add(PLYDataProcessingPurpose.Analytics)
         "identified-analytics" -> result.add(PLYDataProcessingPurpose.IdentifiedAnalytics)
         "campaigns" -> result.add(PLYDataProcessingPurpose.Campaigns)
