@@ -127,6 +127,8 @@ export const createMockPurchaselyModule = () => ({
     clearUserAttribute: jest.fn(),
     clearUserAttributes: jest.fn(),
     clearBuiltInAttributes: jest.fn(),
+    getBuiltInAttributes: jest.fn().mockResolvedValue({}),
+    getBuiltInAttribute: jest.fn().mockResolvedValue(null),
     setDefaultPresentationDismissHandler: jest.fn(),
     removeDefaultPresentationDismissHandler: jest.fn(),
     userDidConsumeSubscriptionContent: jest.fn(),

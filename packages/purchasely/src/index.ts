@@ -407,6 +407,16 @@ const clearBuiltInAttributes = (): void => {
   return NativeModules.Purchasely.clearBuiltInAttributes();
 };
 
+/** [PAR-07] Read every built-in (SDK-computed) user attribute. */
+const getBuiltInAttributes = (): Promise<Record<string, any>> => {
+  return NativeModules.Purchasely.getBuiltInAttributes();
+};
+
+/** [PAR-07] Read a single built-in (SDK-computed) user attribute by key. */
+const getBuiltInAttribute = (key: string): Promise<any> => {
+  return NativeModules.Purchasely.getBuiltInAttribute(key);
+};
+
 const setDynamicOffering = (offering: DynamicOffering): Promise<boolean> => {
   return NativeModules.Purchasely.setDynamicOffering(offering.reference, offering.planVendorId, offering.offerVendorId);
 };
@@ -517,6 +527,8 @@ const Purchasely = {
   isEligibleForIntroOffer,
   setThemeMode,
   clearBuiltInAttributes,
+  getBuiltInAttributes,
+  getBuiltInAttribute,
   setDynamicOffering,
   getDynamicOfferings,
   removeDynamicOffering,
