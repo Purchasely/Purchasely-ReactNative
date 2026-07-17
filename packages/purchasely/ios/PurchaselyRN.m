@@ -497,36 +497,6 @@ RCT_EXPORT_METHOD(start:(NSString * _Nonnull)apiKey
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(purchasePerformed) name:@"ply_purchasedSubscription" object:nil];
 }
 
-RCT_EXPORT_METHOD(startWithAPIKey:(NSString * _Nonnull)apiKey
-				  stores:(NSArray * _Nullable)stores
-				  userId:(NSString * _Nullable)userId
-				  logLevel:(NSInteger)logLevel
-                  runningMode:(NSInteger)runningMode
-                  purchaselySdkVersion:(NSString * _Nullable)purchaselySdkVersion
-				  initialized:(RCTPromiseResolveBlock)resolve
-				  reject:(RCTPromiseRejectBlock)reject) {
-
-    PurchaselyBuilder *builder = [[[[[[[Purchasely apiKey:apiKey]
-        appUserId:userId]
-        runningMode:runningModeFromOrdinal(runningMode)]
-        storekitSettings:[StorekitSettings storeKit2]]
-        logLevel:(PLYLogLevel)logLevel]
-        appTechnology:PLYAppTechnologyReactNative]
-        sdkBridgeVersion:purchaselySdkVersion];
-
-    [builder startWithInitialized:^(NSError * _Nullable error) {
-        if (error != nil) {
-            [self reject: reject with: error];
-        } else {
-            resolve(@(YES));
-        }
-    }];
-
-    [Purchasely setEventDelegate: self];
-
-	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(purchasePerformed) name:@"ply_purchasedSubscription" object:nil];
-}
-
 RCT_EXPORT_METHOD(isEligibleForIntroOffer:(NSString * _Nonnull)planVendorId
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject) {
