@@ -21,6 +21,7 @@ export enum SubscriptionSource {
   GOOGLE_PLAY_STORE = constants.sourcePlayStore,
   HUAWEI_APP_GALLERY = constants.sourceHuaweiAppGallery,
   AMAZON_APPSTORE = constants.sourceAmazonAppstore,
+  NONE = constants.sourceNone,
 }
 
 export enum Attributes {
