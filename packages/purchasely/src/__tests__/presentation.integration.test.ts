@@ -26,6 +26,12 @@ jest.mock('react-native', () => {
             productResultPurchased: 0,
             productResultCancelled: 1,
             productResultRestored: 2,
+            // [rc.4 hardening] needed for the PlanType-tolerant-parsing tests below.
+            consumable: 0,
+            nonConsumable: 1,
+            autoRenewingSubscription: 2,
+            nonRenewingSubscription: 3,
+            unknown: 4,
         }),
         preloadPresentation: jest.fn().mockResolvedValue(undefined),
         displayPresentation: jest.fn().mockResolvedValue(undefined),
@@ -81,6 +87,7 @@ import {
 } from '../interceptor';
 import { PURCHASELY_PRESENTATION_EVENTS } from '../events';
 import { purchaseResultFromOrdinal } from '../presentationTypes';
+import { PlanType } from '../enums';
 
 const native = NativeModules.Purchasely as any;
 const emit = native.__testEmit as (e: string, p: any) => void;
@@ -503,6 +510,29 @@ describe('façade · integration with native bridge', () => {
             expect(outcome.plan).toMatchObject({ vendorId: 'plan-monthly' });
         });
 
+        // [rc.4 hardening] same DistributionType-string tolerance as the
+        // interceptor's 'purchase' payload, applied to the DISMISSED
+        // outcome's plan field.
+        it('normalizes outcome.plan.type from the Android rc.4 DistributionType string', async () => {
+            const req = PLYPresentationBuilder.placement('home').build();
+            const displayPromise = req.display();
+            const [requestId] = native.displayPresentation.mock.calls[0];
+
+            emit(PURCHASELY_PRESENTATION_EVENTS.DISMISSED, {
+                requestId,
+                presentation: fakePresentationPayload,
+                purchaseResult: 0,
+                plan: { vendorId: 'plan-monthly', type: 'RENEWING_SUBSCRIPTION' },
+                closeReason: 'button',
+            });
+
+            const outcome = await displayPromise;
+            expect(outcome.plan).toMatchObject({
+                vendorId: 'plan-monthly',
+                type: PlanType.PLAN_TYPE_AUTO_RENEWING_SUBSCRIPTION,
+            });
+        });
+
         it('forwards the v6 transition dimensions (width/height) to native', () => {
             const req = PLYPresentationBuilder.placement('home').build();
             req.display({
@@ -922,6 +952,50 @@ describe('façade · integration with native bridge', () => {
                     kind: 'navigate',
                     url: 'https://example.com',
                     title: 'Terms',
+                });
+            });
+
+            // [rc.4 hardening] Android's native SDK will start emitting
+            // plan.type as a DistributionType string instead of the numeric
+            // ordinal every platform emits today. The interceptor's
+            // 'purchase' payload must tolerate both.
+            it('purchase: forwards plan.type unchanged when native sends the numeric ordinal (today)', async () => {
+                const handler = jest.fn().mockResolvedValue('success' as const);
+                interceptAction('purchase', handler);
+
+                emit(PURCHASELY_PRESENTATION_EVENTS.ACTION_INTERCEPTED, {
+                    requestId: 'req-purchase-num',
+                    callbackId: 'cb-purchase-num',
+                    kind: 'purchase',
+                    info: {},
+                    payload: { plan: { vendorId: 'monthly', type: PlanType.PLAN_TYPE_AUTO_RENEWING_SUBSCRIPTION } },
+                });
+                await new Promise((r) => setImmediate(r));
+
+                const [, payload] = handler.mock.calls[0];
+                expect(payload).toMatchObject({
+                    kind: 'purchase',
+                    plan: { vendorId: 'monthly', type: PlanType.PLAN_TYPE_AUTO_RENEWING_SUBSCRIPTION },
+                });
+            });
+
+            it('purchase: normalizes plan.type from the Android rc.4 DistributionType string', async () => {
+                const handler = jest.fn().mockResolvedValue('success' as const);
+                interceptAction('purchase', handler);
+
+                emit(PURCHASELY_PRESENTATION_EVENTS.ACTION_INTERCEPTED, {
+                    requestId: 'req-purchase-str',
+                    callbackId: 'cb-purchase-str',
+                    kind: 'purchase',
+                    info: {},
+                    payload: { plan: { vendorId: 'monthly', type: 'RENEWING_SUBSCRIPTION' } },
+                });
+                await new Promise((r) => setImmediate(r));
+
+                const [, payload] = handler.mock.calls[0];
+                expect(payload).toMatchObject({
+                    kind: 'purchase',
+                    plan: { vendorId: 'monthly', type: PlanType.PLAN_TYPE_AUTO_RENEWING_SUBSCRIPTION },
                 });
             });
 

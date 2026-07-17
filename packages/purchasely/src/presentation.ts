@@ -8,7 +8,7 @@ import type {
     PLYPresentationOutcome,
     PLYTransition,
 } from './presentationTypes';
-import { purchaseResultFromOrdinal } from './presentationTypes';
+import { normalizePlan, purchaseResultFromOrdinal } from './presentationTypes';
 import { PURCHASELY_PRESENTATION_EVENTS, presentationEventEmitter } from './events';
 import type { PLYPresentationLifecycleEvent } from './events';
 
@@ -74,7 +74,9 @@ function eventToOutcome(
     return {
         presentation,
         purchaseResult: purchaseResultFromOrdinal(event.purchaseResult),
-        plan: event.plan ?? null,
+        // [rc.4 hardening] tolerate Android's upcoming DistributionType
+        // string for plan.type alongside the numeric ordinal.
+        plan: normalizePlan(event.plan) ?? null,
         // Exclusion rule (cf. contract): error != null ⇒ closeReason == null.
         closeReason: error ? null : event.closeReason ?? null,
         error,

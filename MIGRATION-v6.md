@@ -535,6 +535,18 @@ awaitable result — see above). The following keep working exactly as in v5:
   removed — the SDK's own use of it (mapping `PLYPresentationOutcome.purchaseResult`)
   is unaffected.
 
+## Forward compatibility: Android plan.type (rc.4)
+
+A future Android native SDK release (rc.4) is expected to emit
+`PurchaselyPlan.type` as a `DistributionType` **string** (e.g.
+`"RENEWING_SUBSCRIPTION"`) instead of the numeric ordinal every platform emits
+today. This bridge already tolerates both: wherever a `plan` payload is parsed
+(the `interceptAction('purchase', …)` payload and the `display()`/`preload()`
+outcome's `plan` field), the `type` field is normalized to the numeric
+`PlanType` ordinal regardless of which shape native sends. No app code change
+is needed for this ahead of time — `plan.type` will keep comparing equal to
+the `PlanType` enum members either way.
+
 ## Need a hand?
 
 Use the Purchasely AI plugin / skills (`purchasely-integrate`,
