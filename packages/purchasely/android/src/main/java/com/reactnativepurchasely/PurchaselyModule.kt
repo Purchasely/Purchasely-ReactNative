@@ -198,9 +198,13 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
       .logLevel(LogLevel.values()[logLevel])
       .runningMode(when(runningMode) {
         runningModeTransactionOnly -> PLYRunningMode.Full
+        runningModeFull -> PLYRunningMode.Full
         runningModeObserver -> PLYRunningMode.Observer
         runningModePaywallObserver -> PLYRunningMode.Observer
-        else -> PLYRunningMode.Full
+        // [RN-W-05] Any unknown/unset value falls back to Observer — aligned
+        // with iOS's runningModeFromOrdinal (and the v6/Flutter default).
+        // Only an explicit `full` opts into Purchasely owning the flow.
+        else -> PLYRunningMode.Observer
       })
       .build()
 
