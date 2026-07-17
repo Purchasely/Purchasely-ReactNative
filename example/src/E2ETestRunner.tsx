@@ -866,21 +866,40 @@ export default function E2ETestRunner(props: { phase?: string } = {}) {
                 defaultOutcomes22.push(outcome)
             })
 
-            // No onDismissed on the builder. Start display without awaiting it;
-            // await the request-specific promise only after close to correlate
-            // this test's dismissal with the global-handler delivery.
-            const req22 = Purchasely.presentation.placement(PLACEMENT_AUDIENCES).build()
-            const displayPromise22 = req22.display()
+            // No onDismissed on the builder. T9's host-driven dismissal may
+            // arrive late and close this first screen before its own close()
+            // call; retry that contaminated attempt once.
+            const displayAndClose22 = async () => {
+                let settledBeforeClose = false
+                let closeIssued = false
+                const req = Purchasely.presentation.placement(PLACEMENT_AUDIENCES).build()
+                const displayPromise = req.display()
+                displayPromise.then(() => {
+                    if (!closeIssued) settledBeforeClose = true
+                })
 
-            await sleep(3000) // let the paywall render
-            req22.close() // programmatic dismissal
+                await sleep(3000) // let the paywall render
+                closeIssued = true
+                req.close() // programmatic dismissal
 
-            const requestOutcome22 = await Promise.race([
-                displayPromise22,
-                sleep(15000).then<never>(() => {
-                    throw new Error('dismiss timeout after 15 s')
-                }),
-            ])
+                const outcome = await Promise.race([
+                    displayPromise,
+                    sleep(15000).then<never>(() => {
+                        throw new Error('dismiss timeout after 15 s')
+                    }),
+                ])
+                return { outcome, settledBeforeClose }
+            }
+
+            let result22 = await displayAndClose22()
+            if (result22.settledBeforeClose) {
+                await sleep(500)
+                result22 = await displayAndClose22()
+            }
+            if (result22.settledBeforeClose) {
+                throw new Error('display was dismissed before request.close() twice')
+            }
+            const requestOutcome22 = result22.outcome
             if (requestOutcome22.closeReason !== 'programmatic') {
                 throw new Error(
                     `request closeReason expected 'programmatic', got "${requestOutcome22.closeReason}"`

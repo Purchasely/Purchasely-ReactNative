@@ -282,8 +282,6 @@ export class PLYPresentationRequest {
     private subscriptions: EmitterSubscription[] = [];
     /** @internal */
     private livePresentation: PLYPresentation | null = null;
-    /** Whether this request was dismissed through its public `close()` method. */
-    private isClosingProgrammatically = false;
 
     constructor(config: BuilderConfig) {
         this.config = config;
@@ -350,7 +348,6 @@ export class PLYPresentationRequest {
 
         // Allow multiple `display()` on the same request — clean up first.
         this.teardownSubscriptions();
-        this.isClosingProgrammatically = false;
 
         return new Promise<PLYPresentationOutcome>((resolve) => {
             this.bindLifecycleEvents(requestId, resolve);
@@ -426,7 +423,6 @@ export class PLYPresentationRequest {
         if (!this._requestId) {
             return;
         }
-        this.isClosingProgrammatically = true;
         NativeModules.Purchasely.closePresentation(this._requestId);
     }
 
@@ -508,12 +504,7 @@ export class PLYPresentationRequest {
                 const presentation =
                     normalizePresentation(event.presentation) ??
                     this.livePresentation;
-                let outcome = eventToOutcome(event, presentation);
-                // Some native SDK versions report an interactive dismissal after
-                // request.close(). The public method is unambiguously programmatic.
-                if (this.isClosingProgrammatically && !outcome.error) {
-                    outcome = { ...outcome, closeReason: 'programmatic' };
-                }
+                const outcome = eventToOutcome(event, presentation);
                 // Routing (parity with Flutter `_handleOnDismissed` / native):
                 // prefer the request's local `onDismissed`; when none is set,
                 // fall back to the global default dismiss handler so a
