@@ -168,6 +168,85 @@ describe('Purchasely Types', () => {
             expect(subscription.subscriptionSource).toBe(SubscriptionSource.APPLE_APP_STORE)
             expect(subscription.nextRenewalDate).toBe('2024-02-15T12:00:00Z')
         })
+
+        // [PAR-24] cumulatedRevenuesInUSD / subscriptionDurationIn{Days,Weeks,Months}
+        // were commented out of the type despite Android's native
+        // PLYSubscription.toMap() providing them. Reactivated as optional
+        // (Android-only; iOS's PLYSubscription+Hybrid.m never emits them).
+        it('should accept the Android-only revenue/duration fields when present', () => {
+            const subscription: PurchaselySubscription = {
+                purchaseToken: 'token-123',
+                subscriptionSource: SubscriptionSource.GOOGLE_PLAY_STORE,
+                nextRenewalDate: '2024-02-15T12:00:00Z',
+                cancelledDate: '',
+                plan: {
+                    vendorId: 'monthly-plan',
+                    productId: 'premium-product',
+                    name: 'Monthly',
+                    type: PlanType.PLAN_TYPE_AUTO_RENEWING_SUBSCRIPTION,
+                    amount: 999,
+                    localizedAmount: '$9.99',
+                    currencyCode: 'USD',
+                    currencySymbol: '$',
+                    price: '$9.99/month',
+                    period: 'P1M',
+                    hasIntroductoryPrice: false,
+                    introPrice: '',
+                    introAmount: 0,
+                    introDuration: '',
+                    introPeriod: '',
+                    hasFreeTrial: false,
+                },
+                product: {
+                    name: 'Premium',
+                    vendorId: 'premium-product',
+                    plans: [],
+                },
+                cumulatedRevenuesInUSD: 59.94,
+                subscriptionDurationInDays: 180,
+                subscriptionDurationInWeeks: 25,
+                subscriptionDurationInMonths: 6,
+            }
+
+            expect(subscription.cumulatedRevenuesInUSD).toBe(59.94)
+            expect(subscription.subscriptionDurationInDays).toBe(180)
+            expect(subscription.subscriptionDurationInWeeks).toBe(25)
+            expect(subscription.subscriptionDurationInMonths).toBe(6)
+        })
+
+        it('should accept a subscription omitting the Android-only fields (iOS shape)', () => {
+            const subscription: PurchaselySubscription = {
+                purchaseToken: 'token-123',
+                subscriptionSource: SubscriptionSource.APPLE_APP_STORE,
+                nextRenewalDate: '2024-02-15T12:00:00Z',
+                cancelledDate: '',
+                plan: {
+                    vendorId: 'monthly-plan',
+                    productId: 'premium-product',
+                    name: 'Monthly',
+                    type: PlanType.PLAN_TYPE_AUTO_RENEWING_SUBSCRIPTION,
+                    amount: 999,
+                    localizedAmount: '$9.99',
+                    currencyCode: 'USD',
+                    currencySymbol: '$',
+                    price: '$9.99/month',
+                    period: 'P1M',
+                    hasIntroductoryPrice: false,
+                    introPrice: '',
+                    introAmount: 0,
+                    introDuration: '',
+                    introPeriod: '',
+                    hasFreeTrial: false,
+                },
+                product: {
+                    name: 'Premium',
+                    vendorId: 'premium-product',
+                    plans: [],
+                },
+            }
+
+            expect(subscription.cumulatedRevenuesInUSD).toBeUndefined()
+        })
     })
 
     describe('PurchaselyPromotionalOfferSignature', () => {

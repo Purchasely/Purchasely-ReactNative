@@ -69,10 +69,20 @@ export type PurchaselySubscription = {
   cancelledDate: string;
   plan: PurchaselyPlan;
   product: PurchaselyProduct;
-  /*cumulatedRevenuesInUSD: number;
-  subscriptionDurationInDays: number;
-  subscriptionDurationInWeeks: number;
-  subscriptionDurationInMonths: number;*/
+  /**
+   * [PAR-24] Android-only. The native `PLYSubscription.toMap()` (Android)
+   * includes total revenue attributed to this subscription, in USD; the iOS
+   * bridge's `PLYSubscription+Hybrid.m asDictionary` never emits it. Optional
+   * so iOS callers see `undefined` instead of a silently-missing required
+   * field.
+   */
+  cumulatedRevenuesInUSD?: number;
+  /** Android-only — see {@link cumulatedRevenuesInUSD}. */
+  subscriptionDurationInDays?: number;
+  /** Android-only — see {@link cumulatedRevenuesInUSD}. */
+  subscriptionDurationInWeeks?: number;
+  /** Android-only — see {@link cumulatedRevenuesInUSD}. */
+  subscriptionDurationInMonths?: number;
 };
 
 export type PurchaselyEventsNames =
