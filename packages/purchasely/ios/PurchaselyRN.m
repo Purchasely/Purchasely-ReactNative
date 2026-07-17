@@ -26,11 +26,17 @@ static NSString *const kPresentationEventActionIntercepted = @"PURCHASELY_ACTION
 
 /// requestId → captured PLYPresentation (so we can replay it in events).
 static NSMutableDictionary<NSString *, id<PLYPresentation>> *kPresentationsByRequest;
+/// Request ids currently displayed through `displayPresentation:`.
+static NSMutableSet<NSString *> *kActiveDisplayRequestIds;
+/// Active request ids closed through `closePresentation:`. The native SDK
+/// occasionally reports an interactive reason for this path, but the public
+/// bridge contract defines request.close() as programmatic.
+static NSMutableSet<NSString *> *kProgrammaticCloseRequestIds;
 /// callbackId → completion block to call once JS replies with an InterceptResult.
 static NSMutableDictionary<NSString *, void (^)(NSString *)> *kInterceptorCallbacks;
 /// kind → BOOL : tracks which interceptor kinds JS has registered.
 static NSMutableSet<NSString *> *kInterceptorKinds;
-/// Serialises every access to the three mutable collections above. RN bridge
+/// Serialises every access to the mutable collections above. RN bridge
 /// methods run on a background queue while the interceptor block / completions
 /// run on the main queue; `NSMutable*` is not thread-safe, so all reads and
 /// writes are guarded by `@synchronized(kPresentationStateLock)`.
@@ -48,6 +54,8 @@ static void ensurePresentationState(void) {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         kPresentationsByRequest = [NSMutableDictionary new];
+        kActiveDisplayRequestIds = [NSMutableSet new];
+        kProgrammaticCloseRequestIds = [NSMutableSet new];
         kInterceptorCallbacks = [NSMutableDictionary new];
         kInterceptorKinds = [NSMutableSet new];
         kPresentationStateLock = [NSObject new];
@@ -1343,6 +1351,9 @@ RCT_EXPORT_METHOD(displayPresentation:(NSString *)requestId
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject) {
     ensurePresentationState();
+    @synchronized (kPresentationStateLock) {
+        [kActiveDisplayRequestIds addObject:requestId];
+    }
 
     NSString *placementId = nil;
     NSString *presentationId = nil;
@@ -1393,6 +1404,8 @@ RCT_EXPORT_METHOD(displayPresentation:(NSString *)requestId
         [strongSelf emitPresentationEvent:kPresentationEventDismissed body:body];
         @synchronized (kPresentationStateLock) {
             [kPresentationsByRequest removeObjectForKey:requestId];
+            [kActiveDisplayRequestIds removeObject:requestId];
+            [kProgrammaticCloseRequestIds removeObject:requestId];
         }
     };
 
@@ -1462,7 +1475,13 @@ RCT_EXPORT_METHOD(displayPresentation:(NSString *)requestId
         capturedResult = outcome.purchaseResult;
         capturedPlan = outcome.plan;
         hasPurchaseOutcome = YES;
-        capturedCloseReason = outcome.closeReason;
+        @synchronized (kPresentationStateLock) {
+            if ([kProgrammaticCloseRequestIds containsObject:requestId]) {
+                capturedCloseReason = PLYCloseReasonProgrammatic;
+            } else {
+                capturedCloseReason = outcome.closeReason;
+            }
+        }
         if (outcome.presentation != nil) {
             capturedPresentation = outcome.presentation;
         }
@@ -1550,6 +1569,9 @@ RCT_EXPORT_METHOD(closePresentation:(NSString *)requestId) {
         id<PLYPresentation> presentation = nil;
         @synchronized (kPresentationStateLock) {
             presentation = kPresentationsByRequest[requestId];
+            if ([kActiveDisplayRequestIds containsObject:requestId]) {
+                [kProgrammaticCloseRequestIds addObject:requestId];
+            }
         }
         self.presentedPresentationViewController = nil;
         // v6: close the specific presentation when we still hold it; otherwise
@@ -1559,9 +1581,6 @@ RCT_EXPORT_METHOD(closePresentation:(NSString *)requestId) {
             [presentation close];
         } else {
             [Purchasely closeAllScreens];
-        }
-        @synchronized (kPresentationStateLock) {
-            [kPresentationsByRequest removeObjectForKey:requestId];
         }
     });
 }
