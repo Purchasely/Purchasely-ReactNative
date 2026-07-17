@@ -341,6 +341,7 @@ export default function E2ETestRunner(props: { phase?: string } = {}) {
 
         // ── T8 — purchase interceptor: plan + offer on real tap ───────────────
         running('T8')
+        let req8: PLYPresentationRequest | null = null
         try {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             let capturedInfo: any = null
@@ -354,7 +355,7 @@ export default function E2ETestRunner(props: { phase?: string } = {}) {
                 return 'success' as const
             })
 
-            const req8 = Purchasely.presentation
+            req8 = Purchasely.presentation
                 .placement(PLACEMENT_AUDIENCES)
                 .build()
 
@@ -365,7 +366,9 @@ export default function E2ETestRunner(props: { phase?: string } = {}) {
             console.log('[E2E:READY_FOR_TAP]')
             appendLog('T8: signaled READY_FOR_TAP — waiting for interceptor…')
 
-            await waitFor(() => capturedPayload, 40000, 300)
+            // The iOS host driver polls the accessibility tree for up to 90 s,
+            // so its deadline must remain within this wait window.
+            await waitFor(() => capturedPayload, 100000, 300)
 
             const vendorId: string | undefined = capturedPayload?.plan?.vendorId
             if (!vendorId) {
@@ -390,6 +393,7 @@ export default function E2ETestRunner(props: { phase?: string } = {}) {
         } catch (e) {
             fail('T8', e)
             suitePass = false
+            req8?.close()
             Purchasely.removeAllActionInterceptors()
         }
 
@@ -411,7 +415,8 @@ export default function E2ETestRunner(props: { phase?: string } = {}) {
             console.log('[E2E:READY_FOR_BACK]')
             appendLog('T9: signaled READY_FOR_BACK — waiting for dismiss handler…')
 
-            await waitFor(() => globalOutcome, 40000, 300)
+            // The iOS host driver polls for up to 60 s before dismissing.
+            await waitFor(() => globalOutcome, 70000, 300)
 
             // Dismissed via system back (Android BACK key / iOS swipe-down) →
             // closeReason MUST be exactly 'backSystem' on both platforms.
@@ -856,32 +861,45 @@ export default function E2ETestRunner(props: { phase?: string } = {}) {
         // programmatic req.close() → closeReason 'programmatic'.
         running('T22')
         try {
-            let defaultOutcome22: PLYPresentationOutcome | null = null
+            const defaultOutcomes22: PLYPresentationOutcome[] = []
             setDefaultPresentationDismissHandler((outcome: PLYPresentationOutcome) => {
-                defaultOutcome22 = outcome
+                defaultOutcomes22.push(outcome)
             })
 
-            // No onDismissed on the builder; do NOT await display() (fire-and-forget).
+            // No onDismissed on the builder. Start display without awaiting it;
+            // await the request-specific promise only after close to correlate
+            // this test's dismissal with the global-handler delivery.
             const req22 = Purchasely.presentation.placement(PLACEMENT_AUDIENCES).build()
-            req22.display()
+            const displayPromise22 = req22.display()
 
             await sleep(3000) // let the paywall render
             req22.close() // programmatic dismissal
 
-            await waitFor(() => defaultOutcome22, 15000, 300)
-
-            const reason22 = defaultOutcome22!.closeReason
-            if (reason22 !== 'programmatic') {
-                throw new Error(`closeReason expected 'programmatic', got "${reason22}"`)
+            const requestOutcome22 = await Promise.race([
+                displayPromise22,
+                sleep(15000).then<never>(() => {
+                    throw new Error('dismiss timeout after 15 s')
+                }),
+            ])
+            if (requestOutcome22.closeReason !== 'programmatic') {
+                throw new Error(
+                    `request closeReason expected 'programmatic', got "${requestOutcome22.closeReason}"`
+                )
             }
-            if (!defaultOutcome22!.presentation?.screenId) {
+
+            const defaultOutcome22 = await waitFor(
+                () => defaultOutcomes22.find((outcome) => outcome.closeReason === 'programmatic'),
+                15000,
+                300
+            )
+            if (!defaultOutcome22.presentation?.screenId) {
                 throw new Error('default outcome missing presentation.screenId')
             }
             pass(
                 'T22',
                 `default handler caught fire-and-forget display(): ` +
-                `closeReason=${reason22} ` +
-                `presentation.screenId=${defaultOutcome22!.presentation?.screenId}`
+                `closeReason=${defaultOutcome22.closeReason} ` +
+                `presentation.screenId=${defaultOutcome22.presentation.screenId}`
             )
             removeDefaultPresentationDismissHandler()
         } catch (e) {
