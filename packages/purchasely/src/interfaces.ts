@@ -19,7 +19,8 @@ export interface Constants {
   batchInstallationId: number;
   adjustId: number;
   appsflyerId: number;
-  onesignalPlayerId: number;
+  oneSignalExternalId: number;
+  oneSignalUserId: number;
   mixpanelDistinctId: number;
   clevertapId: number;
   sendinblueUserEmail: number;

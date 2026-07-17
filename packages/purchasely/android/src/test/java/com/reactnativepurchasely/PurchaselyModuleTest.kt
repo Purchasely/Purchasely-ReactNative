@@ -125,6 +125,9 @@ class PurchaselyModuleTest {
         assertTrue(constants.containsKey("batchInstallationId"))
         assertTrue(constants.containsKey("adjustId"))
         assertTrue(constants.containsKey("appsflyerId"))
+        // [ENM-04 / REC-11] present on both natives but never bridged before.
+        assertTrue(constants.containsKey("oneSignalExternalId"))
+        assertTrue(constants.containsKey("oneSignalUserId"))
         assertTrue(constants.containsKey("mixpanelDistinctId"))
         assertTrue(constants.containsKey("clevertapId"))
         assertTrue(constants.containsKey("sendinblueUserEmail"))
@@ -151,6 +154,8 @@ class PurchaselyModuleTest {
         assertEquals(Attribute.BATCH_INSTALLATION_ID.ordinal, constants["batchInstallationId"])
         assertEquals(Attribute.ADJUST_ID.ordinal, constants["adjustId"])
         assertEquals(Attribute.APPSFLYER_ID.ordinal, constants["appsflyerId"])
+        assertEquals(Attribute.ONESIGNAL_EXTERNAL_ID.ordinal, constants["oneSignalExternalId"])
+        assertEquals(Attribute.ONESIGNAL_USER_ID.ordinal, constants["oneSignalUserId"])
         assertEquals(Attribute.MIXPANEL_DISTINCT_ID.ordinal, constants["mixpanelDistinctId"])
         assertEquals(Attribute.CLEVER_TAP_ID.ordinal, constants["clevertapId"])
     }
@@ -543,5 +548,8 @@ class EnumOrdinalConsistencyTest {
         assertNotNull(Attribute.BRANCH_USER_DEVELOPER_IDENTITY)
         assertNotNull(Attribute.MOENGAGE_UNIQUE_ID)
         assertNotNull(Attribute.BATCH_CUSTOM_USER_ID)
+        // [ENM-04 / REC-11]
+        assertNotNull(Attribute.ONESIGNAL_EXTERNAL_ID)
+        assertNotNull(Attribute.ONESIGNAL_USER_ID)
     }
 }

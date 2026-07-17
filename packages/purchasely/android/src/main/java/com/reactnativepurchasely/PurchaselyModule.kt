@@ -104,6 +104,11 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     constants["batchInstallationId"] = Attribute.BATCH_INSTALLATION_ID.ordinal
     constants["adjustId"] = Attribute.ADJUST_ID.ordinal
     constants["appsflyerId"] = Attribute.APPSFLYER_ID.ordinal
+    // [ENM-04 / REC-11] oneSignalPlayerId has no Android equivalent (iOS-only,
+    // and slated for removal there too) — never added here. externalId/userId
+    // exist on both natives and were simply never bridged.
+    constants["oneSignalExternalId"] = Attribute.ONESIGNAL_EXTERNAL_ID.ordinal
+    constants["oneSignalUserId"] = Attribute.ONESIGNAL_USER_ID.ordinal
     constants["mixpanelDistinctId"] = Attribute.MIXPANEL_DISTINCT_ID.ordinal
     constants["clevertapId"] = Attribute.CLEVER_TAP_ID.ordinal
     constants["sendinblueUserEmail"] = Attribute.SENDINBLUE_USER_EMAIL.ordinal

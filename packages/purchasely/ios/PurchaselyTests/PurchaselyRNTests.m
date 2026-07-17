@@ -109,7 +109,10 @@
     XCTAssertNotNil(constants[@"batchInstallationId"], @"batchInstallationId should exist");
     XCTAssertNotNil(constants[@"adjustId"], @"adjustId should exist");
     XCTAssertNotNil(constants[@"appsflyerId"], @"appsflyerId should exist");
-    XCTAssertNotNil(constants[@"onesignalPlayerId"], @"onesignalPlayerId should exist");
+    // [ENM-04 / REC-11] onesignalPlayerId removed (no Android equivalent);
+    // replaced by the two OneSignal attributes both natives support.
+    XCTAssertNotNil(constants[@"oneSignalExternalId"], @"oneSignalExternalId should exist");
+    XCTAssertNotNil(constants[@"oneSignalUserId"], @"oneSignalUserId should exist");
     XCTAssertNotNil(constants[@"mixpanelDistinctId"], @"mixpanelDistinctId should exist");
     XCTAssertNotNil(constants[@"clevertapId"], @"clevertapId should exist");
     XCTAssertNotNil(constants[@"sendinblueUserEmail"], @"sendinblueUserEmail should exist");
@@ -187,10 +190,11 @@
     NSDictionary *constants = [self.purchaselyModule constantsToExport];
 
     // Based on the source code, we expect at least 55 constants
-    // Log levels (4) + Product results (3) + Sources (5, incl. sourceNone) + Attributes (21)
-    // + Plan types (5) + Running modes (2, v5 TransactionOnly/PaywallObserver removed)
+    // Log levels (4) + Product results (3) + Sources (5, incl. sourceNone) + Attributes (22,
+    // onesignalPlayerId removed, oneSignalExternalId/oneSignalUserId added) + Plan types (5)
+    // + Running modes (2, v5 TransactionOnly/PaywallObserver removed)
     // + Presentation types (4) + Theme modes (3) + User attribute sources (2)
-    // + User attribute types (9) = 58 constants
+    // + User attribute types (9) = 59 constants
     XCTAssertGreaterThanOrEqual(constants.count, 50, @"Should export at least 50 constants");
 }
 

@@ -96,7 +96,11 @@ describe('Purchasely Enums', () => {
             expect(Attributes.BATCH_INSTALLATION_ID).toBe(mockConstants.batchInstallationId)
             expect(Attributes.ADJUST_ID).toBe(mockConstants.adjustId)
             expect(Attributes.APPSFLYER_ID).toBe(mockConstants.appsflyerId)
-            expect(Attributes.ONESIGNAL_PLAYER_ID).toBe(mockConstants.onesignalPlayerId)
+            // [ENM-04 / REC-11] ONESIGNAL_PLAYER_ID removed (no Android
+            // equivalent); replaced by the two OneSignal attributes both
+            // natives actually support.
+            expect(Attributes.ONESIGNAL_EXTERNAL_ID).toBe(mockConstants.oneSignalExternalId)
+            expect(Attributes.ONESIGNAL_USER_ID).toBe(mockConstants.oneSignalUserId)
             expect(Attributes.MIXPANEL_DISTINCT_ID).toBe(mockConstants.mixpanelDistinctId)
             expect(Attributes.CLEVER_TAP_ID).toBe(mockConstants.clevertapId)
         })
@@ -107,9 +111,9 @@ describe('Purchasely Enums', () => {
             expect(Attributes.CUSTOMER_IO_USER_EMAIL).toBe(mockConstants.customerIoUserEmail)
         })
 
-        it('should have all 21 expected members', () => {
+        it('should have all 22 expected members', () => {
             const members = Object.keys(Attributes).filter(key => isNaN(Number(key)))
-            expect(members).toHaveLength(21)
+            expect(members).toHaveLength(22)
         })
     })
 
