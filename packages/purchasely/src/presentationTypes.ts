@@ -224,6 +224,10 @@ export type PLYActionInterceptorHandler = (
 /**
  * Internal helper — convert the legacy v5 `ProductResult` ordinal to the
  * string form for the {@link PLYPresentationOutcome.purchaseResult}.
+ *
+ * @internal Not part of the public API — importable from within the package
+ * (e.g. `presentation.ts`) but intentionally excluded from the `index.ts`
+ * barrel export (see the `export type *` re-export there).
  */
 export function purchaseResultFromOrdinal(
     value: ProductResult | number | null | undefined
