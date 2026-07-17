@@ -114,6 +114,7 @@ jest.mock('react-native', () => ({
 
 // Now import Purchasely after mocking
 import Purchasely, { PLYPresentationBuilder } from '../index'
+import * as PurchaselyIndexModule from '../index'
 import { Attributes, LogLevels, PLYThemeMode, PLYDataProcessingLegalBasis, PLYDataProcessingPurpose } from '../enums'
 import { NativeModules } from 'react-native'
 
@@ -206,6 +207,15 @@ describe('Purchasely SDK', () => {
             removedV5TopLevelMethods.forEach((method) => {
                 expect((Purchasely as Record<string, unknown>)[method]).toBeUndefined()
             })
+        })
+
+        // [PAR-14 / REC-17] purchaseResultFromOrdinal is an @internal helper
+        // (presentationTypes.ts) used by presentation.ts; index.ts used to
+        // re-export it publicly via `export * from './presentationTypes'`.
+        // The barrel now uses `export type *`, which drops runtime value
+        // exports — only the types from that module stay public.
+        it('should not re-export the internal purchaseResultFromOrdinal helper from the package barrel', () => {
+            expect((PurchaselyIndexModule as Record<string, unknown>).purchaseResultFromOrdinal).toBeUndefined()
         })
 
         it('should keep the client (BYOS) presentation API', () => {

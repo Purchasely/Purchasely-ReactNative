@@ -523,7 +523,12 @@ const Purchasely = {
 export * from './types';
 export * from './enums';
 export * from './interfaces';
-export * from './presentationTypes';
+// [PAR-14 / REC-17] `export type *` re-exports every type/interface from
+// presentationTypes.ts but excludes its one runtime value export,
+// `purchaseResultFromOrdinal` — documented `@internal`, used by presentation.ts
+// (which imports it directly from './presentationTypes', unaffected by this
+// barrel export), but never meant to be public API.
+export type * from './presentationTypes';
 export { PURCHASELY_PRESENTATION_EVENTS } from './events';
 export {
   PLYPresentationBuilder,
