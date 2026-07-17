@@ -177,13 +177,13 @@ class PurchaselyModuleTest {
         assertEquals(DistributionType.UNKNOWN.ordinal, constants["unknown"])
     }
 
+    // [ENM-06 / REC-17] The v5 runningModeTransactionOnly / runningModePaywallObserver
+    // constants were removed — only Observer / Full remain in v6.
     @Test
     fun `getConstants should contain running mode constants`() {
         val constants = purchaselyModule.constants
 
-        assertTrue(constants.containsKey("runningModeTransactionOnly"))
         assertTrue(constants.containsKey("runningModeObserver"))
-        assertTrue(constants.containsKey("runningModePaywallObserver"))
         assertTrue(constants.containsKey("runningModeFull"))
     }
 
@@ -192,13 +192,11 @@ class PurchaselyModuleTest {
         val constants = purchaselyModule.constants
 
         val runningModes = setOf(
-            constants["runningModeTransactionOnly"],
             constants["runningModeObserver"],
-            constants["runningModePaywallObserver"],
             constants["runningModeFull"]
         )
 
-        assertEquals(4, runningModes.size)
+        assertEquals(2, runningModes.size)
     }
 
     @Test

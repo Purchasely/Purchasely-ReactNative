@@ -128,9 +128,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     constants["autoRenewingSubscription"] = DistributionType.RENEWING_SUBSCRIPTION.ordinal
     constants["nonRenewingSubscription"] = DistributionType.NON_RENEWING_SUBSCRIPTION.ordinal
     constants["unknown"] = DistributionType.UNKNOWN.ordinal
-    constants["runningModeTransactionOnly"] = runningModeTransactionOnly
     constants["runningModeObserver"] = runningModeObserver
-    constants["runningModePaywallObserver"] = runningModePaywallObserver
     constants["runningModeFull"] = runningModeFull
     constants["presentationTypeNormal"] = PLYPresentationType.NORMAL.ordinal
     constants["presentationTypeFallback"] = PLYPresentationType.FALLBACK.ordinal
@@ -197,10 +195,8 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
       .userId(userId)
       .logLevel(LogLevel.values()[logLevel])
       .runningMode(when(runningMode) {
-        runningModeTransactionOnly -> PLYRunningMode.Full
         runningModeFull -> PLYRunningMode.Full
         runningModeObserver -> PLYRunningMode.Observer
-        runningModePaywallObserver -> PLYRunningMode.Observer
         // [RN-W-05] Any unknown/unset value falls back to Observer — aligned
         // with iOS's runningModeFromOrdinal (and the v6/Flutter default).
         // Only an explicit `full` opts into Purchasely owning the flow.
@@ -1263,9 +1259,10 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
   }
 
   companion object {
-    private const val runningModeTransactionOnly = 0
+    // [ENM-06 / REC-17] The v5 TransactionOnly (0) / PaywallObserver (3)
+    // modes were removed — only Observer / Full remain, keeping their
+    // original ordinals (1 / 4) so already-shipped wire values don't change.
     private const val runningModeObserver = 1
-    private const val runningModePaywallObserver = 3
     private const val runningModeFull = 4
 
     // bridge — event names, interceptor timeout, and per-request state
