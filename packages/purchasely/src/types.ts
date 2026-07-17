@@ -241,11 +241,30 @@ export type PurchaselyEventProperties = {
   stripe_purchase_id?: string;
 };
 
+/**
+ * A plan attached to a `PLYPresentation` (`presentation.plans[]`).
+ *
+ * [RN-W-06] Field availability is **not symmetric** across platforms — it
+ * mirrors real differences between the native plan models (Apple vs. Google
+ * Play offer concepts aren't identical), not a bridge bug:
+ * - `basePlanId` / `storeOfferId` — **Android-only**. The native iOS
+ *   `PLYPresentationPlan` has no equivalent properties, so both are always
+ *   `undefined` on iOS.
+ * - `offerId` — present on **both** platforms, but from different identifier
+ *   spaces. On iOS it holds Apple's own distinct promotional-offer
+ *   identifier. On Android there is no separate native `offerId`, so the
+ *   bridge duplicates `storeOfferId`'s value under this key.
+ * - `planVendorId`, `storeProductId`, `offerVendorId`, `default` — genuinely
+ *   cross-platform; both native models expose all four.
+ */
 export type PLYPresentationPlan = {
   planVendorId: string | null;
   storeProductId?: string | null;
+  /** Android-only. Always `undefined` on iOS. */
   basePlanId?: string | null;
+  /** Cross-platform, but see the type-level doc — not the same id space on both platforms. */
   offerId?: string | null;
+  /** Android-only. Always `undefined` on iOS. */
   storeOfferId?: string | null;
   offerVendorId?: string | null;
   default?: boolean | null;
