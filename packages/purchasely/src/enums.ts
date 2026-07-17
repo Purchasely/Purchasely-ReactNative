@@ -31,7 +31,11 @@ export enum Attributes {
   BATCH_INSTALLATION_ID = constants.batchInstallationId,
   ADJUST_ID = constants.adjustId,
   APPSFLYER_ID = constants.appsflyerId,
-  ONESIGNAL_PLAYER_ID = constants.onesignalPlayerId,
+  // [ENM-04 / REC-11] ONESIGNAL_PLAYER_ID removed — no Android equivalent,
+  // and slated for removal from the native iOS SDK too. Replaced by the two
+  // OneSignal attributes both natives actually support.
+  ONESIGNAL_EXTERNAL_ID = constants.oneSignalExternalId,
+  ONESIGNAL_USER_ID = constants.oneSignalUserId,
   MIXPANEL_DISTINCT_ID = constants.mixpanelDistinctId,
   CLEVER_TAP_ID = constants.clevertapId,
   SENDINBLUE_USER_EMAIL = constants.sendinblueUserEmail,
