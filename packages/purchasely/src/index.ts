@@ -223,8 +223,14 @@ const userLogin = (userId: string): Promise<boolean> => {
   return NativeModules.Purchasely.userLogin(userId);
 };
 
-const userLogout = (): void => {
-  return NativeModules.Purchasely.userLogout();
+/**
+ * Log the current user out.
+ *
+ * @param clearUserAttributes Whether to also clear locally-stored user
+ * attributes. Defaults to `true`, matching both native SDKs' own default.
+ */
+const userLogout = (clearUserAttributes: boolean = true): void => {
+  return NativeModules.Purchasely.userLogout(clearUserAttributes);
 };
 
 const setLogLevel = (logLevel: LogLevels): void => {

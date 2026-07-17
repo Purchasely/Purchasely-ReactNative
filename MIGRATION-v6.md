@@ -68,6 +68,10 @@ the methods that are **unchanged**.
   `request.close()`, which is scoped to a single request on iOS (Android's
   `request.close()` already dismisses everything, since the native SDK has no
   per-request close there yet).
+- `Purchasely.userLogout(clearUserAttributes = true)` — both native SDKs
+  already accept this parameter; it is now exposed instead of being hardcoded
+  (iOS always passed `true`) / omitted (Android). Pass `false` to log out
+  without clearing locally-stored user attributes.
 
 ---
 

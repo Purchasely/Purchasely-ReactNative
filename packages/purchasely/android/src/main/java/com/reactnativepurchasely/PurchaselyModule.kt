@@ -246,9 +246,11 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     }
   }
 
+  // [PAR-30] clearUserAttributes is always sent explicitly by the JS wrapper
+  // (which defaults it to true), so no native-side default is needed here.
   @ReactMethod
-  fun userLogout() {
-    Purchasely.userLogout()
+  fun userLogout(clearUserAttributes: Boolean) {
+    Purchasely.userLogout(clearUserAttributes)
   }
 
   @ReactMethod

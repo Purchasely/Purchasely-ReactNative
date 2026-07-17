@@ -539,8 +539,10 @@ RCT_EXPORT_METHOD(handleDeeplink:(NSString * _Nullable) deeplink
     });
 }
 
-RCT_EXPORT_METHOD(userLogout) {
-  [Purchasely userLogout:YES];
+// [PAR-30] clearUserAttributes is always sent explicitly by the JS wrapper
+// (which defaults it to true), so no native-side default is needed here.
+RCT_EXPORT_METHOD(userLogout:(BOOL)clearUserAttributes) {
+  [Purchasely userLogout:clearUserAttributes];
 }
 
 RCT_REMAP_METHOD(isAnonymous,
