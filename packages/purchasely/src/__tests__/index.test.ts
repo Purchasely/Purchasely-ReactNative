@@ -126,9 +126,13 @@ describe('Purchasely SDK', () => {
     })
 
     describe('Initialization', () => {
-        it('should return constants from getConstants', () => {
-            const constants = Purchasely.getConstants()
-            expect(constants).toEqual(mockConstants)
+        // [PAR-12 / REC-17] getConstants() used to leak the raw native
+        // constants blob (64 numeric fields, including v5 residue) as public
+        // API. It is now internal-only — every enum in enums.ts still reads
+        // from NativeModules.Purchasely.getConstants() directly at module
+        // load, so nothing else changes; only this public re-export is gone.
+        it('should no longer expose getConstants publicly', () => {
+            expect((Purchasely as Record<string, unknown>).getConstants).toBeUndefined()
         })
 
         it('should start through the v6 builder without forcing optional start options', async () => {

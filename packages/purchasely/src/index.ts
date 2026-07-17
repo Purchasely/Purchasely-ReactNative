@@ -2,7 +2,6 @@ import { NativeEventEmitter, NativeModules } from 'react-native';
 
 import { PLYPresentationView } from './components/PLYPresentationView';
 import type {
-  Constants,
   DynamicOffering,
   PurchasePlanParameters,
   SignPromotionalOfferParameters,
@@ -42,8 +41,6 @@ import type {
 } from './presentationTypes';
 
 const purchaselyVersion = '6.0.0-rc.3';
-
-const constants = NativeModules.Purchasely.getConstants() as Constants;
 
 const PurchaselyEventEmitter = new NativeEventEmitter(NativeModules.Purchasely);
 
@@ -216,10 +213,6 @@ const decrementUserAttribute = ({
 }: UserAttributesParameters): void => {
   const nonNullValue = value ?? 1;
   return NativeModules.Purchasely.decrementUserAttribute(key, nonNullValue, legalBasis);
-};
-
-const getConstants = (): Constants => {
-  return constants;
 };
 
 const getAnonymousUserId = (): Promise<string> => {
@@ -482,7 +475,6 @@ const Purchasely = {
   signPromotionalOffer,
   incrementUserAttribute,
   decrementUserAttribute,
-  getConstants,
   getAnonymousUserId,
   userLogin,
   userLogout,

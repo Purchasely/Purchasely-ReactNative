@@ -63,7 +63,6 @@ the methods that are **unchanged**.
 - `Purchasely.listenToEvents(cb)` / `Purchasely.stopListeningToEvents()` — Flutter-compatible aliases of `addEventListener` / `removeEventListener`.
 - `Purchasely.listenToPurchases(cb)` / `Purchasely.stopListeningToPurchases()` — Flutter-compatible aliases of `addPurchasedListener` / `removePurchasedListener`.
 - `Purchasely.setUserAttributeListener(listener)` / `Purchasely.clearUserAttributeListener()` — bundle the per-attribute set/remove listeners.
-- `Purchasely.getConstants()` is kept for backward compatibility.
 - `Purchasely.closeAllScreens()` — closes every displayed Purchasely screen,
   regardless of which `PLYPresentationRequest` opened it. Distinct from
   `request.close()`, which is scoped to a single request on iOS (Android's
@@ -503,10 +502,31 @@ awaitable result — see above). The following keep working exactly as in v5:
   was renamed `clientPresentationOpened` → `clientPresentationDisplayed`; no
   JS change.)
 - **Misc**: `setLogLevel`, `setLanguage`, `setThemeMode`, `setDebugMode`,
-  `revokeDataProcessingConsent`, `getConstants`.
+  `revokeDataProcessingConsent`.
 - **Embedded component**: `PLYPresentationView` — unchanged.
 
 ---
+
+## Breaking changes in this release
+
+- **`Purchasely.getConstants()` is no longer exposed publicly** (was
+  previously kept for backward compatibility). It leaked a raw, 60+-field
+  numeric blob — including dead v5 residue — as public API; every typed enum
+  in this package (`LogLevels`, `SubscriptionSource`, `Attributes`, …) already
+  reads the equivalent native constants internally, so use those instead of
+  reading `getConstants()` fields directly. If you were reading a specific
+  field, look for its typed enum equivalent.
+- **`onesignalPlayerId` / `Attributes.ONESIGNAL_PLAYER_ID` removed** (iOS-only,
+  no Android equivalent, and being removed from the native SDK). Replaced by
+  `Attributes.ONESIGNAL_EXTERNAL_ID` / `Attributes.ONESIGNAL_USER_ID`, which
+  both natives actually support.
+- **`runningModeTransactionOnly` / `runningModePaywallObserver` removed** from
+  `getConstants()`'s output (moot now that it's internal-only) — pure v5
+  residue with no corresponding `RunningMode` enum case.
+- **`purchaseResultFromOrdinal` no longer exported from the package root.** It
+  was always documented `@internal`; only the public barrel re-export is
+  removed — the SDK's own use of it (mapping `PLYPresentationOutcome.purchaseResult`)
+  is unaffected.
 
 ## Need a hand?
 
