@@ -281,15 +281,20 @@ export function normalizePlanType(
     if (typeof value === 'number') {
         return value;
     }
-    return PLAN_TYPE_NAME_MAP[value] ?? null;
+    if (typeof value !== 'string') {
+        return null;
+    }
+    return Object.hasOwn(PLAN_TYPE_NAME_MAP, value)
+        ? PLAN_TYPE_NAME_MAP[value]!
+        : null;
 }
 
 /**
  * [rc.4 hardening] Apply {@link normalizePlanType} to a raw native plan
  * payload's `type` field, leaving every other field untouched. Returns the
- * input unchanged when it isn't a plan-shaped object, or when `type` is
- * already absent/unrecognized (so a genuinely unknown string is left as-is
- * rather than silently dropped).
+ * input unchanged when it isn't a plan-shaped object or has no `type`; an
+ * unrecognized string is normalized to `PLAN_TYPE_UNKNOWN` so the public
+ * `PurchaselyPlan.type` contract remains numeric.
  *
  * @internal
  */
@@ -297,9 +302,12 @@ export function normalizePlan<T>(raw: T): T {
     if (!raw || typeof raw !== 'object' || !('type' in raw)) {
         return raw;
     }
-    const normalized = normalizePlanType((raw as { type: unknown }).type as PlanType | string);
+    const type = (raw as { type: unknown }).type;
+    const normalized = normalizePlanType(type as PlanType | string);
     if (normalized === null) {
-        return raw;
+        return typeof type === 'string'
+            ? { ...raw, type: PlanType.PLAN_TYPE_UNKNOWN }
+            : raw;
     }
     return { ...raw, type: normalized };
 }

@@ -229,9 +229,9 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   fun signPromotionalOffer(storeProductId: String, storeOfferId: String, promise: Promise) {
     // iOS-only native capability (StoreKit promotional offer signing) — Android has no
     // equivalent native API. Per product decision (RN-W-01), this resolves as a no-op
-    // success instead of permanently rejecting, so a cross-platform caller doesn't have
-    // to special-case Android just to avoid an unconditional throw.
-    promise.resolve(Arguments.createMap())
+    // success instead of permanently rejecting; `null` makes the absent iOS signature
+    // explicit to cross-platform callers.
+    promise.resolve(null)
   }
 
   @ReactMethod

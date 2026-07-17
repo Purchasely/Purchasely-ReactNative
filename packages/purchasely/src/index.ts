@@ -185,13 +185,12 @@ const purchaseWithPlanVendorId = ({
  *
  * **iOS only.** There is no Android equivalent (Google Play has no
  * promotional-offer-signing primitive), so the Android native bridge is a
- * no-op that resolves successfully instead of rejecting — don't rely on the
- * shape of the resolved value on Android.
+ * no-op that resolves `null` instead of rejecting.
  */
 const signPromotionalOffer = ({
   storeProductId,
   storeOfferId,
-}: SignPromotionalOfferParameters): Promise<PurchaselyPromotionalOfferSignature> => {
+}: SignPromotionalOfferParameters): Promise<PurchaselyPromotionalOfferSignature | null> => {
   return NativeModules.Purchasely.signPromotionalOffer(
     storeProductId,
     storeOfferId

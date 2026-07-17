@@ -600,6 +600,13 @@ describe('Purchasely Event Names', () => {
             expect(normalizePlan(raw)).toEqual(raw)
         })
 
+        it('normalizes unknown string and inherited-key types to PLAN_TYPE_UNKNOWN', () => {
+            expect(normalizePlan({ vendorId: 'monthly', type: 'FUTURE_DISTRIBUTION_TYPE' }))
+                .toEqual({ vendorId: 'monthly', type: PlanType.PLAN_TYPE_UNKNOWN })
+            expect(normalizePlan({ vendorId: 'monthly', type: 'constructor' }))
+                .toEqual({ vendorId: 'monthly', type: PlanType.PLAN_TYPE_UNKNOWN })
+        })
+
         it('normalizePlan passes through non-plan-shaped values unchanged', () => {
             expect(normalizePlan(null)).toBeNull()
             expect(normalizePlan(undefined)).toBeUndefined()

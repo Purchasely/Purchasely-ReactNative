@@ -45,7 +45,7 @@ export const mockConstants = {
     nonRenewingSubscription: 3,
     unknown: 4,
     runningModeObserver: 1,
-    runningModeFull: 3,
+    runningModeFull: 4,
     presentationTypeNormal: 0,
     presentationTypeFallback: 1,
     presentationTypeDeactivated: 2,
