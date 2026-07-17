@@ -528,33 +528,26 @@ describe('Purchasely SDK', () => {
             expect(mockedPurchasely.isEligibleForIntroOffer).toHaveBeenCalledWith('plan-123')
         })
 
-        // RN-W-01 (wiring audit, severity: critical): the Android native bridge
-        // for signPromotionalOffer is a permanent stub —
-        // `promise.reject("Not supported on Android")` on every call, with no
-        // conditional logic and no Platform.OS guard anywhere in this JS
-        // wrapper. MIGRATION-v6.md incorrectly lists this method under "core
-        // SDK methods unchanged... in behaviour" for both platforms.
-        //
-        // This is NOT testable as a green "it works on Android" case — that
-        // would be a false-positive test masking a real cross-platform gap
-        // (there is no fix available from the JS layer alone: the constraint
-        // for this pass is test-files-only, no src/ changes). Instead this
-        // test documents the JS layer's honest, correct behavior: it is a
-        // transparent pass-through, so the native rejection propagates as-is
-        // to the caller rather than being silently swallowed. If a future fix
-        // adds a Platform.OS guard in src/index.ts, this test's expectation
-        // (rejection with the exact native stub message) must be revisited.
-        it('[blocked by RN-W-01] propagates the Android native stub rejection instead of resolving', async () => {
-            mockedPurchasely.signPromotionalOffer.mockRejectedValueOnce(
-                new Error('Not supported on Android')
-            )
+        // RN-W-01 (fixed): the Android native bridge for signPromotionalOffer
+        // used to be a permanent stub — `promise.reject("Not supported on
+        // Android")` on every call, with no Platform.OS guard anywhere in
+        // this JS wrapper, contradicting MIGRATION-v6.md's claim that the
+        // method is "unchanged... in behaviour" on both platforms. Per
+        // product decision, Android's native bridge now resolves as a no-op
+        // success instead (there is no StoreKit-equivalent primitive on
+        // Android). This JS wrapper stays a transparent pass-through — it
+        // resolves with whatever the native side resolves, so this test
+        // documents that an Android no-op success no longer surfaces as a
+        // rejection to the caller.
+        it('resolves without throwing when the Android native bridge no-ops (no StoreKit equivalent)', async () => {
+            mockedPurchasely.signPromotionalOffer.mockResolvedValueOnce({})
 
             await expect(
                 Purchasely.signPromotionalOffer({
                     storeProductId: 'product-123',
                     storeOfferId: 'offer-123',
                 })
-            ).rejects.toThrow('Not supported on Android')
+            ).resolves.toEqual({})
         })
     })
 
