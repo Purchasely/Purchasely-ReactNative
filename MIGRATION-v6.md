@@ -72,6 +72,9 @@ the methods that are **unchanged**.
   already accept this parameter; it is now exposed instead of being hardcoded
   (iOS always passed `true`) / omitted (Android). Pass `false` to log out
   without clearing locally-stored user attributes.
+- `Purchasely.getBuiltInAttributes()` / `Purchasely.getBuiltInAttribute(key)` —
+  read built-in (SDK-computed) user attributes. Only the write side
+  (`clearBuiltInAttributes`) was previously bridged.
 
 ---
 

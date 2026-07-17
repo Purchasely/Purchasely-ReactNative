@@ -736,6 +736,33 @@ RCT_EXPORT_METHOD(clearBuiltInAttributes) {
     [Purchasely clearBuiltInAttributes];
 }
 
+// [PAR-07] Reuses getUserAttributeValueForRN: (same value shaping as
+// userAttributes/userAttribute) for consistency.
+RCT_EXPORT_METHOD(getBuiltInAttributes:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+{
+    dispatch_async(dispatch_get_main_queue(), ^{
+        NSDictionary<NSString *, id> * _Nonnull attributes = [Purchasely getBuiltInAttributes];
+        NSMutableDictionary *attributesDict = [NSMutableDictionary new];
+        for (NSString *key in attributes) {
+            id value = attributes[key];
+            [attributesDict setValue:[self getUserAttributeValueForRN:value] forKey:key];
+        }
+        resolve(attributesDict);
+    });
+}
+
+RCT_REMAP_METHOD(getBuiltInAttribute,
+                 getBuiltInAttribute:(NSString * _Nonnull)key
+                 resolve:(RCTPromiseResolveBlock)resolve
+                 reject:(RCTPromiseRejectBlock)reject)
+{
+    dispatch_async(dispatch_get_main_queue(), ^{
+        id _Nullable result = [self getUserAttributeValueForRN:[Purchasely getBuiltInAttributeWith:key]];
+        resolve(result);
+    });
+}
+
 RCT_EXPORT_METHOD(setLanguage:(NSString * _Nonnull) language) {
     NSLocale *locale = [NSLocale localeWithLocaleIdentifier:language];
     [Purchasely setLanguageFrom:locale];

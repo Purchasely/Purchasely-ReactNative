@@ -77,6 +77,8 @@ jest.mock('react-native', () => ({
             clientPresentationDisplayed: jest.fn(),
             clientPresentationClosed: jest.fn(),
             clearBuiltInAttributes: jest.fn(),
+            getBuiltInAttributes: jest.fn().mockResolvedValue({ appsflyer_id: 'af-123' }),
+            getBuiltInAttribute: jest.fn().mockResolvedValue('af-123'),
             setDefaultPresentationDismissHandler: jest.fn(),
             removeDefaultPresentationDismissHandler: jest.fn(),
             userDidConsumeSubscriptionContent: jest.fn(),
@@ -441,6 +443,22 @@ describe('Purchasely SDK', () => {
         it('should clear built-in attributes', () => {
             Purchasely.clearBuiltInAttributes()
             expect(mockedPurchasely.clearBuiltInAttributes).toHaveBeenCalled()
+        })
+
+        // [PAR-07] getBuiltInAttribute(s) (read) — only clearBuiltInAttributes
+        // was bridged before; the read side was missing on both natives.
+        it('should read every built-in attribute', async () => {
+            const attributes = await Purchasely.getBuiltInAttributes()
+
+            expect(attributes).toEqual({ appsflyer_id: 'af-123' })
+            expect(mockedPurchasely.getBuiltInAttributes).toHaveBeenCalled()
+        })
+
+        it('should read a single built-in attribute by key', async () => {
+            const value = await Purchasely.getBuiltInAttribute('appsflyer_id')
+
+            expect(value).toBe('af-123')
+            expect(mockedPurchasely.getBuiltInAttribute).toHaveBeenCalledWith('appsflyer_id')
         })
     })
 

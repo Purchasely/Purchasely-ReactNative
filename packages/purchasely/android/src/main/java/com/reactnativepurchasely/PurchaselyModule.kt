@@ -665,6 +665,22 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
     Purchasely.clearBuiltInAttributes()
   }
 
+  // [PAR-07] Reuses getUserAttributeValueForRN (same value shaping as
+  // userAttributes/userAttribute) for consistency.
+  @ReactMethod
+  fun getBuiltInAttributes(promise: Promise) {
+    val map = Purchasely.getBuiltInAttributes()
+    promise.resolve(Arguments.makeNativeMap(
+      map.mapValues { getUserAttributeValueForRN(it.value) }
+    ))
+  }
+
+  @ReactMethod
+  fun getBuiltInAttribute(key: String, promise: Promise) {
+    val result = getUserAttributeValueForRN(Purchasely.getBuiltInAttribute(key))
+    promise.resolve(result)
+  }
+
   @ReactMethod
   fun setDynamicOffering(reference: String, planVendorId: String, offerId: String?, promise: Promise) {
      Purchasely.setDynamicOffering(reference, planVendorId, offerId) {
