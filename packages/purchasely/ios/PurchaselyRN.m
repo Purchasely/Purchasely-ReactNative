@@ -1094,6 +1094,16 @@ RCT_EXPORT_METHOD(setDebugMode:(BOOL)enabled) {
     });
 }
 
+// [FLT-W-02 comment / PAR-19] Explicit, cross-platform "close everything"
+// entry point — distinct from request.close() (per-request on iOS, but
+// dismisses every displayed presentation on Android, since the native SDK
+// does not yet expose a per-request close there).
+RCT_EXPORT_METHOD(closeAllScreens) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [Purchasely closeAllScreens];
+    });
+}
+
 // ****************************************************************************
 #pragma mark - Events
 

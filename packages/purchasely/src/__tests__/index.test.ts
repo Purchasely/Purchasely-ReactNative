@@ -87,6 +87,7 @@ jest.mock('react-native', () => ({
             clearDynamicOfferings: jest.fn(),
             revokeDataProcessingConsent: jest.fn(),
             setDebugMode: jest.fn(),
+            closeAllScreens: jest.fn(),
             addListener: jest.fn(),
             removeListeners: jest.fn(),
         },
@@ -626,6 +627,16 @@ describe('Purchasely SDK', () => {
         it('should set debug mode', () => {
             Purchasely.setDebugMode(true)
             expect(mockedPurchasely.setDebugMode).toHaveBeenCalledWith(true)
+        })
+    })
+
+    // [FLT-W-02 comment / PAR-19] top-level, cross-platform "close everything"
+    // entry point — distinct from PLYPresentationRequest#close(), which is
+    // scoped to a single request on iOS.
+    describe('closeAllScreens', () => {
+        it('should close every displayed screen', () => {
+            Purchasely.closeAllScreens()
+            expect(mockedPurchasely.closeAllScreens).toHaveBeenCalledTimes(1)
         })
     })
 

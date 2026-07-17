@@ -708,6 +708,15 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
     Purchasely.debugMode = enabled
   }
 
+  // [FLT-W-02 comment / PAR-19] Explicit, cross-platform "close everything"
+  // entry point — distinct from request.close() (per-request on iOS, but
+  // dismisses every displayed presentation on Android too, since the native
+  // SDK does not yet expose a per-request close here either).
+  @ReactMethod
+  fun closeAllScreens() {
+    Purchasely.closeAllScreens()
+  }
+
   // region presentation — cross-platform bridge methods
   // See: the cross-platform bridge contract
   //

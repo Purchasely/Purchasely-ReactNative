@@ -64,6 +64,11 @@ the methods that are **unchanged**.
 - `Purchasely.listenToPurchases(cb)` / `Purchasely.stopListeningToPurchases()` — Flutter-compatible aliases of `addPurchasedListener` / `removePurchasedListener`.
 - `Purchasely.setUserAttributeListener(listener)` / `Purchasely.clearUserAttributeListener()` — bundle the per-attribute set/remove listeners.
 - `Purchasely.getConstants()` is kept for backward compatibility.
+- `Purchasely.closeAllScreens()` — closes every displayed Purchasely screen,
+  regardless of which `PLYPresentationRequest` opened it. Distinct from
+  `request.close()`, which is scoped to a single request on iOS (Android's
+  `request.close()` already dismisses everything, since the native SDK has no
+  per-request close there yet).
 
 ---
 
