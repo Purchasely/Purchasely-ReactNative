@@ -246,9 +246,18 @@ describe('Purchasely SDK', () => {
             expect(mockedPurchasely.userLogin).toHaveBeenCalledWith('user-123')
         })
 
-        it('should call userLogout', () => {
+        it('should call userLogout with clearUserAttributes defaulting to true', () => {
             Purchasely.userLogout()
-            expect(mockedPurchasely.userLogout).toHaveBeenCalled()
+            expect(mockedPurchasely.userLogout).toHaveBeenCalledWith(true)
+        })
+
+        // [PAR-30] Both native SDKs support choosing whether to clear locally
+        // stored user attributes on logout; the bridge previously hardcoded
+        // this to true (iOS) / omitted it entirely (Android), with no way for
+        // the app to opt out.
+        it('should forward an explicit clearUserAttributes value', () => {
+            Purchasely.userLogout(false)
+            expect(mockedPurchasely.userLogout).toHaveBeenCalledWith(false)
         })
 
         it('should check if user is anonymous', async () => {
