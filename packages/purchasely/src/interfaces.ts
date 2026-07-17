@@ -39,9 +39,7 @@ export interface Constants {
   autoRenewingSubscription: number;
   nonRenewingSubscription: number;
   unknown: number;
-  runningModeTransactionOnly: number;
   runningModeObserver: number;
-  runningModePaywallObserver: number;
   runningModeFull: number;
   presentationTypeNormal: number;
   presentationTypeFallback: number;

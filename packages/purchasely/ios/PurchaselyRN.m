@@ -228,28 +228,24 @@ static void applyPresentationDisplayOptions(PLYPresentationBuilder *builder, NSD
     }
 }
 
-/// JS-facing running-mode ordinals. v6 removed `TransactionOnly` and
-/// `PaywallObserver` from the native `PLYRunningMode`, so we keep a stable
-/// cross-platform protocol here (same ordinals as Android `PurchaselyModule`)
-/// and map them to the nearest native mode at start.
+/// JS-facing running-mode ordinals (same values as Android `PurchaselyModule`).
+/// [ENM-06 / REC-17] The v5 `TransactionOnly` (0) / `PaywallObserver` (3)
+/// modes were removed — only `Observer` / `Full` remain, keeping their
+/// original ordinals (1 / 4) so already-shipped wire values don't change.
 typedef NS_ENUM(NSInteger, PLYRNRunningMode) {
-    PLYRNRunningModeTransactionOnly = 0,
     PLYRNRunningModeObserver = 1,
-    PLYRNRunningModePaywallObserver = 3,
     PLYRNRunningModeFull = 4,
 };
 
-/// Map a JS running-mode ordinal to a native `PLYRunningMode`. transactionOnly/
-/// full → Full, observer/paywallObserver → Observer. Any unknown/unset value
-/// falls back to **Observer** — the v6 default (matches the JS/Dart default and
-/// Flutter's `?? .observer`); only `full` opts into Purchasely owning the flow.
+/// Map a JS running-mode ordinal to a native `PLYRunningMode`. Any
+/// unknown/unset value falls back to **Observer** — the v6 default (matches
+/// the JS/Dart default and Flutter's `?? .observer`); only `full` opts into
+/// Purchasely owning the flow.
 static PLYRunningMode runningModeFromOrdinal(NSInteger ordinal) {
     switch (ordinal) {
-        case PLYRNRunningModeTransactionOnly:
         case PLYRNRunningModeFull:
             return PLYRunningModeFull;
         case PLYRNRunningModeObserver:
-        case PLYRNRunningModePaywallObserver:
         default:
             return PLYRunningModeObserver;
     }
@@ -438,9 +434,7 @@ static __weak PurchaselyRN *_sharedEmitter;
 		@"autoRenewingSubscription": @(PLYPlanTypeAutoRenewingSubscription),
 		@"nonRenewingSubscription": @(PLYPlanTypeNonRenewingSubscription),
 		@"unknown": @(PLYPlanTypeUnknown),
-        @"runningModeTransactionOnly": @(PLYRNRunningModeTransactionOnly),
         @"runningModeObserver": @(PLYRNRunningModeObserver),
-        @"runningModePaywallObserver": @(PLYRNRunningModePaywallObserver),
         @"runningModeFull": @(PLYRNRunningModeFull),
         @"presentationTypeNormal": @(PLYPresentationTypeNormal),
         @"presentationTypeFallback": @(PLYPresentationTypeFallback),

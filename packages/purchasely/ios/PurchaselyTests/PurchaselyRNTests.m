@@ -139,9 +139,9 @@
 - (void)testRunningModeConstants {
     NSDictionary *constants = [self.purchaselyModule constantsToExport];
 
-    XCTAssertNotNil(constants[@"runningModeTransactionOnly"], @"runningModeTransactionOnly should exist");
+    // [ENM-06 / REC-17] The v5 runningModeTransactionOnly / runningModePaywallObserver
+    // constants were removed — only Observer / Full remain in v6.
     XCTAssertNotNil(constants[@"runningModeObserver"], @"runningModeObserver should exist");
-    XCTAssertNotNil(constants[@"runningModePaywallObserver"], @"runningModePaywallObserver should exist");
     XCTAssertNotNil(constants[@"runningModeFull"], @"runningModeFull should exist");
 }
 
@@ -187,9 +187,10 @@
     NSDictionary *constants = [self.purchaselyModule constantsToExport];
 
     // Based on the source code, we expect at least 55 constants
-    // Log levels (4) + Product results (3) + Sources (4) + Attributes (21) + Plan types (5)
-    // + Running modes (4) + Presentation types (4) + Theme modes (3) + User attribute sources (2)
-    // + User attribute types (9) = 59 constants
+    // Log levels (4) + Product results (3) + Sources (5, incl. sourceNone) + Attributes (21)
+    // + Plan types (5) + Running modes (2, v5 TransactionOnly/PaywallObserver removed)
+    // + Presentation types (4) + Theme modes (3) + User attribute sources (2)
+    // + User attribute types (9) = 58 constants
     XCTAssertGreaterThanOrEqual(constants.count, 50, @"Should export at least 50 constants");
 }
 
@@ -310,13 +311,11 @@
 - (void)testRunningModesUnique {
     NSDictionary *constants = [self.purchaselyModule constantsToExport];
 
-    NSInteger transactionOnly = [constants[@"runningModeTransactionOnly"] integerValue];
     NSInteger observer = [constants[@"runningModeObserver"] integerValue];
-    NSInteger paywallObserver = [constants[@"runningModePaywallObserver"] integerValue];
     NSInteger full = [constants[@"runningModeFull"] integerValue];
 
-    NSSet *uniqueValues = [NSSet setWithArray:@[@(transactionOnly), @(observer), @(paywallObserver), @(full)]];
-    XCTAssertEqual(uniqueValues.count, 4, @"All running modes should have unique values");
+    NSSet *uniqueValues = [NSSet setWithArray:@[@(observer), @(full)]];
+    XCTAssertEqual(uniqueValues.count, 2, @"All running modes should have unique values");
 }
 
 - (void)testThemeModesUnique {
