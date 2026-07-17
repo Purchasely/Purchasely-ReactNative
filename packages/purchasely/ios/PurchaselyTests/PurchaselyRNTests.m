@@ -94,6 +94,9 @@
     XCTAssertNotNil(constants[@"sourcePlayStore"], @"sourcePlayStore should exist");
     XCTAssertNotNil(constants[@"sourceHuaweiAppGallery"], @"sourceHuaweiAppGallery should exist");
     XCTAssertNotNil(constants[@"sourceAmazonAppstore"], @"sourceAmazonAppstore should exist");
+    // [RN-W-04 / ENM-07] Android's constantsToExport already includes
+    // sourceNone; iOS was missing it entirely.
+    XCTAssertNotNil(constants[@"sourceNone"], @"sourceNone should exist");
 }
 
 - (void)testAttributeConstants {
@@ -285,9 +288,10 @@
     NSInteger playStore = [constants[@"sourcePlayStore"] integerValue];
     NSInteger huawei = [constants[@"sourceHuaweiAppGallery"] integerValue];
     NSInteger amazon = [constants[@"sourceAmazonAppstore"] integerValue];
+    NSInteger none = [constants[@"sourceNone"] integerValue];
 
-    NSSet *uniqueValues = [NSSet setWithArray:@[@(appStore), @(playStore), @(huawei), @(amazon)]];
-    XCTAssertEqual(uniqueValues.count, 4, @"All subscription sources should have unique values");
+    NSSet *uniqueValues = [NSSet setWithArray:@[@(appStore), @(playStore), @(huawei), @(amazon), @(none)]];
+    XCTAssertEqual(uniqueValues.count, 5, @"All subscription sources should have unique values");
 }
 
 - (void)testPlanTypesUnique {

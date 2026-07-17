@@ -71,6 +71,10 @@ describe('Purchasely Enums', () => {
             expect(SubscriptionSource.GOOGLE_PLAY_STORE).toBe(mockConstants.sourcePlayStore)
             expect(SubscriptionSource.HUAWEI_APP_GALLERY).toBe(mockConstants.sourceHuaweiAppGallery)
             expect(SubscriptionSource.AMAZON_APPSTORE).toBe(mockConstants.sourceAmazonAppstore)
+            // [RN-W-04 / ENM-07] iOS/Android both expose a "no store" ordinal
+            // (PLYSubscriptionSourceNone / StoreType.NONE); RN previously
+            // dropped it from both the Constants export (iOS) and this enum.
+            expect(SubscriptionSource.NONE).toBe(mockConstants.sourceNone)
         })
 
         it('should have all expected members', () => {
@@ -79,7 +83,8 @@ describe('Purchasely Enums', () => {
             expect(members).toContain('GOOGLE_PLAY_STORE')
             expect(members).toContain('HUAWEI_APP_GALLERY')
             expect(members).toContain('AMAZON_APPSTORE')
-            expect(members).toHaveLength(4)
+            expect(members).toContain('NONE')
+            expect(members).toHaveLength(5)
         })
     })
 
