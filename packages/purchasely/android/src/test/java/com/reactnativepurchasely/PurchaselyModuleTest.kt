@@ -4,6 +4,7 @@ import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.JavaOnlyArray
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
+import com.facebook.react.bridge.ReadableArray
 import io.purchasely.ext.*
 import io.purchasely.ext.presentation.PLYPresentationType
 import io.purchasely.storage.userData.PLYUserAttributeSource
@@ -44,6 +45,19 @@ class PurchaselyModuleTest {
     @Test
     fun `module name should be Purchasely`() {
         assertEquals("Purchasely", purchaselyModule.name)
+    }
+
+    // endregion
+
+    // region iOS-only API fallbacks
+
+    @Test
+    fun `sign promotional offer resolves null on Android`() {
+        val promise = mock(Promise::class.java)
+
+        purchaselyModule.signPromotionalOffer("product", "offer", promise)
+
+        verify(promise).resolve(null)
     }
 
     // endregion
@@ -463,39 +477,37 @@ class PurchaselyModuleTest {
      */
     @Test
     fun `revokeDataProcessingConsent accepts both kebab-case and SCREAMING_SNAKE_CASE wire strings`() {
-        val purchaselyStatic = mockStatic(Purchasely::class.java)
-        try {
-            purchaselyModule.revokeDataProcessingConsent(JavaOnlyArray.of("third-party-integration"))
-            purchaselyStatic.verify {
-                Purchasely.revokeDataProcessingConsent(setOf(PLYDataProcessingPurpose.ThirdPartyIntegrations))
-            }
+        val mapper = PurchaselyModule::class.java
+            .getDeclaredMethod("mapPurposesFromReadableArray", ReadableArray::class.java)
+            .apply { isAccessible = true }
 
-            purchaselyModule.revokeDataProcessingConsent(JavaOnlyArray.of("THIRD_PARTY_INTEGRATIONS"))
-            purchaselyStatic.verify {
-                Purchasely.revokeDataProcessingConsent(setOf(PLYDataProcessingPurpose.ThirdPartyIntegrations))
-            }
+        @Suppress("UNCHECKED_CAST")
+        fun map(vararg purposes: String) = mapper.invoke(
+            purchaselyModule,
+            JavaOnlyArray.of(*purposes)
+        ) as Set<PLYDataProcessingPurpose>
 
-            purchaselyModule.revokeDataProcessingConsent(JavaOnlyArray.of("ALL_NON_ESSENTIALS"))
-            purchaselyStatic.verify {
-                Purchasely.revokeDataProcessingConsent(setOf(PLYDataProcessingPurpose.AllNonEssentials))
-            }
-
-            purchaselyModule.revokeDataProcessingConsent(
-                JavaOnlyArray.of("ANALYTICS", "IDENTIFIED_ANALYTICS", "CAMPAIGNS", "PERSONALIZATION")
-            )
-            purchaselyStatic.verify {
-                Purchasely.revokeDataProcessingConsent(
-                    setOf(
-                        PLYDataProcessingPurpose.Analytics,
-                        PLYDataProcessingPurpose.IdentifiedAnalytics,
-                        PLYDataProcessingPurpose.Campaigns,
-                        PLYDataProcessingPurpose.Personalization
-                    )
-                )
-            }
-        } finally {
-            purchaselyStatic.close()
-        }
+        assertEquals(
+            setOf(PLYDataProcessingPurpose.ThirdPartyIntegrations),
+            map("third-party-integration")
+        )
+        assertEquals(
+            setOf(PLYDataProcessingPurpose.ThirdPartyIntegrations),
+            map("THIRD_PARTY_INTEGRATIONS")
+        )
+        assertEquals(
+            setOf(PLYDataProcessingPurpose.AllNonEssentials),
+            map("ALL_NON_ESSENTIALS")
+        )
+        assertEquals(
+            setOf(
+                PLYDataProcessingPurpose.Analytics,
+                PLYDataProcessingPurpose.IdentifiedAnalytics,
+                PLYDataProcessingPurpose.Campaigns,
+                PLYDataProcessingPurpose.Personalization
+            ),
+            map("ANALYTICS", "IDENTIFIED_ANALYTICS", "CAMPAIGNS", "PERSONALIZATION")
+        )
     }
 
     // endregion

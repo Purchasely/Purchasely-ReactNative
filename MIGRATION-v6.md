@@ -484,8 +484,9 @@ awaitable result — see above). The following keep working exactly as in v5:
 > full StoreKit promotional-offer-signing behaviour, unchanged. Android has no
 > native equivalent: the Android bridge used to permanently reject every call
 > (`"Not supported on Android"`); it now resolves as a no-op success instead,
-> so `await Purchasely.signPromotionalOffer(...)` no longer throws on
-> Android — just don't rely on the shape of the resolved value there.
+> returning `null`. `await Purchasely.signPromotionalOffer(...)` therefore no
+> longer throws on Android; handle the nullable result before using an iOS
+> promotional-offer signature.
 - **Subscriptions data**: `userSubscriptions`, `userSubscriptionsHistory`,
   `restoreAllProducts`, `silentRestoreAllProducts`,
   `userDidConsumeSubscriptionContent`.

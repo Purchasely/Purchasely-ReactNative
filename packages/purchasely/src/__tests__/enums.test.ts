@@ -138,7 +138,9 @@ describe('Purchasely Enums', () => {
     })
 
     describe('RunningMode', () => {
-        it('should have correct enum values from constants', () => {
+        it('uses the native v6 wire values', () => {
+            expect(mockConstants.runningModeObserver).toBe(1)
+            expect(mockConstants.runningModeFull).toBe(4)
             expect(RunningMode.OBSERVER).toBe(mockConstants.runningModeObserver)
             expect(RunningMode.FULL).toBe(mockConstants.runningModeFull)
         })

@@ -533,6 +533,25 @@ describe('façade · integration with native bridge', () => {
             });
         });
 
+        it('normalizes an unknown outcome plan type to PLAN_TYPE_UNKNOWN', async () => {
+            const req = PLYPresentationBuilder.placement('home').build();
+            const displayPromise = req.display();
+            const [requestId] = native.displayPresentation.mock.calls[0];
+
+            emit(PURCHASELY_PRESENTATION_EVENTS.DISMISSED, {
+                requestId,
+                presentation: fakePresentationPayload,
+                plan: { vendorId: 'plan-monthly', type: 'FUTURE_DISTRIBUTION_TYPE' },
+                closeReason: 'button',
+            });
+
+            const outcome = await displayPromise;
+            expect(outcome.plan).toMatchObject({
+                vendorId: 'plan-monthly',
+                type: PlanType.PLAN_TYPE_UNKNOWN,
+            });
+        });
+
         it('forwards the v6 transition dimensions (width/height) to native', () => {
             const req = PLYPresentationBuilder.placement('home').build();
             req.display({
@@ -996,6 +1015,26 @@ describe('façade · integration with native bridge', () => {
                 expect(payload).toMatchObject({
                     kind: 'purchase',
                     plan: { vendorId: 'monthly', type: PlanType.PLAN_TYPE_AUTO_RENEWING_SUBSCRIPTION },
+                });
+            });
+
+            it('purchase: normalizes an unknown plan.type to PLAN_TYPE_UNKNOWN', async () => {
+                const handler = jest.fn().mockResolvedValue('success' as const);
+                interceptAction('purchase', handler);
+
+                emit(PURCHASELY_PRESENTATION_EVENTS.ACTION_INTERCEPTED, {
+                    requestId: 'req-purchase-unknown',
+                    callbackId: 'cb-purchase-unknown',
+                    kind: 'purchase',
+                    info: {},
+                    payload: { plan: { vendorId: 'monthly', type: 'FUTURE_DISTRIBUTION_TYPE' } },
+                });
+                await new Promise((r) => setImmediate(r));
+
+                const [, payload] = handler.mock.calls[0];
+                expect(payload).toMatchObject({
+                    kind: 'purchase',
+                    plan: { vendorId: 'monthly', type: PlanType.PLAN_TYPE_UNKNOWN },
                 });
             });
 

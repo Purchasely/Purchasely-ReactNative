@@ -556,7 +556,8 @@ describe('Purchasely SDK', () => {
                 storeOfferId: 'offer-123'
             })
 
-            expect(result.planVendorId).toBe('plan-id')
+            expect(result).not.toBeNull()
+            expect(result?.planVendorId).toBe('plan-id')
             expect(mockedPurchasely.signPromotionalOffer).toHaveBeenCalledWith(
                 'product-123',
                 'offer-123'
@@ -577,19 +578,17 @@ describe('Purchasely SDK', () => {
         // method is "unchanged... in behaviour" on both platforms. Per
         // product decision, Android's native bridge now resolves as a no-op
         // success instead (there is no StoreKit-equivalent primitive on
-        // Android). This JS wrapper stays a transparent pass-through — it
-        // resolves with whatever the native side resolves, so this test
-        // documents that an Android no-op success no longer surfaces as a
-        // rejection to the caller.
-        it('resolves without throwing when the Android native bridge no-ops (no StoreKit equivalent)', async () => {
-            mockedPurchasely.signPromotionalOffer.mockResolvedValueOnce({})
+        // Android). The explicit null result prevents callers from treating an
+        // empty object as an iOS promotional-offer signature.
+        it('resolves null when the Android native bridge no-ops (no StoreKit equivalent)', async () => {
+            mockedPurchasely.signPromotionalOffer.mockResolvedValueOnce(null)
 
             await expect(
                 Purchasely.signPromotionalOffer({
                     storeProductId: 'product-123',
                     storeOfferId: 'offer-123',
                 })
-            ).resolves.toEqual({})
+            ).resolves.toBeNull()
         })
     })
 
