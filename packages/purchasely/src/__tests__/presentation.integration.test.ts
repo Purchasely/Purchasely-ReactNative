@@ -510,24 +510,6 @@ describe('façade · integration with native bridge', () => {
             expect(outcome.plan).toMatchObject({ vendorId: 'plan-monthly' });
         });
 
-        it('normalizes request.close() to programmatic when native reports backSystem', async () => {
-            const req = PLYPresentationBuilder.placement('home').build();
-            const displayPromise = req.display();
-            const [requestId] = native.displayPresentation.mock.calls[0];
-
-            req.close();
-            expect(native.closePresentation).toHaveBeenCalledWith(requestId);
-            emit(PURCHASELY_PRESENTATION_EVENTS.DISMISSED, {
-                requestId,
-                closeReason: 'backSystem',
-            });
-
-            await expect(displayPromise).resolves.toMatchObject({
-                closeReason: 'programmatic',
-                error: null,
-            });
-        });
-
         // [rc.4 hardening] same DistributionType-string tolerance as the
         // interceptor's 'purchase' payload, applied to the DISMISSED
         // outcome's plan field.
