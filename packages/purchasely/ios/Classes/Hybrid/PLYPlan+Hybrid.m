@@ -17,12 +17,15 @@
 	NSMutableDictionary<NSString *, NSObject *> *dict = [NSMutableDictionary new];
 
 	[dict setObject:self.vendorId forKey:@"vendorId"];
+	// [RN-W-07] Always emit hasIntroductoryPrice as a real boolean — the TS
+	// `PurchaselyPlan.hasIntroductoryPrice` type is required (non-optional).
+	// It used to be removed from the dict for free-trial plans, leaving the
+	// field `undefined` at runtime instead of `false`/`true`.
 	[dict setObject:@(self.hasIntroductoryPrice) forKey:@"hasIntroductoryPrice"];
 	[dict setObject:@([self type]) forKey:@"type"];
-    
+
 	if (self.hasIntroductoryPrice && [[self introAmount] intValue] == 0) {
 		[dict setObject:@(YES) forKey:@"hasFreeTrial"];
-		[dict removeObjectForKey:@"hasIntroductoryPrice"];
 	}
 
 	if (self.name != nil) {
