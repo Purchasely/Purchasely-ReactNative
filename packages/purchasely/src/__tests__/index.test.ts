@@ -112,8 +112,8 @@ jest.mock('react-native', () => ({
 }))
 
 // Now import Purchasely after mocking
-import Purchasely from '../index'
-import { LogLevels, PLYThemeMode, PLYDataProcessingLegalBasis, PLYDataProcessingPurpose } from '../enums'
+import Purchasely, { PLYPresentationBuilder } from '../index'
+import { Attributes, LogLevels, PLYThemeMode, PLYDataProcessingLegalBasis, PLYDataProcessingPurpose } from '../enums'
 import { NativeModules } from 'react-native'
 
 // Get reference to the mocked module
@@ -163,9 +163,44 @@ describe('Purchasely SDK', () => {
             expect(mockedPurchasely.allowCampaigns).toHaveBeenCalledWith(false)
         })
 
+        it('should expose Purchasely.presentation as the PLYPresentationBuilder entry point', () => {
+            expect(Purchasely.presentation).toBe(PLYPresentationBuilder)
+        })
+
         it('should not expose removed v5/top-level presentation APIs', () => {
             expect((Purchasely as any).close).toBeUndefined()
             expect((Purchasely as any).displaySubscriptionCancellationInstruction).toBeUndefined()
+        })
+
+        it('should not expose ANY of the v5 paywall surface removed by MIGRATION-v6.md', () => {
+            // Full removed-methods table (MIGRATION-v6.md "Removed v5 paywall API →
+            // v6 replacement"), beyond the two spot-checked above. Each of these
+            // must stay absent from the exported Purchasely object — re-adding
+            // one silently would resurrect a v5 API the migration guide promises
+            // is gone.
+            const removedV5TopLevelMethods = [
+                'start', // object-style Purchasely.start({...}) — only PurchaselyBuilder#start exists now
+                'startWithAPIKey',
+                'fetchPresentation',
+                'presentPresentationForPlacement',
+                'presentPresentationWithIdentifier',
+                'presentPresentation',
+                'presentProductWithIdentifier',
+                'presentPlanWithIdentifier',
+                'showPresentation',
+                'hidePresentation',
+                'closePresentation', // top-level; request.close() replaces it
+                'setPaywallActionInterceptorCallback',
+                'onProcessAction',
+                'setDefaultPresentationResultCallback',
+                'setDefaultPresentationResultHandler',
+                'readyToOpenDeeplink', // top-level; only reachable via builder.allowDeeplink()/start() internals
+                'presentSubscriptions',
+            ]
+
+            removedV5TopLevelMethods.forEach((method) => {
+                expect((Purchasely as Record<string, unknown>)[method]).toBeUndefined()
+            })
         })
 
         it('should keep the client (BYOS) presentation API', () => {
@@ -385,6 +420,32 @@ describe('Purchasely SDK', () => {
         })
     })
 
+    describe('Third-party Attribution (setAttribute)', () => {
+        it('should set a built-in third-party-integration attribute', () => {
+            Purchasely.setAttribute(Attributes.FIREBASE_APP_INSTANCE_ID, 'instance-id-123')
+            expect(mockedPurchasely.setAttribute).toHaveBeenCalledWith(
+                Attributes.FIREBASE_APP_INSTANCE_ID,
+                'instance-id-123'
+            )
+        })
+
+        it('should forward the raw attribute ordinal for every known Attributes member', () => {
+            Purchasely.setAttribute(Attributes.APPSFLYER_ID, 'appsflyer-id')
+            Purchasely.setAttribute(Attributes.AMPLITUDE_DEVICE_ID, 'device-id')
+
+            expect(mockedPurchasely.setAttribute).toHaveBeenNthCalledWith(
+                1,
+                Attributes.APPSFLYER_ID,
+                'appsflyer-id'
+            )
+            expect(mockedPurchasely.setAttribute).toHaveBeenNthCalledWith(
+                2,
+                Attributes.AMPLITUDE_DEVICE_ID,
+                'device-id'
+            )
+        })
+    })
+
     describe('Products and Plans', () => {
         it('should get all products', async () => {
             await Purchasely.allProducts()
@@ -465,6 +526,35 @@ describe('Purchasely SDK', () => {
 
             expect(result).toBe(true)
             expect(mockedPurchasely.isEligibleForIntroOffer).toHaveBeenCalledWith('plan-123')
+        })
+
+        // RN-W-01 (wiring audit, severity: critical): the Android native bridge
+        // for signPromotionalOffer is a permanent stub —
+        // `promise.reject("Not supported on Android")` on every call, with no
+        // conditional logic and no Platform.OS guard anywhere in this JS
+        // wrapper. MIGRATION-v6.md incorrectly lists this method under "core
+        // SDK methods unchanged... in behaviour" for both platforms.
+        //
+        // This is NOT testable as a green "it works on Android" case — that
+        // would be a false-positive test masking a real cross-platform gap
+        // (there is no fix available from the JS layer alone: the constraint
+        // for this pass is test-files-only, no src/ changes). Instead this
+        // test documents the JS layer's honest, correct behavior: it is a
+        // transparent pass-through, so the native rejection propagates as-is
+        // to the caller rather than being silently swallowed. If a future fix
+        // adds a Platform.OS guard in src/index.ts, this test's expectation
+        // (rejection with the exact native stub message) must be revisited.
+        it('[blocked by RN-W-01] propagates the Android native stub rejection instead of resolving', async () => {
+            mockedPurchasely.signPromotionalOffer.mockRejectedValueOnce(
+                new Error('Not supported on Android')
+            )
+
+            await expect(
+                Purchasely.signPromotionalOffer({
+                    storeProductId: 'product-123',
+                    storeOfferId: 'offer-123',
+                })
+            ).rejects.toThrow('Not supported on Android')
         })
     })
 
