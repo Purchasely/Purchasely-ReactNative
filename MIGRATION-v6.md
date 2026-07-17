@@ -455,9 +455,16 @@ awaitable result — see above). The following keep working exactly as in v5:
 
 - **User**: `userLogin`, `userLogout`, `getAnonymousUserId`, `isAnonymous`.
 - **Products**: `allProducts`, `productWithIdentifier`, `planWithIdentifier`,
-  `purchaseWithPlanVendorId`, `signPromotionalOffer`, `isEligibleForIntroOffer`,
+  `purchaseWithPlanVendorId`, `isEligibleForIntroOffer`,
   `setDynamicOffering`, `getDynamicOfferings`, `removeDynamicOffering`,
   `clearDynamicOfferings`.
+
+> **`signPromotionalOffer` — iOS only, changed on Android.** iOS keeps its
+> full StoreKit promotional-offer-signing behaviour, unchanged. Android has no
+> native equivalent: the Android bridge used to permanently reject every call
+> (`"Not supported on Android"`); it now resolves as a no-op success instead,
+> so `await Purchasely.signPromotionalOffer(...)` no longer throws on
+> Android — just don't rely on the shape of the resolved value there.
 - **Subscriptions data**: `userSubscriptions`, `userSubscriptionsHistory`,
   `restoreAllProducts`, `silentRestoreAllProducts`,
   `userDidConsumeSubscriptionContent`.

@@ -182,6 +182,15 @@ const purchaseWithPlanVendorId = ({
   );
 };
 
+/**
+ * Sign a StoreKit promotional offer so it can be redeemed in a subsequent
+ * purchase.
+ *
+ * **iOS only.** There is no Android equivalent (Google Play has no
+ * promotional-offer-signing primitive), so the Android native bridge is a
+ * no-op that resolves successfully instead of rejecting — don't rely on the
+ * shape of the resolved value on Android.
+ */
 const signPromotionalOffer = ({
   storeProductId,
   storeOfferId,
