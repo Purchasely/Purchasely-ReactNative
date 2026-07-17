@@ -138,6 +138,7 @@ export const createMockPurchaselyModule = () => ({
     clearDynamicOfferings: jest.fn(),
     revokeDataProcessingConsent: jest.fn(),
     setDebugMode: jest.fn(),
+    closeAllScreens: jest.fn(),
     addListener: jest.fn(),
     removeListeners: jest.fn(),
 })

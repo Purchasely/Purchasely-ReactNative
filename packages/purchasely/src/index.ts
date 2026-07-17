@@ -433,6 +433,16 @@ const setDebugMode = (debugMode: boolean): void => {
   return NativeModules.Purchasely.setDebugMode(debugMode);
 };
 
+/**
+ * Close every Purchasely screen currently displayed, regardless of which
+ * request opened them. Unlike `PLYPresentationRequest#close()` (scoped to a
+ * single request on iOS; dismisses everything on Android — see its
+ * doc-comment), this is an explicit, cross-platform "close everything" call.
+ */
+const closeAllScreens = (): void => {
+  return NativeModules.Purchasely.closeAllScreens();
+};
+
 const Purchasely = {
   // paywall API — the only supported way to display & intercept paywalls.
   builder,
@@ -514,7 +524,8 @@ const Purchasely = {
   removeDynamicOffering,
   clearDynamicOfferings,
   revokeDataProcessingConsent,
-  setDebugMode
+  setDebugMode,
+  closeAllScreens
 };
 
 export * from './types';
