@@ -38,6 +38,7 @@ import {
     PLYWebCheckoutProvider,
     PLYDataProcessingLegalBasis,
 } from '../enums'
+import { normalizePlan, normalizePlanType } from '../presentationTypes'
 
 describe('Purchasely Types', () => {
     describe('PurchaselyPlan', () => {
@@ -553,6 +554,56 @@ describe('Purchasely Event Names', () => {
         expect(eventNames).toHaveLength(42)
         eventNames.forEach(name => {
             expect(typeof name).toBe('string')
+        })
+    })
+
+    // [rc.4 hardening] Android's native SDK is expected to start emitting
+    // plan.type as a DistributionType string (e.g. "RENEWING_SUBSCRIPTION")
+    // instead of the numeric ordinal every platform emits today.
+    describe('normalizePlanType / normalizePlan (rc.4 hardening)', () => {
+        it('passes a numeric ordinal through unchanged', () => {
+            expect(normalizePlanType(PlanType.PLAN_TYPE_AUTO_RENEWING_SUBSCRIPTION)).toBe(
+                PlanType.PLAN_TYPE_AUTO_RENEWING_SUBSCRIPTION
+            )
+            expect(normalizePlanType(0)).toBe(0)
+        })
+
+        it('maps every known Android DistributionType string name to its ordinal', () => {
+            expect(normalizePlanType('CONSUMABLE')).toBe(PlanType.PLAN_TYPE_CONSUMABLE)
+            expect(normalizePlanType('NON_CONSUMABLE')).toBe(PlanType.PLAN_TYPE_NON_CONSUMABLE)
+            expect(normalizePlanType('RENEWING_SUBSCRIPTION')).toBe(
+                PlanType.PLAN_TYPE_AUTO_RENEWING_SUBSCRIPTION
+            )
+            expect(normalizePlanType('NON_RENEWING_SUBSCRIPTION')).toBe(
+                PlanType.PLAN_TYPE_NON_RENEWING_SUBSCRIPTION
+            )
+            expect(normalizePlanType('UNKNOWN')).toBe(PlanType.PLAN_TYPE_UNKNOWN)
+        })
+
+        it('returns null for null/undefined/unrecognized input', () => {
+            expect(normalizePlanType(null)).toBeNull()
+            expect(normalizePlanType(undefined)).toBeNull()
+            expect(normalizePlanType('NOT_A_REAL_TYPE')).toBeNull()
+        })
+
+        it('normalizePlan rewrites only the type field of a raw plan payload', () => {
+            const raw = { vendorId: 'monthly', type: 'RENEWING_SUBSCRIPTION', hasFreeTrial: false }
+            expect(normalizePlan(raw)).toEqual({
+                vendorId: 'monthly',
+                type: PlanType.PLAN_TYPE_AUTO_RENEWING_SUBSCRIPTION,
+                hasFreeTrial: false,
+            })
+        })
+
+        it('normalizePlan leaves an already-numeric type untouched', () => {
+            const raw = { vendorId: 'monthly', type: PlanType.PLAN_TYPE_CONSUMABLE }
+            expect(normalizePlan(raw)).toEqual(raw)
+        })
+
+        it('normalizePlan passes through non-plan-shaped values unchanged', () => {
+            expect(normalizePlan(null)).toBeNull()
+            expect(normalizePlan(undefined)).toBeUndefined()
+            expect(normalizePlan({ vendorId: 'monthly' })).toEqual({ vendorId: 'monthly' })
         })
     })
 })

@@ -6,6 +6,7 @@ import {
     presentationEventEmitter,
 } from './events';
 import type { PLYActionInterceptorEvent } from './events';
+import { normalizePlan } from './presentationTypes';
 import type {
     PLYActionPayload,
     PLYActionInterceptorHandler,
@@ -87,7 +88,9 @@ function normalizePayload(
         case 'purchase':
             return {
                 kind: 'purchase',
-                plan: raw.plan,
+                // [rc.4 hardening] tolerate Android's upcoming DistributionType
+                // string for plan.type alongside the numeric ordinal.
+                plan: normalizePlan(raw.plan),
                 subscriptionOffer: raw.subscriptionOffer ?? null,
                 offer: raw.offer ?? null,
             };

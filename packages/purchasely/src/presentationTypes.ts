@@ -8,7 +8,7 @@
  * The legacy v5 types in `types.ts` remain for backward compatibility.
  */
 
-import { ProductResult } from './enums';
+import { PlanType, ProductResult } from './enums';
 import type {
     PLYPresentationType,
     PLYWebCheckoutProvider,
@@ -245,4 +245,61 @@ export function purchaseResultFromOrdinal(
         default:
             return null;
     }
+}
+
+/**
+ * Android's DistributionType member names, shared 1:1 with iOS's native
+ * PLYPlanType case names, mapped to the cross-platform {@link PlanType}
+ * ordinal.
+ *
+ * @internal
+ */
+const PLAN_TYPE_NAME_MAP: Record<string, PlanType> = {
+    CONSUMABLE: PlanType.PLAN_TYPE_CONSUMABLE,
+    NON_CONSUMABLE: PlanType.PLAN_TYPE_NON_CONSUMABLE,
+    RENEWING_SUBSCRIPTION: PlanType.PLAN_TYPE_AUTO_RENEWING_SUBSCRIPTION,
+    NON_RENEWING_SUBSCRIPTION: PlanType.PLAN_TYPE_NON_RENEWING_SUBSCRIPTION,
+    UNKNOWN: PlanType.PLAN_TYPE_UNKNOWN,
+};
+
+/**
+ * [rc.4 hardening] Normalize a `PurchaselyPlan.type` value that may arrive as
+ * either the numeric ordinal every platform emits today, or the Android
+ * native SDK's upcoming DistributionType **string** name (e.g.
+ * `"RENEWING_SUBSCRIPTION"`) — a planned rc.4 change on the Android side
+ * only. Returns the value unchanged when it's already a number; maps a known
+ * string name to its ordinal; returns `null` for anything unrecognized.
+ *
+ * @internal
+ */
+export function normalizePlanType(
+    value: PlanType | string | null | undefined
+): PlanType | null {
+    if (value === null || value === undefined) {
+        return null;
+    }
+    if (typeof value === 'number') {
+        return value;
+    }
+    return PLAN_TYPE_NAME_MAP[value] ?? null;
+}
+
+/**
+ * [rc.4 hardening] Apply {@link normalizePlanType} to a raw native plan
+ * payload's `type` field, leaving every other field untouched. Returns the
+ * input unchanged when it isn't a plan-shaped object, or when `type` is
+ * already absent/unrecognized (so a genuinely unknown string is left as-is
+ * rather than silently dropped).
+ *
+ * @internal
+ */
+export function normalizePlan<T>(raw: T): T {
+    if (!raw || typeof raw !== 'object' || !('type' in raw)) {
+        return raw;
+    }
+    const normalized = normalizePlanType((raw as { type: unknown }).type as PlanType | string);
+    if (normalized === null) {
+        return raw;
+    }
+    return { ...raw, type: normalized };
 }
