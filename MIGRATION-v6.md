@@ -548,6 +548,49 @@ outcome's `plan` field), the `type` field is normalized to the numeric
 is needed for this ahead of time — `plan.type` will keep comparing equal to
 the `PlanType` enum members either way.
 
+## Commitment info (Apple-only, iOS 26.4+)
+
+v6 surfaces Apple's **multi-period commitment** plans (e.g. a *monthly
+subscription with a 12-month commitment*) as structured data on the plan and the
+subscription. These fields are **Apple-only**: they are absent on Android and on
+Apple plans / subscriptions without a commitment. They are distinct from the
+`billing_plan_type` / `commitment` / `commitment_progress` **event** strings in
+`PurchaselyEventProperties` (analytics), which are unchanged.
+
+```ts
+import type {
+  PLYCommitmentInfo,
+  PLYCommitmentProgress,
+  PLYBillingPlanType, // 'unspecified' | 'upFront' | 'monthly'
+} from 'react-native-purchasely'
+
+// On a plan (allProducts / planWithIdentifier / outcome.plan /
+// the interceptAction('purchase') payload plan):
+const plan = await Purchasely.planWithIdentifier('monthly-12mo')
+plan.commitmentInfo // PLYCommitmentInfo[] | undefined
+// e.g. [{ billingPlanType: 'monthly', billingPrice: 9.99, billingPeriod: 'P1M',
+//         totalPrice: 119.88, totalPeriod: 'P1Y', totalDuration: 12 }]
+
+// On a subscription (userSubscriptions / userSubscriptionsHistory):
+const [sub] = await Purchasely.userSubscriptions()
+sub.commitmentProgress // PLYCommitmentProgress | null | undefined
+// e.g. { billingPeriodNumber: 3, totalBillingPeriods: 12,
+//        commitmentExpiresDate: '2026-07-20T12:00:00Z', commitmentPrice: 9.99 }
+```
+
+`setDynamicOffering` also accepts an optional `billingPlanType` (Apple-only;
+ignored on Android):
+
+```ts
+Purchasely.setDynamicOffering({
+  reference: 'ref',
+  planVendorId: 'monthly-12mo',
+  billingPlanType: 'monthly', // force the monthly-commitment term on iOS 26.4+
+})
+```
+
+---
+
 ## Need a hand?
 
 Use the Purchasely AI plugin / skills (`purchasely-integrate`,
