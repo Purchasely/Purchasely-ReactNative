@@ -8,6 +8,48 @@ import {
   PLYDataProcessingLegalBasis
 } from './enums';
 
+/**
+ * Billing plan of a commitment installment. Apple-only (iOS 26.4+).
+ * Mirrors the native `PLYBillingPlanType` façade.
+ */
+export type PLYBillingPlanType = 'unspecified' | 'upFront' | 'monthly';
+
+/**
+ * Billing information for a subscription with a multi-period commitment
+ * (Apple-only, iOS 26.4+ "monthly subscription with 12-month commitment").
+ * Mirrors the native `PLYCommitmentInfo`. Empty/absent on Android and on Apple
+ * plans without a commitment.
+ */
+export type PLYCommitmentInfo = {
+  billingPlanType: PLYBillingPlanType;
+  /** Per-billing-cycle price (e.g. 9.99 for a monthly billed plan). */
+  billingPrice: number;
+  /** ISO 8601 duration of each billing cycle, e.g. 'P1M'. */
+  billingPeriod: string;
+  /** Total price over the full commitment period (e.g. 119.88 for 12 x 9.99). */
+  totalPrice: number;
+  /** ISO 8601 duration of the full commitment, e.g. 'P1Y'. */
+  totalPeriod: string;
+  /** Number of billing cycles in the commitment (1 for upFront, 12 for 12-month monthly). */
+  totalDuration: number;
+};
+
+/**
+ * A subscriber's progress through a multi-period commitment (Apple-only,
+ * iOS 26.4+). Mirrors the native `PLYCommitmentProgress`. `null`/absent on
+ * Android and on subscriptions without a commitment.
+ */
+export type PLYCommitmentProgress = {
+  /** Current billing period number within the commitment (1-based). */
+  billingPeriodNumber: number;
+  /** Total number of billing periods in the commitment. */
+  totalBillingPeriods: number;
+  /** Date when the commitment expires, ISO 8601. */
+  commitmentExpiresDate: string;
+  /** Price charged for this billing period. */
+  commitmentPrice: number;
+};
+
 export type PurchaselyPlan = {
   vendorId: string;
   productId: string;
@@ -25,6 +67,11 @@ export type PurchaselyPlan = {
   introDuration: string;
   introPeriod: string;
   hasFreeTrial: boolean;
+  /**
+   * Commitment installment details (Apple-only, iOS 26.4+). Absent on Android
+   * and on plans without a multi-period commitment.
+   */
+  commitmentInfo?: PLYCommitmentInfo[];
 };
 
 export type PurchaselyOffer = {
@@ -83,6 +130,11 @@ export type PurchaselySubscription = {
   subscriptionDurationInWeeks?: number;
   /** Android-only — see {@link cumulatedRevenuesInUSD}. */
   subscriptionDurationInMonths?: number;
+  /**
+   * Progress through a multi-period commitment (Apple-only, iOS 26.4+).
+   * `null`/absent on Android and on subscriptions without a commitment.
+   */
+  commitmentProgress?: PLYCommitmentProgress | null;
 };
 
 export type PurchaselyEventsNames =

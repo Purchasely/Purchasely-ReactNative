@@ -174,6 +174,10 @@ export interface PLYNavigatePayload {
 /** Typed payload for the purchase action. */
 export interface PLYPurchasePayload {
     kind: 'purchase';
+    /**
+     * Plan being purchased. On Apple (iOS 26.4+) with a multi-period commitment
+     * this carries `plan.commitmentInfo` (see {@link PurchaselyPlan}).
+     */
     plan: PurchaselyPlan;
     subscriptionOffer?: PurchaselySubscriptionOffer | null;
     offer?: PurchaselyOffer | null;
