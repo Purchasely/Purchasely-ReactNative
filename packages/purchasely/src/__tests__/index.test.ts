@@ -628,7 +628,24 @@ describe('Purchasely SDK', () => {
             expect(mockedPurchasely.setDynamicOffering).toHaveBeenCalledWith(
                 'ref-123',
                 'plan-123',
-                'offer-123'
+                'offer-123',
+                'unspecified'
+            )
+        })
+
+        it('should forward the Apple-only billingPlanType when set', async () => {
+            await Purchasely.setDynamicOffering({
+                reference: 'ref-123',
+                planVendorId: 'plan-123',
+                offerVendorId: 'offer-123',
+                billingPlanType: 'monthly',
+            })
+
+            expect(mockedPurchasely.setDynamicOffering).toHaveBeenCalledWith(
+                'ref-123',
+                'plan-123',
+                'offer-123',
+                'monthly'
             )
         })
 

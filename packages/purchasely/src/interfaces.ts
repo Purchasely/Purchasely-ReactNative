@@ -1,4 +1,5 @@
 import type { PLYDataProcessingLegalBasis } from './enums';
+import type { PLYBillingPlanType } from './types';
 
 export interface Constants {
   logLevelDebug: number;
@@ -92,4 +93,9 @@ export interface DynamicOffering {
   reference: string;
   planVendorId: string;
   offerVendorId?: string | null;
+  /**
+   * Billing plan type to force for this offering. Apple-only (iOS 26.4+);
+   * ignored on Android. Defaults to `'unspecified'` (native picks the default).
+   */
+  billingPlanType?: PLYBillingPlanType | null;
 }

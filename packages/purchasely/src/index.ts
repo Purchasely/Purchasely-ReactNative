@@ -417,7 +417,12 @@ const getBuiltInAttribute = (key: string): Promise<any> => {
 };
 
 const setDynamicOffering = (offering: DynamicOffering): Promise<boolean> => {
-  return NativeModules.Purchasely.setDynamicOffering(offering.reference, offering.planVendorId, offering.offerVendorId);
+  return NativeModules.Purchasely.setDynamicOffering(
+    offering.reference,
+    offering.planVendorId,
+    offering.offerVendorId,
+    offering.billingPlanType ?? 'unspecified'
+  );
 };
 
 const getDynamicOfferings = (): Promise<DynamicOffering[]> => {
