@@ -4,6 +4,12 @@ All notable changes to `react-native-purchasely` are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Bring Your Own Screen (BYOS) support for Purchasely Custom Screen flow steps,
+  including provider registration, native-hosted React components, connection
+  execution, back/close navigation, and an example implementation.
+
 ## [6.0.0-rc.3] — 2026-07-10
 
 ### Changed

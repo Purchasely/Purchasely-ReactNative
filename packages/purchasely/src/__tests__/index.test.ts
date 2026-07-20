@@ -76,6 +76,11 @@ jest.mock('react-native', () => ({
             clearUserAttributes: jest.fn(),
             clientPresentationDisplayed: jest.fn(),
             clientPresentationClosed: jest.fn(),
+            setCustomScreenProvider: jest.fn(),
+            removeCustomScreenProvider: jest.fn(),
+            executeConnection: jest.fn(),
+            customScreenBack: jest.fn(),
+            customScreenClose: jest.fn(),
             clearBuiltInAttributes: jest.fn(),
             setDefaultPresentationDismissHandler: jest.fn(),
             removeDefaultPresentationDismissHandler: jest.fn(),
@@ -185,6 +190,43 @@ describe('Purchasely SDK', () => {
                 screenId: 'SCREEN_ID',
                 placementId: 'PLACEMENT_ID',
             })
+        })
+
+        it('registers a Custom Screen component and drives its native presentation', () => {
+            const presentation = {
+                screenId: 'CUSTOM_STEP',
+                customScreenId: 'ply_cs_123',
+            } as any
+
+            Purchasely.setCustomScreenProvider({
+                componentName: 'PurchaselyCustomScreen',
+            })
+            Purchasely.executeConnection(presentation)
+            Purchasely.executeConnection(presentation, 'continue')
+            Purchasely.customScreenBack(presentation)
+            Purchasely.customScreenClose(presentation)
+            Purchasely.removeCustomScreenProvider()
+
+            expect(mockedPurchasely.setCustomScreenProvider).toHaveBeenCalledWith(
+                'PurchaselyCustomScreen'
+            )
+            expect(mockedPurchasely.executeConnection).toHaveBeenNthCalledWith(
+                1,
+                'ply_cs_123',
+                null
+            )
+            expect(mockedPurchasely.executeConnection).toHaveBeenNthCalledWith(
+                2,
+                'ply_cs_123',
+                'continue'
+            )
+            expect(mockedPurchasely.customScreenBack).toHaveBeenCalledWith(
+                'ply_cs_123'
+            )
+            expect(mockedPurchasely.customScreenClose).toHaveBeenCalledWith(
+                'ply_cs_123'
+            )
+            expect(mockedPurchasely.removeCustomScreenProvider).toHaveBeenCalled()
         })
     })
 

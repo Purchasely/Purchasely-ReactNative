@@ -8,6 +8,7 @@
 #import <React/RCTBridgeModule.h>
 
 #import <React/RCTLog.h>
+#import <React/RCTRootView.h>
 #import <Purchasely/Purchasely-Swift.h>
 #import "PurchaselyRN.h"
 #import "Purchasely_Hybrid.h"
@@ -30,6 +31,8 @@ static NSMutableDictionary<NSString *, id<PLYPresentation>> *kPresentationsByReq
 static NSMutableDictionary<NSString *, void (^)(NSString *)> *kInterceptorCallbacks;
 /// kind → BOOL : tracks which interceptor kinds JS has registered.
 static NSMutableSet<NSString *> *kInterceptorKinds;
+/// customScreenId → provider-delivered presentation instance.
+static NSMutableDictionary<NSString *, id<PLYPresentation>> *kCustomScreenPresentations;
 /// Serialises every access to the three mutable collections above. RN bridge
 /// methods run on a background queue while the interceptor block / completions
 /// run on the main queue; `NSMutable*` is not thread-safe, so all reads and
@@ -50,6 +53,7 @@ static void ensurePresentationState(void) {
         kPresentationsByRequest = [NSMutableDictionary new];
         kInterceptorCallbacks = [NSMutableDictionary new];
         kInterceptorKinds = [NSMutableSet new];
+        kCustomScreenPresentations = [NSMutableDictionary new];
         kPresentationStateLock = [NSObject new];
     });
 }
@@ -141,8 +145,124 @@ static NSDictionary *presentationToMap(id<PLYPresentation> presentation) {
     if (presentation.metadata != nil) {
         map[@"metadata"] = [presentation.metadata getRawMetadata];
     }
+    NSMutableArray *connections = [NSMutableArray new];
+    for (PLYConnection *connection in presentation.connections) {
+        [connections addObject:@{
+            @"id": connection.id ?: [NSNull null],
+            // Native iOS 6.0.0-rc.3 does not expose the default flag publicly.
+            @"isDefault": @(NO),
+        }];
+    }
+    map[@"connections"] = connections;
     return map;
 }
+
+static NSDictionary *customScreenPresentationToMap(id<PLYPresentation> presentation,
+                                                     NSString *customScreenId) {
+    NSMutableDictionary *map = [presentationToMap(presentation) mutableCopy];
+    map[@"customScreenId"] = customScreenId;
+    return map;
+}
+
+static void removeCustomScreenPresentation(NSString *customScreenId) {
+    if (customScreenId == nil) { return; }
+    ensurePresentationState();
+    @synchronized (kPresentationStateLock) {
+        [kCustomScreenPresentations removeObjectForKey:customScreenId];
+    }
+}
+
+@interface PLYRNCustomScreenViewController : UIViewController
+- (instancetype)initWithRootView:(UIView *)rootView customScreenId:(NSString *)customScreenId;
+@end
+
+@implementation PLYRNCustomScreenViewController {
+    NSString *_customScreenId;
+    BOOL _didCleanUp;
+}
+
+- (instancetype)initWithRootView:(UIView *)rootView customScreenId:(NSString *)customScreenId {
+    self = [super initWithNibName:nil bundle:nil];
+    if (self) {
+        _customScreenId = [customScreenId copy];
+        self.view = rootView;
+    }
+    return self;
+}
+
+- (void)didMoveToParentViewController:(UIViewController *)parent {
+    [super didMoveToParentViewController:parent];
+    if (parent == nil) {
+        [self cleanUpCustomScreen];
+    }
+}
+
+- (void)dealloc {
+    [self cleanUpCustomScreen];
+}
+
+- (void)cleanUpCustomScreen {
+    if (_didCleanUp) { return; }
+    _didCleanUp = YES;
+    removeCustomScreenPresentation(_customScreenId);
+}
+
+@end
+
+@interface PLYRNCustomScreenDelegate : NSObject <PLYCustomScreenViewControllerDelegate>
+@property (nonatomic, weak) PurchaselyRN *module;
+@property (nonatomic, copy) NSString *componentName;
+@end
+
+@implementation PLYRNCustomScreenDelegate
+
+- (UIView *)rootViewWithProperties:(NSDictionary *)properties {
+    // RN 0.74+ bridgeless/new-architecture apps expose their existing root-view
+    // factory from RCTAppDelegate. Reusing it is essential: a newly-created
+    // factory would start a second JS runtime without the host app's state.
+    id appDelegate = UIApplication.sharedApplication.delegate;
+    SEL factorySelector = NSSelectorFromString(@"rootViewFactory");
+    if ([appDelegate respondsToSelector:factorySelector]) {
+        id (*factoryGetter)(id, SEL) = (void *)[appDelegate methodForSelector:factorySelector];
+        id factory = factoryGetter(appDelegate, factorySelector);
+        SEL viewSelector = NSSelectorFromString(@"viewWithModuleName:initialProperties:");
+        if ([factory respondsToSelector:viewSelector]) {
+            UIView *(*viewBuilder)(id, SEL, NSString *, NSDictionary *) =
+                (void *)[factory methodForSelector:viewSelector];
+            return viewBuilder(factory, viewSelector, self.componentName, properties);
+        }
+    }
+
+    // Legacy bridge fallback. RCTEventEmitter owns the same bridge as the app,
+    // so this root participates in the existing React instance.
+    if (self.module.bridge != nil) {
+        return [[RCTRootView alloc] initWithBridge:self.module.bridge
+                                        moduleName:self.componentName
+                                 initialProperties:properties];
+    }
+    RCTLogWarn(@"[Purchasely] Cannot host Custom Screen %@: no app rootViewFactory or RCTBridge", self.componentName);
+    return nil;
+}
+
+- (UIViewController *)viewControllerFor:(id<PLYPresentation>)presentation {
+    ensurePresentationState();
+    NSString *customScreenId = [NSString stringWithFormat:@"ply_cs_%@", NSUUID.UUID.UUIDString];
+    @synchronized (kPresentationStateLock) {
+        kCustomScreenPresentations[customScreenId] = presentation;
+    }
+    NSDictionary *props = @{
+        @"presentation": customScreenPresentationToMap(presentation, customScreenId),
+    };
+    UIView *rootView = [self rootViewWithProperties:props];
+    if (rootView == nil) {
+        removeCustomScreenPresentation(customScreenId);
+        return nil;
+    }
+    return [[PLYRNCustomScreenViewController alloc] initWithRootView:rootView
+                                                     customScreenId:customScreenId];
+}
+
+@end
 
 /// Wrap an `NSError` into the `PresentationError` shape.
 static NSDictionary *presentationErrorToMap(NSError *error) {
@@ -256,6 +376,8 @@ static PLYRunningMode runningModeFromOrdinal(NSInteger ordinal) {
 }
 
 @implementation PurchaselyRN
+
+static PLYRNCustomScreenDelegate *kRNCustomScreenDelegate;
 
 RCT_EXPORT_MODULE(Purchasely);
 
@@ -1490,6 +1612,79 @@ RCT_EXPORT_METHOD(goBackToPreviousScreen:(NSString *)requestId) {
     });
 }
 
+#pragma mark - Custom Screens
+
+RCT_EXPORT_METHOD(setCustomScreenProvider:(NSString *)componentName) {
+    if (componentName.length == 0) {
+        RCTLogWarn(@"[Purchasely] Custom Screen component name cannot be blank");
+        return;
+    }
+    dispatch_async(dispatch_get_main_queue(), ^{
+        PLYRNCustomScreenDelegate *delegate = [PLYRNCustomScreenDelegate new];
+        delegate.module = self;
+        delegate.componentName = componentName;
+        kRNCustomScreenDelegate = delegate;
+        [Purchasely setCustomScreenViewControllerDelegate:delegate];
+    });
+}
+
+RCT_EXPORT_METHOD(removeCustomScreenProvider) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [Purchasely removeCustomScreenViewControllerDelegate];
+        kRNCustomScreenDelegate = nil;
+    });
+}
+
+static id<PLYPresentation> customScreenPresentationForKey(NSString *presentationKey) {
+    ensurePresentationState();
+    @synchronized (kPresentationStateLock) {
+        return kCustomScreenPresentations[presentationKey] ?: kPresentationsByRequest[presentationKey];
+    }
+}
+
+RCT_EXPORT_METHOD(executeConnection:(NSString *)presentationKey
+                  connectionId:(NSString * _Nullable)connectionId) {
+    id<PLYPresentation> presentation = customScreenPresentationForKey(presentationKey);
+    if (presentation == nil) {
+        RCTLogWarn(@"[Purchasely] executeConnection ignored: unknown presentation key %@", presentationKey);
+        return;
+    }
+    PLYConnection *selectedConnection = nil;
+    if (connectionId != nil) {
+        for (PLYConnection *connection in presentation.connections) {
+            if ([connection.id isEqualToString:connectionId]) {
+                selectedConnection = connection;
+                break;
+            }
+        }
+        if (selectedConnection == nil) {
+            RCTLogWarn(@"[Purchasely] executeConnection ignored: unknown connection %@", connectionId);
+            return;
+        }
+    }
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [presentation executeConnection:selectedConnection];
+    });
+}
+
+RCT_EXPORT_METHOD(customScreenBack:(NSString *)presentationKey) {
+    id<PLYPresentation> presentation = customScreenPresentationForKey(presentationKey);
+    if (presentation == nil) {
+        RCTLogWarn(@"[Purchasely] customScreenBack ignored: unknown presentation key %@", presentationKey);
+        return;
+    }
+    dispatch_async(dispatch_get_main_queue(), ^{ [presentation back]; });
+}
+
+RCT_EXPORT_METHOD(customScreenClose:(NSString *)presentationKey) {
+    id<PLYPresentation> presentation = customScreenPresentationForKey(presentationKey);
+    if (presentation == nil) {
+        RCTLogWarn(@"[Purchasely] customScreenClose ignored: unknown presentation key %@", presentationKey);
+        return;
+    }
+    dispatch_async(dispatch_get_main_queue(), ^{ [presentation close]; });
+}
+
 #pragma mark - client (BYOS) presentations
 
 /// Resolve a loaded native presentation from the identifiers JS sends
@@ -1732,4 +1927,3 @@ RCT_EXPORT_METHOD(applyStartOptions:(NSDictionary *)options) {
 }
 
 @end
-

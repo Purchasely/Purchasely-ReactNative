@@ -98,6 +98,14 @@ export interface PLYPresentationOutcome {
     error?: PLYPresentationError | null;
 }
 
+/** A named exit path exposed by a Purchasely Custom Screen flow step. */
+export interface PLYConnection {
+    /** Connection vendor id configured in the Purchasely Console. */
+    id: string | null;
+    /** Whether this is the connection used by `executeConnection()` with no id. */
+    isDefault: boolean;
+}
+
 /**
  * Cross-platform PLYPresentation. The public identifier is `screenId`
  * (mapped from iOS `presentation.screenId`). `id` is kept as an alias for
@@ -120,6 +128,23 @@ export interface PLYPresentation {
     plans?: PLYPresentationPlan[] | null;
     metadata?: PLYPresentationMetadata | null;
     height?: number | null;
+    /** Connections available to a client-authored Custom Screen. */
+    connections?: PLYConnection[] | null;
+    /** Opaque key set only for a presentation hosted by the Custom Screen provider. */
+    customScreenId?: string | null;
+    /** Opaque request key set on presentations returned by `preload()`. */
+    requestId?: string | null;
+}
+
+/** Options used to register a React component as the Custom Screen provider. */
+export interface PLYCustomScreenProviderOptions {
+    /** Name registered with `AppRegistry.registerComponent`. */
+    componentName: string;
+}
+
+/** Initial props received by the component registered as Custom Screen provider. */
+export interface PLYCustomScreenProps {
+    presentation: PLYPresentation;
 }
 
 /**

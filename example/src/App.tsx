@@ -41,6 +41,9 @@ function App(): React.JSX.Element {
             console.error('Purchasely SDK initialization failed.')
         } else {
             console.info('Purchasely SDK initialized successfully.')
+            Purchasely.setCustomScreenProvider({
+                componentName: 'PurchaselyCustomScreen',
+            })
         }
 
         // logout the user

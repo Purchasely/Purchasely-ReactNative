@@ -105,6 +105,53 @@ export const PaywallScreen: React.FC<NativeStackScreenProps<any>> = ({ navigatio
 };
 ```
 
+### 3️⃣ Custom Screens inside a flow
+
+Register one React component with `AppRegistry`, then register its name after
+the SDK starts. Purchasely mounts that component when a flow reaches a screen
+configured as client-authored in the Console.
+
+```tsx
+// index.js
+AppRegistry.registerComponent(
+  'PurchaselyCustomScreen',
+  () => PurchaselyCustomScreen,
+)
+
+// after await Purchasely.builder(...).start()
+Purchasely.setCustomScreenProvider({
+  componentName: 'PurchaselyCustomScreen',
+})
+
+function PurchaselyCustomScreen(props: PLYCustomScreenProps) {
+  const { presentation, executeConnection, back, close } =
+    usePurchaselyCustomScreen(props)
+
+  return (
+    <View>
+      <Text>{presentation.screenId}</Text>
+      {presentation.connections?.map((connection, index) => (
+        <Button
+          key={connection.id ?? index}
+          title={connection.id ?? 'Continue'}
+          onPress={() => executeConnection(connection.id ?? undefined)}
+        />
+      ))}
+      <Button title="Back" onPress={back} />
+      <Button title="Close flow" onPress={close} />
+    </View>
+  )
+}
+```
+
+The presentation in the props identifies the exact native flow-step instance;
+always use it for connection, back, and close actions. Custom Screen hosting is
+for flow steps. It is not supported inside `PLYPresentationView` or as a
+standalone native-hosted client screen.
+
+Custom Screen hosting requires React Native 0.74 or newer; the rest of the SDK
+keeps its existing React Native compatibility range.
+
 ## 📖 Documentation
 
 A complete documentation is available on our website: [Purchasely Docs](https://docs.purchasely.com/quick-start/sdk-installation/react-native-sdk).

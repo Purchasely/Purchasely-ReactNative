@@ -2,6 +2,7 @@ package com.reactnativepurchasely
 
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.util.Log
 import com.facebook.react.bridge.*
 import com.facebook.react.modules.core.DeviceEventManagerModule.RCTDeviceEventEmitter
@@ -852,6 +853,77 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
     loaded.back()
   }
 
+  /** Register a React component as the provider for native Custom Screen flow steps. */
+  @ReactMethod
+  fun setCustomScreenProvider(componentName: String) {
+    if (componentName.isBlank()) {
+      PLYLogger.w("[Purchasely] Custom Screen component name cannot be blank")
+      return
+    }
+    UiThreadUtil.runOnUiThread {
+      Purchasely.setCustomScreenProvider(object : PLYCustomScreenProvider {
+        override fun onCustomScreenRequested(presentation: PLYPresentation): PLYCustomScreen {
+          val customScreenId = "ply_cs_${UUID.randomUUID()}"
+          customScreenPresentations[customScreenId] = presentation
+          val presentationMap = presentation.toRNMap(customScreenId)
+          return PLYCustomScreen.Fragment(
+            PurchaselyCustomScreenFragment.newInstance(
+              componentName,
+              customScreenId,
+              Arguments.toBundle(presentationMap) ?: Bundle()
+            )
+          )
+        }
+      })
+    }
+  }
+
+  /** Restore the native SDK's unregistered-provider behaviour. */
+  @ReactMethod
+  fun removeCustomScreenProvider() {
+    UiThreadUtil.runOnUiThread { Purchasely.setCustomScreenProvider(null) }
+  }
+
+  private fun customScreenPresentation(key: String): PLYPresentation? =
+    customScreenPresentations[key] ?: activeLoadedPresentations[key]
+
+  @ReactMethod
+  fun executeConnection(presentationKey: String, connectionId: String?) {
+    val presentation = customScreenPresentation(presentationKey)
+    if (presentation == null) {
+      PLYLogger.w("[Purchasely] executeConnection ignored: unknown presentation key $presentationKey")
+      return
+    }
+    val connection = connectionId?.let { requestedId ->
+      presentation.connections.firstOrNull { it.id == requestedId }
+    }
+    if (connectionId != null && connection == null) {
+      PLYLogger.w("[Purchasely] executeConnection ignored: unknown connection $connectionId")
+      return
+    }
+    UiThreadUtil.runOnUiThread { presentation.execute(connection) }
+  }
+
+  @ReactMethod
+  fun customScreenBack(presentationKey: String) {
+    val presentation = customScreenPresentation(presentationKey)
+    if (presentation == null) {
+      PLYLogger.w("[Purchasely] customScreenBack ignored: unknown presentation key $presentationKey")
+      return
+    }
+    UiThreadUtil.runOnUiThread { presentation.back() }
+  }
+
+  @ReactMethod
+  fun customScreenClose(presentationKey: String) {
+    val presentation = customScreenPresentation(presentationKey)
+    if (presentation == null) {
+      PLYLogger.w("[Purchasely] customScreenClose ignored: unknown presentation key $presentationKey")
+      return
+    }
+    UiThreadUtil.runOnUiThread { presentation.close() }
+  }
+
   /**
    * Resolve a loaded native presentation from the identifiers JS sends
    * (`screenId`, with `placementId` as fallback). A v6 presentation cannot be
@@ -1108,7 +1180,7 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
    * Convert a [PLYPresentation] to a React-Native map. We expose the screenId
    * (mapped from the SDK `screenId`) and keep `id` as alias for compat.
    */
-  private fun PLYPresentation.toRNMap(): WritableMap {
+  private fun PLYPresentation.toRNMap(customScreenId: String? = null): WritableMap {
     val map = Arguments.createMap()
     map.putString("screenId", screenId)
     map.putString("id", screenId)
@@ -1128,6 +1200,14 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
       map.putArray("plans", Arguments.makeNativeArray(planMaps))
     }
     metadata?.let { map.putMap("metadata", Arguments.makeNativeMap(it.toRNMetadataMap())) }
+    val connectionMaps = connections.map { connection ->
+      Arguments.createMap().apply {
+        connection.id?.let { putString("id", it) } ?: putNull("id")
+        putBoolean("isDefault", connection.default)
+      }
+    }
+    map.putArray("connections", Arguments.makeNativeArray(connectionMaps))
+    customScreenId?.let { map.putString("customScreenId", it) }
     return map
   }
 
@@ -1274,6 +1354,13 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
 
     /** Loaded presentations currently associated with a JS request id. */
     private val activeLoadedPresentations = ConcurrentHashMap<String, PLYPresentation>()
+
+    /** Provider-delivered presentation instances, keyed for Custom Screen navigation. */
+    private val customScreenPresentations = ConcurrentHashMap<String, PLYPresentation>()
+
+    internal fun releaseCustomScreen(customScreenId: String) {
+      customScreenPresentations.remove(customScreenId)
+    }
 
     /**
      * Look up a presentation preloaded through [preloadPresentation] by its JS

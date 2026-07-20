@@ -47,6 +47,14 @@ function normalizePresentation(raw: any): PLYPresentation | null {
         plans: raw.plans ?? null,
         metadata: raw.metadata ?? null,
         height: raw.height ?? null,
+        connections: Array.isArray(raw.connections)
+            ? raw.connections.map((connection: any) => ({
+                  id: connection?.id ?? null,
+                  isDefault: connection?.isDefault ?? false,
+              }))
+            : null,
+        customScreenId: raw.customScreenId ?? null,
+        requestId: raw.requestId ?? null,
     };
 }
 
@@ -450,6 +458,7 @@ export class PLYPresentationRequest {
     ): PLYLoadedPresentation {
         return {
             ...presentation,
+            requestId: this._requestId,
             display: (transition?: PLYTransition | null) =>
                 this.display(transition),
             close: () => this.close(),
