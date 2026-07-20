@@ -27,7 +27,11 @@ import type {
     PLYPresentationMetadata,
     PurchaselyOffer,
     PurchaselySubscriptionOffer,
+    PLYCommitmentInfo,
+    PLYCommitmentProgress,
+    PLYBillingPlanType,
 } from '../types'
+import type { PLYPurchasePayload } from '../presentationTypes'
 
 import {
     PlanType,
@@ -247,6 +251,137 @@ describe('Purchasely Types', () => {
             }
 
             expect(subscription.cumulatedRevenuesInUSD).toBeUndefined()
+        })
+    })
+
+    // Apple-only (iOS 26.4+) "monthly subscription with 12-month commitment".
+    // Structured data on the plan / subscription — distinct from the
+    // `billing_plan_type` / `commitment` / `commitment_progress` *event* strings
+    // in PurchaselyEventProperties.
+    describe('PLYCommitmentInfo (Apple-only)', () => {
+        const commitmentInfo: PLYCommitmentInfo[] = [
+            {
+                billingPlanType: 'monthly',
+                billingPrice: 9.99,
+                billingPeriod: 'P1M',
+                totalPrice: 119.88,
+                totalPeriod: 'P1Y',
+                totalDuration: 12,
+            },
+        ]
+
+        const committedPlan: PurchaselyPlan = {
+            vendorId: 'monthly-12mo',
+            productId: 'product-123',
+            name: 'Monthly (12-month commitment)',
+            type: PlanType.PLAN_TYPE_AUTO_RENEWING_SUBSCRIPTION,
+            amount: 9.99,
+            localizedAmount: '$9.99',
+            currencyCode: 'USD',
+            currencySymbol: '$',
+            price: '$9.99/month',
+            period: 'P1M',
+            hasIntroductoryPrice: false,
+            introPrice: '',
+            introAmount: 0,
+            introDuration: '',
+            introPeriod: '',
+            hasFreeTrial: false,
+            commitmentInfo,
+        }
+
+        it('exposes structured commitment info on a plan', () => {
+            expect(committedPlan.commitmentInfo).toHaveLength(1)
+            expect(committedPlan.commitmentInfo?.[0]?.billingPlanType).toBe('monthly')
+            expect(committedPlan.commitmentInfo?.[0]?.billingPrice).toBe(9.99)
+            expect(committedPlan.commitmentInfo?.[0]?.totalPrice).toBe(119.88)
+            expect(committedPlan.commitmentInfo?.[0]?.totalPeriod).toBe('P1Y')
+            expect(committedPlan.commitmentInfo?.[0]?.totalDuration).toBe(12)
+        })
+
+        it('is optional (absent on Android and non-committed Apple plans)', () => {
+            const plainPlan: PurchaselyPlan = {
+                ...committedPlan,
+                commitmentInfo: undefined,
+            }
+            expect(plainPlan.commitmentInfo).toBeUndefined()
+        })
+
+        it('accepts every billing plan type', () => {
+            const types: PLYBillingPlanType[] = [
+                'unspecified',
+                'upFront',
+                'monthly',
+            ]
+            expect(types).toHaveLength(3)
+        })
+
+        it('carries commitmentInfo on the interceptAction purchase payload plan', () => {
+            const payload: PLYPurchasePayload = {
+                kind: 'purchase',
+                plan: committedPlan,
+            }
+            expect(payload.plan.commitmentInfo?.[0]?.totalDuration).toBe(12)
+        })
+    })
+
+    describe('PLYCommitmentProgress (Apple-only)', () => {
+        const baseSubscription: PurchaselySubscription = {
+            purchaseToken: 'token-123',
+            subscriptionSource: SubscriptionSource.APPLE_APP_STORE,
+            nextRenewalDate: '2026-08-20T12:00:00Z',
+            cancelledDate: '',
+            plan: {
+                vendorId: 'monthly-12mo',
+                productId: 'premium-product',
+                name: 'Monthly',
+                type: PlanType.PLAN_TYPE_AUTO_RENEWING_SUBSCRIPTION,
+                amount: 9.99,
+                localizedAmount: '$9.99',
+                currencyCode: 'USD',
+                currencySymbol: '$',
+                price: '$9.99/month',
+                period: 'P1M',
+                hasIntroductoryPrice: false,
+                introPrice: '',
+                introAmount: 0,
+                introDuration: '',
+                introPeriod: '',
+                hasFreeTrial: false,
+            },
+            product: {
+                name: 'Premium',
+                vendorId: 'premium-product',
+                plans: [],
+            },
+        }
+
+        it('exposes commitment progress on a subscription', () => {
+            const commitmentProgress: PLYCommitmentProgress = {
+                billingPeriodNumber: 3,
+                totalBillingPeriods: 12,
+                commitmentExpiresDate: '2026-07-20T12:00:00Z',
+                commitmentPrice: 9.99,
+            }
+            const subscription: PurchaselySubscription = {
+                ...baseSubscription,
+                commitmentProgress,
+            }
+            expect(subscription.commitmentProgress?.billingPeriodNumber).toBe(3)
+            expect(subscription.commitmentProgress?.totalBillingPeriods).toBe(12)
+            expect(subscription.commitmentProgress?.commitmentExpiresDate).toBe(
+                '2026-07-20T12:00:00Z'
+            )
+            expect(subscription.commitmentProgress?.commitmentPrice).toBe(9.99)
+        })
+
+        it('is optional / nullable (absent on Android and non-committed subs)', () => {
+            expect(baseSubscription.commitmentProgress).toBeUndefined()
+            const nulled: PurchaselySubscription = {
+                ...baseSubscription,
+                commitmentProgress: null,
+            }
+            expect(nulled.commitmentProgress).toBeNull()
         })
     })
 
