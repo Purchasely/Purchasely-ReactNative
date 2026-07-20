@@ -1000,11 +1000,12 @@ RCT_EXPORT_METHOD(userSubscriptionsHistory:(RCTPromiseResolveBlock)resolve
 RCT_EXPORT_METHOD(setDynamicOffering:(NSString *)reference
                   planVendorId:(NSString *)planVendorId
                   offerId:(nullable NSString *)offerId
+                  billingPlanType:(nullable NSString *)billingPlanType
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 {
     dispatch_async(dispatch_get_main_queue(), ^{
-      [Purchasely setDynamicOfferingWithReference:reference planVendorId:planVendorId offerVendorId:offerId billingPlanType:PLYBillingPlanTypeUnspecified completion:^(BOOL result) {
+      [Purchasely setDynamicOfferingWithReference:reference planVendorId:planVendorId offerVendorId:offerId billingPlanType:PLYBillingPlanTypeFromRNString(billingPlanType) completion:^(BOOL result) {
         resolve(@(result));
       }];
     });
