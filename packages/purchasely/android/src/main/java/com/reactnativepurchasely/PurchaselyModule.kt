@@ -682,7 +682,9 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
   }
 
   @ReactMethod
-  fun setDynamicOffering(reference: String, planVendorId: String, offerId: String?, promise: Promise) {
+  // billingPlanType is Apple-only (iOS 26.4+ commitment) — the Android SDK has no
+  // such option, so the arg is accepted for cross-platform bridge parity and ignored.
+  fun setDynamicOffering(reference: String, planVendorId: String, offerId: String?, billingPlanType: String?, promise: Promise) {
      Purchasely.setDynamicOffering(reference, planVendorId, offerId) {
        promise.resolve(it)
      }
