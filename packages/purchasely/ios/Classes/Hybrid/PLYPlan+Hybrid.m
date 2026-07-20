@@ -7,6 +7,21 @@
 
 #import "PLYPlan+Hybrid.h"
 
+NSString *PLYBillingPlanTypeToRNString(enum PLYBillingPlanType type) {
+    switch (type) {
+        case PLYBillingPlanTypeUpFront: return @"upFront";
+        case PLYBillingPlanTypeMonthly: return @"monthly";
+        case PLYBillingPlanTypeUnspecified:
+        default: return @"unspecified";
+    }
+}
+
+enum PLYBillingPlanType PLYBillingPlanTypeFromRNString(NSString * _Nullable value) {
+    if ([value isEqualToString:@"upFront"]) return PLYBillingPlanTypeUpFront;
+    if ([value isEqualToString:@"monthly"]) return PLYBillingPlanTypeMonthly;
+    return PLYBillingPlanTypeUnspecified;
+}
+
 @implementation PLYPlan (Hybrid)
 
 - (void)isEligibleForIntroductoryOffer:(void (^)(BOOL))completion {
@@ -84,6 +99,23 @@
 	NSString *introPeriod = [self localizedIntroductoryPeriodWithLanguage:nil];
 	if (introPeriod != nil) {
 		[dict setObject:introPeriod forKey:@"introPeriod"];
+	}
+
+	// Apple-only (iOS 26.4+) multi-period commitment installments. Empty on
+	// other stores / non-committed plans, in which case the key is omitted.
+	if (self.commitmentInfo.count > 0) {
+		NSMutableArray<NSDictionary *> *commitments = [NSMutableArray new];
+		for (PLYCommitmentInfo *info in self.commitmentInfo) {
+			[commitments addObject:@{
+				@"billingPlanType": PLYBillingPlanTypeToRNString(info.billingPlanType),
+				@"billingPrice": info.billingPrice,
+				@"billingPeriod": info.billingPeriod,
+				@"totalPrice": info.totalPrice,
+				@"totalPeriod": info.totalPeriod,
+				@"totalDuration": @(info.totalDuration),
+			}];
+		}
+		[dict setObject:commitments forKey:@"commitmentInfo"];
 	}
 
 	return dict;

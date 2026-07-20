@@ -28,6 +28,18 @@
 		[dict setObject:[dateFormat stringFromDate:self.cancelledDate] forKey:@"cancelledDate"];
 	}
 
+	// Apple-only (iOS 26.4+) progress through a multi-period commitment.
+	// nil on other stores / non-committed subscriptions → key omitted.
+	if (self.commitmentProgress != nil) {
+		PLYCommitmentProgress *progress = self.commitmentProgress;
+		[dict setObject:@{
+			@"billingPeriodNumber": @(progress.billingPeriodNumber),
+			@"totalBillingPeriods": @(progress.totalBillingPeriods),
+			@"commitmentExpiresDate": [dateFormat stringFromDate:progress.commitmentExpiresDate],
+			@"commitmentPrice": progress.commitmentPrice,
+		} forKey:@"commitmentProgress"];
+	}
+
 	return dict;
 }
 
