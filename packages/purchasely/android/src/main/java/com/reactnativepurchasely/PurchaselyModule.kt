@@ -38,6 +38,7 @@ import io.purchasely.views.presentation.models.PLYTransition
 import io.purchasely.views.presentation.models.PLYTransitionType
 import io.purchasely.views.presentation.models.PLYTransitionDimension
 import io.purchasely.views.presentation.models.PLYDimensionType
+import io.purchasely.internal.presentation.models.Colors
 import java.util.concurrent.ConcurrentHashMap
 
 class PurchaselyModule internal constructor(context: ReactApplicationContext) : ReactContextBaseJavaModule(context) {
@@ -587,10 +588,10 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
   }
 
   @ReactMethod
-  fun userSubscriptionsHistory(promise: Promise) {
+  fun userSubscriptionsHistory(invalidateCache: Boolean = false, promise: Promise) {
     GlobalScope.launch {
       try {
-        val subscriptions = Purchasely.userSubscriptionsHistory()
+        val subscriptions = Purchasely.userSubscriptionsHistory(invalidateCache)
         val result = ArrayList<ReadableMap?>()
         for (data in subscriptions) {
           val map = data.data.toMap().toMutableMap().apply {
@@ -699,6 +700,12 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
         map["reference"] = offering.reference
         map["planVendorId"] = offering.planId
         if (offering.offerId != null) map["offerVendorId"] = offering.offerId!!
+        // billingPlanType is Apple-only (iOS 26.4+ commitment) — Android's native
+        // PLYDynamicOffering carries no such field, so this is always "unspecified"
+        // here. Kept for cross-platform bridge parity (RN's PLYBillingPlanType is
+        // a required field on every offering), matching the ignored `billingPlanType`
+        // argument on setDynamicOffering above.
+        map["billingPlanType"] = "unspecified"
         result.add(Arguments.makeNativeMap(map.toMap()))
       }
       promise.resolve(Arguments.makeNativeArray(result))
@@ -803,7 +810,13 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
             "modal" -> PLYTransitionType.MODAL
             "drawer" -> PLYTransitionType.DRAWER
             "popin" -> PLYTransitionType.POPIN
-            // `inlinePaywall` not supported by PLYTransition — fall through.
+            // PLYTransitionType.INLINE_PAYWALL exists natively (PLYTransition.kt) and
+            // is forwarded as the `x-display-mode-override` request header like any
+            // other transition type; the flow's fragment picker (PLYFlowParentFragment)
+            // has no dedicated inline-paywall case and falls back to the same basic
+            // fragment used for FULLSCREEN, so this never renders differently from
+            // FULLSCREEN today but does thread the caller's intent to the backend.
+            "inlinePaywall" -> PLYTransitionType.INLINE_PAYWALL
             else -> PLYTransitionType.FULLSCREEN
           }
           // v6: width/height are typed dimensions ({ type: 'pixel'|'percentage',
@@ -832,10 +845,32 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
             } else {
               true
             }
+          // { light?, dark? } hex color strings, same shape the iOS bridge reads —
+          // native Colors stores them as raw strings (resolved to a UIColor/@ColorInt
+          // downstream), so no parsing is needed here.
+          val backgroundColors: Colors? =
+            if (!tm.hasKey("backgroundColors") || tm.isNull("backgroundColors")) {
+              null
+            } else {
+              tm.getMap("backgroundColors")?.let { colorsMap ->
+                val light = if (colorsMap.hasKey("light") && !colorsMap.isNull("light")) {
+                  colorsMap.getString("light")
+                } else {
+                  null
+                }
+                val dark = if (colorsMap.hasKey("dark") && !colorsMap.isNull("dark")) {
+                  colorsMap.getString("dark")
+                } else {
+                  null
+                }
+                if (light != null || dark != null) Colors(dark = dark, light = light) else null
+              }
+            }
           PLYTransition(
             type = type,
             width = width,
             height = height,
+            backgroundColors = backgroundColors,
             dismissible = dismissible
           )
         }
@@ -1030,6 +1065,13 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
     if (options.hasKey("allowCampaigns") && !options.isNull("allowCampaigns")) {
       Purchasely.allowCampaigns = options.getBoolean("allowCampaigns")
     }
+    if (options.hasKey("automaticDeeplinkHandling") && !options.isNull("automaticDeeplinkHandling")) {
+      // Purchasely.automaticDeeplinkHandling is a public @Volatile var, documented as
+      // "Settable in Builder at start and at runtime" (Purchasely.kt) — unlike
+      // billingPlanType-style builder-only options, this one can be set here even
+      // though applyStartOptions runs after start() already consumed the builder.
+      Purchasely.automaticDeeplinkHandling = options.getBoolean("automaticDeeplinkHandling")
+    }
   }
 
   // --- presentation private helpers ---
@@ -1216,6 +1258,7 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
           val offerMap = Arguments.createMap()
           it.vendorId?.let { v -> offerMap.putString("vendorId", v) }
           it.storeOfferId?.let { v -> offerMap.putString("storeOfferId", v) }
+          it.publicId?.let { v -> offerMap.putString("publicId", v) }
           payload.putMap("offer", offerMap)
         }
         subscriptionOffer?.let { so ->
@@ -1337,6 +1380,10 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
     fun transformPlanToMap(plan: PLYPlan?): Map<String, Any?> {
       if(plan == null) return emptyMap()
 
+      // Native PLYPlan.toMap() already emits hasOfferPrice/offerPrice/offerAmount/
+      // offerDuration/offerPeriod/hasFreeTrial under these exact names (PLYPLan.kt) —
+      // only basePlanId (a plan property, not part of toMap()) needs adding here to
+      // satisfy the cross-platform wire-key contract.
       return plan.toMap().toMutableMap().apply {
         this["type"] = when(plan.type) {
           DistributionType.RENEWING_SUBSCRIPTION -> DistributionType.RENEWING_SUBSCRIPTION.ordinal
@@ -1346,6 +1393,7 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
           DistributionType.UNKNOWN -> DistributionType.UNKNOWN.ordinal
           else -> null
         }
+        this["basePlanId"] = plan.basePlanId
       }
     }
   }

@@ -4,6 +4,40 @@ All notable changes to `react-native-purchasely` are documented in this file.
 
 ## [Unreleased]
 
+## [6.0.0] — 2026-07-21
+
+First stable release of Purchasely 6 for React Native. Native SDKs: iOS pod
+`Purchasely` **6.0.0**, Android `io.purchasely:*` **6.0.1**.
+
+### Changed (breaking)
+
+- Public model types renamed to the `PLY*` prefix for cross-SDK parity with
+  Flutter: `PurchaselyPlan`→`PLYPlan`, `PurchaselyProduct`→`PLYProduct`,
+  `PurchaselyOffer`→`PLYPromoOffer`, `PurchaselySubscription`→`PLYSubscription`,
+  `PurchaselySubscriptionOffer`→`PLYSubscriptionOffer`, `PurchaselyEvent*`→
+  `PLYEvent*`, `PurchaselyEventsNames`→`PLYEventName`, `PurchaselyUserAttribute`
+  →`PLYUserAttribute`, `PurchaselyPromotionalOfferSignature`→
+  `PLYPromotionalOfferSignature`, `DynamicOffering`→`PLYDynamicOffering`. The
+  `Purchasely` class and `PurchaselyBuilder` keep their names. The dead legacy
+  `PurchaselyPresentation` type was removed (use the v6 `PLYPresentation`).
+
+### Added
+
+- `PLYPlan` offer-phase fields (`hasOfferPrice`, `offerPrice`, `offerAmount`,
+  `offerDuration`, `offerPeriod`) and `basePlanId`, emitted under identical keys
+  on iOS and Android.
+- `PLYPromoOffer.publicId`.
+- 8 analytics events on `PLYEventName` (`IN_APP_RENEWED`, `PLACEMENT_OPENED`,
+  `PURCHASE_FROM_STORE_TAPPED`, `STORE_PRODUCT_FETCH_FAILED`, `WEB_CHECKOUT_*`).
+- `userSubscriptionsHistory({ invalidateCache })` cache flag.
+- Client-side `timeout` option on `restoreAllProducts` /
+  `silentRestoreAllProducts`.
+- `Purchasely.builder(...).automaticDeeplinkHandling(bool)` (Android-only).
+- iOS `drawer` / `popin` transitions now honour `width` and pixel `height`
+  (via a Swift `PLYDimension` shim); Android transitions now honour
+  `backgroundColors` and map `inlinePaywall`.
+- `getDynamicOfferings()` round-trips `billingPlanType`.
+
 ## [6.0.0-rc.3] — 2026-07-10
 
 ### Changed

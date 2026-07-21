@@ -12,6 +12,17 @@
 #import "PurchaselyRN.h"
 #import "Purchasely_Hybrid.h"
 #import "UIColor+PLYHelper.h"
+// BEST-GUESS generated Swift interface header for *this* pod (not the native
+// Purchasely SDK's own `Purchasely-Swift.h` above) — exposes `PLYTransitionFactory`
+// (PLYTransitionFactory.swift) to this Objective-C file. CocoaPods derives
+// PRODUCT_MODULE_NAME from the pod target label via `c99ext_identifier`, which
+// replaces non-alphanumeric characters with `_`; for pod name
+// "react-native-purchasely" that's "react_native_purchasely", so the
+// compiler-generated header should be "react_native_purchasely-Swift.h". This
+// could not be verified with an actual build in this environment — if the
+// module name differs, this single line fails to compile with a clear
+// "file not found" error naming this exact header, localizing the fix.
+#import "react_native_purchasely-Swift.h"
 
 #pragma mark - event names
 
@@ -251,27 +262,35 @@ static PLYRunningMode runningModeFromOrdinal(NSInteger ordinal) {
     }
 }
 
+/// Parses a JS `{ type: 'pixel'|'percentage', value }` dimension map (as used
+/// for `transition.height` / `transition.width`) into its raw `type` string
+/// and `NSNumber` value, or `(nil, nil)` when absent/malformed ("hug").
+static void plyParseDimensionMap(id map, NSString * _Nullable * _Nonnull outType, NSNumber * _Nullable * _Nonnull outValue) {
+    *outType = nil;
+    *outValue = nil;
+    if ([map isKindOfClass:[NSDictionary class]]) {
+        NSDictionary *dimMap = map;
+        *outType = [dimMap[@"type"] isKindOfClass:[NSString class]] ? dimMap[@"type"] : nil;
+        *outValue = [dimMap[@"value"] isKindOfClass:[NSNumber class]] ? dimMap[@"value"] : nil;
+    }
+}
+
 /// Parse the JS `PLYTransition` payload (the optional argument to
 /// `request.display(transition?)`) into the native `PLYTransition`. Mirrors
 /// the Flutter iOS plugin's `parseTransition`/`parseDimension`
-/// (SwiftPurchaselyFlutterPlugin.swift), adapted to what the pinned 6.0.0-rc.3
-/// SDK actually bridges to Objective-C.
+/// (SwiftPurchaselyFlutterPlugin.swift).
 ///
-/// `PLYTransition` in Purchasely-Swift.h only exposes, to Objective-C:
-/// `initWithType:heightPercentage:backgroundColors:dismissible:` — a legacy
-/// 0…1 `heightPercentage` — NOT the typed pixel/percentage `PLYDimension` the
-/// Swift-only `drawer(height:dismissible:)` / `popin(width:height:dismissible:)`
-/// factories take. `PLYDimension` itself has no Objective-C-visible factory at
-/// all. So from this Objective-C bridge:
-///   - `type` maps fully (fullScreen/push/modal/drawer/popin/inlinePaywall).
-///   - `height` maps when `{ type: 'percentage', value }` — same 0…1 ratio
-///     shape as the native legacy `heightPercentage`. A `{ type: 'pixel' }`
-///     height cannot be forwarded through this Objective-C ceiling; it is
-///     dropped (native falls back to its own content-hugging sizing) and a
-///     warning is logged.
-///   - `width` has no Objective-C-bridged native setter at all in rc.3 — it
-///     is always dropped, with a warning when the caller provided one.
-///   - `dismissible` and `backgroundColors` map fully.
+/// `PLYTransition`'s Objective-C-visible convenience initializer only exposes
+/// a legacy 0…1 `heightPercentage` — not the typed pixel/percentage
+/// `PLYDimension` the Swift-only designated initializer
+/// (`init(type:height:width:heightPercentage:backgroundColors:dismissible:)`)
+/// takes, and `PLYDimension` itself has no Objective-C-visible factory at
+/// all. `PLYTransitionFactory` (PLYTransitionFactory.swift, new in this pod)
+/// is an `@objc` shim around that designated initializer, so both `height`
+/// and `width` now forward `{ type: 'pixel', value }` (raw points) and
+/// `{ type: 'percentage', value }` (0…1 ratio) fully — `type` maps fully
+/// (fullScreen/push/modal/drawer/popin/inlinePaywall), and `dismissible` /
+/// `backgroundColors` map fully as before.
 static PLYTransition *plyTransitionFromMap(NSDictionary *map) {
     if (![map isKindOfClass:[NSDictionary class]]) {
         // No override — let the backend-defined presentation.transition apply.
@@ -294,25 +313,16 @@ static PLYTransition *plyTransitionFromMap(NSDictionary *map) {
         RCTLogWarn(@"[Purchasely] unknown transition.type '%@', defaulting to fullScreen", typeString);
     }
 
-    NSNumber *heightPercentage = nil;
-    id height = map[@"height"];
-    if ([height isKindOfClass:[NSDictionary class]]) {
-        NSDictionary *heightMap = height;
-        NSString *dimType = [heightMap[@"type"] isKindOfClass:[NSString class]] ? heightMap[@"type"] : nil;
-        id value = heightMap[@"value"];
-        if ([dimType isEqualToString:@"percentage"] && [value isKindOfClass:[NSNumber class]]) {
-            heightPercentage = value;
-        } else if ([dimType isEqualToString:@"pixel"]) {
-            RCTLogWarn(@"[Purchasely] transition.height with type 'pixel' is not supported by the iOS "
-                       @"bridge in SDK 6.0.0-rc.3 (only a legacy 0-1 heightPercentage bridges to "
-                       @"Objective-C) — ignoring, native default sizing applies");
-        }
-    }
-    id width = map[@"width"];
-    if (width != nil && width != (id)[NSNull null]) {
-        RCTLogWarn(@"[Purchasely] transition.width is not supported by the iOS bridge in SDK "
-                   @"6.0.0-rc.3 (no Objective-C-bridged native setter) — ignoring");
-    }
+    NSString *heightType = nil;
+    NSNumber *heightValue = nil;
+    plyParseDimensionMap(map[@"height"], &heightType, &heightValue);
+    // Legacy 0…1 fallback field, kept alongside the new typed `height` so the
+    // back-compat `height_percentage` wire field on PLYTransition still gets set.
+    NSNumber *heightPercentage = [heightType isEqualToString:@"percentage"] ? heightValue : nil;
+
+    NSString *widthType = nil;
+    NSNumber *widthValue = nil;
+    plyParseDimensionMap(map[@"width"], &widthType, &widthValue);
 
     PLYColors *backgroundColors = nil;
     id backgroundColorsMap = map[@"backgroundColors"];
@@ -331,10 +341,14 @@ static PLYTransition *plyTransitionFromMap(NSDictionary *map) {
         dismissible = [dismissibleValue boolValue];
     }
 
-    return [[PLYTransition alloc] initWithType:type
-                               heightPercentage:heightPercentage
-                               backgroundColors:backgroundColors
-                                    dismissible:dismissible];
+    return [PLYTransitionFactory makeWithType:type
+                                     widthType:widthType
+                                    widthValue:widthValue
+                                    heightType:heightType
+                                   heightValue:heightValue
+                              heightPercentage:heightPercentage
+                              backgroundColors:backgroundColors
+                                   dismissible:dismissible];
 }
 
 @implementation PurchaselyRN
@@ -980,11 +994,12 @@ RCT_EXPORT_METHOD(userSubscriptions:(BOOL) invalidate
 }
 
 
-RCT_EXPORT_METHOD(userSubscriptionsHistory:(RCTPromiseResolveBlock)resolve
+RCT_EXPORT_METHOD(userSubscriptionsHistory:(BOOL)invalidateCache
+                  resolve:(RCTPromiseResolveBlock)resolve
 				  reject:(RCTPromiseRejectBlock)reject)
 {
 	dispatch_async(dispatch_get_main_queue(), ^{
-		[Purchasely userSubscriptionsHistory:false
+		[Purchasely userSubscriptionsHistory:invalidateCache
                               success:^(NSArray<PLYSubscription *> * _Nullable subscriptions) {
             NSMutableArray *result = [NSMutableArray new];
             for (PLYSubscription *subscription in subscriptions) {
@@ -1025,6 +1040,7 @@ RCT_EXPORT_METHOD(getDynamicOfferings:(RCTPromiseResolveBlock)resolve
                 if (offering.offerId != nil) {
                     map[@"offerVendorId"] = offering.offerId;
                 }
+                map[@"billingPlanType"] = PLYBillingPlanTypeToRNString(offering.billingPlanType);
                 [result addObject:map];
             }
             resolve(result);
@@ -1727,6 +1743,10 @@ RCT_EXPORT_METHOD(registerActionInterceptor:(NSString *)kind) {
                             if (params.promoOffer.storeOfferId != nil) {
                                 offer[@"storeOfferId"] = params.promoOffer.storeOfferId;
                             }
+                            // `publicId` is intentionally omitted: `PLYPromoOffer.publicId` is
+                            // declared `internal` (not `@objc public`) on iOS, so it never
+                            // reaches this Objective-C bridge's generated header — same
+                            // omission the Flutter iOS plugin makes for the same reason.
                             payloadOut[@"offer"] = offer;
                         }
                         break;

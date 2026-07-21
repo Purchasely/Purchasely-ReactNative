@@ -39,9 +39,30 @@ enum PLYBillingPlanType PLYBillingPlanTypeFromRNString(NSString * _Nullable valu
 	[dict setObject:@(self.hasIntroductoryPrice) forKey:@"hasIntroductoryPrice"];
 	[dict setObject:@([self type]) forKey:@"type"];
 
-	if (self.hasIntroductoryPrice && [[self introAmount] intValue] == 0) {
-		[dict setObject:@(YES) forKey:@"hasFreeTrial"];
-	}
+	// [RN-W-07] Same always-a-boolean treatment as hasIntroductoryPrice above —
+	// `self.hasFreeTrial` (PLYPlan.swift) already computes exactly
+	// `hasIntroductoryPrice && introAmount == 0` natively; the TS `hasFreeTrial`
+	// type is required, so it must never come back `undefined`.
+	[dict setObject:@(self.hasFreeTrial) forKey:@"hasFreeTrial"];
+
+	// basePlanId is a Google Play concept (base-plan / offer hierarchy); the
+	// App Store has no equivalent on PLYPlan, so the key is omitted (JS types
+	// it as optional, and Android is the only source of a real value).
+
+	// Promotional-offer price fields (hasOfferPrice/offerPrice/offerAmount/
+	// offerDuration/offerPeriod): iOS `PLYPlan` has no public accessor for a
+	// promotional offer's localized price/duration/period — only the
+	// introductory-offer accessors above exist (`localizedFullIntroductoryPrice`
+	// etc.). The equivalent computation lives in the SDK's internal
+	// `PLYTagHelper.computeOfferPriceTag`/`computeOfferAmountTag`/etc.
+	// (Sources/Purchasely/common/Model/UI/PLYTagHelper.swift), which is
+	// `private` and takes an internal `ProductType` — unreachable from this
+	// Objective-C bridge. Emit safe defaults so the RN keys are always present.
+	[dict setObject:@(NO) forKey:@"hasOfferPrice"];
+	[dict setObject:@"" forKey:@"offerPrice"];
+	[dict setObject:@0 forKey:@"offerAmount"];
+	[dict setObject:@"" forKey:@"offerDuration"];
+	[dict setObject:@"" forKey:@"offerPeriod"];
 
 	if (self.name != nil) {
 		[dict setObject:self.name forKey:@"name"];
