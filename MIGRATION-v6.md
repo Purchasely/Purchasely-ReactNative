@@ -261,15 +261,11 @@ await request.display({
 > **v5 → v6 dimension change.** The v5 `heightPercentage` field is **replaced**
 > by `height: { type: 'percentage', value }` (and, symmetrically, `width`).
 
-> **iOS ceiling on `width` / pixel `height` (SDK 6.0.0-rc.3).** iOS now uses the
-> real v6 display path (`type`, `height` as a percentage, `dismissible`,
-> `backgroundColors` all honoured) instead of a hardcoded legacy screen type.
-> However the native SDK only bridges a legacy 0–1 `heightPercentage` to
-> Objective-C in this release — not the typed pixel/percentage `PLYDimension`
-> Swift API. So on iOS: `height: { type: 'percentage', value }` works;
-> `height: { type: 'pixel', ... }` and `width` (any type) are accepted but
-> silently ignored (native falls back to its own content-hugging sizing), with
-> a console warning. Android honours `width` / `height` for both units.
+> **`width` / `height` honoured on both platforms (6.0.0 GA).** iOS and Android
+> both map the typed `{ type: 'pixel' | 'percentage', value }` dimensions onto
+> the native SDK's `PLYDimension` for `drawer` / `popin`, alongside `type`,
+> `dismissible` and `backgroundColors`. (On iOS this goes through a small Swift
+> shim, because the SDK's `PLYDimension` enum isn't exposed to Objective-C.)
 
 ---
 
@@ -535,11 +531,23 @@ awaitable result — see above). The following keep working exactly as in v5:
   was always documented `@internal`; only the public barrel re-export is
   removed — the SDK's own use of it (mapping `PLYPresentationOutcome.purchaseResult`)
   is unaffected.
+- **Public model types renamed to the `PLY*` prefix (cross-SDK parity with
+  Flutter).** `PurchaselyPlan`→`PLYPlan`, `PurchaselyProduct`→`PLYProduct`,
+  `PurchaselyOffer`→`PLYPromoOffer`, `PurchaselySubscription`→`PLYSubscription`,
+  `PurchaselySubscriptionOffer`→`PLYSubscriptionOffer`, `PurchaselyEvent`
+  (and `…EventProperties` / `…EventPropertyPlan` / `…EventPropertyCarousel` /
+  `…EventPropertySubscription`)→`PLYEvent` (`PLYEventProperties`, …),
+  `PurchaselyEventsNames`→`PLYEventName`, `PurchaselyUserAttribute`→
+  `PLYUserAttribute`, `PurchaselyPromotionalOfferSignature`→
+  `PLYPromotionalOfferSignature`, `DynamicOffering`→`PLYDynamicOffering`. Update
+  your imports. The `Purchasely` entry class and `PurchaselyBuilder` keep their
+  names. The dead legacy `PurchaselyPresentation` type is removed — use the v6
+  `PLYPresentation`.
 
-## Forward compatibility: Android plan.type (rc.4)
+## Forward compatibility: Android plan.type
 
-A future Android native SDK release (rc.4) is expected to emit
-`PurchaselyPlan.type` as a `DistributionType` **string** (e.g.
+A future Android native SDK release may emit `PLYPlan.type` as a
+`DistributionType` **string** (e.g.
 `"RENEWING_SUBSCRIPTION"`) instead of the numeric ordinal every platform emits
 today. This bridge already tolerates both: wherever a `plan` payload is parsed
 (the `interceptAction('purchase', …)` payload and the `display()`/`preload()`
@@ -588,6 +596,39 @@ Purchasely.setDynamicOffering({
   billingPlanType: 'monthly', // force the monthly-commitment term on iOS 26.4+
 })
 ```
+
+---
+
+## New in 6.0.0 (since rc.3)
+
+- **Plan offer-phase fields.** `PLYPlan` now exposes `hasOfferPrice`,
+  `offerPrice`, `offerAmount`, `offerDuration`, `offerPeriod` and `basePlanId`
+  (Google Play base-plan id; `null` on the App Store). Emitted under identical
+  keys on iOS and Android.
+- **Offer `publicId`.** `PLYPromoOffer` gains an optional `publicId`.
+- **8 new analytics events** on `PLYEventName`: `IN_APP_RENEWED`,
+  `PLACEMENT_OPENED`, `PURCHASE_FROM_STORE_TAPPED`, `STORE_PRODUCT_FETCH_FAILED`,
+  and the web-checkout events `WEB_CHECKOUT_OPENED_IN_WEB_BROWSER`,
+  `WEB_CHECKOUT_ERROR`, `WEB_CHECKOUT_TAPPED`, `WEB_CHECKOUT_TIMED_OUT`.
+- **`userSubscriptionsHistory({ invalidateCache })`** — same cache flag as
+  `userSubscriptions`.
+- **`restoreAllProducts({ timeout })` / `silentRestoreAllProducts({ timeout })`**
+  — optional client-side timeout in **milliseconds**; the promise rejects if the
+  store call outlasts it (the native call has no timeout of its own).
+- **`Purchasely.builder(...).automaticDeeplinkHandling(bool)`** — Android-only;
+  toggles the SDK's automatic deeplink interception. Ignored on iOS.
+- **`getDynamicOfferings()`** now round-trips `billingPlanType`.
+
+### Cross-SDK notes (intentional divergences from Flutter)
+
+- **`billingPlanType` wire string.** React Native uses `'upFront'` on the
+  bridge; Flutter uses `'up_front'`. Each is internally consistent with its own
+  native bridge — no app impact, but bridge authors should not assume the two
+  spellings are identical.
+- **`PLYPresentationError`** exposes `domain` on React Native where Flutter uses
+  `details` — kept for RN source compatibility.
+- **`PLYUserAttributeType`** does not include Flutter's `dictionary` / `unknown`
+  members (type-level only; unused by any public API).
 
 ---
 

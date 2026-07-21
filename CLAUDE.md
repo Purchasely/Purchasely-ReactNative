@@ -11,13 +11,13 @@
 
 | Property | Value |
 |----------|-------|
-| Current Version | 6.0.0-rc.3 |
+| Current Version | 6.0.0 |
 | React Native | 0.86.0 |
 | TypeScript | 5.8.3 (strict mode) |
 | Node.js | v22 (see `.nvmrc`) |
 | Package Manager | Yarn 3.6.1 (workspaces) |
-| Native iOS SDK | 6.0.0-rc.3 |
-| Native Android SDK | 6.0.0-rc.3 |
+| Native iOS SDK | 6.0.0 |
+| Native Android SDK | 6.0.1 |
 
 ### Supported App Stores
 - Apple App Store (iOS)
@@ -401,11 +401,11 @@ Android and iOS jobs invoke Gradle and `xcodebuild` directly.
 ### Native Dependencies
 
 **iOS (CocoaPods):**
-- Purchasely SDK v6.0.0-rc.3
+- Purchasely SDK v6.0.0
 - Deployment target: iOS 15.1
 
 **Android (Gradle):**
-- io.purchasely:core:6.0.0-rc.3
+- io.purchasely:core:6.0.1
 - Min SDK: 23
 - Kotlin: 2.3.21+
 - Java: 11
