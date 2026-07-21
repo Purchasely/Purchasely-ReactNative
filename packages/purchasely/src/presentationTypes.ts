@@ -14,9 +14,9 @@ import type {
     PLYWebCheckoutProvider,
 } from './enums';
 import type {
-    PurchaselyPlan,
-    PurchaselyOffer,
-    PurchaselySubscriptionOffer,
+    PLYPlan,
+    PLYPromoOffer,
+    PLYSubscriptionOffer,
     PLYPresentationPlan,
     PLYPresentationMetadata,
 } from './types';
@@ -93,7 +93,7 @@ export interface PLYTransition {
 export interface PLYPresentationOutcome {
     presentation?: PLYPresentation | null;
     purchaseResult?: PLYPurchaseResult | null;
-    plan?: PurchaselyPlan | null;
+    plan?: PLYPlan | null;
     closeReason?: PLYCloseReason | null;
     error?: PLYPresentationError | null;
 }
@@ -176,11 +176,11 @@ export interface PLYPurchasePayload {
     kind: 'purchase';
     /**
      * Plan being purchased. On Apple (iOS 26.4+) with a multi-period commitment
-     * this carries `plan.commitmentInfo` (see {@link PurchaselyPlan}).
+     * this carries `plan.commitmentInfo` (see {@link PLYPlan}).
      */
-    plan: PurchaselyPlan;
-    subscriptionOffer?: PurchaselySubscriptionOffer | null;
-    offer?: PurchaselyOffer | null;
+    plan: PLYPlan;
+    subscriptionOffer?: PLYSubscriptionOffer | null;
+    offer?: PLYPromoOffer | null;
 }
 
 /** Typed payload for close / closeAll actions. */
@@ -267,7 +267,7 @@ const PLAN_TYPE_NAME_MAP: Record<string, PlanType> = {
 };
 
 /**
- * [rc.4 hardening] Normalize a `PurchaselyPlan.type` value that may arrive as
+ * [rc.4 hardening] Normalize a `PLYPlan.type` value that may arrive as
  * either the numeric ordinal every platform emits today, or the Android
  * native SDK's upcoming DistributionType **string** name (e.g.
  * `"RENEWING_SUBSCRIPTION"`) — a planned rc.4 change on the Android side
@@ -298,7 +298,7 @@ export function normalizePlanType(
  * payload's `type` field, leaving every other field untouched. Returns the
  * input unchanged when it isn't a plan-shaped object or has no `type`; an
  * unrecognized string is normalized to `PLAN_TYPE_UNKNOWN` so the public
- * `PurchaselyPlan.type` contract remains numeric.
+ * `PLYPlan.type` contract remains numeric.
  *
  * @internal
  */

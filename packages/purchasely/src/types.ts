@@ -1,6 +1,5 @@
 import {
   type PlanType,
-  PLYPresentationType,
   PLYUserAttributeSource,
   PLYUserAttributeType,
   SubscriptionSource,
@@ -50,7 +49,7 @@ export type PLYCommitmentProgress = {
   commitmentPrice: number;
 };
 
-export type PurchaselyPlan = {
+export type PLYPlan = {
   vendorId: string;
   productId: string;
   name: string;
@@ -74,25 +73,25 @@ export type PurchaselyPlan = {
   commitmentInfo?: PLYCommitmentInfo[];
 };
 
-export type PurchaselyOffer = {
+export type PLYPromoOffer = {
   vendorId?: string | null;
   storeOfferId?: string | null;
 };
 
-export type PurchaselySubscriptionOffer = {
+export type PLYSubscriptionOffer = {
   subscriptionId: string;
   basePlanId?: string | null;
   offerToken?: string | null;
   offerId?: string | null;
 };
 
-export type PurchaselyProduct = {
+export type PLYProduct = {
   name: string;
   vendorId: string;
-  plans: PurchaselyPlan[];
+  plans: PLYPlan[];
 };
 
-export type PurchaselyPromotionalOfferSignature = {
+export type PLYPromotionalOfferSignature = {
   planVendorId: string;
   identifier: string;
   signature: string;
@@ -101,7 +100,7 @@ export type PurchaselyPromotionalOfferSignature = {
   timestamp: number;
 };
 
-export type PurchaselyUserAttribute = {
+export type PLYUserAttribute = {
   key: string;
   value?: any | null;
   type?: PLYUserAttributeType | null;
@@ -109,13 +108,13 @@ export type PurchaselyUserAttribute = {
   legalBasis?: PLYDataProcessingLegalBasis;
 };
 
-export type PurchaselySubscription = {
+export type PLYSubscription = {
   purchaseToken: string;
   subscriptionSource: SubscriptionSource;
   nextRenewalDate: string;
   cancelledDate: string;
-  plan: PurchaselyPlan;
-  product: PurchaselyProduct;
+  plan: PLYPlan;
+  product: PLYProduct;
   /**
    * [PAR-24] Android-only. The native `PLYSubscription.toMap()` (Android)
    * includes total revenue attributed to this subscription, in USD; the iOS
@@ -137,7 +136,7 @@ export type PurchaselySubscription = {
   commitmentProgress?: PLYCommitmentProgress | null;
 };
 
-export type PurchaselyEventsNames =
+export type PLYEventName =
   | 'APP_INSTALLED'
   | 'APP_CONFIGURED'
   | 'APP_UPDATED'
@@ -181,7 +180,7 @@ export type PurchaselyEventsNames =
   | 'USER_LOGGED_OUT'
   | 'SUBSCRIPTION_CONTENT_USED';
 
-export type PurchaselyEventPropertyPlan = {
+export type PLYEventPropertyPlan = {
   type?: string;
   purchasely_plan_id?: string;
   store?: string;
@@ -203,7 +202,7 @@ export type PurchaselyEventPropertyPlan = {
   is_default: boolean;
 };
 
-export type PurchaselyEventPropertyCarousel = {
+export type PLYEventPropertyCarousel = {
   selected_slide?: number;
   number_of_slides?: number;
   is_carousel_auto_playing: boolean;
@@ -211,26 +210,26 @@ export type PurchaselyEventPropertyCarousel = {
   previous_slide?: number;
 };
 
-export type PurchaselyEventPropertySubscription = {
+export type PLYEventPropertySubscription = {
   plan?: string;
   product?: string;
 };
 
-export type PurchaselyEvent = {
-  name: PurchaselyEventsNames;
-  properties: PurchaselyEventProperties;
+export type PLYEvent = {
+  name: PLYEventName;
+  properties: PLYEventProperties;
 };
 
-export type PurchaselyEventProperties = {
+export type PLYEventProperties = {
   sdk_version: string;
-  event_name: PurchaselyEventsNames;
+  event_name: PLYEventName;
   event_created_at_ms: number;
   event_created_at: string;
   displayed_presentation?: string;
   placement_id?: string;
   user_id?: string;
   anonymous_user_id?: string;
-  purchasable_plans?: PurchaselyEventPropertyPlan[];
+  purchasable_plans?: PLYEventPropertyPlan[];
   deeplink_identifier?: string;
   source_identifier?: string;
   selected_plan?: string;
@@ -238,7 +237,7 @@ export type PurchaselyEventProperties = {
   selected_presentation?: string;
   previous_selected_presentation?: string;
   link_identifier?: string;
-  carousels?: PurchaselyEventPropertyCarousel[];
+  carousels?: PLYEventPropertyCarousel[];
   language?: string;
   device?: string;
   os_version?: string;
@@ -249,7 +248,7 @@ export type PurchaselyEventProperties = {
   plan?: string;
   selected_product?: string;
   plan_change_type?: string;
-  running_subscriptions?: PurchaselyEventPropertySubscription[];
+  running_subscriptions?: PLYEventPropertySubscription[];
   event_created_at_ms_original?: number;
   event_created_at_original?: string;
   is_fallback_presentation?: boolean;
@@ -334,17 +333,4 @@ export type PLYPresentationPlan = {
 
 export type PLYPresentationMetadata = {
   [key: string]: string | number | boolean;
-};
-
-export type PurchaselyPresentation = {
-  id: string;
-  placementId?: string | null;
-  audienceId?: string | null;
-  abTestId?: string | null;
-  abTestVariantId?: string | null;
-  language?: string | null;
-  type?: PLYPresentationType | null;
-  plans?: PLYPresentationPlan[] | null;
-  metadata: PLYPresentationMetadata;
-  height: number | null;
 };

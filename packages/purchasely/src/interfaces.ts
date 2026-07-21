@@ -89,7 +89,7 @@ export interface UserAttributesParameters {
   legalBasis?: PLYDataProcessingLegalBasis
 }
 
-export interface DynamicOffering {
+export interface PLYDynamicOffering {
   reference: string;
   planVendorId: string;
   offerVendorId?: string | null;

@@ -2,7 +2,7 @@ import { NativeEventEmitter, NativeModules } from 'react-native';
 
 import { PLYPresentationView } from './components/PLYPresentationView';
 import type {
-  DynamicOffering,
+  PLYDynamicOffering,
   PurchasePlanParameters,
   SignPromotionalOfferParameters,
   UserAttributesParameters,
@@ -17,12 +17,12 @@ import {
   PLYUserAttributeType,
 } from './enums';
 import type {
-  PurchaselyEvent,
-  PurchaselyPlan,
-  PurchaselyProduct,
-  PurchaselyPromotionalOfferSignature,
-  PurchaselySubscription,
-  PurchaselyUserAttribute,
+  PLYEvent,
+  PLYPlan,
+  PLYProduct,
+  PLYPromotionalOfferSignature,
+  PLYSubscription,
+  PLYUserAttribute,
 } from './types';
 import {
   PLYPresentationBuilder,
@@ -63,7 +63,7 @@ function setUserAttributeWithDate(key: string, value: Date, legalBasis?: PLYData
   return NativeModules.Purchasely.setUserAttributeWithDate(key, dateAsString, legalBasis);
 }
 
-type EventListenerCallback = (event: PurchaselyEvent) => void;
+type EventListenerCallback = (event: PLYEvent) => void;
 
 const addEventListener = (callback: EventListenerCallback) => {
   return PurchaselyEventEmitter.addListener('PURCHASELY_EVENTS', callback);
@@ -89,7 +89,7 @@ const listenToPurchases = addPurchasedListener;
 const stopListeningToPurchases = removePurchasedListener;
 
 type UserAttributeSetListenerCallback = (
-  userAttribute: PurchaselyUserAttribute
+  userAttribute: PLYUserAttribute
 ) => void;
 
 const addUserAttributeSetListener = (
@@ -108,7 +108,7 @@ const removeUserAttributeSetListener = () => {
 };
 
 type UserAttributeRemovedListenerCallback = (
-  userAttribute: PurchaselyUserAttribute
+  userAttribute: PLYUserAttribute
 ) => void;
 
 const addUserAttributeRemovedListener = (
@@ -171,7 +171,7 @@ const purchaseWithPlanVendorId = ({
   planVendorId,
   offerId = null,
   contentId = null,
-}: PurchasePlanParameters): Promise<PurchaselyPlan> => {
+}: PurchasePlanParameters): Promise<PLYPlan> => {
   return NativeModules.Purchasely.purchaseWithPlanVendorId(
     planVendorId,
     offerId,
@@ -190,7 +190,7 @@ const purchaseWithPlanVendorId = ({
 const signPromotionalOffer = ({
   storeProductId,
   storeOfferId,
-}: SignPromotionalOfferParameters): Promise<PurchaselyPromotionalOfferSignature | null> => {
+}: SignPromotionalOfferParameters): Promise<PLYPromotionalOfferSignature | null> => {
   return NativeModules.Purchasely.signPromotionalOffer(
     storeProductId,
     storeOfferId
@@ -240,17 +240,17 @@ const setAttribute = (attribute: Attributes, value: string): void => {
   return NativeModules.Purchasely.setAttribute(attribute, value);
 };
 
-const allProducts = (): Promise<PurchaselyProduct[]> => {
+const allProducts = (): Promise<PLYProduct[]> => {
   return NativeModules.Purchasely.allProducts();
 };
 
 const productWithIdentifier = (
   vendorId: string
-): Promise<PurchaselyProduct> => {
+): Promise<PLYProduct> => {
   return NativeModules.Purchasely.productWithIdentifier(vendorId);
 };
 
-const planWithIdentifier = (vendorId: string): Promise<PurchaselyPlan> => {
+const planWithIdentifier = (vendorId: string): Promise<PLYPlan> => {
   return NativeModules.Purchasely.planWithIdentifier(vendorId);
 };
 
@@ -262,11 +262,11 @@ const silentRestoreAllProducts = (): Promise<boolean> => {
   return NativeModules.Purchasely.silentRestoreAllProducts();
 };
 
-const userSubscriptions = ({ invalidateCache = false }: { invalidateCache?: boolean | null } = {}): Promise<PurchaselySubscription[]> => {
+const userSubscriptions = ({ invalidateCache = false }: { invalidateCache?: boolean | null } = {}): Promise<PLYSubscription[]> => {
   return NativeModules.Purchasely.userSubscriptions(invalidateCache);
 };
 
-const userSubscriptionsHistory = (): Promise<PurchaselySubscription[]> => {
+const userSubscriptionsHistory = (): Promise<PLYSubscription[]> => {
   return NativeModules.Purchasely.userSubscriptionsHistory();
 };
 
@@ -416,7 +416,7 @@ const getBuiltInAttribute = (key: string): Promise<any> => {
   return NativeModules.Purchasely.getBuiltInAttribute(key);
 };
 
-const setDynamicOffering = (offering: DynamicOffering): Promise<boolean> => {
+const setDynamicOffering = (offering: PLYDynamicOffering): Promise<boolean> => {
   return NativeModules.Purchasely.setDynamicOffering(
     offering.reference,
     offering.planVendorId,
@@ -425,7 +425,7 @@ const setDynamicOffering = (offering: DynamicOffering): Promise<boolean> => {
   );
 };
 
-const getDynamicOfferings = (): Promise<DynamicOffering[]> => {
+const getDynamicOfferings = (): Promise<PLYDynamicOffering[]> => {
   return NativeModules.Purchasely.getDynamicOfferings();
 };
 

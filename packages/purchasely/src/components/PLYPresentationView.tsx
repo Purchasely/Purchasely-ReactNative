@@ -9,7 +9,7 @@ import {
 
 import type { PLYPresentationRequest } from '../presentation';
 import type { ProductResult } from '../enums';
-import type { PurchaselyPlan } from '../types';
+import type { PLYPlan } from '../types';
 
 const PurchaselyView = requireNativeComponent('PurchaselyView');
 
@@ -21,7 +21,7 @@ const PurchaselyView = requireNativeComponent('PurchaselyView');
  */
 export interface PLYPresentationViewResult {
   result: ProductResult;
-  plan: PurchaselyPlan | null;
+  plan: PLYPlan | null;
 }
 
 interface PLYPresentationViewProps {

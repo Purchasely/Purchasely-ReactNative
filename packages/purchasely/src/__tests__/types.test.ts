@@ -15,18 +15,17 @@ jest.mock('react-native', () => ({
 }))
 
 import type {
-    PurchaselyPlan,
-    PurchaselyProduct,
-    PurchaselySubscription,
-    PurchaselyPromotionalOfferSignature,
-    PurchaselyUserAttribute,
-    PurchaselyEvent,
-    PurchaselyEventProperties,
-    PurchaselyPresentation,
+    PLYPlan,
+    PLYProduct,
+    PLYSubscription,
+    PLYPromotionalOfferSignature,
+    PLYUserAttribute,
+    PLYEvent,
+    PLYEventProperties,
     PLYPresentationPlan,
     PLYPresentationMetadata,
-    PurchaselyOffer,
-    PurchaselySubscriptionOffer,
+    PLYPromoOffer,
+    PLYSubscriptionOffer,
     PLYCommitmentInfo,
     PLYCommitmentProgress,
     PLYBillingPlanType,
@@ -36,7 +35,6 @@ import type { PLYPurchasePayload } from '../presentationTypes'
 import {
     PlanType,
     SubscriptionSource,
-    PLYPresentationType,
     PLYUserAttributeSource,
     PLYUserAttributeType,
     PLYWebCheckoutProvider,
@@ -45,9 +43,9 @@ import {
 import { normalizePlan, normalizePlanType } from '../presentationTypes'
 
 describe('Purchasely Types', () => {
-    describe('PurchaselyPlan', () => {
+    describe('PLYPlan', () => {
         it('should accept valid plan object', () => {
-            const plan: PurchaselyPlan = {
+            const plan: PLYPlan = {
                 vendorId: 'monthly-plan',
                 productId: 'product-123',
                 name: 'Monthly Subscription',
@@ -72,7 +70,7 @@ describe('Purchasely Types', () => {
         })
 
         it('should handle consumable plan type', () => {
-            const plan: PurchaselyPlan = {
+            const plan: PLYPlan = {
                 vendorId: 'coins-100',
                 productId: 'coins-product',
                 name: '100 Coins',
@@ -95,9 +93,9 @@ describe('Purchasely Types', () => {
         })
     })
 
-    describe('PurchaselyProduct', () => {
+    describe('PLYProduct', () => {
         it('should accept valid product object', () => {
-            const product: PurchaselyProduct = {
+            const product: PLYProduct = {
                 name: 'Premium Subscription',
                 vendorId: 'premium-product',
                 plans: [
@@ -128,7 +126,7 @@ describe('Purchasely Types', () => {
         })
 
         it('should handle product with empty plans array', () => {
-            const product: PurchaselyProduct = {
+            const product: PLYProduct = {
                 name: 'Empty Product',
                 vendorId: 'empty-product',
                 plans: [],
@@ -138,9 +136,9 @@ describe('Purchasely Types', () => {
         })
     })
 
-    describe('PurchaselySubscription', () => {
+    describe('PLYSubscription', () => {
         it('should accept valid subscription object', () => {
-            const subscription: PurchaselySubscription = {
+            const subscription: PLYSubscription = {
                 purchaseToken: 'token-123',
                 subscriptionSource: SubscriptionSource.APPLE_APP_STORE,
                 nextRenewalDate: '2024-02-15T12:00:00Z',
@@ -179,7 +177,7 @@ describe('Purchasely Types', () => {
         // PLYSubscription.toMap() providing them. Reactivated as optional
         // (Android-only; iOS's PLYSubscription+Hybrid.m never emits them).
         it('should accept the Android-only revenue/duration fields when present', () => {
-            const subscription: PurchaselySubscription = {
+            const subscription: PLYSubscription = {
                 purchaseToken: 'token-123',
                 subscriptionSource: SubscriptionSource.GOOGLE_PLAY_STORE,
                 nextRenewalDate: '2024-02-15T12:00:00Z',
@@ -220,7 +218,7 @@ describe('Purchasely Types', () => {
         })
 
         it('should accept a subscription omitting the Android-only fields (iOS shape)', () => {
-            const subscription: PurchaselySubscription = {
+            const subscription: PLYSubscription = {
                 purchaseToken: 'token-123',
                 subscriptionSource: SubscriptionSource.APPLE_APP_STORE,
                 nextRenewalDate: '2024-02-15T12:00:00Z',
@@ -257,7 +255,7 @@ describe('Purchasely Types', () => {
     // Apple-only (iOS 26.4+) "monthly subscription with 12-month commitment".
     // Structured data on the plan / subscription — distinct from the
     // `billing_plan_type` / `commitment` / `commitment_progress` *event* strings
-    // in PurchaselyEventProperties.
+    // in PLYEventProperties.
     describe('PLYCommitmentInfo (Apple-only)', () => {
         const commitmentInfo: PLYCommitmentInfo[] = [
             {
@@ -270,7 +268,7 @@ describe('Purchasely Types', () => {
             },
         ]
 
-        const committedPlan: PurchaselyPlan = {
+        const committedPlan: PLYPlan = {
             vendorId: 'monthly-12mo',
             productId: 'product-123',
             name: 'Monthly (12-month commitment)',
@@ -300,7 +298,7 @@ describe('Purchasely Types', () => {
         })
 
         it('is optional (absent on Android and non-committed Apple plans)', () => {
-            const plainPlan: PurchaselyPlan = {
+            const plainPlan: PLYPlan = {
                 ...committedPlan,
                 commitmentInfo: undefined,
             }
@@ -326,7 +324,7 @@ describe('Purchasely Types', () => {
     })
 
     describe('PLYCommitmentProgress (Apple-only)', () => {
-        const baseSubscription: PurchaselySubscription = {
+        const baseSubscription: PLYSubscription = {
             purchaseToken: 'token-123',
             subscriptionSource: SubscriptionSource.APPLE_APP_STORE,
             nextRenewalDate: '2026-08-20T12:00:00Z',
@@ -363,7 +361,7 @@ describe('Purchasely Types', () => {
                 commitmentExpiresDate: '2026-07-20T12:00:00Z',
                 commitmentPrice: 9.99,
             }
-            const subscription: PurchaselySubscription = {
+            const subscription: PLYSubscription = {
                 ...baseSubscription,
                 commitmentProgress,
             }
@@ -377,7 +375,7 @@ describe('Purchasely Types', () => {
 
         it('is optional / nullable (absent on Android and non-committed subs)', () => {
             expect(baseSubscription.commitmentProgress).toBeUndefined()
-            const nulled: PurchaselySubscription = {
+            const nulled: PLYSubscription = {
                 ...baseSubscription,
                 commitmentProgress: null,
             }
@@ -385,9 +383,9 @@ describe('Purchasely Types', () => {
         })
     })
 
-    describe('PurchaselyPromotionalOfferSignature', () => {
+    describe('PLYPromotionalOfferSignature', () => {
         it('should accept valid signature object', () => {
-            const signature: PurchaselyPromotionalOfferSignature = {
+            const signature: PLYPromotionalOfferSignature = {
                 planVendorId: 'plan-123',
                 identifier: 'offer-id',
                 signature: 'base64-signature',
@@ -401,9 +399,9 @@ describe('Purchasely Types', () => {
         })
     })
 
-    describe('PurchaselyUserAttribute', () => {
+    describe('PLYUserAttribute', () => {
         it('should accept user attribute with all fields', () => {
-            const attr: PurchaselyUserAttribute = {
+            const attr: PLYUserAttribute = {
                 key: 'name',
                 value: 'John Doe',
                 type: PLYUserAttributeType.STRING,
@@ -416,7 +414,7 @@ describe('Purchasely Types', () => {
         })
 
         it('should accept user attribute with optional fields null', () => {
-            const attr: PurchaselyUserAttribute = {
+            const attr: PLYUserAttribute = {
                 key: 'counter',
                 value: null,
                 type: null,
@@ -427,59 +425,9 @@ describe('Purchasely Types', () => {
         })
     })
 
-    describe('PurchaselyPresentation', () => {
-        it('should accept valid presentation object', () => {
-            const presentation: PurchaselyPresentation = {
-                id: 'pres-123',
-                placementId: 'placement-123',
-                audienceId: 'audience-123',
-                abTestId: 'ab-123',
-                abTestVariantId: 'variant-a',
-                language: 'en',
-                type: PLYPresentationType.NORMAL,
-                plans: [
-                    {
-                        planVendorId: 'plan-123',
-                        storeProductId: 'store-product-123',
-                        basePlanId: 'base-plan',
-                        offerId: 'offer-123',
-                    },
-                ],
-                metadata: {
-                    title: 'Premium Access',
-                    showDiscount: true,
-                    discountPercent: 20,
-                },
-                height: 500,
-            }
-
-            expect(presentation.id).toBe('pres-123')
-            expect(presentation.type).toBe(PLYPresentationType.NORMAL)
-            expect(presentation.metadata.title).toBe('Premium Access')
-        })
-
-        it('should accept presentation with null optional fields', () => {
-            const presentation: PurchaselyPresentation = {
-                id: 'pres-123',
-                placementId: null,
-                audienceId: null,
-                abTestId: null,
-                abTestVariantId: null,
-                language: null,
-                type: null,
-                plans: null,
-                metadata: {},
-                height: null,
-            }
-
-            expect(presentation.placementId).toBeNull()
-            expect(presentation.height).toBeNull()
-        })
-    })
-
-    describe('PurchaselyEvent', () => {
+    describe('PLYEvent', () => {
         it('should accept valid event object', () => {
-            const event: PurchaselyEvent = {
+            const event: PLYEvent = {
                 name: 'PURCHASE_TAPPED',
                 properties: {
                     sdk_version: '5.7.3',
@@ -497,7 +445,7 @@ describe('Purchasely Types', () => {
         })
 
         it('should accept the extended event properties emitted by the native SDKs', () => {
-            const properties: PurchaselyEventProperties = {
+            const properties: PLYEventProperties = {
                 sdk_version: '5.7.3',
                 event_name: 'PURCHASE_TAPPED',
                 event_created_at_ms: 1705315200000,
@@ -594,9 +542,9 @@ describe('Purchasely Types', () => {
         })
     })
 
-    describe('PurchaselyOffer', () => {
+    describe('PLYPromoOffer', () => {
         it('should accept valid offer', () => {
-            const offer: PurchaselyOffer = {
+            const offer: PLYPromoOffer = {
                 vendorId: 'offer-123',
                 storeOfferId: 'store-offer-123',
             }
@@ -605,7 +553,7 @@ describe('Purchasely Types', () => {
         })
 
         it('should accept offer with null fields', () => {
-            const offer: PurchaselyOffer = {
+            const offer: PLYPromoOffer = {
                 vendorId: null,
                 storeOfferId: null,
             }
@@ -614,9 +562,9 @@ describe('Purchasely Types', () => {
         })
     })
 
-    describe('PurchaselySubscriptionOffer', () => {
+    describe('PLYSubscriptionOffer', () => {
         it('should accept valid subscription offer', () => {
-            const offer: PurchaselySubscriptionOffer = {
+            const offer: PLYSubscriptionOffer = {
                 subscriptionId: 'sub-123',
                 basePlanId: 'base-plan',
                 offerToken: 'token-123',
@@ -627,7 +575,7 @@ describe('Purchasely Types', () => {
         })
 
         it('should accept subscription offer with null optional fields', () => {
-            const offer: PurchaselySubscriptionOffer = {
+            const offer: PLYSubscriptionOffer = {
                 subscriptionId: 'sub-123',
                 basePlanId: null,
                 offerToken: null,
@@ -641,7 +589,7 @@ describe('Purchasely Types', () => {
 
 describe('Purchasely Event Names', () => {
     it('should support all event name types', () => {
-        const eventNames: Array<PurchaselyEvent['name']> = [
+        const eventNames: Array<PLYEvent['name']> = [
             'APP_INSTALLED',
             'APP_CONFIGURED',
             'APP_UPDATED',
