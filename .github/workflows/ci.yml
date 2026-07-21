@@ -136,11 +136,24 @@ jobs:
             -configuration Debug \
             -destination 'generic/platform=iOS' \
             -derivedDataPath example/ios/DerivedData \
-          CODE_SIGNING_ALLOWED=NO \
-          build
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Build example for iOS
+        run: |
+          xcodebuild \
+            -workspace example/ios/example.xcworkspace \
+            -scheme example \
+            -configuration Debug \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath example/ios/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            build
 
   build-rn-0-86-android:
     runs-on: ubuntu-latest
+    env:
+      GRADLE_FLAGS: "--build-cache --parallel --configuration-cache --configuration-cache-problems=warn"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -170,9 +183,23 @@ jobs:
       - name: Install Android SDK build requirements
         run: sdkmanager "platforms;android-36" "build-tools;35.0.0" "ndk;27.1.12297006"
 
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+        with:
+          gradle-version: wrapper
+          cache-read-only: false
+
+      - name: Cache Android build cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/build-cache
+          key: android-build-cache-${{ runner.os }}-rn086-${{ hashFiles('test-projects/rn-purchasely-test/android/**/*.gradle*', 'test-projects/rn-purchasely-test/android/**/gradle-wrapper.properties') }}
+          restore-keys: |
+            android-build-cache-${{ runner.os }}-rn086-
+
       - name: Build RN 0.86 test project for Android
         working-directory: test-projects/rn-purchasely-test/android
-        run: ./gradlew :app:assembleDebug
+        run: ./gradlew :app:assembleDebug $GRADLE_FLAGS
 
   build-rn-0-86-ios:
     runs-on: macos-latest
@@ -203,16 +230,5 @@ jobs:
             -configuration Debug \
             -destination 'generic/platform=iOS' \
             -derivedDataPath DerivedData \
-            CODE_SIGNING_ALLOWED=NO \
-            build
-
-      - name: Build example for iOS
-        run: |
-          xcodebuild \
-            -workspace example/ios/example.xcworkspace \
-            -scheme example \
-            -configuration Debug \
-            -destination 'generic/platform=iOS' \
-            -derivedDataPath example/ios/DerivedData \
             CODE_SIGNING_ALLOWED=NO \
             build
