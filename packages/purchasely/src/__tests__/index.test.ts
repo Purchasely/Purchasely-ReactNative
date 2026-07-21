@@ -550,6 +550,20 @@ describe('Purchasely SDK', () => {
             expect(mockedPurchasely.silentRestoreAllProducts).toHaveBeenCalled()
         })
 
+        it('should resolve restoreAllProducts before the timeout elapses', async () => {
+            const result = await Purchasely.restoreAllProducts({ timeout: 5000 })
+            expect(result).toBe(true)
+        })
+
+        it('should reject restoreAllProducts when the native call outlasts the timeout', async () => {
+            mockedPurchasely.restoreAllProducts.mockReturnValueOnce(
+                new Promise(() => {}) // never resolves — simulates a hung store call
+            )
+            await expect(
+                Purchasely.restoreAllProducts({ timeout: 20 })
+            ).rejects.toThrow(/timed out after 20ms/)
+        })
+
         it('should sign promotional offer', async () => {
             const result = await Purchasely.signPromotionalOffer({
                 storeProductId: 'product-123',
@@ -605,7 +619,12 @@ describe('Purchasely SDK', () => {
 
         it('should get user subscriptions history', async () => {
             await Purchasely.userSubscriptionsHistory()
-            expect(mockedPurchasely.userSubscriptionsHistory).toHaveBeenCalled()
+            expect(mockedPurchasely.userSubscriptionsHistory).toHaveBeenCalledWith(false)
+        })
+
+        it('should get user subscriptions history with cache invalidation', async () => {
+            await Purchasely.userSubscriptionsHistory({ invalidateCache: true })
+            expect(mockedPurchasely.userSubscriptionsHistory).toHaveBeenCalledWith(true)
         })
 
         it('should track subscription content consumed', () => {

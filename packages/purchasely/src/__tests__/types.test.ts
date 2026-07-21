@@ -62,6 +62,11 @@ describe('Purchasely Types', () => {
                 introDuration: '1 month',
                 introPeriod: 'P1M',
                 hasFreeTrial: false,
+                hasOfferPrice: false,
+                offerPrice: '',
+                offerAmount: 0,
+                offerDuration: '',
+                offerPeriod: '',
             }
 
             expect(plan.vendorId).toBe('monthly-plan')
@@ -87,6 +92,11 @@ describe('Purchasely Types', () => {
                 introDuration: '',
                 introPeriod: '',
                 hasFreeTrial: false,
+                hasOfferPrice: false,
+                offerPrice: '',
+                offerAmount: 0,
+                offerDuration: '',
+                offerPeriod: '',
             }
 
             expect(plan.type).toBe(PlanType.PLAN_TYPE_CONSUMABLE)
@@ -116,6 +126,11 @@ describe('Purchasely Types', () => {
                         introDuration: '',
                         introPeriod: '',
                         hasFreeTrial: true,
+                        hasOfferPrice: false,
+                        offerPrice: '',
+                        offerAmount: 0,
+                        offerDuration: '',
+                        offerPeriod: '',
                     },
                 ],
             }
@@ -160,6 +175,11 @@ describe('Purchasely Types', () => {
                     introDuration: '',
                     introPeriod: '',
                     hasFreeTrial: false,
+                    hasOfferPrice: false,
+                    offerPrice: '',
+                    offerAmount: 0,
+                    offerDuration: '',
+                    offerPeriod: '',
                 },
                 product: {
                     name: 'Premium',
@@ -199,6 +219,11 @@ describe('Purchasely Types', () => {
                     introDuration: '',
                     introPeriod: '',
                     hasFreeTrial: false,
+                    hasOfferPrice: false,
+                    offerPrice: '',
+                    offerAmount: 0,
+                    offerDuration: '',
+                    offerPeriod: '',
                 },
                 product: {
                     name: 'Premium',
@@ -240,6 +265,11 @@ describe('Purchasely Types', () => {
                     introDuration: '',
                     introPeriod: '',
                     hasFreeTrial: false,
+                    hasOfferPrice: false,
+                    offerPrice: '',
+                    offerAmount: 0,
+                    offerDuration: '',
+                    offerPeriod: '',
                 },
                 product: {
                     name: 'Premium',
@@ -285,6 +315,11 @@ describe('Purchasely Types', () => {
             introDuration: '',
             introPeriod: '',
             hasFreeTrial: false,
+            hasOfferPrice: false,
+            offerPrice: '',
+            offerAmount: 0,
+            offerDuration: '',
+            offerPeriod: '',
             commitmentInfo,
         }
 
@@ -346,6 +381,11 @@ describe('Purchasely Types', () => {
                 introDuration: '',
                 introPeriod: '',
                 hasFreeTrial: false,
+                hasOfferPrice: false,
+                offerPrice: '',
+                offerAmount: 0,
+                offerDuration: '',
+                offerPeriod: '',
             },
             product: {
                 name: 'Premium',

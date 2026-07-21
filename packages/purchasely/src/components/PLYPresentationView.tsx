@@ -86,9 +86,7 @@ export const PLYPresentationView: React.FC<PLYPresentationViewProps> = ({
         );
 
        const viewId = findNodeHandle(ref.current);
-       console.log('### viewId', viewId);
        if (viewId) {
-         console.log('### creating Fragment');
          createFragment(viewId);
        }
      }

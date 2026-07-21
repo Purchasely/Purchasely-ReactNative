@@ -52,6 +52,8 @@ export type PLYCommitmentProgress = {
 export type PLYPlan = {
   vendorId: string;
   productId: string;
+  /** Google Play base plan id. `null` on the App Store (no base-plan concept). */
+  basePlanId?: string | null;
   name: string;
   type: PlanType;
   amount: number;
@@ -66,6 +68,16 @@ export type PLYPlan = {
   introDuration: string;
   introPeriod: string;
   hasFreeTrial: boolean;
+  /** Whether the plan carries a promotional offer price. */
+  hasOfferPrice: boolean;
+  /** Localized promotional offer price (empty when {@link hasOfferPrice} is false). */
+  offerPrice: string;
+  /** Raw promotional offer amount. */
+  offerAmount: number;
+  /** Promotional offer duration (ISO-8601, e.g. `P1M`). */
+  offerDuration: string;
+  /** Promotional offer period (ISO-8601). */
+  offerPeriod: string;
   /**
    * Commitment installment details (Apple-only, iOS 26.4+). Absent on Android
    * and on plans without a multi-period commitment.
@@ -76,6 +88,7 @@ export type PLYPlan = {
 export type PLYPromoOffer = {
   vendorId?: string | null;
   storeOfferId?: string | null;
+  publicId?: string | null;
 };
 
 export type PLYSubscriptionOffer = {
@@ -178,7 +191,15 @@ export type PLYEventName =
   | 'SUBSCRIPTIONS_TRANSFERRED'
   | 'USER_LOGGED_IN'
   | 'USER_LOGGED_OUT'
-  | 'SUBSCRIPTION_CONTENT_USED';
+  | 'SUBSCRIPTION_CONTENT_USED'
+  | 'IN_APP_RENEWED'
+  | 'PLACEMENT_OPENED'
+  | 'PURCHASE_FROM_STORE_TAPPED'
+  | 'STORE_PRODUCT_FETCH_FAILED'
+  | 'WEB_CHECKOUT_OPENED_IN_WEB_BROWSER'
+  | 'WEB_CHECKOUT_ERROR'
+  | 'WEB_CHECKOUT_TAPPED'
+  | 'WEB_CHECKOUT_TIMED_OUT';
 
 export type PLYEventPropertyPlan = {
   type?: string;

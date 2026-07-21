@@ -26,6 +26,7 @@ interface StartBuilderState {
     logLevel: LogLevelString;
     allowDeeplink?: boolean | null;
     allowCampaigns?: boolean | null;
+    automaticDeeplinkHandling?: boolean | null;
     deeplink?: string | null;
     androidStores: AndroidStore[];
     storekitVersion: StorekitVersion;
@@ -86,6 +87,15 @@ export class PurchaselyBuilder {
 
     allowCampaigns(allow: boolean): this {
         this.state.allowCampaigns = allow;
+        return this;
+    }
+
+    /**
+     * Android-only. Toggle the SDK's automatic deeplink interception. When
+     * omitted, the native SDK keeps its default. Ignored on iOS.
+     */
+    automaticDeeplinkHandling(enabled: boolean): this {
+        this.state.automaticDeeplinkHandling = enabled;
         return this;
     }
 
@@ -155,6 +165,12 @@ export class PurchaselyBuilder {
         }
         if (this.state.allowCampaigns !== undefined && this.state.allowCampaigns !== null) {
             startOptions.allowCampaigns = this.state.allowCampaigns;
+        }
+        if (
+            this.state.automaticDeeplinkHandling !== undefined &&
+            this.state.automaticDeeplinkHandling !== null
+        ) {
+            startOptions.automaticDeeplinkHandling = this.state.automaticDeeplinkHandling;
         }
         if (Object.keys(startOptions).length > 0) {
             if (NativeModules.Purchasely.applyStartOptions) {

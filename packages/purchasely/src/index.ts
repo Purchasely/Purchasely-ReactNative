@@ -254,20 +254,55 @@ const planWithIdentifier = (vendorId: string): Promise<PLYPlan> => {
   return NativeModules.Purchasely.planWithIdentifier(vendorId);
 };
 
-const restoreAllProducts = (): Promise<boolean> => {
-  return NativeModules.Purchasely.restoreAllProducts();
+// Client-side timeout: the native restore call has no timeout of its own, so
+// (matching Flutter) we race it against a rejection. If the store never
+// resolves — a known StoreKit / Play Billing failure mode — the promise fails
+// instead of hanging forever. `timeout` is in milliseconds; omit it to wait
+// indefinitely.
+const withTimeout = <T>(
+  promise: Promise<T>,
+  timeout?: number | null,
+  label = 'restoreAllProducts'
+): Promise<T> => {
+  if (timeout == null) return promise;
+  let timer: ReturnType<typeof setTimeout>;
+  const guard = new Promise<T>((_resolve, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`Purchasely.${label} timed out after ${timeout}ms`)),
+      timeout
+    );
+  });
+  return Promise.race([promise, guard]).finally(() => clearTimeout(timer)) as Promise<T>;
 };
 
-const silentRestoreAllProducts = (): Promise<boolean> => {
-  return NativeModules.Purchasely.silentRestoreAllProducts();
+const restoreAllProducts = ({
+  timeout,
+}: { timeout?: number | null } = {}): Promise<boolean> => {
+  return withTimeout(
+    NativeModules.Purchasely.restoreAllProducts(),
+    timeout,
+    'restoreAllProducts'
+  );
+};
+
+const silentRestoreAllProducts = ({
+  timeout,
+}: { timeout?: number | null } = {}): Promise<boolean> => {
+  return withTimeout(
+    NativeModules.Purchasely.silentRestoreAllProducts(),
+    timeout,
+    'silentRestoreAllProducts'
+  );
 };
 
 const userSubscriptions = ({ invalidateCache = false }: { invalidateCache?: boolean | null } = {}): Promise<PLYSubscription[]> => {
   return NativeModules.Purchasely.userSubscriptions(invalidateCache);
 };
 
-const userSubscriptionsHistory = (): Promise<PLYSubscription[]> => {
-  return NativeModules.Purchasely.userSubscriptionsHistory();
+const userSubscriptionsHistory = ({
+  invalidateCache = false,
+}: { invalidateCache?: boolean | null } = {}): Promise<PLYSubscription[]> => {
+  return NativeModules.Purchasely.userSubscriptionsHistory(invalidateCache);
 };
 
 const handleDeeplink = (deeplink: string | null): Promise<boolean> => {

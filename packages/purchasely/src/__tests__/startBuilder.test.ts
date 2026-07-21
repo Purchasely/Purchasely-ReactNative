@@ -167,6 +167,13 @@ describe('PurchaselyBuilder', () => {
             await PurchaselyBuilder.apiKey('api-key').allowCampaigns(true).start()
             expect(mockNative.readyToOpenDeeplink).not.toHaveBeenCalled()
         })
+
+        it('forwards automaticDeeplinkHandling (Android-only) through applyStartOptions', async () => {
+            await PurchaselyBuilder.apiKey('api-key').automaticDeeplinkHandling(false).start()
+            expect(mockNative.applyStartOptions).toHaveBeenCalledWith({
+                automaticDeeplinkHandling: false,
+            })
+        })
     })
 
     describe('handleDeeplink() — cold-start replay', () => {
