@@ -1614,17 +1614,30 @@ RCT_EXPORT_METHOD(goBackToPreviousScreen:(NSString *)requestId) {
 
 #pragma mark - Custom Screens
 
-RCT_EXPORT_METHOD(setCustomScreenProvider:(NSString *)componentName) {
+RCT_EXPORT_METHOD(setCustomScreenProvider:(NSString *)componentName
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject) {
     if (componentName.length == 0) {
         RCTLogWarn(@"[Purchasely] Custom Screen component name cannot be blank");
+        reject(@"custom_screen_provider_invalid",
+               @"Custom Screen component name cannot be blank",
+               nil);
         return;
     }
     dispatch_async(dispatch_get_main_queue(), ^{
-        PLYRNCustomScreenDelegate *delegate = [PLYRNCustomScreenDelegate new];
-        delegate.module = self;
-        delegate.componentName = componentName;
-        kRNCustomScreenDelegate = delegate;
-        [Purchasely setCustomScreenViewControllerDelegate:delegate];
+        @try {
+            PLYRNCustomScreenDelegate *delegate = [PLYRNCustomScreenDelegate new];
+            delegate.module = self;
+            delegate.componentName = componentName;
+            kRNCustomScreenDelegate = delegate;
+            [Purchasely setCustomScreenViewControllerDelegate:delegate];
+            resolve(nil);
+        } @catch (NSException *exception) {
+            NSError *error = [NSError errorWithDomain:@"PurchaselyCustomScreen"
+                                                 code:1
+                                             userInfo:@{NSLocalizedDescriptionKey: exception.reason ?: @"Unable to register Custom Screen provider"}];
+            reject(@"custom_screen_provider_failure", error.localizedDescription, error);
+        }
     });
 }
 

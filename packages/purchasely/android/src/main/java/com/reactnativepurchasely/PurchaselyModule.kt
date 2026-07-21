@@ -855,26 +855,37 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
 
   /** Register a React component as the provider for native Custom Screen flow steps. */
   @ReactMethod
-  fun setCustomScreenProvider(componentName: String) {
+  fun setCustomScreenProvider(componentName: String, promise: Promise) {
     if (componentName.isBlank()) {
       PLYLogger.w("[Purchasely] Custom Screen component name cannot be blank")
+      promise.reject(
+        "custom_screen_provider_invalid",
+        "Custom Screen component name cannot be blank"
+      )
       return
     }
     UiThreadUtil.runOnUiThread {
-      Purchasely.setCustomScreenProvider(object : PLYCustomScreenProvider {
-        override fun onCustomScreenRequested(presentation: PLYPresentation): PLYCustomScreen {
-          val customScreenId = "ply_cs_${UUID.randomUUID()}"
-          customScreenPresentations[customScreenId] = presentation
-          val presentationMap = presentation.toRNMap(customScreenId)
-          return PLYCustomScreen.Fragment(
-            PurchaselyCustomScreenFragment.newInstance(
-              componentName,
-              customScreenId,
-              Arguments.toBundle(presentationMap) ?: Bundle()
+      runCatching {
+        Purchasely.setCustomScreenProvider(object : PLYCustomScreenProvider {
+          override fun onCustomScreenRequested(presentation: PLYPresentation): PLYCustomScreen {
+            val customScreenId = "ply_cs_${UUID.randomUUID()}"
+            customScreenPresentations[customScreenId] = presentation
+            val presentationMap = presentation.toRNMap(customScreenId)
+            return PLYCustomScreen.Fragment(
+              PurchaselyCustomScreenFragment.newInstance(
+                componentName,
+                customScreenId,
+                Arguments.toBundle(presentationMap) ?: Bundle()
+              )
             )
-          )
-        }
-      })
+          }
+        })
+      }.onSuccess {
+        promise.resolve(null)
+      }.onFailure { error ->
+        PLYLogger.w("[Purchasely] Unable to register Custom Screen provider: ${error.message}")
+        promise.reject("custom_screen_provider_failure", error)
+      }
     }
   }
 

@@ -31,7 +31,11 @@ export const HomeScreen: React.FC<NativeStackScreenProps<any>> = ({
 
     // Boutons d'exemples
     const buttons = [
-        { title: 'Display PLYPresentation', onPress: () => onPressPresentation() },
+        {
+            title: 'Display PLYPresentation',
+            onPress: () => onPressPresentation(),
+        },
+        { title: 'Display BYOS flow (byos)', onPress: () => onPressByosFlow() },
         { title: 'Preload PLYPresentation', onPress: () => onPressPreload() },
         { title: 'Display Nested View', onPress: () => onPressNestedView() },
         {
@@ -82,6 +86,20 @@ export const HomeScreen: React.FC<NativeStackScreenProps<any>> = ({
             }
         } catch (e) {
             console.error(e)
+        }
+    }
+
+    const onPressByosFlow = async () => {
+        try {
+            // Placement `byos` displays `flow_byos`. Its second step is the
+            // custom screen `byos`, with `continue`, `back`, and `close_all`.
+            const request = PLYPresentationBuilder.placement('byos').build()
+            currentRequest.current = request
+
+            const outcome = await request.display({ type: 'fullScreen' })
+            console.log('[BYOS] flow_byos dismissed', outcome)
+        } catch (e) {
+            console.error('[BYOS] Unable to display placement "byos"', e)
         }
     }
 

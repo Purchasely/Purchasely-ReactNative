@@ -119,7 +119,7 @@ AppRegistry.registerComponent(
 )
 
 // after await Purchasely.builder(...).start()
-Purchasely.setCustomScreenProvider({
+await Purchasely.setCustomScreenProvider({
   componentName: 'PurchaselyCustomScreen',
 })
 

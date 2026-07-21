@@ -13,8 +13,10 @@ const presentationKey = (presentation: PLYPresentation): string | null =>
 /** Register or replace the React component used for Purchasely Custom Screen flow steps. */
 export function setCustomScreenProvider(
     options: PLYCustomScreenProviderOptions
-): void {
-    NativeModules.Purchasely.setCustomScreenProvider(options.componentName)
+): Promise<void> {
+    return Promise.resolve(
+        NativeModules.Purchasely.setCustomScreenProvider(options.componentName)
+    )
 }
 
 /** Remove the currently registered Custom Screen provider. */

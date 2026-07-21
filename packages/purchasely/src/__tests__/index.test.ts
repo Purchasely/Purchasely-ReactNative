@@ -192,13 +192,13 @@ describe('Purchasely SDK', () => {
             })
         })
 
-        it('registers a Custom Screen component and drives its native presentation', () => {
+        it('registers a Custom Screen component and drives its native presentation', async () => {
             const presentation = {
                 screenId: 'CUSTOM_STEP',
                 customScreenId: 'ply_cs_123',
             } as any
 
-            Purchasely.setCustomScreenProvider({
+            await Purchasely.setCustomScreenProvider({
                 componentName: 'PurchaselyCustomScreen',
             })
             Purchasely.executeConnection(presentation)

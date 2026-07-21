@@ -16,48 +16,35 @@ import {
 export default function PurchaselyCustomScreen(
     props: PLYCustomScreenProps
 ): React.JSX.Element {
-    const { presentation, executeConnection, back, close } =
-        usePurchaselyCustomScreen(props)
+    const { presentation, executeConnection } = usePurchaselyCustomScreen(props)
+    const connections = presentation.connections ?? []
 
     return (
         <SafeAreaView style={styles.safeArea}>
             <ScrollView contentContainerStyle={styles.content}>
                 <Text style={styles.eyebrow}>PURCHASELY CUSTOM SCREEN</Text>
-                <Text style={styles.title}>{presentation.screenId}</Text>
+                <Text style={styles.title}>React Native BYOS screen</Text>
                 <Text style={styles.copy}>
-                    This React component is hosted inside the native Purchasely
-                    flow container. Each button executes the matching Console
-                    connection on this exact flow-step instance.
+                    Expected placement: byos{`\n`}
+                    Screen: {presentation.screenId ?? '—'}
+                    {`\n`}
+                    Flow: {presentation.flowId ?? '—'}
+                    {`\n`}
+                    Connections:{' '}
+                    {connections
+                        .map((connection) => connection.id)
+                        .join(', ') || 'none'}
                 </Text>
                 <View style={styles.actions}>
-                    {(presentation.connections ?? []).map(
-                        (connection, index) => (
-                            <Button
-                                key={connection.id ?? `connection-${index}`}
-                                title={
-                                    connection.id ??
-                                    (connection.isDefault
-                                        ? 'Continue (default)'
-                                        : `Connection ${index + 1}`)
-                                }
-                                onPress={() =>
-                                    executeConnection(
-                                        connection.id ?? undefined
-                                    )
-                                }
-                            />
-                        )
-                    )}
-                    <Button
-                        title="Execute default connection"
-                        onPress={() => executeConnection()}
-                    />
-                    <Button title="Back" onPress={back} />
-                    <Button
-                        title="Close flow"
-                        color="#b42318"
-                        onPress={close}
-                    />
+                    {connections.map((connection, index) => (
+                        <Button
+                            key={connection.id ?? `connection-${index}`}
+                            title={connection.id ?? '(default)'}
+                            onPress={() =>
+                                executeConnection(connection.id ?? undefined)
+                            }
+                        />
+                    ))}
                 </View>
             </ScrollView>
         </SafeAreaView>

@@ -17,6 +17,26 @@ class PurchaselyCustomScreenFragment : Fragment() {
   private var reactSurface: ReactSurface? = null
   private var reactRootView: ReactRootView? = null
 
+  override fun onResume() {
+    super.onResume()
+    val application = requireActivity().application as ReactApplication
+    if (ReactNativeFeatureFlags.enableBridgelessArchitecture()) {
+      application.reactHost?.onHostResume(requireActivity())
+    } else {
+      application.reactNativeHost.reactInstanceManager.onHostResume(requireActivity())
+    }
+  }
+
+  override fun onPause() {
+    val application = requireActivity().application as ReactApplication
+    if (ReactNativeFeatureFlags.enableBridgelessArchitecture()) {
+      application.reactHost?.onHostPause(requireActivity())
+    } else {
+      application.reactNativeHost.reactInstanceManager.onHostPause(requireActivity())
+    }
+    super.onPause()
+  }
+
   override fun onCreateView(
     inflater: LayoutInflater,
     container: ViewGroup?,

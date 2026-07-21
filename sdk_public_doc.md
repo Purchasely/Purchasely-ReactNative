@@ -677,7 +677,7 @@ Register its name after Purchasely has started:
 ```typescript
 const configured = await Purchasely.builder('YOUR_API_KEY').start();
 if (configured) {
-    Purchasely.setCustomScreenProvider({
+    await Purchasely.setCustomScreenProvider({
         componentName: 'PurchaselyCustomScreen',
     });
 }

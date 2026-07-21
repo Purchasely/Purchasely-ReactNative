@@ -1,4 +1,5 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
 import { NavigationContainer } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { HomeScreen } from './Home.tsx'
@@ -17,6 +18,10 @@ import { PaywallPreloadedScreen } from './PaywallPreloaded.tsx'
 const Stack = createNativeStackNavigator()
 
 function App(): React.JSX.Element {
+    const [setupState, setSetupState] = useState<
+        'loading' | 'ready' | 'failed'
+    >('loading')
+
     async function setupPurchasely() {
         var configured = false
         try {
@@ -39,11 +44,23 @@ function App(): React.JSX.Element {
 
         if (!configured) {
             console.error('Purchasely SDK initialization failed.')
+            setSetupState('failed')
         } else {
-            console.info('Purchasely SDK initialized successfully.')
-            Purchasely.setCustomScreenProvider({
-                componentName: 'PurchaselyCustomScreen',
-            })
+            try {
+                await Purchasely.setCustomScreenProvider({
+                    componentName: 'PurchaselyCustomScreen',
+                })
+                console.info(
+                    'Purchasely SDK and Custom Screen provider initialized successfully.'
+                )
+                setSetupState('ready')
+            } catch (e) {
+                console.error(
+                    'Purchasely Custom Screen provider initialization failed:',
+                    e
+                )
+                setSetupState('failed')
+            }
         }
 
         // logout the user
@@ -357,6 +374,19 @@ function App(): React.JSX.Element {
         // presentOnboarding()
     }, [])
 
+    if (setupState !== 'ready') {
+        return (
+            <View style={styles.setupContainer}>
+                {setupState === 'loading' ? <ActivityIndicator /> : null}
+                <Text style={styles.setupText}>
+                    {setupState === 'loading'
+                        ? 'Initializing Purchasely…'
+                        : 'Purchasely initialization failed. Check the native logs.'}
+                </Text>
+            </View>
+        )
+    }
+
     return (
         <NavigationContainer>
             <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -374,5 +404,18 @@ function App(): React.JSX.Element {
         </NavigationContainer>
     )
 }
+
+const styles = StyleSheet.create({
+    setupContainer: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 12,
+    },
+    setupText: {
+        color: '#475467',
+        fontSize: 16,
+    },
+})
 
 export default App
