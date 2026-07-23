@@ -36,11 +36,11 @@ concurrency:
 
 jobs:
   e2e-ios:
-    name: E2E Tests (iOS T1-T20)
+    name: E2E Tests (iOS T1-T27)
     # macOS requis : simulateur iOS + xcodebuild. Pas de HVF nécessaire (le
     # simulateur iOS ne virtualise pas un OS invité, contrairement à l'émulateur
     # Android ARM — c'est pourquoi Android tourne sur ubuntu + KVM).
-    # macos-15 : Xcode 16.x par défaut (RN 0.79 exige Xcode >= 16.1).
+    # macos-15 : Xcode 16.x par défaut (RN 0.86 exige Xcode >= 16.1).
     runs-on: macos-15
     timeout-minutes: 60
 
@@ -48,7 +48,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Select latest Xcode 16 (RN 0.79 requires >= 16.1)
+      - name: Select latest Xcode 16 (RN 0.86 requires >= 16.1)
         run: |
           LATEST=$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -1)
           if [ -n "$LATEST" ]; then sudo xcode-select -s "$LATEST/Contents/Developer"; fi
@@ -109,7 +109,7 @@ jobs:
           xcrun simctl bootstatus "$UDID" -b
           echo "IOS_SIMULATOR_UDID=$UDID" >> "$GITHUB_ENV"
 
-      - name: Run E2E suite on simulator (build Release + T1-T20)
+      - name: Run E2E suite on simulator (build Release + T1-T27)
         run: bash integration_test/run_e2e_ios.sh "$IOS_SIMULATOR_UDID"
 
       - name: Upload logs on failure
