@@ -114,5 +114,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: logcat-${{ github.run_id }}
-          path: /tmp/e2e_rn_logcat_*.log
+          path: |
+            /tmp/e2e_rn_logcat_*.log
+            /tmp/e2e_rn_*.png
           retention-days: 7
