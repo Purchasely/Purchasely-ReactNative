@@ -47,14 +47,14 @@ the methods that are **unchanged**.
 | `Purchasely.presentPlanWithIdentifier(planId, …)` | `Purchasely.presentation.screen(id).build().display()` |
 | `Purchasely.showPresentation()` / `Purchasely.presentPresentation(...)` | request lifecycle: `request.display()` |
 | `Purchasely.hidePresentation()` / `Purchasely.closePresentation()` | request lifecycle: `request.close()` |
-| `Purchasely.setPaywallActionInterceptorCallback(cb)` + `Purchasely.onProcessAction(bool)` | `Purchasely.interceptAction(kind, handler)` — handler returns `'success' \| 'failed' \| 'notHandled'` (no more `onProcessAction`) |
+| `Purchasely.setPaywallActionInterceptorCallback(cb)` (+ the lower-level `Purchasely.setPaywallActionInterceptor()` it polled internally) + `Purchasely.onProcessAction(bool)` | `Purchasely.interceptAction(kind, handler)` — handler returns `'success' \| 'failed' \| 'notHandled'` (no more `onProcessAction`) |
 | `Purchasely.setDefaultPresentationResultCallback(cb)` / `setDefaultPresentationResultHandler(cb)` | `Purchasely.setDefaultPresentationDismissHandler(outcome => …)` — global handler for presentations the SDK opens itself (campaigns, deeplinks, Promoted IAP). For paywalls **you** display, use `request.onDismissed(outcome => …)` instead. |
 | `Purchasely.readyToOpenDeeplink(true)` | `Purchasely.builder(apiKey).allowDeeplink(true).start()` |
 | `Purchasely.close()` (top-level) | `request.close()` on a `PLYPresentationRequest` |
 | `Purchasely.displaySubscriptionCancellationInstruction()` | **Removed** — cancellation UX is owned by the OS/App Store; the SDK no longer opens it. |
 | `Purchasely.clientPresentationDisplayed(...)` / `Purchasely.clientPresentationClosed(...)` | **Kept — NOT removed.** Same JS API as v5; pass the presentation obtained from `preload()`. Only the underlying iOS native call was renamed (`clientPresentationOpened` → `clientPresentationDisplayed`), which is invisible to JS. |
 | `FetchPresentationParameters` / `PresentPresentation*Parameters` / `PresentProductParameters` / `PresentPlanParameters` / `PaywallActionInterceptorResult` | **Removed** — replaced by the `PLYPresentationBuilder` / `interceptAction(kind, handler)` types. |
-| `setUserAttributeWithInt / setUserAttributeWithDouble` / `…WithIntArray / …WithDoubleArray` | **Added** — Flutter-compatible aliases of the `WithNumber / WithNumberArray` setters. |
+| `setUserAttributeWithInt / setUserAttributeWithDouble` / `…WithIntArray / …WithDoubleArray` | **Added** — genuinely typed setters: each calls a distinct native `Int`/`Double` overload on both platforms (not just an alias of `WithNumber` / `WithNumberArray`). `setUserAttributeWithNumber` / `…WithNumberArray` are kept and still infer `Int` vs `Double` from the JS value for compatibility. **iOS/Android divergence**: `WithDouble` keeps full `double` precision on iOS; the Android native SDK has no `Double` attribute overload, so the value is stored as a `Float`. |
 
 ### New v6 helpers (Flutter parity)
 
@@ -123,6 +123,12 @@ const configured = await Purchasely.builder('YOUR_API_KEY')
 > method (see
 > [Deeplinks](#deeplinks-campaigns--the-default-dismiss-handler)).
 
+> **`allowDeeplink` / `allowCampaigns` / `automaticDeeplinkHandling` are applied
+> atomically.** These three chain modifiers are passed into the native
+> `start()` call itself (not set afterwards), so they take effect
+> before/during SDK startup on both platforms — there is no race window where
+> an early campaign or deeplink could fire against the wrong (default) value.
+
 > **⚠️ Major breaking change — the default `runningMode` is now `'observer'`
 > (v5 effectively defaulted to `full`).** This is a **silent behavioural change**:
 > it does **not** produce a compile error, so an app that previously let
@@ -178,6 +184,11 @@ if (outcome.error) {
 
 `purchaseResult` is now a string union (`'purchased' | 'cancelled' | 'restored'`)
 instead of the `ProductResult` ordinal enum.
+
+> **Platform note.** `outcome.presentation?.contentId` is always `null` on
+> **iOS** — not exposed by the native iOS SDK's presentation object. **Android**
+> populates it when available. See
+> [`sdk_public_doc.md`](./sdk_public_doc.md#documented-platform-divergences).
 
 ### Targeting a specific screen / product / plan
 
@@ -377,6 +388,12 @@ Known action kinds: `close`, `closeAll`, `login`, `navigate`, `purchase`,
 > `PLYPresentationActionKind` string union — this is the **only** action
 > vocabulary in v6. The v5 `PLYPaywallAction` enum has been **removed**.
 
+> **Platform note.** For `interceptAction('close' | 'closeAll', handler)`, the
+> payload's `closeReason` is always `'button'` on **iOS** — the native iOS SDK
+> does not report the real close reason to the interceptor. **Android** reports
+> the actual reason. See the full divergence table in
+> [`sdk_public_doc.md`](./sdk_public_doc.md#documented-platform-divergences).
+
 ---
 
 ## Deeplinks, campaigns & the default dismiss handler
@@ -507,12 +524,47 @@ awaitable result — see above). The following keep working exactly as in v5:
   JS change.)
 - **Misc**: `setLogLevel`, `setLanguage`, `setThemeMode`, `setDebugMode`,
   `revokeDataProcessingConsent`.
-- **Embedded component**: `PLYPresentationView` — unchanged.
+- **Embedded component**: `PLYPresentationView` keeps the same props
+  (`placementId` / `presentation` / `request` / `flex`). Its
+  `onPresentationClosed` payload **changed** — see
+  [Breaking changes](#breaking-changes-in-this-release) below.
 
 ---
 
 ## Breaking changes in this release
 
+- **`<PLYPresentationView>`'s `onPresentationClosed` now receives the full
+  5-field `PLYPresentationOutcome`** (`{ presentation, purchaseResult, plan,
+  closeReason, error }`) — the same shape `request.display()` resolves with,
+  routed per-view by event instead of a single global native promise.
+  Previously (v5, and 6.0.0-rc.2) it received a 2-field `{ result, plan }`
+  (typed `PLYPresentationViewResult` at rc.2), where `result` was a
+  `ProductResult` ordinal. **`PLYPresentationViewResult` is removed** — there
+  is no ordinal `result` field anymore.
+
+  ```typescript
+  // Before (v5 / rc.2)
+  <PLYPresentationView
+    placementId="ACCOUNT"
+    onPresentationClosed={(result) => {
+      if (result.result === ProductResult.PRODUCT_RESULT_PURCHASED) {
+        console.log('Purchased', result.plan?.name)
+      }
+    }}
+  />
+
+  // After (v6 GA)
+  <PLYPresentationView
+    placementId="ACCOUNT"
+    onPresentationClosed={(outcome) => {
+      if (outcome.purchaseResult === 'purchased' || outcome.purchaseResult === 'restored') {
+        console.log('Purchased', outcome.plan?.name)
+      } else {
+        console.log('Dismissed', outcome.closeReason, outcome.error)
+      }
+    }}
+  />
+  ```
 - **`Purchasely.getConstants()` is no longer exposed publicly** (was
   previously kept for backward compatibility). It leaked a raw, 60+-field
   numeric blob — including dead v5 residue — as public API; every typed enum

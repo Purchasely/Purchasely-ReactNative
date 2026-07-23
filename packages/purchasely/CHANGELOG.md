@@ -20,6 +20,11 @@ First stable release of Purchasely 6 for React Native. Native SDKs: iOS pod
   `PLYPromotionalOfferSignature`, `DynamicOffering`→`PLYDynamicOffering`. The
   `Purchasely` class and `PurchaselyBuilder` keep their names. The dead legacy
   `PurchaselyPresentation` type was removed (use the v6 `PLYPresentation`).
+- `<PLYPresentationView>`'s `onPresentationClosed` now receives the full
+  5-field `PLYPresentationOutcome` (`{ presentation, purchaseResult, plan,
+  closeReason, error }`), routed per-view/per-request by event instead of a
+  single global native promise. **`PLYPresentationViewResult`** (the previous
+  `{ result, plan }` shape, typed since rc.2) **is removed**.
 
 ### Added
 
@@ -37,6 +42,24 @@ First stable release of Purchasely 6 for React Native. Native SDKs: iOS pod
   (via a Swift `PLYDimension` shim); Android transitions now honour
   `backgroundColors` and map `inlinePaywall`.
 - `getDynamicOfferings()` round-trips `billingPlanType`.
+- `setUserAttributeWithInt` / `setUserAttributeWithDouble` / `…WithIntArray` /
+  `…WithDoubleArray` now call distinct native typed overloads on both
+  platforms (previously aliases of the `WithNumber` / `WithNumberArray`
+  setters).
+- `Purchasely.removeDefaultPresentationDismissHandler()` now also unregisters
+  the handler natively (previously only stopped the JS listener, leaving the
+  native SDK still invoking it and emitting events with no JS listener left
+  to filter them).
+
+### Fixed
+
+- `Purchasely.builder(...).start()`: `allowDeeplink` / `allowCampaigns` /
+  `automaticDeeplinkHandling` are now applied atomically as part of the
+  native `start()` call itself, closing a race window where an early
+  campaign/deeplink could fire before the options were applied.
+- iOS embedded `PLYPresentationView`: fixed a double-preload (and duplicate
+  `PRESENTATION_VIEWED` event) that could occur depending on React Native's
+  prop-application order.
 
 ## [6.0.0-rc.3] — 2026-07-10
 

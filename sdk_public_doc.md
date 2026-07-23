@@ -172,6 +172,12 @@ await Purchasely.builder('YOUR_API_KEY')
 Initialize the Purchasely SDK as early as possible in your application lifecycle
 using `Purchasely.builder(apiKey)`.
 
+> **`allowDeeplink` / `allowCampaigns` / `automaticDeeplinkHandling` are
+> applied atomically.** When set on the builder, these three options are
+> passed into the native `start()` call itself and applied before/during SDK
+> startup on both platforms — there is no window where an early campaign or
+> deeplink could fire against the wrong (default) value.
+
 ### Full Mode (Recommended)
 
 In `full` mode, Purchasely handles the entire purchase flow including transactions and receipts.
@@ -280,6 +286,30 @@ await Purchasely.presentation.screen('SCREEN_ID').contentId('CONTENT_ID').build(
 | `plan` | The purchased plan (when `purchaseResult` is `'purchased'`/`'restored'`) |
 | `closeReason` | `'button'` \| `'backSystem'` \| `'programmatic'` (when no purchase) |
 | `error` | Error object, mutually exclusive with `closeReason` |
+
+### Embedded Paywall (Nested View)
+
+Instead of a full-screen paywall, embed `PLYPresentationView` directly inside
+your own layout:
+
+```tsx
+import { PLYPresentationView } from 'react-native-purchasely';
+
+<PLYPresentationView
+    placementId="ACCOUNT"
+    flex={1}
+    onPresentationClosed={(outcome) => {
+        // Same 5-field PLYPresentationOutcome as request.display():
+        // { presentation, purchaseResult, plan, closeReason, error }
+        console.log('Dismissed: ' + outcome.purchaseResult + ' / ' + outcome.closeReason);
+    }}
+/>
+```
+
+`onPresentationClosed` fires once, when the embedded presentation is
+dismissed. You can also pass a preloaded `request` prop (from
+`Purchasely.presentation....build().preload()`) instead of `placementId` to
+reuse an already-loaded presentation without loading it twice.
 
 ---
 
@@ -516,6 +546,22 @@ Purchasely.setUserAttributeWithBoolean('premium', true);
 Purchasely.setUserAttributeWithDate('subscription_date', new Date());
 ```
 
+`setUserAttributeWithNumber` infers `Int` vs `Double` from the JS value. To
+call the underlying typed native setter explicitly, use the typed variants
+instead:
+
+```typescript
+Purchasely.setUserAttributeWithInt('age', 21);
+Purchasely.setUserAttributeWithDouble('weight', 78.2);
+Purchasely.setUserAttributeWithIntArray('lucky_numbers', [3, 7, 42]);
+Purchasely.setUserAttributeWithDoubleArray('scores', [9.5, 10, 7.25]);
+```
+
+> **iOS/Android precision divergence.** `setUserAttributeWithDouble` (and
+> `…WithDoubleArray`) keep full `double` precision on iOS; the Android native
+> SDK has no `Double` attribute overload, so the value is stored as a `Float`
+> there. See [Documented Platform Divergences](#documented-platform-divergences).
+
 ### Retrieving Attributes
 
 ```typescript
@@ -684,23 +730,43 @@ await Purchasely.builder('YOUR_API_KEY')
 
 ### Setting the Default Presentation Handler
 
-Retrieve the result of user actions on paywalls opened via deeplinks by
-attaching `onDismissed` to a default presentation request (replaces
-`setDefaultPresentationResultCallback`):
+Paywalls the **SDK opens itself** — a campaign, a deeplink, or a Promoted
+In-App Purchase — have no `PresentationRequest` in your code to attach an
+`onDismissed` callback to. Register the **global default dismiss handler**
+instead (replaces `setDefaultPresentationResultCallback` /
+`setDefaultPresentationResultHandler`):
 
 ```typescript
-Purchasely.presentation
-    .default()
-    .onDismissed((outcome) => {
-        console.log('Presentation dismissed: ' + outcome.purchaseResult);
+const subscription = Purchasely.setDefaultPresentationDismissHandler((outcome) => {
+    // outcome: { presentation, purchaseResult, plan, closeReason, error }
+    console.log('SDK-opened presentation dismissed: ' + outcome.purchaseResult);
 
-        if (outcome.plan != null) {
-            console.log('Plan Vendor ID: ' + outcome.plan.vendorId);
-            console.log('Plan Name: ' + outcome.plan.name);
-        }
-    })
-    .build()
-    .display();
+    if (outcome.plan != null) {
+        console.log('Plan Vendor ID: ' + outcome.plan.vendorId);
+        console.log('Plan Name: ' + outcome.plan.name);
+    }
+});
+
+// Only one handler is active at a time — calling again replaces it.
+// Remove it (e.g. on unmount) with either:
+subscription.remove();
+// …or:
+Purchasely.removeDefaultPresentationDismissHandler();
+```
+
+> For a paywall **your own code** displays
+> (`Purchasely.presentation....build().display()`), read the outcome from
+> that call directly, or attach `.onDismissed(...)` on the builder — the
+> default handler above is only for presentations the SDK triggers on its own.
+
+### Displaying the Default Placement
+
+`Purchasely.presentation.default()` targets the SDK's configured default
+placement. Use it like any other placement when **you** want to display it
+yourself:
+
+```typescript
+await Purchasely.presentation.default().build().display();
 ```
 
 ---
@@ -751,6 +817,19 @@ Purchasely.interceptAction('purchase', async (info, payload) => {
     return 'notHandled';
 });
 ```
+
+### Documented Platform Divergences
+
+A few behaviors intentionally differ between iOS and Android because the
+underlying native SDKs don't expose the same primitives. These are current
+native SDK limitations, not bridge bugs — the React Native bridge forwards
+exactly what each platform's SDK reports.
+
+| Behavior | iOS | Android |
+|----------|-----|---------|
+| `interceptAction('close' \| 'closeAll', ...)` payload `closeReason` | Always `'button'` — the native iOS SDK does not report the real close reason to the interceptor | The actual close reason (`'button'` \| `'backSystem'` \| `'programmatic'`) |
+| `PLYPresentation.contentId` (on `outcome.presentation`, `preload()`, and the interceptor's `info.presentation`) | Always `null` — not exposed by the native iOS SDK 6.0.0 presentation object | Populated when the presentation has a content id |
+| `setUserAttributeWithDouble` / `…WithDoubleArray` | Full `double` precision | Stored as `Float` — the native Android SDK has no `Double` attribute overload |
 
 ---
 

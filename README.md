@@ -70,20 +70,22 @@ try {
 
 ### 2️⃣ Nested View Paywall
 
-The embedded `PLYPresentationView` component is part of the **core** API and is
-unchanged in v6. Pass a `placementId` directly — no manual pre-fetch step is
-required.
+The embedded `PLYPresentationView` component is part of the **core** API. Pass
+a `placementId` directly — no manual pre-fetch step is required.
+`onPresentationClosed` receives the same 5-field `PLYPresentationOutcome` as
+`request.display()` (`{ presentation, purchaseResult, plan, closeReason,
+error }`).
 
 ```ts
 import { Text, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Header } from 'react-native/Libraries/NewAppScreen';
 import { Section } from './Section.tsx';
-import { PLYPresentationView } from 'react-native-purchasely';
+import { PLYPresentationView, type PLYPresentationOutcome } from 'react-native-purchasely';
 
 export const PaywallScreen: React.FC<NativeStackScreenProps<any>> = ({ navigation }) => {
-  const callback = (result: any) => {
-    console.log('### Paywall closed, result is ' + result.result);
+  const callback = (outcome: PLYPresentationOutcome) => {
+    console.log('### Paywall closed, purchaseResult is ' + outcome.purchaseResult);
     navigation.goBack();
   };
 
@@ -93,7 +95,7 @@ export const PaywallScreen: React.FC<NativeStackScreenProps<any>> = ({ navigatio
       <PLYPresentationView
         placementId="ACCOUNT"
         flex={7}
-        onPresentationClosed={(res) => callback(res)}
+        onPresentationClosed={(outcome) => callback(outcome)}
       />
       <View style={{ flex: 3, justifyContent: 'center', alignItems: 'center' }}>
         <Section>

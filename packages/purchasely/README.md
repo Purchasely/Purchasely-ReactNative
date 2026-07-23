@@ -76,7 +76,9 @@ Handlers return `'success' | 'failed' | 'notHandled'`; there is no `onProcessAct
 
 ## Embedded paywall
 
-`PLYPresentationView` remains available for embedded paywalls:
+`PLYPresentationView` remains available for embedded paywalls.
+`onPresentationClosed` receives the same 5-field `PLYPresentationOutcome` as
+`request.display()` (`{ presentation, purchaseResult, plan, closeReason, error }`):
 
 ```tsx
 import { PLYPresentationView } from 'react-native-purchasely'
@@ -84,7 +86,7 @@ import { PLYPresentationView } from 'react-native-purchasely'
 <PLYPresentationView
   placementId="ACCOUNT"
   flex={1}
-  onPresentationClosed={(result) => console.log(result)}
+  onPresentationClosed={(outcome) => console.log(outcome.purchaseResult, outcome.closeReason)}
 />
 ```
 

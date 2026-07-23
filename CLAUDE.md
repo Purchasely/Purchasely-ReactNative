@@ -336,14 +336,17 @@ const history = await Purchasely.userSubscriptionsHistory()
 
 ### Embedded Paywall Component
 
+`onPresentationClosed` receives the same 5-field `PLYPresentationOutcome` as
+`request.display()` (`{ presentation, purchaseResult, plan, closeReason, error }`):
+
 ```tsx
 import { PLYPresentationView } from 'react-native-purchasely'
 
 <PLYPresentationView
   placementId="ONBOARDING"
   flex={1}
-  onPresentationClosed={(result) => {
-    console.log('Closed with result:', result)
+  onPresentationClosed={(outcome) => {
+    console.log('Closed with outcome:', outcome.purchaseResult, outcome.closeReason)
   }}
 />
 ```
