@@ -12,16 +12,16 @@
 #import "PurchaselyRN.h"
 #import "Purchasely_Hybrid.h"
 #import "UIColor+PLYHelper.h"
-// BEST-GUESS generated Swift interface header for *this* pod (not the native
+// Compiler-generated Swift interface header for *this* pod (not the native
 // Purchasely SDK's own `Purchasely-Swift.h` above) — exposes `PLYTransitionFactory`
 // (PLYTransitionFactory.swift) to this Objective-C file. CocoaPods derives
 // PRODUCT_MODULE_NAME from the pod target label via `c99ext_identifier`, which
 // replaces non-alphanumeric characters with `_`; for pod name
-// "react-native-purchasely" that's "react_native_purchasely", so the
-// compiler-generated header should be "react_native_purchasely-Swift.h". This
-// could not be verified with an actual build in this environment — if the
-// module name differs, this single line fails to compile with a clear
-// "file not found" error naming this exact header, localizing the fix.
+// "react-native-purchasely" that resolves to "react_native_purchasely", so the
+// generated header is "react_native_purchasely-Swift.h" (confirmed compiling by
+// the iOS build/E2E CI jobs). If a custom target label ever changes the module
+// name, this single line fails with a "file not found" error naming this exact
+// header, localizing the fix.
 #import "react_native_purchasely-Swift.h"
 
 #pragma mark - event names

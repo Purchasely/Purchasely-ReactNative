@@ -1381,7 +1381,7 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
       if(plan == null) return emptyMap()
 
       // Native PLYPlan.toMap() already emits hasOfferPrice/offerPrice/offerAmount/
-      // offerDuration/offerPeriod/hasFreeTrial under these exact names (PLYPLan.kt) —
+      // offerDuration/offerPeriod/hasFreeTrial under these exact names (PLYPlan.kt) —
       // only basePlanId (a plan property, not part of toMap()) needs adding here to
       // satisfy the cross-platform wire-key contract.
       return plan.toMap().toMutableMap().apply {
