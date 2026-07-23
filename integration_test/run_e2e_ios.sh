@@ -290,7 +290,10 @@ if [ "$SUITE_RESULT" = "PASS" ]; then
   kill "$STREAM_PID" 2>/dev/null || true
   kill "$LAUNCH_PID"  2>/dev/null || true
   xcrun simctl uninstall "$UDID" "$APP_BUNDLE" 2>/dev/null || true
-  xcrun simctl install "$UDID" "$APP_PATH"
+  if ! xcrun simctl install "$UDID" "$APP_PATH"; then
+    err "T27: simctl reinstall failed -- aborting"
+    exit 1
+  fi
   sleep 1
 
   # Same attach-race guard as the main launch above: get the stream confirmed
