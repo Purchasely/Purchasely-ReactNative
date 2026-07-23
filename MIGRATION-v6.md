@@ -248,8 +248,8 @@ paywall is presented:
 await request.display({
   type: 'drawer',                          // presentation style, see table
   dismissible: true,                       // allow interactive dismissal
-  width:  { type: 'percentage', value: 100 },
-  height: { type: 'percentage', value: 60 },
+  width:  { type: 'percentage', value: 1 },
+  height: { type: 'percentage', value: 0.6 },
   backgroundColors: { light: '#FFFFFF', dark: '#000000' },
 })
 ```
