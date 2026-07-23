@@ -5,20 +5,33 @@
  * The main suite (T1–T26) runs sequentially in a single SDK session; T27
  * (cold-start deeplink) needs a fresh process and runs as a dedicated phase.
  *
- * Phase routing (Android only): `MainActivity` forwards the `E2E_PHASE` intent
- * extra as a `phase` initial prop. When `phase === 'deeplink_coldstart'` the
- * runner runs ONLY the T27 cold-start flow (init builder chains
- * `.handleDeeplink()` BEFORE `start()`). iOS `AppDelegate` forwards only
- * `e2eMode` (no phase bridge), so T27 is skipped on iOS.
+ * Phase routing (Android + iOS): the host forwards a `phase` initial prop —
+ * Android's `MainActivity` reads the `E2E_PHASE` intent extra, iOS's
+ * `AppDelegate` reads the `E2E_PHASE` environment variable (set via
+ * `SIMCTL_CHILD_E2E_PHASE` when launching with `xcrun simctl launch`). When
+ * `phase === 'deeplink_coldstart'` the runner runs ONLY the T27 cold-start
+ * flow (init builder chains `.handleDeeplink()` BEFORE `start()`) — on either
+ * platform.
  *
  * Host-driven tests (require an external driver process):
- *   T8: [E2E:READY_FOR_TAP]  — paywall displayed; host taps the purchase button
- *   T9: [E2E:READY_FOR_BACK] — paywall displayed; host dismisses it
- *                              Android: adb keyevent BACK via uiautomator
- *                              iOS:     xcrun simctl io booted swipe (prepared, not yet active)
+ *   T8:  [E2E:READY_FOR_TAP]          — paywall displayed; host taps the purchase button
+ *   T9:  [E2E:READY_FOR_BACK]         — paywall displayed; host dismisses it
+ *                                        Android: adb keyevent BACK via uiautomator
+ *                                        iOS:     idb close-button tap, falling back to swipe
+ *   T25: [E2E:READY_FOR_INLINE_CLOSE] — embedded paywall rendered; host taps its
+ *                                        real on-screen close (X) button. Unlike
+ *                                        Flutter's `integration_test` harness — which
+ *                                        cannot deliver taps to an embedded platform
+ *                                        view, see the Flutter repo's
+ *                                        INLINE_PAYWALL_CLOSE.md — this runner drives
+ *                                        the real running app via adb/idb, and the
+ *                                        embedded view is a real native
+ *                                        Fragment/UIView in the real view hierarchy,
+ *                                        so an OS-level tap reaches it like any other
+ *                                        on-screen control.
  *
- * T21–T27 are all driver-free (programmatic close / analytics events); only
- * T27 requires the dedicated cold-start phase launch (Android).
+ * T21–T24 and T26–T27 are driver-free (programmatic close / analytics events /
+ * cold-start); T8, T9 and T25 need the external driver above.
  *
  * Host scripts:
  *   Android: integration_test/run_e2e.sh  (android-emulator-runner + uiautomator)
@@ -43,7 +56,6 @@ import Purchasely, {
     PLYPresentationView,
     type PLYPresentationOutcome,
     type PLYPresentationRequest,
-    type PLYPresentationViewResult,
     setDefaultPresentationDismissHandler,
     removeDefaultPresentationDismissHandler,
 } from 'react-native-purchasely'
@@ -127,8 +139,8 @@ export default function E2ETestRunner(props: { phase?: string } = {}) {
     const [log, setLog] = useState<string[]>([])
     // T25: the embedded paywall request whose native view is currently mounted.
     const [inlineRequest, setInlineRequest] = useState<PLYPresentationRequest | null>(null)
-    // T25: last result delivered to the embedded view's onPresentationClosed.
-    const inlineClosedRef = useRef<PLYPresentationViewResult | null>(null)
+    // T25: last outcome delivered to the embedded view's onPresentationClosed.
+    const inlineClosedRef = useRef<PLYPresentationOutcome | null>(null)
 
     function updateTest(id: string, patch: Partial<TestResult>) {
         setTests((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)))
@@ -1030,13 +1042,16 @@ export default function E2ETestRunner(props: { phase?: string } = {}) {
             }
         } catch (e) { fail('T24', e); suitePass = false }
 
-        // ── T25 — embedded <PLYPresentationView request={…}> renders ──────────
-        // Ref: inline_paywall_test.dart + INLINE_PAYWALL_CLOSE.md. The RENDER
-        // path is the testable one: mounting the embedded view via the `request`
-        // prop resolves the preloaded presentation by requestId and emits
-        // PRESENTATION_VIEWED. Native inline close TAPS are NOT delivered to the
-        // embedded view under instrumentation (proven in INLINE_PAYWALL_CLOSE.md),
-        // so onPresentationClosed is best-effort here and verified in the real app.
+        // ── T25 — embedded <PLYPresentationView request={…}>: render + real close ──
+        // Ref: inline_paywall_test.dart (render) + INLINE_PAYWALL_CLOSE.md (why
+        // Flutter's integration_test can't drive the inline close). RN's harness
+        // drives the real running app via adb/idb — not an in-process widget-test
+        // pointer binding — and the embedded view is a real native Fragment/UIView
+        // in the real hierarchy (PurchaselyViewManager.createFragment / PurchaselyView
+        // addSubview), so an OS-level tap on its close (X) button reaches it exactly
+        // like any other on-screen control. Both the render AND the close are
+        // therefore asserted hard here: FAIL if the driven tap never produces
+        // onPresentationClosed — no unconditional pass.
         running('T25')
         try {
             inlineClosedRef.current = null
@@ -1055,19 +1070,28 @@ export default function E2ETestRunner(props: { phase?: string } = {}) {
 
                 const viewed25 = await waitFor(() => viewedEvent25, 30000, 300)
 
-                // Programmatic teardown; observe onPresentationClosed best-effort.
-                req25.close()
-                await sleep(1500)
-                const closeObserved = inlineClosedRef.current != null
+                console.log('[E2E:READY_FOR_INLINE_CLOSE]')
+                appendLog('T25: signaled READY_FOR_INLINE_CLOSE — waiting for host to tap the inline close button…')
+
+                // The iOS driver polls for up to 60 s, the Android one for up to
+                // 90 s (mirrors T8's tap_purchase_ios.sh margin) before giving up.
+                const outcome25 = await waitFor(() => inlineClosedRef.current, 100000, 300)
+
+                // A real tap on the close (X) button → closeReason MUST be exactly
+                // 'button' (pinned, same contract as the full-screen builder).
+                if (outcome25.closeReason !== 'button') {
+                    throw new Error(`closeReason expected 'button', got "${outcome25.closeReason}"`)
+                }
+                if (!outcome25.presentation?.screenId) {
+                    throw new Error('inline outcome missing presentation.screenId')
+                }
 
                 pass(
                     'T25',
                     `inline <PLYPresentationView request> rendered ` +
                     `placement_id=${viewed25.properties?.placement_id ?? 'n/a'} ` +
-                    `onPresentationClosed observed=${closeObserved}` +
-                    (closeObserved
-                        ? ''
-                        : ' (native inline close verified in real app — not drivable under instrumentation)')
+                    `→ driven close tap → closeReason=${outcome25.closeReason} ` +
+                    `presentation.screenId=${outcome25.presentation.screenId}`
                 )
             } finally {
                 setInlineRequest(null)
@@ -1116,21 +1140,16 @@ export default function E2ETestRunner(props: { phase?: string } = {}) {
             )
         } catch (e) { fail('T26', e); suitePass = false }
 
-        // ── T27 — cold-start deeplink (deferred / skipped in the main suite) ───
+        // ── T27 — cold-start deeplink (deferred to a dedicated phase) ──────────
         // Ref: deeplink_cold_start_test.dart. The builder modifier
         // `.handleDeeplink(url)` replays a launch-time deeplink after start(),
         // which the SDK auto-opens. This requires a FRESH process (the init
         // builder must chain .handleDeeplink() BEFORE start()), so it runs as a
-        // dedicated cold-start phase, not mid-session.
-        //   • Android: run_e2e.sh relaunches with E2E_PHASE=deeplink_coldstart →
-        //     runColdStartPhase() below emits [E2E:T27:PASS|FAIL].
-        //   • iOS: AppDelegate forwards only e2eMode (no phase/deeplink bridge;
-        //     wiring it is outside the example/src perimeter) → explicit SKIP.
-        if (Platform.OS === 'android') {
-            skip('T27', 'runs in dedicated cold-start phase (E2E_PHASE=deeplink_coldstart) — see phase [E2E:T27:PASS|FAIL]')
-        } else {
-            skip('T27', 'iOS: cold-start deeplink phase needs an AppDelegate launch-arg → initialProp bridge (out of scope); Android-only for now')
-        }
+        // dedicated cold-start phase, not mid-session, on BOTH platforms —
+        // Android: run_e2e.sh relaunches with `--es E2E_PHASE deeplink_coldstart`;
+        // iOS: run_e2e_ios.sh relaunches with `SIMCTL_CHILD_E2E_PHASE=deeplink_coldstart`.
+        // runColdStartPhase() below emits [E2E:T27:PASS|FAIL] for that phase.
+        skip('T27', 'runs in dedicated cold-start phase (E2E_PHASE=deeplink_coldstart) — see phase [E2E:T27:PASS|FAIL]')
 
         // ── Final report ──────────────────────────────────────────────────────
         setSuiteStatus(suitePass ? 'pass' : 'fail')
@@ -1144,8 +1163,8 @@ export default function E2ETestRunner(props: { phase?: string } = {}) {
     }
 
     // ── T27 — cold-start deeplink phase (own process) ──────────────────────────
-    // Launched by run_e2e.sh with E2E_PHASE=deeplink_coldstart on a FRESH app
-    // process. The SDK is (re)started here with `.handleDeeplink()` chained on the
+    // Launched by run_e2e.sh / run_e2e_ios.sh with E2E_PHASE=deeplink_coldstart
+    // on a FRESH app process. The SDK is (re)started here with `.handleDeeplink()` chained on the
     // builder BEFORE start(); the SDK then auto-opens the paywall, firing
     // DEEPLINK_OPENED → PRESENTATION_LOADED → PRESENTATION_VIEWED. We subscribe
     // to events BEFORE start() so the startup burst is not missed. The process is
@@ -1298,11 +1317,11 @@ export default function E2ETestRunner(props: { phase?: string } = {}) {
                 <PLYPresentationView
                     request={inlineRequest}
                     flex={1}
-                    onPresentationClosed={(result) => {
-                        inlineClosedRef.current = result
+                    onPresentationClosed={(outcome) => {
+                        inlineClosedRef.current = outcome
                         console.log(
                             '[E2E:T25] inline onPresentationClosed',
-                            JSON.stringify(result)
+                            JSON.stringify(outcome)
                         )
                     }}
                 />
