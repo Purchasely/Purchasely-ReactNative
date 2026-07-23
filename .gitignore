@@ -1,6 +1,7 @@
 # OSX
 #
 .DS_Store
+.worktrees/
 
 # XDE
 .expo/
@@ -89,3 +90,6 @@ nitrogen/
 
 .nx/cache
 .nx/workspace-data
+jest_dx/
+node-compile-cache/
+**/coverage/
