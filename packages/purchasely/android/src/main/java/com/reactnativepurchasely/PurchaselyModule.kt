@@ -883,7 +883,7 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
         context = activity,
         transition = plyTransition,
         presentation = { loaded -> activeLoadedPresentations[requestId] = loaded },
-        callback = { outcome -> emitPresentationDismissed(requestId, outcome) }
+        callback = { outcome -> emitPresentationDismissed(reactApplicationContext, requestId, outcome) }
       )
 
       promise.resolve(true)
@@ -1141,25 +1141,8 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
       sendEvent(reactApplicationContext, EVENT_PRESENTATION_CLOSE_REQUESTED, payload)
     }
     prepared.onDismissed = { outcome: PLYPresentationOutcome ->
-      emitPresentationDismissed(requestId, outcome)
+      emitPresentationDismissed(reactApplicationContext, requestId, outcome)
     }
-  }
-
-  private fun emitPresentationDismissed(requestId: String, outcome: PLYPresentationOutcome) {
-    val payload = Arguments.createMap()
-    payload.putString("requestId", requestId)
-    outcome.presentation?.let { payload.putMap("presentation", it.toRNMap()) }
-    outcome.purchaseResult?.let { payload.putInt("purchaseResult", it.toRNOrdinal()) }
-    outcome.plan?.let {
-      payload.putMap("plan", Arguments.makeNativeMap(
-        transformPlanToMap(it).toMutableMap()
-      ))
-    }
-    outcome.closeReason?.let { payload.putString("closeReason", it.toRNString()) }
-    outcome.error?.let { payload.putMap("error", it.toRNMap()) }
-    sendEvent(reactApplicationContext, EVENT_PRESENTATION_DISMISSED, payload)
-    activePresentationRequests.remove(requestId)
-    activeLoadedPresentations.remove(requestId)
   }
 
   /**
@@ -1182,55 +1165,6 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
     outcome.closeReason?.let { payload.putString("closeReason", it.toRNString()) }
     outcome.error?.let { payload.putMap("error", it.toRNMap()) }
     sendEvent(reactApplicationContext, EVENT_DEFAULT_PRESENTATION_DISMISSED, payload)
-  }
-
-  /**
-   * Convert a [PLYPresentation] to a React-Native map. We expose the screenId
-   * (mapped from the SDK `screenId`) and keep `id` as alias for compat.
-   */
-  private fun PLYPresentation.toRNMap(): WritableMap {
-    val map = Arguments.createMap()
-    map.putString("screenId", screenId)
-    map.putString("id", screenId)
-    placementId?.let { map.putString("placementId", it) }
-    contentId?.let { map.putString("contentId", it) }
-    // Audience / AB-test ids live in the request payload; expose what we have.
-    runCatching { audienceId?.let { map.putString("audienceId", it) } }
-    runCatching { abTestId?.let { map.putString("abTestId", it) } }
-    runCatching { abTestVariantId?.let { map.putString("abTestVariantId", it) } }
-    runCatching { campaignId?.let { map.putString("campaignId", it) } }
-    runCatching { flowId?.let { map.putString("flowId", it) } }
-    runCatching { language?.let { map.putString("language", it) } }
-    runCatching { map.putInt("type", type.ordinal) }
-    runCatching { map.putInt("height", height) }
-    if (plans.isNotEmpty()) {
-      val planMaps = plans.map { Arguments.makeNativeMap(it.toMap()) }
-      map.putArray("plans", Arguments.makeNativeArray(planMaps))
-    }
-    metadata?.let { map.putMap("metadata", Arguments.makeNativeMap(it.toRNMetadataMap())) }
-    return map
-  }
-
-  private fun io.purchasely.ext.presentation.PLYPresentationMetadata.toRNMetadataMap(): Map<String, Any?> {
-    return keys().associateWith { key -> get(key) }
-  }
-
-  private fun PLYError.toRNMap(): WritableMap {
-    val map = Arguments.createMap()
-    map.putString("message", message ?: "Unknown error")
-    return map
-  }
-
-  private fun PLYCloseReason.toRNString(): String = when (this) {
-    PLYCloseReason.BUTTON -> "button"
-    PLYCloseReason.BACK_SYSTEM -> "backSystem"
-    PLYCloseReason.PROGRAMMATIC -> "programmatic"
-  }
-
-  private fun PLYPurchaseResult.toRNOrdinal(): Int = when (this) {
-    PLYPurchaseResult.PURCHASED -> 0
-    PLYPurchaseResult.CANCELLED -> 1
-    PLYPurchaseResult.RESTORED -> 2
   }
 
   private fun PLYInterceptorInfo.toRNMap(): WritableMap {
@@ -1373,6 +1307,17 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
     fun loadedPresentation(requestId: String): PLYPresentation? =
       activeLoadedPresentations[requestId]
 
+    /**
+     * Drop `requestId`'s entries from both maps without emitting a dismissed
+     * event or closing any screen. Used when an embedded `PLYPresentationView`
+     * unmounts without ever dismissing (e.g. the host navigates away), so a
+     * bridge-preloaded request it reused doesn't linger in these maps forever.
+     */
+    fun evictPresentationRequest(requestId: String) {
+      activePresentationRequests.remove(requestId)
+      activeLoadedPresentations.remove(requestId)
+    }
+
     /** Pending interceptor callbacks, resolved when JS calls completeActionInterceptor. */
     private val pendingActionInterceptors =
       ConcurrentHashMap<String, CompletableDeferred<PLYInterceptResult>>()
@@ -1396,18 +1341,92 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
         this["basePlanId"] = plan.basePlanId
       }
     }
-  }
 
-  fun PLYPresentationPlan.toMap(): Map<String, Any?> {
-    return mapOf(
-      Pair("planVendorId", planVendorId),
-      Pair("storeProductId", storeProductId),
-      Pair("basePlanId", basePlanId),
-      Pair("storeOfferId", storeOfferId),
-      Pair("offerId", storeOfferId),
-      Pair("offerVendorId", offerVendorId),
-      Pair("default", default)
-    )
+    fun PLYPresentationPlan.toMap(): Map<String, Any?> {
+      return mapOf(
+        Pair("planVendorId", planVendorId),
+        Pair("storeProductId", storeProductId),
+        Pair("basePlanId", basePlanId),
+        Pair("storeOfferId", storeOfferId),
+        Pair("offerId", storeOfferId),
+        Pair("offerVendorId", offerVendorId),
+        Pair("default", default)
+      )
+    }
+
+    /**
+     * Convert a [PLYPresentation] to a React-Native map. We expose the screenId
+     * (mapped from the SDK `screenId`) and keep `id` as alias for compat.
+     */
+    private fun PLYPresentation.toRNMap(): WritableMap {
+      val map = Arguments.createMap()
+      map.putString("screenId", screenId)
+      map.putString("id", screenId)
+      placementId?.let { map.putString("placementId", it) }
+      contentId?.let { map.putString("contentId", it) }
+      // Audience / AB-test ids live in the request payload; expose what we have.
+      runCatching { audienceId?.let { map.putString("audienceId", it) } }
+      runCatching { abTestId?.let { map.putString("abTestId", it) } }
+      runCatching { abTestVariantId?.let { map.putString("abTestVariantId", it) } }
+      runCatching { campaignId?.let { map.putString("campaignId", it) } }
+      runCatching { flowId?.let { map.putString("flowId", it) } }
+      runCatching { language?.let { map.putString("language", it) } }
+      runCatching { map.putInt("type", type.ordinal) }
+      runCatching { map.putInt("height", height) }
+      if (plans.isNotEmpty()) {
+        val planMaps = plans.map { Arguments.makeNativeMap(it.toMap()) }
+        map.putArray("plans", Arguments.makeNativeArray(planMaps))
+      }
+      metadata?.let { map.putMap("metadata", Arguments.makeNativeMap(it.toRNMetadataMap())) }
+      return map
+    }
+
+    private fun io.purchasely.ext.presentation.PLYPresentationMetadata.toRNMetadataMap(): Map<String, Any?> {
+      return keys().associateWith { key -> get(key) }
+    }
+
+    private fun PLYError.toRNMap(): WritableMap {
+      val map = Arguments.createMap()
+      map.putString("message", message ?: "Unknown error")
+      return map
+    }
+
+    private fun PLYCloseReason.toRNString(): String = when (this) {
+      PLYCloseReason.BUTTON -> "button"
+      PLYCloseReason.BACK_SYSTEM -> "backSystem"
+      PLYCloseReason.PROGRAMMATIC -> "programmatic"
+    }
+
+    private fun PLYPurchaseResult.toRNOrdinal(): Int = when (this) {
+      PLYPurchaseResult.PURCHASED -> 0
+      PLYPurchaseResult.CANCELLED -> 1
+      PLYPurchaseResult.RESTORED -> 2
+    }
+
+    /**
+     * Emit a `PURCHASELY_PRESENTATION_DISMISSED` event, keyed by `requestId` —
+     * the bridge id for a preloaded/displayed request, or the JS-generated id
+     * an embedded `PLYPresentationView` routes on when it has no bridge
+     * request of its own (its `presentation` prop / fresh `placementId`
+     * paths). Purging `requestId`'s entry is a no-op when it was never a key
+     * in these maps (e.g. that JS-generated id).
+     */
+    fun emitPresentationDismissed(reactContext: ReactContext, requestId: String, outcome: PLYPresentationOutcome) {
+      val payload = Arguments.createMap()
+      payload.putString("requestId", requestId)
+      outcome.presentation?.let { payload.putMap("presentation", it.toRNMap()) }
+      outcome.purchaseResult?.let { payload.putInt("purchaseResult", it.toRNOrdinal()) }
+      outcome.plan?.let {
+        payload.putMap("plan", Arguments.makeNativeMap(
+          transformPlanToMap(it).toMutableMap()
+        ))
+      }
+      outcome.closeReason?.let { payload.putString("closeReason", it.toRNString()) }
+      outcome.error?.let { payload.putMap("error", it.toRNMap()) }
+      reactContext.getJSModule(RCTDeviceEventEmitter::class.java).emit(EVENT_PRESENTATION_DISMISSED, payload)
+      activePresentationRequests.remove(requestId)
+      activeLoadedPresentations.remove(requestId)
+    }
   }
 
   suspend fun io.purchasely.ext.presentation.PLYPresentationMetadata.toMap(): Map<String, Any> {

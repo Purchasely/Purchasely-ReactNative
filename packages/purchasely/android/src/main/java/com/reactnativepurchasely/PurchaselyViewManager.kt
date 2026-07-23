@@ -9,10 +9,7 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
-import com.facebook.react.bridge.Arguments
-import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
-import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.bridge.ReadableArray
 import com.facebook.react.bridge.ReadableMap
 import com.facebook.react.common.MapBuilder
@@ -22,7 +19,6 @@ import com.facebook.react.uimanager.annotations.ReactProp
 import com.facebook.react.uimanager.annotations.ReactPropGroup
 import io.purchasely.ext.presentation.PLYPresentationBase
 import io.purchasely.ext.presentation.PLYPresentationOutcome
-import io.purchasely.ext.presentation.PLYPurchaseResult
 import io.purchasely.ext.presentation.preload
 import io.purchasely.views.presentation.PLYPresentationView
 import android.content.res.Configuration
@@ -35,18 +31,33 @@ import kotlinx.coroutines.withContext
  * View manager for `<PLYPresentationView />`. Hosts a `PLYPresentationView`
  * inside a React-Native managed Fragment.
  *
- * The presentation is sourced either from a `placementId` prop or from a
- * `presentation` map produced by the builder. Outcomes flow back to JS
- * through the same `PURCHASELY_PRESENTATION_DISMISSED`-friendly shape used by the v5 view
- * (`{ result, plan }`), preserving the existing `onPresentationClosed` contract.
+ * The presentation is sourced either from a `placementId` prop, a
+ * `presentation` map produced by the builder, or a bridge `requestId` already
+ * preloaded via `request.preload()`. Outcomes flow back to JS through the
+ * `PURCHASELY_PRESENTATION_DISMISSED` event, routed by `requestId` (or the
+ * JS-generated `viewId` when there is no bridge request), mirroring the
+ * full-screen `displayPresentation` contract.
  */
 class PurchaselyViewManager(private val reactContext: ReactApplicationContext) : ViewGroupManager<FrameLayout>() {
 
   private var propWidth: Int? = null
   private var propHeight: Int? = null
-  private var placementId: String? = null
-  private var screenId: String? = null
-  private var requestId: String? = null
+
+  /** Props for a single mounted view, keyed by that view's own instance —
+   * RN reuses this one manager across every `<PurchaselyView />`, so storing
+   * props on the manager itself would let two simultaneous views clobber each
+   * other's placementId/screenId/requestId. */
+  private class ViewProps {
+    var placementId: String? = null
+    var screenId: String? = null
+    var requestId: String? = null
+    var viewId: String? = null
+  }
+
+  private val propsByView = mutableMapOf<FrameLayout, ViewProps>()
+
+  private fun propsFor(view: FrameLayout): ViewProps =
+    propsByView.getOrPut(view) { ViewProps() }
 
   override fun getName(): String = "PurchaselyView"
 
@@ -115,21 +126,22 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
       return
     }
 
+    val props = propsByView[root] ?: ViewProps()
+    // Guards against double-emitting a dismissal for the fresh/ad hoc path,
+    // which wires this callback on both the request builder and the built
+    // view (see `PurchaselyFragment.attachPurchaselyView`).
+    var delivered = false
     val outcomeHandler: (PLYPresentationOutcome) -> Unit = { outcome ->
-      val resultOrdinal = when (outcome.purchaseResult) {
-        PLYPurchaseResult.PURCHASED -> 0
-        PLYPurchaseResult.RESTORED -> 2
-        PLYPurchaseResult.CANCELLED -> 1
-        null -> 1
+      if (!delivered) {
+        delivered = true
+        val routingId = props.requestId ?: props.viewId
+        if (routingId != null) {
+          PurchaselyModule.emitPresentationDismissed(reactContext, routingId, outcome)
+        }
       }
-      val map: MutableMap<String, Any?> = HashMap()
-      map["result"] = resultOrdinal
-      map["plan"] = PurchaselyModule.transformPlanToMap(outcome.plan)
-      promiseView?.resolve(Arguments.makeNativeMap(map))
-      promiseView = null
     }
 
-    val fragment = PurchaselyFragment(screenId, placementId, requestId, outcomeHandler)
+    val fragment = PurchaselyFragment(props.screenId, props.placementId, props.requestId, outcomeHandler)
 
     fm.beginTransaction()
       .setReorderingAllowed(true)
@@ -176,29 +188,39 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
 
   @ReactProp(name = "placementId")
   fun setPlacementId(view: FrameLayout?, value: String?) {
-    placementId = value
+    view ?: return
+    propsFor(view).placementId = value
   }
 
   @ReactProp(name = "presentation")
   fun setPresentation(view: FrameLayout?, value: ReadableMap?) {
+    view ?: return
+    val props = propsFor(view)
     // The JS layer forwards either `id` (legacy) or `screenId`.
-    screenId = value?.getString("screenId") ?: value?.getString("id")
-    placementId = placementId ?: value?.getString("placementId")
+    props.screenId = value?.getString("screenId") ?: value?.getString("id")
+    props.placementId = props.placementId ?: value?.getString("placementId")
   }
 
   @ReactProp(name = "requestId")
   fun setRequestId(view: FrameLayout?, value: String?) {
-    requestId = value
+    view ?: return
+    propsFor(view).requestId = value
   }
 
-  @ReactMethod
-  fun onPresentationClosed(promise: Promise) {
-    promiseView = promise
-    Log.d("PurchaselyView", "onPresentationClosed")
+  @ReactProp(name = "viewId")
+  fun setViewId(view: FrameLayout?, value: String?) {
+    view ?: return
+    propsFor(view).viewId = value
   }
 
   override fun onDropViewInstance(view: FrameLayout) {
     super.onDropViewInstance(view)
+    // Hardening: a view that unmounts without ever dismissing (e.g. the host
+    // navigates away) would otherwise leak its entry in these maps forever —
+    // only `emitPresentationDismissed`/`closePresentation` purged them before.
+    propsByView.remove(view)?.requestId?.let {
+      PurchaselyModule.evictPresentationRequest(it)
+    }
     val activity = (reactContext.currentActivity as? FragmentActivity) ?: return
     val fm = activity.supportFragmentManager
     val tag = view.id.toString()
@@ -211,8 +233,6 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
 
   companion object {
     const val COMMAND_CREATE = 1
-
-    private var promiseView: Promise? = null
   }
 
   /**
@@ -235,11 +255,13 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
     private fun attachPurchaselyView(host: ViewGroup) {
       // v6 / iso iOS+Flutter: when a requestId is provided, reuse the
       // presentation the JS layer already preloaded (request.preload()) instead
-      // of building + preloading a new one inside the view.
+      // of building + preloading a new one inside the view. Its dismissal is
+      // already emitted by the module's own preload-time wiring
+      // (wirePresentationCallbacks), keyed by this same requestId — routing it
+      // through `callback` too would double-emit, so this is a no-op.
       val preloaded = requestId?.let { PurchaselyModule.loadedPresentation(it) }
       if (preloaded != null) {
-        val pv: PLYPresentationView? =
-          preloaded.buildView(host.context) { outcome -> callback(outcome) }
+        val pv: PLYPresentationView? = preloaded.buildView(host.context) {}
         pv?.let { host.addView(it) }
         return
       }
