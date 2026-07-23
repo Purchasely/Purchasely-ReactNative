@@ -1,26 +1,59 @@
 import {
   type PlanType,
-  PLYPaywallAction,
-  PLYPresentationType,
   PLYUserAttributeSource,
   PLYUserAttributeType,
-  ProductResult,
   SubscriptionSource,
   PLYWebCheckoutProvider,
   PLYDataProcessingLegalBasis
 } from './enums';
 
-export type PLYPaywallInfo = {
-  presentationId?: string;
-  placementId?: string;
-  contentId?: string;
-  abTestId?: string;
-  abTestVariantId?: string;
+/**
+ * Billing plan of a commitment installment. Apple-only (iOS 26.4+).
+ * Mirrors the native `PLYBillingPlanType` façade.
+ */
+export type PLYBillingPlanType = 'unspecified' | 'upFront' | 'monthly';
+
+/**
+ * Billing information for a subscription with a multi-period commitment
+ * (Apple-only, iOS 26.4+ "monthly subscription with 12-month commitment").
+ * Mirrors the native `PLYCommitmentInfo`. Empty/absent on Android and on Apple
+ * plans without a commitment.
+ */
+export type PLYCommitmentInfo = {
+  billingPlanType: PLYBillingPlanType;
+  /** Per-billing-cycle price (e.g. 9.99 for a monthly billed plan). */
+  billingPrice: number;
+  /** ISO 8601 duration of each billing cycle, e.g. 'P1M'. */
+  billingPeriod: string;
+  /** Total price over the full commitment period (e.g. 119.88 for 12 x 9.99). */
+  totalPrice: number;
+  /** ISO 8601 duration of the full commitment, e.g. 'P1Y'. */
+  totalPeriod: string;
+  /** Number of billing cycles in the commitment (1 for upFront, 12 for 12-month monthly). */
+  totalDuration: number;
 };
 
-export type PurchaselyPlan = {
+/**
+ * A subscriber's progress through a multi-period commitment (Apple-only,
+ * iOS 26.4+). Mirrors the native `PLYCommitmentProgress`. `null`/absent on
+ * Android and on subscriptions without a commitment.
+ */
+export type PLYCommitmentProgress = {
+  /** Current billing period number within the commitment (1-based). */
+  billingPeriodNumber: number;
+  /** Total number of billing periods in the commitment. */
+  totalBillingPeriods: number;
+  /** Date when the commitment expires, ISO 8601. */
+  commitmentExpiresDate: string;
+  /** Price charged for this billing period. */
+  commitmentPrice: number;
+};
+
+export type PLYPlan = {
   vendorId: string;
   productId: string;
+  /** Google Play base plan id. `null` on the App Store (no base-plan concept). */
+  basePlanId?: string | null;
   name: string;
   type: PlanType;
   amount: number;
@@ -35,27 +68,43 @@ export type PurchaselyPlan = {
   introDuration: string;
   introPeriod: string;
   hasFreeTrial: boolean;
+  /** Whether the plan carries a promotional offer price. */
+  hasOfferPrice: boolean;
+  /** Localized promotional offer price (empty when {@link hasOfferPrice} is false). */
+  offerPrice: string;
+  /** Raw promotional offer amount. */
+  offerAmount: number;
+  /** Promotional offer duration (ISO-8601, e.g. `P1M`). */
+  offerDuration: string;
+  /** Promotional offer period (ISO-8601). */
+  offerPeriod: string;
+  /**
+   * Commitment installment details (Apple-only, iOS 26.4+). Absent on Android
+   * and on plans without a multi-period commitment.
+   */
+  commitmentInfo?: PLYCommitmentInfo[];
 };
 
-export type PurchaselyOffer = {
+export type PLYPromoOffer = {
   vendorId?: string | null;
   storeOfferId?: string | null;
+  publicId?: string | null;
 };
 
-export type PurchaselySubscriptionOffer = {
+export type PLYSubscriptionOffer = {
   subscriptionId: string;
   basePlanId?: string | null;
   offerToken?: string | null;
   offerId?: string | null;
 };
 
-export type PurchaselyProduct = {
+export type PLYProduct = {
   name: string;
   vendorId: string;
-  plans: PurchaselyPlan[];
+  plans: PLYPlan[];
 };
 
-export type PurchaselyPromotionalOfferSignature = {
+export type PLYPromotionalOfferSignature = {
   planVendorId: string;
   identifier: string;
   signature: string;
@@ -64,7 +113,7 @@ export type PurchaselyPromotionalOfferSignature = {
   timestamp: number;
 };
 
-export type PurchaselyUserAttribute = {
+export type PLYUserAttribute = {
   key: string;
   value?: any | null;
   type?: PLYUserAttributeType | null;
@@ -72,45 +121,35 @@ export type PurchaselyUserAttribute = {
   legalBasis?: PLYDataProcessingLegalBasis;
 };
 
-export type PurchaselySubscription = {
+export type PLYSubscription = {
   purchaseToken: string;
   subscriptionSource: SubscriptionSource;
   nextRenewalDate: string;
   cancelledDate: string;
-  plan: PurchaselyPlan;
-  product: PurchaselyProduct;
-  /*cumulatedRevenuesInUSD: number;
-  subscriptionDurationInDays: number;
-  subscriptionDurationInWeeks: number;
-  subscriptionDurationInMonths: number;*/
+  plan: PLYPlan;
+  product: PLYProduct;
+  /**
+   * [PAR-24] Android-only. The native `PLYSubscription.toMap()` (Android)
+   * includes total revenue attributed to this subscription, in USD; the iOS
+   * bridge's `PLYSubscription+Hybrid.m asDictionary` never emits it. Optional
+   * so iOS callers see `undefined` instead of a silently-missing required
+   * field.
+   */
+  cumulatedRevenuesInUSD?: number;
+  /** Android-only — see {@link cumulatedRevenuesInUSD}. */
+  subscriptionDurationInDays?: number;
+  /** Android-only — see {@link cumulatedRevenuesInUSD}. */
+  subscriptionDurationInWeeks?: number;
+  /** Android-only — see {@link cumulatedRevenuesInUSD}. */
+  subscriptionDurationInMonths?: number;
+  /**
+   * Progress through a multi-period commitment (Apple-only, iOS 26.4+).
+   * `null`/absent on Android and on subscriptions without a commitment.
+   */
+  commitmentProgress?: PLYCommitmentProgress | null;
 };
 
-export type PresentPresentationResult = {
-  result: ProductResult;
-  plan: PurchaselyPlan;
-};
-
-export type FetchPresentationResult = {
-  presentation: PurchaselyPresentation;
-};
-
-export type PaywallActionInterceptorResult = {
-  info: PLYPaywallInfo;
-  action: PLYPaywallAction;
-  parameters: {
-    clientReferenceId: string;
-    url: string;
-    title: string;
-    plan: PurchaselyPlan;
-    offer: PurchaselyOffer | null;
-    subscriptionOffer: PurchaselySubscriptionOffer | null;
-    presentation: string;
-    queryParameterKey: string;
-    webCheckoutProvider: PLYWebCheckoutProvider
-  };
-};
-
-export type PurchaselyEventsNames =
+export type PLYEventName =
   | 'APP_INSTALLED'
   | 'APP_CONFIGURED'
   | 'APP_UPDATED'
@@ -152,9 +191,17 @@ export type PurchaselyEventsNames =
   | 'SUBSCRIPTIONS_TRANSFERRED'
   | 'USER_LOGGED_IN'
   | 'USER_LOGGED_OUT'
-  | 'SUBSCRIPTION_CONTENT_USED';
+  | 'SUBSCRIPTION_CONTENT_USED'
+  | 'IN_APP_RENEWED'
+  | 'PLACEMENT_OPENED'
+  | 'PURCHASE_FROM_STORE_TAPPED'
+  | 'STORE_PRODUCT_FETCH_FAILED'
+  | 'WEB_CHECKOUT_OPENED_IN_WEB_BROWSER'
+  | 'WEB_CHECKOUT_ERROR'
+  | 'WEB_CHECKOUT_TAPPED'
+  | 'WEB_CHECKOUT_TIMED_OUT';
 
-export type PurchaselyEventPropertyPlan = {
+export type PLYEventPropertyPlan = {
   type?: string;
   purchasely_plan_id?: string;
   store?: string;
@@ -176,7 +223,7 @@ export type PurchaselyEventPropertyPlan = {
   is_default: boolean;
 };
 
-export type PurchaselyEventPropertyCarousel = {
+export type PLYEventPropertyCarousel = {
   selected_slide?: number;
   number_of_slides?: number;
   is_carousel_auto_playing: boolean;
@@ -184,26 +231,26 @@ export type PurchaselyEventPropertyCarousel = {
   previous_slide?: number;
 };
 
-export type PurchaselyEventPropertySubscription = {
+export type PLYEventPropertySubscription = {
   plan?: string;
   product?: string;
 };
 
-export type PurchaselyEvent = {
-  name: PurchaselyEventsNames;
-  properties: PurchaselyEventProperties;
+export type PLYEvent = {
+  name: PLYEventName;
+  properties: PLYEventProperties;
 };
 
-export type PurchaselyEventProperties = {
+export type PLYEventProperties = {
   sdk_version: string;
-  event_name: PurchaselyEventsNames;
+  event_name: PLYEventName;
   event_created_at_ms: number;
   event_created_at: string;
   displayed_presentation?: string;
   placement_id?: string;
   user_id?: string;
   anonymous_user_id?: string;
-  purchasable_plans?: PurchaselyEventPropertyPlan[];
+  purchasable_plans?: PLYEventPropertyPlan[];
   deeplink_identifier?: string;
   source_identifier?: string;
   selected_plan?: string;
@@ -211,7 +258,7 @@ export type PurchaselyEventProperties = {
   selected_presentation?: string;
   previous_selected_presentation?: string;
   link_identifier?: string;
-  carousels?: PurchaselyEventPropertyCarousel[];
+  carousels?: PLYEventPropertyCarousel[];
   language?: string;
   device?: string;
   os_version?: string;
@@ -222,7 +269,7 @@ export type PurchaselyEventProperties = {
   plan?: string;
   selected_product?: string;
   plan_change_type?: string;
-  running_subscriptions?: PurchaselyEventPropertySubscription[];
+  running_subscriptions?: PLYEventPropertySubscription[];
   event_created_at_ms_original?: number;
   event_created_at_original?: string;
   is_fallback_presentation?: boolean;
@@ -276,26 +323,35 @@ export type PurchaselyEventProperties = {
   stripe_purchase_id?: string;
 };
 
+/**
+ * A plan attached to a `PLYPresentation` (`presentation.plans[]`).
+ *
+ * [RN-W-06] Field availability is **not symmetric** across platforms — it
+ * mirrors real differences between the native plan models (Apple vs. Google
+ * Play offer concepts aren't identical), not a bridge bug:
+ * - `basePlanId` / `storeOfferId` — **Android-only**. The native iOS
+ *   `PLYPresentationPlan` has no equivalent properties, so both are always
+ *   `undefined` on iOS.
+ * - `offerId` — present on **both** platforms, but from different identifier
+ *   spaces. On iOS it holds Apple's own distinct promotional-offer
+ *   identifier. On Android there is no separate native `offerId`, so the
+ *   bridge duplicates `storeOfferId`'s value under this key.
+ * - `planVendorId`, `storeProductId`, `offerVendorId`, `default` — genuinely
+ *   cross-platform; both native models expose all four.
+ */
 export type PLYPresentationPlan = {
   planVendorId: string | null;
   storeProductId?: string | null;
+  /** Android-only. Always `undefined` on iOS. */
   basePlanId?: string | null;
+  /** Cross-platform, but see the type-level doc — not the same id space on both platforms. */
   offerId?: string | null;
+  /** Android-only. Always `undefined` on iOS. */
+  storeOfferId?: string | null;
+  offerVendorId?: string | null;
+  default?: boolean | null;
 };
 
 export type PLYPresentationMetadata = {
   [key: string]: string | number | boolean;
-};
-
-export type PurchaselyPresentation = {
-  id: string;
-  placementId?: string | null;
-  audienceId?: string | null;
-  abTestId?: string | null;
-  abTestVariantId?: string | null;
-  language?: string | null;
-  type?: PLYPresentationType | null;
-  plans?: PLYPresentationPlan[] | null;
-  metadata: PLYPresentationMetadata;
-  height: number | null;
 };
