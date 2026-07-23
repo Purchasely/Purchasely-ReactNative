@@ -255,13 +255,15 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
     private fun attachPurchaselyView(host: ViewGroup) {
       // v6 / iso iOS+Flutter: when a requestId is provided, reuse the
       // presentation the JS layer already preloaded (request.preload()) instead
-      // of building + preloading a new one inside the view. Its dismissal is
-      // already emitted by the module's own preload-time wiring
-      // (wirePresentationCallbacks), keyed by this same requestId — routing it
-      // through `callback` too would double-emit, so this is a no-op.
+      // of building + preloading a new one inside the view. The inline dismiss
+      // path only invokes the `buildView` callback — the SDK never fires the
+      // preload-time `onDismissed` for an embedded view (proven by E2E T25) —
+      // so the outcome MUST be routed through `callback` here; the `delivered`
+      // guard upstream absorbs any future double-fire.
       val preloaded = requestId?.let { PurchaselyModule.loadedPresentation(it) }
       if (preloaded != null) {
-        val pv: PLYPresentationView? = preloaded.buildView(host.context) {}
+        val pv: PLYPresentationView? =
+          preloaded.buildView(host.context) { outcome -> callback(outcome) }
         pv?.let { host.addView(it) }
         return
       }
