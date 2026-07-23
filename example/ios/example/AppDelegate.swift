@@ -9,9 +9,17 @@ class AppDelegate: RCTAppDelegate {
     self.moduleName = "example"
     self.dependencyProvider = RCTAppDependencyProvider()
 
+    // E2E mode: launched via `xcrun simctl launch <udid> <bundle> E2E_MODE true`
+    // (launch argument) or with the E2E_MODE=true environment variable. When set,
+    // index.js routes the root component to E2ETestRunner (mirrors Android
+    // MainActivity reading the E2E_MODE intent extra).
+    let args = ProcessInfo.processInfo.arguments
+    let env = ProcessInfo.processInfo.environment
+    let e2eMode = args.contains("E2E_MODE") || env["E2E_MODE"] == "true"
+
     // You can add your custom initial props in the dictionary below.
     // They will be passed down to the ViewController used by React Native.
-    self.initialProps = [:]
+    self.initialProps = e2eMode ? ["e2eMode": true] : [:]
 
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
