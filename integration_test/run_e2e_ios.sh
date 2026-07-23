@@ -58,6 +58,43 @@ ok()   { echo -e "${GREEN}[ OK]${NC} $*"; }
 warn() { echo -e "${YELLOW}[WRN]${NC} $*"; }
 err()  { echo -e "${RED}[ERR]${NC} $*"; }
 
+# ── log stream startup (attach-race guard) ───────────────────────────────────
+# `log stream` has a real, multi-second attach latency after being spawned and
+# does NOT backfill: any event emitted before it is fully attached to the live
+# feed is silently dropped forever (proven empirically — a canary fired at
+# t=0 never appears even after 20s of polling the SAME already-running
+# stream). Unlike Android's `logcat`, there is no replay. Starting the app
+# before the stream is provably attached risks losing early markers
+# (T1-T7, [E2E:READY_FOR_TAP], ...) with no trace of why.
+#
+# This starts `log stream` (predicate widened to also match `syslog`, the
+# canary's own process name) and blocks the caller until a real canary event
+# is observed flowing through that SAME stream instance, before returning —
+# so whatever gets launched right after is guaranteed not to race the attach.
+# Sets the global STREAM_PID. Returns 1 (stream killed) if never attached
+# within ~20s, so the caller can abort rather than launch blind.
+start_log_stream() {
+  xcrun simctl spawn "$UDID" log stream \
+    --level debug \
+    --predicate "process == \"$PROCESS_NAME\" OR process == \"syslog\"" \
+    --style compact >> "$LOGFILE" 2>&1 &
+  STREAM_PID=$!
+
+  local canary="E2E_STREAM_READY_$$_$RANDOM"
+  local i
+  for i in $(seq 1 40); do
+    xcrun simctl spawn "$UDID" syslog -s "$canary" 2>/dev/null
+    if grep -q "$canary" "$LOGFILE" 2>/dev/null; then
+      ok "log stream attached (canary observed, iter $i)"
+      return 0
+    fi
+    sleep 0.5
+  done
+  err "log stream never attached (canary not observed after 20s) -- aborting rather than launching blind"
+  kill "$STREAM_PID" 2>/dev/null || true
+  return 1
+}
+
 # ── Auto-detect booted simulator ─────────────────────────────────────────────
 if [ -z "$UDID" ]; then
   UDID=$(xcrun simctl list devices booted -j \
@@ -145,21 +182,19 @@ ok "App installed"
 # `--console` attaches the app's stdout/stderr to this process; RN's
 # console.log/error reach stderr via the native logging hook, so the E2E
 # markers land in $LOGFILE. `E2E_MODE true` is read by AppDelegate.swift.
+# The `log stream` capture (belt-and-suspenders for console.log) is started
+# and confirmed-attached BEFORE the app launches -- see start_log_stream.
 xcrun simctl terminate "$UDID" "$APP_BUNDLE" 2>/dev/null || true
 sleep 1
 : > "$LOGFILE"
+
+log "Starting log stream capture..."
+start_log_stream || exit 1
 
 log "Launching E2E runner on $UDID..."
 xcrun simctl launch --console --terminate-running-process \
   "$UDID" "$APP_BUNDLE" E2E_MODE true >> "$LOGFILE" 2>&1 &
 LAUNCH_PID=$!
-
-# Secondary capture via unified logging (belt-and-suspenders for console.log).
-xcrun simctl spawn "$UDID" log stream \
-  --level debug \
-  --predicate "process == \"$PROCESS_NAME\"" \
-  --style compact >> "$LOGFILE" 2>&1 &
-STREAM_PID=$!
 
 cleanup() {
   kill "$STREAM_PID" 2>/dev/null || true
@@ -238,27 +273,31 @@ if [ "$SUITE_RESULT" = "PASS" ]; then
   xcrun simctl terminate "$UDID" "$APP_BUNDLE" 2>/dev/null || true
   sleep 1
 
-  SIMCTL_CHILD_E2E_PHASE=deeplink_coldstart xcrun simctl launch --console --terminate-running-process \
-    "$UDID" "$APP_BUNDLE" E2E_MODE true >> "$LOGFILE" 2>&1 &
-  LAUNCH_PID=$!
-  xcrun simctl spawn "$UDID" log stream \
-    --level debug \
-    --predicate "process == \"$PROCESS_NAME\"" \
-    --style compact >> "$LOGFILE" 2>&1 &
-  STREAM_PID=$!
+  # Same attach-race guard as the main launch above: get the stream confirmed
+  # BEFORE relaunching, or T27's own markers ([E2E:SUITE:START], DEEPLINK_OPENED,
+  # PRESENTATION_VIEWED, ...) can be silently dropped with no trace, misread as
+  # a genuine cold-start hang.
+  if ! start_log_stream; then
+    err "T27: aborting cold-start phase (log stream attach failed)"
+    T27_RESULT="FAIL"
+  else
+    SIMCTL_CHILD_E2E_PHASE=deeplink_coldstart xcrun simctl launch --console --terminate-running-process \
+      "$UDID" "$APP_BUNDLE" E2E_MODE true >> "$LOGFILE" 2>&1 &
+    LAUNCH_PID=$!
 
-  T27_START=$(date +%s)
-  while true; do
-    if [ $(( $(date +%s) - T27_START )) -ge 150 ]; then
-      err "T27: timeout waiting for cold-start deeplink result"
-      T27_RESULT="FAIL"; break
-    fi
-    # Match only PASS/FAIL (the main suite already logged [E2E:T27:SKIP]).
-    if grep -q '\[E2E:T27:PASS\]' "$LOGFILE" 2>/dev/null; then T27_RESULT="PASS"; break; fi
-    if grep -q '\[E2E:T27:FAIL\]' "$LOGFILE" 2>/dev/null; then T27_RESULT="FAIL"; break; fi
-    sleep 0.5
-  done
-  [ "$T27_RESULT" = "PASS" ] && ok "T27: cold-start deeplink phase PASSED"
+    T27_START=$(date +%s)
+    while true; do
+      if [ $(( $(date +%s) - T27_START )) -ge 150 ]; then
+        err "T27: timeout waiting for cold-start deeplink result"
+        T27_RESULT="FAIL"; break
+      fi
+      # Match only PASS/FAIL (the main suite already logged [E2E:T27:SKIP]).
+      if grep -q '\[E2E:T27:PASS\]' "$LOGFILE" 2>/dev/null; then T27_RESULT="PASS"; break; fi
+      if grep -q '\[E2E:T27:FAIL\]' "$LOGFILE" 2>/dev/null; then T27_RESULT="FAIL"; break; fi
+      sleep 0.5
+    done
+    [ "$T27_RESULT" = "PASS" ] && ok "T27: cold-start deeplink phase PASSED"
+  fi
 fi
 
 # Stop the streams so `wait` doesn't hang (either the T27 relaunch above, or the
