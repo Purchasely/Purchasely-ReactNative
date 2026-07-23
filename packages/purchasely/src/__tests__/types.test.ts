@@ -15,39 +15,37 @@ jest.mock('react-native', () => ({
 }))
 
 import type {
-    PurchaselyPlan,
-    PurchaselyProduct,
-    PurchaselySubscription,
-    PurchaselyPromotionalOfferSignature,
-    PurchaselyUserAttribute,
-    PresentPresentationResult,
-    PaywallActionInterceptorResult,
-    PurchaselyEvent,
-    PurchaselyEventProperties,
-    PurchaselyPresentation,
-    PLYPaywallInfo,
+    PLYPlan,
+    PLYProduct,
+    PLYSubscription,
+    PLYPromotionalOfferSignature,
+    PLYUserAttribute,
+    PLYEvent,
+    PLYEventProperties,
     PLYPresentationPlan,
     PLYPresentationMetadata,
-    PurchaselyOffer,
-    PurchaselySubscriptionOffer,
+    PLYPromoOffer,
+    PLYSubscriptionOffer,
+    PLYCommitmentInfo,
+    PLYCommitmentProgress,
+    PLYBillingPlanType,
 } from '../types'
+import type { PLYPurchasePayload } from '../presentationTypes'
 
 import {
     PlanType,
-    ProductResult,
     SubscriptionSource,
-    PLYPaywallAction,
-    PLYPresentationType,
     PLYUserAttributeSource,
     PLYUserAttributeType,
     PLYWebCheckoutProvider,
     PLYDataProcessingLegalBasis,
 } from '../enums'
+import { normalizePlan, normalizePlanType } from '../presentationTypes'
 
 describe('Purchasely Types', () => {
-    describe('PurchaselyPlan', () => {
+    describe('PLYPlan', () => {
         it('should accept valid plan object', () => {
-            const plan: PurchaselyPlan = {
+            const plan: PLYPlan = {
                 vendorId: 'monthly-plan',
                 productId: 'product-123',
                 name: 'Monthly Subscription',
@@ -64,6 +62,11 @@ describe('Purchasely Types', () => {
                 introDuration: '1 month',
                 introPeriod: 'P1M',
                 hasFreeTrial: false,
+                hasOfferPrice: false,
+                offerPrice: '',
+                offerAmount: 0,
+                offerDuration: '',
+                offerPeriod: '',
             }
 
             expect(plan.vendorId).toBe('monthly-plan')
@@ -72,7 +75,7 @@ describe('Purchasely Types', () => {
         })
 
         it('should handle consumable plan type', () => {
-            const plan: PurchaselyPlan = {
+            const plan: PLYPlan = {
                 vendorId: 'coins-100',
                 productId: 'coins-product',
                 name: '100 Coins',
@@ -89,15 +92,20 @@ describe('Purchasely Types', () => {
                 introDuration: '',
                 introPeriod: '',
                 hasFreeTrial: false,
+                hasOfferPrice: false,
+                offerPrice: '',
+                offerAmount: 0,
+                offerDuration: '',
+                offerPeriod: '',
             }
 
             expect(plan.type).toBe(PlanType.PLAN_TYPE_CONSUMABLE)
         })
     })
 
-    describe('PurchaselyProduct', () => {
+    describe('PLYProduct', () => {
         it('should accept valid product object', () => {
-            const product: PurchaselyProduct = {
+            const product: PLYProduct = {
                 name: 'Premium Subscription',
                 vendorId: 'premium-product',
                 plans: [
@@ -118,6 +126,11 @@ describe('Purchasely Types', () => {
                         introDuration: '',
                         introPeriod: '',
                         hasFreeTrial: true,
+                        hasOfferPrice: false,
+                        offerPrice: '',
+                        offerAmount: 0,
+                        offerDuration: '',
+                        offerPeriod: '',
                     },
                 ],
             }
@@ -128,7 +141,7 @@ describe('Purchasely Types', () => {
         })
 
         it('should handle product with empty plans array', () => {
-            const product: PurchaselyProduct = {
+            const product: PLYProduct = {
                 name: 'Empty Product',
                 vendorId: 'empty-product',
                 plans: [],
@@ -138,9 +151,9 @@ describe('Purchasely Types', () => {
         })
     })
 
-    describe('PurchaselySubscription', () => {
+    describe('PLYSubscription', () => {
         it('should accept valid subscription object', () => {
-            const subscription: PurchaselySubscription = {
+            const subscription: PLYSubscription = {
                 purchaseToken: 'token-123',
                 subscriptionSource: SubscriptionSource.APPLE_APP_STORE,
                 nextRenewalDate: '2024-02-15T12:00:00Z',
@@ -162,6 +175,11 @@ describe('Purchasely Types', () => {
                     introDuration: '',
                     introPeriod: '',
                     hasFreeTrial: false,
+                    hasOfferPrice: false,
+                    offerPrice: '',
+                    offerAmount: 0,
+                    offerDuration: '',
+                    offerPeriod: '',
                 },
                 product: {
                     name: 'Premium',
@@ -173,11 +191,241 @@ describe('Purchasely Types', () => {
             expect(subscription.subscriptionSource).toBe(SubscriptionSource.APPLE_APP_STORE)
             expect(subscription.nextRenewalDate).toBe('2024-02-15T12:00:00Z')
         })
+
+        // [PAR-24] cumulatedRevenuesInUSD / subscriptionDurationIn{Days,Weeks,Months}
+        // were commented out of the type despite Android's native
+        // PLYSubscription.toMap() providing them. Reactivated as optional
+        // (Android-only; iOS's PLYSubscription+Hybrid.m never emits them).
+        it('should accept the Android-only revenue/duration fields when present', () => {
+            const subscription: PLYSubscription = {
+                purchaseToken: 'token-123',
+                subscriptionSource: SubscriptionSource.GOOGLE_PLAY_STORE,
+                nextRenewalDate: '2024-02-15T12:00:00Z',
+                cancelledDate: '',
+                plan: {
+                    vendorId: 'monthly-plan',
+                    productId: 'premium-product',
+                    name: 'Monthly',
+                    type: PlanType.PLAN_TYPE_AUTO_RENEWING_SUBSCRIPTION,
+                    amount: 999,
+                    localizedAmount: '$9.99',
+                    currencyCode: 'USD',
+                    currencySymbol: '$',
+                    price: '$9.99/month',
+                    period: 'P1M',
+                    hasIntroductoryPrice: false,
+                    introPrice: '',
+                    introAmount: 0,
+                    introDuration: '',
+                    introPeriod: '',
+                    hasFreeTrial: false,
+                    hasOfferPrice: false,
+                    offerPrice: '',
+                    offerAmount: 0,
+                    offerDuration: '',
+                    offerPeriod: '',
+                },
+                product: {
+                    name: 'Premium',
+                    vendorId: 'premium-product',
+                    plans: [],
+                },
+                cumulatedRevenuesInUSD: 59.94,
+                subscriptionDurationInDays: 180,
+                subscriptionDurationInWeeks: 25,
+                subscriptionDurationInMonths: 6,
+            }
+
+            expect(subscription.cumulatedRevenuesInUSD).toBe(59.94)
+            expect(subscription.subscriptionDurationInDays).toBe(180)
+            expect(subscription.subscriptionDurationInWeeks).toBe(25)
+            expect(subscription.subscriptionDurationInMonths).toBe(6)
+        })
+
+        it('should accept a subscription omitting the Android-only fields (iOS shape)', () => {
+            const subscription: PLYSubscription = {
+                purchaseToken: 'token-123',
+                subscriptionSource: SubscriptionSource.APPLE_APP_STORE,
+                nextRenewalDate: '2024-02-15T12:00:00Z',
+                cancelledDate: '',
+                plan: {
+                    vendorId: 'monthly-plan',
+                    productId: 'premium-product',
+                    name: 'Monthly',
+                    type: PlanType.PLAN_TYPE_AUTO_RENEWING_SUBSCRIPTION,
+                    amount: 999,
+                    localizedAmount: '$9.99',
+                    currencyCode: 'USD',
+                    currencySymbol: '$',
+                    price: '$9.99/month',
+                    period: 'P1M',
+                    hasIntroductoryPrice: false,
+                    introPrice: '',
+                    introAmount: 0,
+                    introDuration: '',
+                    introPeriod: '',
+                    hasFreeTrial: false,
+                    hasOfferPrice: false,
+                    offerPrice: '',
+                    offerAmount: 0,
+                    offerDuration: '',
+                    offerPeriod: '',
+                },
+                product: {
+                    name: 'Premium',
+                    vendorId: 'premium-product',
+                    plans: [],
+                },
+            }
+
+            expect(subscription.cumulatedRevenuesInUSD).toBeUndefined()
+        })
     })
 
-    describe('PurchaselyPromotionalOfferSignature', () => {
+    // Apple-only (iOS 26.4+) "monthly subscription with 12-month commitment".
+    // Structured data on the plan / subscription — distinct from the
+    // `billing_plan_type` / `commitment` / `commitment_progress` *event* strings
+    // in PLYEventProperties.
+    describe('PLYCommitmentInfo (Apple-only)', () => {
+        const commitmentInfo: PLYCommitmentInfo[] = [
+            {
+                billingPlanType: 'monthly',
+                billingPrice: 9.99,
+                billingPeriod: 'P1M',
+                totalPrice: 119.88,
+                totalPeriod: 'P1Y',
+                totalDuration: 12,
+            },
+        ]
+
+        const committedPlan: PLYPlan = {
+            vendorId: 'monthly-12mo',
+            productId: 'product-123',
+            name: 'Monthly (12-month commitment)',
+            type: PlanType.PLAN_TYPE_AUTO_RENEWING_SUBSCRIPTION,
+            amount: 9.99,
+            localizedAmount: '$9.99',
+            currencyCode: 'USD',
+            currencySymbol: '$',
+            price: '$9.99/month',
+            period: 'P1M',
+            hasIntroductoryPrice: false,
+            introPrice: '',
+            introAmount: 0,
+            introDuration: '',
+            introPeriod: '',
+            hasFreeTrial: false,
+            hasOfferPrice: false,
+            offerPrice: '',
+            offerAmount: 0,
+            offerDuration: '',
+            offerPeriod: '',
+            commitmentInfo,
+        }
+
+        it('exposes structured commitment info on a plan', () => {
+            expect(committedPlan.commitmentInfo).toHaveLength(1)
+            expect(committedPlan.commitmentInfo?.[0]?.billingPlanType).toBe('monthly')
+            expect(committedPlan.commitmentInfo?.[0]?.billingPrice).toBe(9.99)
+            expect(committedPlan.commitmentInfo?.[0]?.totalPrice).toBe(119.88)
+            expect(committedPlan.commitmentInfo?.[0]?.totalPeriod).toBe('P1Y')
+            expect(committedPlan.commitmentInfo?.[0]?.totalDuration).toBe(12)
+        })
+
+        it('is optional (absent on Android and non-committed Apple plans)', () => {
+            const plainPlan: PLYPlan = {
+                ...committedPlan,
+                commitmentInfo: undefined,
+            }
+            expect(plainPlan.commitmentInfo).toBeUndefined()
+        })
+
+        it('accepts every billing plan type', () => {
+            const types: PLYBillingPlanType[] = [
+                'unspecified',
+                'upFront',
+                'monthly',
+            ]
+            expect(types).toHaveLength(3)
+        })
+
+        it('carries commitmentInfo on the interceptAction purchase payload plan', () => {
+            const payload: PLYPurchasePayload = {
+                kind: 'purchase',
+                plan: committedPlan,
+            }
+            expect(payload.plan.commitmentInfo?.[0]?.totalDuration).toBe(12)
+        })
+    })
+
+    describe('PLYCommitmentProgress (Apple-only)', () => {
+        const baseSubscription: PLYSubscription = {
+            purchaseToken: 'token-123',
+            subscriptionSource: SubscriptionSource.APPLE_APP_STORE,
+            nextRenewalDate: '2026-08-20T12:00:00Z',
+            cancelledDate: '',
+            plan: {
+                vendorId: 'monthly-12mo',
+                productId: 'premium-product',
+                name: 'Monthly',
+                type: PlanType.PLAN_TYPE_AUTO_RENEWING_SUBSCRIPTION,
+                amount: 9.99,
+                localizedAmount: '$9.99',
+                currencyCode: 'USD',
+                currencySymbol: '$',
+                price: '$9.99/month',
+                period: 'P1M',
+                hasIntroductoryPrice: false,
+                introPrice: '',
+                introAmount: 0,
+                introDuration: '',
+                introPeriod: '',
+                hasFreeTrial: false,
+                hasOfferPrice: false,
+                offerPrice: '',
+                offerAmount: 0,
+                offerDuration: '',
+                offerPeriod: '',
+            },
+            product: {
+                name: 'Premium',
+                vendorId: 'premium-product',
+                plans: [],
+            },
+        }
+
+        it('exposes commitment progress on a subscription', () => {
+            const commitmentProgress: PLYCommitmentProgress = {
+                billingPeriodNumber: 3,
+                totalBillingPeriods: 12,
+                commitmentExpiresDate: '2026-07-20T12:00:00Z',
+                commitmentPrice: 9.99,
+            }
+            const subscription: PLYSubscription = {
+                ...baseSubscription,
+                commitmentProgress,
+            }
+            expect(subscription.commitmentProgress?.billingPeriodNumber).toBe(3)
+            expect(subscription.commitmentProgress?.totalBillingPeriods).toBe(12)
+            expect(subscription.commitmentProgress?.commitmentExpiresDate).toBe(
+                '2026-07-20T12:00:00Z'
+            )
+            expect(subscription.commitmentProgress?.commitmentPrice).toBe(9.99)
+        })
+
+        it('is optional / nullable (absent on Android and non-committed subs)', () => {
+            expect(baseSubscription.commitmentProgress).toBeUndefined()
+            const nulled: PLYSubscription = {
+                ...baseSubscription,
+                commitmentProgress: null,
+            }
+            expect(nulled.commitmentProgress).toBeNull()
+        })
+    })
+
+    describe('PLYPromotionalOfferSignature', () => {
         it('should accept valid signature object', () => {
-            const signature: PurchaselyPromotionalOfferSignature = {
+            const signature: PLYPromotionalOfferSignature = {
                 planVendorId: 'plan-123',
                 identifier: 'offer-id',
                 signature: 'base64-signature',
@@ -191,9 +439,9 @@ describe('Purchasely Types', () => {
         })
     })
 
-    describe('PurchaselyUserAttribute', () => {
+    describe('PLYUserAttribute', () => {
         it('should accept user attribute with all fields', () => {
-            const attr: PurchaselyUserAttribute = {
+            const attr: PLYUserAttribute = {
                 key: 'name',
                 value: 'John Doe',
                 type: PLYUserAttributeType.STRING,
@@ -206,7 +454,7 @@ describe('Purchasely Types', () => {
         })
 
         it('should accept user attribute with optional fields null', () => {
-            const attr: PurchaselyUserAttribute = {
+            const attr: PLYUserAttribute = {
                 key: 'counter',
                 value: null,
                 type: null,
@@ -217,116 +465,9 @@ describe('Purchasely Types', () => {
         })
     })
 
-    describe('PresentPresentationResult', () => {
-        it('should accept valid result object', () => {
-            const result: PresentPresentationResult = {
-                result: ProductResult.PRODUCT_RESULT_PURCHASED,
-                plan: {
-                    vendorId: 'plan-123',
-                    productId: 'product-123',
-                    name: 'Plan',
-                    type: PlanType.PLAN_TYPE_AUTO_RENEWING_SUBSCRIPTION,
-                    amount: 999,
-                    localizedAmount: '$9.99',
-                    currencyCode: 'USD',
-                    currencySymbol: '$',
-                    price: '$9.99',
-                    period: 'P1M',
-                    hasIntroductoryPrice: false,
-                    introPrice: '',
-                    introAmount: 0,
-                    introDuration: '',
-                    introPeriod: '',
-                    hasFreeTrial: false,
-                },
-            }
-
-            expect(result.result).toBe(ProductResult.PRODUCT_RESULT_PURCHASED)
-        })
-    })
-
-    describe('PaywallActionInterceptorResult', () => {
-        it('should accept valid interceptor result', () => {
-            const result: PaywallActionInterceptorResult = {
-                info: {
-                    presentationId: 'pres-123',
-                    placementId: 'placement-123',
-                    contentId: 'content-123',
-                    abTestId: 'ab-123',
-                    abTestVariantId: 'variant-a',
-                },
-                action: PLYPaywallAction.PURCHASE,
-                parameters: {
-                    clientReferenceId: 'ref-123',
-                    url: 'https://example.com',
-                    title: 'Purchase',
-                    plan: {} as any,
-                    offer: null,
-                    subscriptionOffer: null,
-                    presentation: 'pres-123',
-                    queryParameterKey: 'param',
-                    webCheckoutProvider: PLYWebCheckoutProvider.STRIPE,
-                },
-            }
-
-            expect(result.action).toBe(PLYPaywallAction.PURCHASE)
-            expect(result.info.presentationId).toBe('pres-123')
-        })
-    })
-
-    describe('PurchaselyPresentation', () => {
-        it('should accept valid presentation object', () => {
-            const presentation: PurchaselyPresentation = {
-                id: 'pres-123',
-                placementId: 'placement-123',
-                audienceId: 'audience-123',
-                abTestId: 'ab-123',
-                abTestVariantId: 'variant-a',
-                language: 'en',
-                type: PLYPresentationType.NORMAL,
-                plans: [
-                    {
-                        planVendorId: 'plan-123',
-                        storeProductId: 'store-product-123',
-                        basePlanId: 'base-plan',
-                        offerId: 'offer-123',
-                    },
-                ],
-                metadata: {
-                    title: 'Premium Access',
-                    showDiscount: true,
-                    discountPercent: 20,
-                },
-                height: 500,
-            }
-
-            expect(presentation.id).toBe('pres-123')
-            expect(presentation.type).toBe(PLYPresentationType.NORMAL)
-            expect(presentation.metadata.title).toBe('Premium Access')
-        })
-
-        it('should accept presentation with null optional fields', () => {
-            const presentation: PurchaselyPresentation = {
-                id: 'pres-123',
-                placementId: null,
-                audienceId: null,
-                abTestId: null,
-                abTestVariantId: null,
-                language: null,
-                type: null,
-                plans: null,
-                metadata: {},
-                height: null,
-            }
-
-            expect(presentation.placementId).toBeNull()
-            expect(presentation.height).toBeNull()
-        })
-    })
-
-    describe('PurchaselyEvent', () => {
+    describe('PLYEvent', () => {
         it('should accept valid event object', () => {
-            const event: PurchaselyEvent = {
+            const event: PLYEvent = {
                 name: 'PURCHASE_TAPPED',
                 properties: {
                     sdk_version: '5.7.3',
@@ -344,7 +485,7 @@ describe('Purchasely Types', () => {
         })
 
         it('should accept the extended event properties emitted by the native SDKs', () => {
-            const properties: PurchaselyEventProperties = {
+            const properties: PLYEventProperties = {
                 sdk_version: '5.7.3',
                 event_name: 'PURCHASE_TAPPED',
                 event_created_at_ms: 1705315200000,
@@ -403,26 +544,6 @@ describe('Purchasely Types', () => {
         })
     })
 
-    describe('PLYPaywallInfo', () => {
-        it('should accept valid paywall info', () => {
-            const info: PLYPaywallInfo = {
-                presentationId: 'pres-123',
-                placementId: 'placement-123',
-                contentId: 'content-123',
-                abTestId: 'ab-123',
-                abTestVariantId: 'variant-a',
-            }
-
-            expect(info.presentationId).toBe('pres-123')
-        })
-
-        it('should accept empty paywall info', () => {
-            const info: PLYPaywallInfo = {}
-
-            expect(info.presentationId).toBeUndefined()
-        })
-    })
-
     describe('PLYPresentationPlan', () => {
         it('should accept valid presentation plan', () => {
             const plan: PLYPresentationPlan = {
@@ -461,9 +582,9 @@ describe('Purchasely Types', () => {
         })
     })
 
-    describe('PurchaselyOffer', () => {
+    describe('PLYPromoOffer', () => {
         it('should accept valid offer', () => {
-            const offer: PurchaselyOffer = {
+            const offer: PLYPromoOffer = {
                 vendorId: 'offer-123',
                 storeOfferId: 'store-offer-123',
             }
@@ -472,7 +593,7 @@ describe('Purchasely Types', () => {
         })
 
         it('should accept offer with null fields', () => {
-            const offer: PurchaselyOffer = {
+            const offer: PLYPromoOffer = {
                 vendorId: null,
                 storeOfferId: null,
             }
@@ -481,9 +602,9 @@ describe('Purchasely Types', () => {
         })
     })
 
-    describe('PurchaselySubscriptionOffer', () => {
+    describe('PLYSubscriptionOffer', () => {
         it('should accept valid subscription offer', () => {
-            const offer: PurchaselySubscriptionOffer = {
+            const offer: PLYSubscriptionOffer = {
                 subscriptionId: 'sub-123',
                 basePlanId: 'base-plan',
                 offerToken: 'token-123',
@@ -494,7 +615,7 @@ describe('Purchasely Types', () => {
         })
 
         it('should accept subscription offer with null optional fields', () => {
-            const offer: PurchaselySubscriptionOffer = {
+            const offer: PLYSubscriptionOffer = {
                 subscriptionId: 'sub-123',
                 basePlanId: null,
                 offerToken: null,
@@ -508,7 +629,7 @@ describe('Purchasely Types', () => {
 
 describe('Purchasely Event Names', () => {
     it('should support all event name types', () => {
-        const eventNames: Array<PurchaselyEvent['name']> = [
+        const eventNames: Array<PLYEvent['name']> = [
             'APP_INSTALLED',
             'APP_CONFIGURED',
             'APP_UPDATED',
@@ -556,6 +677,63 @@ describe('Purchasely Event Names', () => {
         expect(eventNames).toHaveLength(42)
         eventNames.forEach(name => {
             expect(typeof name).toBe('string')
+        })
+    })
+
+    // [rc.4 hardening] Android's native SDK is expected to start emitting
+    // plan.type as a DistributionType string (e.g. "RENEWING_SUBSCRIPTION")
+    // instead of the numeric ordinal every platform emits today.
+    describe('normalizePlanType / normalizePlan (rc.4 hardening)', () => {
+        it('passes a numeric ordinal through unchanged', () => {
+            expect(normalizePlanType(PlanType.PLAN_TYPE_AUTO_RENEWING_SUBSCRIPTION)).toBe(
+                PlanType.PLAN_TYPE_AUTO_RENEWING_SUBSCRIPTION
+            )
+            expect(normalizePlanType(0)).toBe(0)
+        })
+
+        it('maps every known Android DistributionType string name to its ordinal', () => {
+            expect(normalizePlanType('CONSUMABLE')).toBe(PlanType.PLAN_TYPE_CONSUMABLE)
+            expect(normalizePlanType('NON_CONSUMABLE')).toBe(PlanType.PLAN_TYPE_NON_CONSUMABLE)
+            expect(normalizePlanType('RENEWING_SUBSCRIPTION')).toBe(
+                PlanType.PLAN_TYPE_AUTO_RENEWING_SUBSCRIPTION
+            )
+            expect(normalizePlanType('NON_RENEWING_SUBSCRIPTION')).toBe(
+                PlanType.PLAN_TYPE_NON_RENEWING_SUBSCRIPTION
+            )
+            expect(normalizePlanType('UNKNOWN')).toBe(PlanType.PLAN_TYPE_UNKNOWN)
+        })
+
+        it('returns null for null/undefined/unrecognized input', () => {
+            expect(normalizePlanType(null)).toBeNull()
+            expect(normalizePlanType(undefined)).toBeNull()
+            expect(normalizePlanType('NOT_A_REAL_TYPE')).toBeNull()
+        })
+
+        it('normalizePlan rewrites only the type field of a raw plan payload', () => {
+            const raw = { vendorId: 'monthly', type: 'RENEWING_SUBSCRIPTION', hasFreeTrial: false }
+            expect(normalizePlan(raw)).toEqual({
+                vendorId: 'monthly',
+                type: PlanType.PLAN_TYPE_AUTO_RENEWING_SUBSCRIPTION,
+                hasFreeTrial: false,
+            })
+        })
+
+        it('normalizePlan leaves an already-numeric type untouched', () => {
+            const raw = { vendorId: 'monthly', type: PlanType.PLAN_TYPE_CONSUMABLE }
+            expect(normalizePlan(raw)).toEqual(raw)
+        })
+
+        it('normalizes unknown string and inherited-key types to PLAN_TYPE_UNKNOWN', () => {
+            expect(normalizePlan({ vendorId: 'monthly', type: 'FUTURE_DISTRIBUTION_TYPE' }))
+                .toEqual({ vendorId: 'monthly', type: PlanType.PLAN_TYPE_UNKNOWN })
+            expect(normalizePlan({ vendorId: 'monthly', type: 'constructor' }))
+                .toEqual({ vendorId: 'monthly', type: PlanType.PLAN_TYPE_UNKNOWN })
+        })
+
+        it('normalizePlan passes through non-plan-shaped values unchanged', () => {
+            expect(normalizePlan(null)).toBeNull()
+            expect(normalizePlan(undefined)).toBeUndefined()
+            expect(normalizePlan({ vendorId: 'monthly' })).toEqual({ vendorId: 'monthly' })
         })
     })
 })
