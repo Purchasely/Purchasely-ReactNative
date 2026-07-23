@@ -54,7 +54,8 @@ function normalizePresentation(raw: any): PLYPresentation | null {
               }))
             : null,
         customScreenId: raw.customScreenId ?? null,
-        requestId: raw.requestId ?? null,
+        // `requestId` is not part of the native presentation payload; it is
+        // stamped on by `buildLoadedPresentation` for preloaded presentations.
     };
 }
 
