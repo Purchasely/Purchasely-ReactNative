@@ -285,9 +285,9 @@ function App(): React.JSX.Element {
                             <View style={styles.embeddedPaywall}>
                                 <PLYPresentationView
                                     placementId="ONBOARDING"
-                                    onPresentationClosed={(result) => {
+                                    onPresentationClosed={(outcome) => {
                                         setStatusMessage(
-                                            `Embedded presentation closed: ${result.result}`
+                                            `Embedded presentation closed: ${outcome.purchaseResult ?? outcome.closeReason}`
                                         )
                                     }}
                                 />
