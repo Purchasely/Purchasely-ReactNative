@@ -6,8 +6,7 @@ import {
     PLYPresentationBuilder,
     PLYPresentationRequest,
     PLYPresentationView,
-    PLYPresentationViewResult,
-    ProductResult,
+    type PLYPresentationOutcome,
 } from 'react-native-purchasely'
 
 /**
@@ -54,16 +53,21 @@ export const PaywallPreloadedScreen: React.FC<NativeStackScreenProps<any>> = ({
         }
     }, [placementId])
 
-    const callback = (result: PLYPresentationViewResult) => {
-        console.log('[PaywallPreloaded] closed, result =', result.result)
-        switch (result.result) {
-            case ProductResult.PRODUCT_RESULT_PURCHASED:
-            case ProductResult.PRODUCT_RESULT_RESTORED:
-                if (result.plan != null) {
-                    console.log('User purchased ' + result.plan.name)
+    const callback = (outcome: PLYPresentationOutcome) => {
+        console.log(
+            '[PaywallPreloaded] closed, purchaseResult =',
+            outcome.purchaseResult,
+            'closeReason =',
+            outcome.closeReason
+        )
+        switch (outcome.purchaseResult) {
+            case 'purchased':
+            case 'restored':
+                if (outcome.plan != null) {
+                    console.log('User purchased ' + outcome.plan.name)
                 }
                 break
-            case ProductResult.PRODUCT_RESULT_CANCELLED:
+            case 'cancelled':
                 console.log('User cancelled')
                 break
         }

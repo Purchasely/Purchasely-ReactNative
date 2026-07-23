@@ -67,7 +67,10 @@ cleanup() {
   if [ -n "$LOGCAT_PID" ]; then
     kill "$LOGCAT_PID" 2>/dev/null || true
   fi
-  rm -f "$LOGCAT_FILE"
+  # In CI the upload-artifact step collects the log after this trap fires.
+  if [ -z "${GITHUB_ACTIONS:-}" ]; then
+    rm -f "$LOGCAT_FILE"
+  fi
 }
 trap cleanup EXIT
 

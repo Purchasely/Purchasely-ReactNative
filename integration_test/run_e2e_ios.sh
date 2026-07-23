@@ -164,7 +164,10 @@ STREAM_PID=$!
 cleanup() {
   kill "$STREAM_PID" 2>/dev/null || true
   kill "$LAUNCH_PID"  2>/dev/null || true
-  rm -f "$LOGFILE"
+  # In CI the upload-artifact step collects the log after this trap fires.
+  if [ -z "${GITHUB_ACTIONS:-}" ]; then
+    rm -f "$LOGFILE"
+  fi
 }
 trap cleanup EXIT
 
