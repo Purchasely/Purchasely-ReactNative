@@ -6,20 +6,44 @@ import {
   requireNativeComponent,
   UIManager,
 } from 'react-native';
-import type { PresentPresentationResult } from '../';
+
+import type { PLYPresentationRequest } from '../presentation';
+import type { ProductResult } from '../enums';
+import type { PLYPlan } from '../types';
 
 const PurchaselyView = requireNativeComponent('PurchaselyView');
+
+/**
+ * Result delivered to {@link PLYPresentationViewProps.onPresentationClosed}
+ * when the embedded paywall is dismissed. Mirrors what the native iOS/Android
+ * embedded views emit: the {@link ProductResult} of the purchase flow and the
+ * purchased/restored plan (or `null` when the user simply closed the paywall).
+ */
+export interface PLYPresentationViewResult {
+  result: ProductResult;
+  plan: PLYPlan | null;
+}
 
 interface PLYPresentationViewProps {
   placementId?: string; // Made optional
   presentation?: any; // Made optional
-  onPresentationClosed?: (result: PresentPresentationResult) => void;
+  /**
+   * A presentation request that was already preloaded via `request.preload()`.
+   * The native view resolves the loaded presentation by the request's
+   * `requestId` (no second preload) — mirrors the full-screen builder flow and
+   * the native iOS/Android/Flutter SDKs. Preload before rendering; otherwise
+   * `requestId` is null and the view falls back to `placementId` /
+   * `presentation`.
+   */
+  request?: PLYPresentationRequest;
+  onPresentationClosed?: (result: PLYPresentationViewResult) => void;
   flex?: number;
 }
 
 export const PLYPresentationView: React.FC<PLYPresentationViewProps> = ({
   placementId,
   presentation,
+  request,
   onPresentationClosed,
   flex = 1, // Default to 1 if not provided
 }) => {
@@ -32,7 +56,7 @@ export const PLYPresentationView: React.FC<PLYPresentationViewProps> = ({
 
     const handleClose = async () => {
       try {
-        const result: PresentPresentationResult = await NativeModules.PurchaselyView.onPresentationClosed();
+        const result = await NativeModules.PurchaselyView.onPresentationClosed();
         if (!cancelled) {
           onPresentationClosed(result);
         }
@@ -62,9 +86,7 @@ export const PLYPresentationView: React.FC<PLYPresentationViewProps> = ({
         );
 
        const viewId = findNodeHandle(ref.current);
-       console.log('### viewId', viewId);
        if (viewId) {
-         console.log('### creating Fragment');
          createFragment(viewId);
        }
      }
@@ -76,6 +98,7 @@ export const PLYPresentationView: React.FC<PLYPresentationViewProps> = ({
       style={{ flex }}
       placementId={placementId}
       presentation={presentation}
+      requestId={request?.requestId ?? undefined}
       {...(Platform.OS === 'android' && { ref: ref })}
     />
   );
