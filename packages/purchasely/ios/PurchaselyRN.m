@@ -395,6 +395,14 @@ static __weak PurchaselyRN *_sharedEmitter;
     return nil;
 }
 
++ (void)evictPresentationRequestId:(NSString *)requestId {
+    if (requestId == nil) { return; }
+    ensurePresentationState();
+    @synchronized (kPresentationStateLock) {
+        [kPresentationsByRequest removeObjectForKey:requestId];
+    }
+}
+
 + (void)emitPresentationDismissedForId:(NSString *)routingId outcome:(PLYPresentationOutcome *)outcome {
     PurchaselyRN *emitter = _sharedEmitter;
     if (emitter == nil || !emitter.shouldEmit) { return; }

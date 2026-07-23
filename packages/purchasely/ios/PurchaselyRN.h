@@ -33,6 +33,16 @@
                                                             placementId:(nullable NSString *)placementId
     NS_SWIFT_NAME(takeLoadedPresentation(matchingScreenId:placementId:));
 
+/// Evict a preloaded presentation's entry from the request registry without
+/// closing or affecting anything on screen. Hardening for an embedded
+/// `PLYPresentationView` that unmounts without ever dismissing (e.g. the host
+/// navigates away), which would otherwise leak the entry forever since only
+/// `emitPresentationDismissed(forId:outcome:)` purged it before. Mirrors
+/// Android's `PurchaselyModule.evictPresentationRequest`. No-op if
+/// `requestId` is nil or not a key in the registry.
++ (void)evictPresentationRequestId:(nullable NSString *)requestId
+    NS_SWIFT_NAME(evictPresentationRequest(_:));
+
 /// Emit a `PURCHASELY_PRESENTATION_DISMISSED` event for an embedded
 /// `PLYPresentationView`, keyed by the id the JS component is routing on (the
 /// bridge `requestId` when the view reuses a preloaded presentation, or a

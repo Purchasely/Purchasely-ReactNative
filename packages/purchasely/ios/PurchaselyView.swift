@@ -42,15 +42,17 @@ class PurchaselyView: UIView {
   /// `requestId` when reusing a preloaded presentation (identical to
   /// `requestId` above in that case), or a component-generated id for the
   /// `presentation` prop and fresh `placementId` paths, which have no bridge
-  /// `requestId` of their own. Re-runs `setupView()` on change like the other
-  /// props so the `presentation` prop path's dismiss re-wiring (see
-  /// `getPresentationController`) uses the final value regardless of prop
-  /// application order.
-  @objc var viewId: String? {
-    didSet {
-      setupView()
-    }
-  }
+  /// `requestId` of their own.
+  ///
+  /// Plain stored property — NOT wired to `setupView()`. RN applies props in
+  /// an unspecified order, so `viewId` may land after `placementId`/
+  /// `presentation`, which already triggered `setupView()`/preload. Re-running
+  /// `setupView()` here would double-preload (and double-fire
+  /// `PRESENTATION_VIEWED`). Instead, the `onDismissed` closures wired in
+  /// `createNativeViewController` and `getPresentationController` read
+  /// `self?.viewId` lazily at dismiss time, so whatever value RN eventually
+  /// settles on is the one used for routing, regardless of application order.
+  @objc var viewId: String?
 
   override init(frame: CGRect) {
     super.init(frame: frame)
@@ -206,10 +208,11 @@ class PurchaselyView: UIView {
           // is actually listening on (it doesn't know the internal requestId
           // `preloadPresentation:` wired earlier) — `onDismissed` is a single
           // settable slot, so this replaces that wiring rather than stacking.
-          if let routingId = viewId {
-              matched.onDismissed = { outcome in
-                  PurchaselyRN.emitPresentationDismissed(forId: routingId, outcome: outcome)
-              }
+          // `viewId` is read lazily at dismiss time (not captured now) since RN
+          // may still apply it after this method runs.
+          matched.onDismissed = { [weak self] outcome in
+              guard let routingId = self?.viewId else { return }
+              PurchaselyRN.emitPresentationDismissed(forId: routingId, outcome: outcome)
           }
           return controller
       }
@@ -224,11 +227,12 @@ class PurchaselyView: UIView {
     // Build a presentation request, preload it, then install the controller once
     // the SDK hands it back. Preload is asynchronous, so we return nil here and
     // swap the real view in via `attachController` on completion.
-    let routingId = viewId
+    // `viewId` is read lazily at dismiss time (not captured now) since RN may
+    // still apply it after this method runs.
     let request = PLYPresentationBuilder
       .from(placementId: placementId)
-      .onDismissed { outcome in
-        guard let routingId = routingId else { return }
+      .onDismissed { [weak self] outcome in
+        guard let routingId = self?.viewId else { return }
         PurchaselyRN.emitPresentationDismissed(forId: routingId, outcome: outcome)
       }
       .build()
@@ -257,6 +261,16 @@ class PurchaselyView: UIView {
 
   deinit {
     detachController()
+    // Hardening (parity with Android's `onDropViewInstance` →
+    // `evictPresentationRequest`): a view that unmounts without ever
+    // dismissing (e.g. the host navigates away) would otherwise leak the
+    // `requestId` entry this view consumed in `kPresentationsByRequest`
+    // forever — only `emitPresentationDismissed(forId:outcome:)` purged it
+    // before. No-op if `requestId` was never set or was already purged by a
+    // normal dismiss.
+    if let requestId = requestId {
+      PurchaselyRN.evictPresentationRequest(requestId)
+    }
   }
 }
 
