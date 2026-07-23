@@ -15,15 +15,28 @@
 
 @property (class, nonatomic, copy) RCTPromiseResolveBlock purchaseResolve;
 
-@property (class, nonatomic, strong) NSMutableArray<PLYPresentation *> *presentationsLoaded;
+@property (class, nonatomic, strong) UIViewController *sharedViewController;
+
+@property (class, nonatomic, strong) NSMutableArray<id<PLYPresentation>> *presentationsLoaded;
 
 @property (nonatomic, assign) Boolean shouldReopenPaywall;
 
 @property (nonatomic, assign) Boolean shouldEmit;
 
-@property void (^loginClosedHandler)(BOOL loggedIn);
-@property void (^authorizePurchaseHandler)(BOOL authorizePurchase);
-@property void (^onProcessActionHandler)(BOOL proceed);
-@property enum PLYPresentationAction paywallAction;
+/// Look up a presentation that was preloaded through `preloadPresentation:` by
+/// its bridge `requestId`. Used by the embedded `PLYPresentationView` to reuse a
+/// presentation the JS layer already preloaded (instead of loading it again).
++ (nullable id<PLYPresentation>)loadedPresentationForRequestId:(nonnull NSString *)requestId;
+
+/// Emit a `PRESENTATION_VIEWED` analytics event to JS for an embedded
+/// `PLYPresentationView` that has just appeared on screen. The iOS native SDK
+/// only fires this event through its own full-screen display flow
+/// (`display()` / `showController:`); a manually embedded controller renders
+/// correctly but never triggers it. Android's SDK DOES fire it for embedded
+/// views, so the embedded view calls this to reach cross-platform parity — the
+/// paywall is genuinely on screen at this point. No-op if the emitter is not
+/// observing.
++ (void)emitEmbeddedPresentationViewedForRequestId:(nullable NSString *)requestId
+                                        placementId:(nullable NSString *)placementId;
 
 @end

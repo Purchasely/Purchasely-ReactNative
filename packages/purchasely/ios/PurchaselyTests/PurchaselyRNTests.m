@@ -36,6 +36,22 @@
     XCTAssertNotNil([PurchaselyRN presentationsLoaded], @"presentationsLoaded array should be initialized");
 }
 
+#pragma mark - Default presentation dismiss handler
+
+- (void)testSupportedEventsIncludesDefaultPresentationDismissed {
+    NSArray<NSString *> *events = [self.purchaselyModule supportedEvents];
+    XCTAssertTrue([events containsObject:@"PURCHASELY_DEFAULT_PRESENTATION_DISMISSED"],
+                  @"supportedEvents should expose the global default-dismiss event");
+}
+
+- (void)testDefaultPresentationDismissHandlerIsBridged {
+    // RCT_EXPORT_METHOD generates a `setDefaultPresentationDismissHandler` method
+    // on the module. The native call itself is guarded by `respondsToSelector:`,
+    // so registering is a safe no-op until the native SDK ships the v6 rename.
+    XCTAssertTrue([self.purchaselyModule respondsToSelector:@selector(setDefaultPresentationDismissHandler)],
+                  @"setDefaultPresentationDismissHandler should be exported to the bridge");
+}
+
 #pragma mark - Constants Export Tests
 
 - (void)testConstantsExport {
@@ -63,9 +79,12 @@
 - (void)testProductResultConstants {
     NSDictionary *constants = [self.purchaselyModule constantsToExport];
 
-    XCTAssertNotNil(constants[@"productResultPurchased"], @"productResultPurchased should exist");
-    XCTAssertNotNil(constants[@"productResultCancelled"], @"productResultCancelled should exist");
-    XCTAssertNotNil(constants[@"productResultRestored"], @"productResultRestored should exist");
+    XCTAssertEqualObjects(constants[@"productResultPurchased"], @0,
+                          @"purchased must preserve the JS ProductResult ordinal");
+    XCTAssertEqualObjects(constants[@"productResultCancelled"], @1,
+                          @"cancelled must preserve the JS ProductResult ordinal");
+    XCTAssertEqualObjects(constants[@"productResultRestored"], @2,
+                          @"restored must preserve the JS ProductResult ordinal");
 }
 
 - (void)testSubscriptionSourceConstants {
@@ -75,6 +94,9 @@
     XCTAssertNotNil(constants[@"sourcePlayStore"], @"sourcePlayStore should exist");
     XCTAssertNotNil(constants[@"sourceHuaweiAppGallery"], @"sourceHuaweiAppGallery should exist");
     XCTAssertNotNil(constants[@"sourceAmazonAppstore"], @"sourceAmazonAppstore should exist");
+    // [RN-W-04 / ENM-07] Android's constantsToExport already includes
+    // sourceNone; iOS was missing it entirely.
+    XCTAssertNotNil(constants[@"sourceNone"], @"sourceNone should exist");
 }
 
 - (void)testAttributeConstants {
@@ -87,7 +109,10 @@
     XCTAssertNotNil(constants[@"batchInstallationId"], @"batchInstallationId should exist");
     XCTAssertNotNil(constants[@"adjustId"], @"adjustId should exist");
     XCTAssertNotNil(constants[@"appsflyerId"], @"appsflyerId should exist");
-    XCTAssertNotNil(constants[@"onesignalPlayerId"], @"onesignalPlayerId should exist");
+    // [ENM-04 / REC-11] onesignalPlayerId removed (no Android equivalent);
+    // replaced by the two OneSignal attributes both natives support.
+    XCTAssertNotNil(constants[@"oneSignalExternalId"], @"oneSignalExternalId should exist");
+    XCTAssertNotNil(constants[@"oneSignalUserId"], @"oneSignalUserId should exist");
     XCTAssertNotNil(constants[@"mixpanelDistinctId"], @"mixpanelDistinctId should exist");
     XCTAssertNotNil(constants[@"clevertapId"], @"clevertapId should exist");
     XCTAssertNotNil(constants[@"sendinblueUserEmail"], @"sendinblueUserEmail should exist");
@@ -117,9 +142,9 @@
 - (void)testRunningModeConstants {
     NSDictionary *constants = [self.purchaselyModule constantsToExport];
 
-    XCTAssertNotNil(constants[@"runningModeTransactionOnly"], @"runningModeTransactionOnly should exist");
+    // [ENM-06 / REC-17] The v5 runningModeTransactionOnly / runningModePaywallObserver
+    // constants were removed — only Observer / Full remain in v6.
     XCTAssertNotNil(constants[@"runningModeObserver"], @"runningModeObserver should exist");
-    XCTAssertNotNil(constants[@"runningModePaywallObserver"], @"runningModePaywallObserver should exist");
     XCTAssertNotNil(constants[@"runningModeFull"], @"runningModeFull should exist");
 }
 
@@ -165,8 +190,10 @@
     NSDictionary *constants = [self.purchaselyModule constantsToExport];
 
     // Based on the source code, we expect at least 55 constants
-    // Log levels (4) + Product results (3) + Sources (4) + Attributes (21) + Plan types (5)
-    // + Running modes (4) + Presentation types (4) + Theme modes (3) + User attribute sources (2)
+    // Log levels (4) + Product results (3) + Sources (5, incl. sourceNone) + Attributes (22,
+    // onesignalPlayerId removed, oneSignalExternalId/oneSignalUserId added) + Plan types (5)
+    // + Running modes (2, v5 TransactionOnly/PaywallObserver removed)
+    // + Presentation types (4) + Theme modes (3) + User attribute sources (2)
     // + User attribute types (9) = 59 constants
     XCTAssertGreaterThanOrEqual(constants.count, 50, @"Should export at least 50 constants");
 }
@@ -266,9 +293,10 @@
     NSInteger playStore = [constants[@"sourcePlayStore"] integerValue];
     NSInteger huawei = [constants[@"sourceHuaweiAppGallery"] integerValue];
     NSInteger amazon = [constants[@"sourceAmazonAppstore"] integerValue];
+    NSInteger none = [constants[@"sourceNone"] integerValue];
 
-    NSSet *uniqueValues = [NSSet setWithArray:@[@(appStore), @(playStore), @(huawei), @(amazon)]];
-    XCTAssertEqual(uniqueValues.count, 4, @"All subscription sources should have unique values");
+    NSSet *uniqueValues = [NSSet setWithArray:@[@(appStore), @(playStore), @(huawei), @(amazon), @(none)]];
+    XCTAssertEqual(uniqueValues.count, 5, @"All subscription sources should have unique values");
 }
 
 - (void)testPlanTypesUnique {
@@ -287,13 +315,11 @@
 - (void)testRunningModesUnique {
     NSDictionary *constants = [self.purchaselyModule constantsToExport];
 
-    NSInteger transactionOnly = [constants[@"runningModeTransactionOnly"] integerValue];
     NSInteger observer = [constants[@"runningModeObserver"] integerValue];
-    NSInteger paywallObserver = [constants[@"runningModePaywallObserver"] integerValue];
     NSInteger full = [constants[@"runningModeFull"] integerValue];
 
-    NSSet *uniqueValues = [NSSet setWithArray:@[@(transactionOnly), @(observer), @(paywallObserver), @(full)]];
-    XCTAssertEqual(uniqueValues.count, 4, @"All running modes should have unique values");
+    NSSet *uniqueValues = [NSSet setWithArray:@[@(observer), @(full)]];
+    XCTAssertEqual(uniqueValues.count, 2, @"All running modes should have unique values");
 }
 
 - (void)testThemeModesUnique {
