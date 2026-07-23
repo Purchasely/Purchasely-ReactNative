@@ -35,6 +35,14 @@ import {
   removeActionInterceptor,
   removeAllActionInterceptors,
 } from './interceptor';
+import {
+  setCustomScreenProvider,
+  removeCustomScreenProvider,
+  executeConnection,
+  customScreenBack,
+  customScreenClose,
+  usePurchaselyCustomScreen,
+} from './customScreen';
 import type {
   PLYPresentation,
   PLYPresentationActionKind,
@@ -475,6 +483,12 @@ const Purchasely = {
   // (built from a preloaded CLIENT presentation) is shown / closed.
   clientPresentationDisplayed,
   clientPresentationClosed,
+  setCustomScreenProvider,
+  removeCustomScreenProvider,
+  executeConnection,
+  customScreenBack,
+  customScreenClose,
+  usePurchaselyCustomScreen,
   // Core SDK — version-agnostic (user, products, subscriptions, attributes…).
   addEventListener,
   removeEventListener,
@@ -563,6 +577,14 @@ export {
   removeActionInterceptor,
   removeAllActionInterceptors,
 } from './interceptor';
+export {
+  setCustomScreenProvider,
+  removeCustomScreenProvider,
+  executeConnection,
+  customScreenBack,
+  customScreenClose,
+  usePurchaselyCustomScreen,
+} from './customScreen';
 export { PurchaselyBuilder } from './startBuilder';
 export { PLYPresentationView };
 export type { PLYPresentationViewResult } from './components/PLYPresentationView';

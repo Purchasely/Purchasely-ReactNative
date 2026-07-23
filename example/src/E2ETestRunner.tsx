@@ -191,6 +191,9 @@ export default function E2ETestRunner(props: { phase?: string } = {}) {
                     ? b.stores(['google'])
                     : b.storekitVersion('storeKit2')
             ).start()
+            await Purchasely.setCustomScreenProvider({
+                componentName: 'PurchaselyCustomScreen',
+            })
         } catch (e) {
             console.error('[E2E:INIT:FAIL]', e)
         }

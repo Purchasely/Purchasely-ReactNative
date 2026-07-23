@@ -624,8 +624,8 @@ try {
     }
 
     if (presentation.type == PLYPresentationType.CLIENT) {
-        // Display your own paywall (BYOS)
-        const planIds = presentation.plans;
+        // A standalone CLIENT result is app-managed. It is not mounted by the
+        // Custom Screen provider, which hosts client-authored flow steps only.
         return;
     }
 
@@ -653,6 +653,87 @@ try {
 | `FALLBACK` | Fallback paywall (requested one not found) |
 | `DEACTIVATED` | No paywall for this placement |
 | `CLIENT` | Your own paywall (BYOS) |
+
+### Custom Screens in Purchasely flows
+
+A Custom Screen is a client-authored step inside a Purchasely flow. The native
+flow keeps ownership of transitions and navigation while rendering a React
+component registered by your app.
+
+Register the component at the application entry point:
+
+```tsx
+import { AppRegistry } from 'react-native';
+import PurchaselyCustomScreen from './PurchaselyCustomScreen';
+
+AppRegistry.registerComponent(
+    'PurchaselyCustomScreen',
+    () => PurchaselyCustomScreen
+);
+```
+
+Register its name after Purchasely has started:
+
+```typescript
+const configured = await Purchasely.builder('YOUR_API_KEY').start();
+if (configured) {
+    await Purchasely.setCustomScreenProvider({
+        componentName: 'PurchaselyCustomScreen',
+    });
+}
+
+// Optional cleanup:
+Purchasely.removeCustomScreenProvider();
+```
+
+Implement the component using the supplied presentation instance:
+
+```tsx
+import React from 'react';
+import { Button, Text, View } from 'react-native';
+import {
+    type PLYCustomScreenProps,
+    usePurchaselyCustomScreen,
+} from 'react-native-purchasely';
+
+export default function PurchaselyCustomScreen(
+    props: PLYCustomScreenProps
+) {
+    const { presentation, executeConnection, back, close } =
+        usePurchaselyCustomScreen(props);
+
+    return (
+        <View>
+            <Text>{presentation.screenId}</Text>
+            {presentation.connections?.map((connection, index) => (
+                <Button
+                    key={connection.id ?? index}
+                    title={connection.id ?? 'Continue'}
+                    onPress={() =>
+                        executeConnection(connection.id ?? undefined)
+                    }
+                />
+            ))}
+            <Button title="Execute default" onPress={() => executeConnection()} />
+            <Button title="Back" onPress={back} />
+            <Button title="Close flow" onPress={close} />
+        </View>
+    );
+}
+```
+
+Always navigate with the `presentation` delivered in `PLYCustomScreenProps`.
+Connections belong to that exact flow-step instance and may differ from a
+separately preloaded presentation with the same screen id. The provider hosts
+flow steps only; Custom Screens are not supported inside
+`PLYPresentationView` or as standalone native-hosted client presentations.
+
+The Custom Screen host requires React Native 0.74 or newer. Other Purchasely
+features keep the SDK's existing React Native compatibility range.
+
+On iOS 6.0.0-rc.3, `PLYConnection` does not publicly expose which connection
+is the default, so `isDefault` is reported as `false`; calling
+`executeConnection()` without an id still executes the native default.
 
 ---
 

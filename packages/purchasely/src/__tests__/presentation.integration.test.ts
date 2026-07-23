@@ -100,6 +100,10 @@ const fakePresentationPayload = {
     height: 720,
     language: 'fr',
     plans: [],
+    connections: [
+        { id: 'continue', isDefault: true },
+        { id: null, isDefault: false },
+    ],
 };
 
 describe('façade · integration with native bridge', () => {
@@ -348,6 +352,10 @@ describe('façade · integration with native bridge', () => {
             const loaded = await preloadPromise;
             // Data fields of PLYPresentation are still present.
             expect(loaded.screenId).toBe('screen-abc');
+            expect(loaded.connections).toEqual(
+                fakePresentationPayload.connections
+            );
+            expect(loaded.requestId).toBe(requestId);
             expect(loaded.placementId).toBe('home');
             // Lifecycle methods added by PLYLoadedPresentation.
             expect(typeof loaded.display).toBe('function');
