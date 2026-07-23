@@ -18,8 +18,6 @@ import io.purchasely.views.presentation.PLYThemeMode
 import io.purchasely.ext.PLYDataProcessingLegalBasis
 import io.purchasely.ext.PLYDataProcessingPurpose
 import kotlinx.coroutines.*
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.collections.ArrayList
@@ -84,8 +82,6 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   override fun getName(): String {
     return "Purchasely"
   }
-
-  val mutex = Mutex()
 
   override fun getConstants(): Map<String, Int> {
     val constants: MutableMap<String, Int> = HashMap()
@@ -933,9 +929,13 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
         }
       }
 
-      // The outcome is emitted to JS through `onDismissed` (wired in
-      // `wirePresentationCallbacks`), so the local `callback` is a noop. We still pass an
-      // outcome handler so the SDK does not log a missing-callback warning.
+      // This `callback` — not the `onDismissed` wired by `wirePresentationCallbacks`
+      // above — is what actually emits the event: `Prepared.display(callback:)`
+      // (PLYPresentationDsl.kt) overwrites `prepared.onDismissed` with this
+      // parameter before displaying. Passing the same `emitPresentationDismissed`
+      // call here keeps the outcome identical either way; `onPresented` /
+      // `onCloseRequested` (also wired above) are untouched by this overload and
+      // still fire normally.
       prepared.display(
         context = activity,
         transition = plyTransition,

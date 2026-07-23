@@ -342,6 +342,13 @@ export class PLYPresentationRequest {
      * Display the presentation. Resolves at DISMISS with a
      * {@link PLYPresentationOutcome} (cf. contract P0.3). Subscribers can attach
      * their own `onPresented` / `onCloseRequested` callbacks via the builder.
+     *
+     * @remarks
+     * Calling `display()` while a `preload()` on this same request is still
+     * pending tears down that `preload()`'s LOADED subscription (see
+     * {@link teardownSubscriptions} below) — its promise then never settles.
+     * Await `preload()` (or don't preload at all) before calling `display()`
+     * on the same request.
      */
     display(transition?: PLYTransition | null): Promise<PLYPresentationOutcome> {
         const requestId = this.ensureRequestId();

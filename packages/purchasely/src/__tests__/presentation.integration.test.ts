@@ -607,6 +607,56 @@ describe('façade · integration with native bridge', () => {
         });
     });
 
+    describe('native promise rejection — transport failures (distinct from a LOADED/DISMISSED error payload)', () => {
+        it('preload() rejects with a normalized error when preloadPresentation itself rejects', async () => {
+            native.preloadPresentation.mockRejectedValueOnce({ code: 'E_NATIVE', message: 'bridge crashed' });
+
+            const req = PLYPresentationBuilder.placement('home').build();
+            await expect(req.preload()).rejects.toMatchObject({
+                code: 'E_NATIVE',
+                message: 'bridge crashed',
+            });
+        });
+
+        it('preload() normalizes a plain string rejection to a { message } error', async () => {
+            native.preloadPresentation.mockRejectedValueOnce('offline');
+
+            const req = PLYPresentationBuilder.placement('home').build();
+            await expect(req.preload()).rejects.toMatchObject({ message: 'offline' });
+        });
+
+        it('display() synthesizes an outcome and resolves (never rejects) when displayPresentation itself rejects', async () => {
+            native.displayPresentation.mockRejectedValueOnce({ code: 'E_NATIVE', message: 'activity gone' });
+            const onPresented = jest.fn();
+            const onDismissed = jest.fn();
+            const req = PLYPresentationBuilder.placement('home')
+                .onPresented(onPresented)
+                .onDismissed(onDismissed)
+                .build();
+
+            const outcome = await req.display();
+
+            expect(outcome.error).toMatchObject({ code: 'E_NATIVE', message: 'activity gone' });
+            expect(outcome.closeReason).toBeFalsy();
+            expect(outcome.purchaseResult).toBeNull();
+            expect(onPresented).toHaveBeenCalledWith(null, outcome.error);
+            expect(onDismissed).toHaveBeenCalledWith(outcome);
+        });
+
+        it('display() routes the synthesized outcome to the default handler when no local onDismissed is set', async () => {
+            const defaultHandler = jest.fn();
+            setDefaultPresentationDismissHandler(defaultHandler);
+            defaultHandler.mockClear();
+            native.displayPresentation.mockRejectedValueOnce({ message: 'boom' });
+
+            const req = PLYPresentationBuilder.placement('home').build();
+            const outcome = await req.display();
+
+            expect(defaultHandler).toHaveBeenCalledWith(outcome);
+            expect(outcome.error).toMatchObject({ message: 'boom' });
+        });
+    });
+
     describe('setDefaultPresentationDismissHandler (global handler)', () => {
         it('registers natively and delivers the rich outcome of an SDK-owned presentation', () => {
             let captured: any = null;
