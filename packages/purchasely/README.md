@@ -1,167 +1,97 @@
 # React Native Purchasely
 
-Purchasely is a solution to ease the integration and boost your In-App Purchase & Subscriptions on the App Store, Google Play Store, and Huawei App Gallery.
+Purchasely helps React Native apps display paywalls and manage in-app purchases and subscriptions on the App Store, Google Play, Huawei AppGallery and Amazon Appstore.
 
-## 🚀 Installation
+## Installation
 
 ```sh
 npm install react-native-purchasely
 ```
 
-## 🔧 Setup
+Install the Android store package(s) you need at the same version as the core package:
 
-Add the following code in the root of your project (typically `App.tsx` in a React Native project):
-
-```ts
-import Purchasely, { LogLevels, RunningMode } from 'react-native-purchasely';
-
-Purchasely.startWithAPIKey(
-  'afa96c76-1d8e-4e3c-a48f-204a3cd93a15',
-  ['Google'], // List of stores for Android, accepted values: Google, Huawei, and Amazon
-  null, // Your user ID
-  LogLevels.DEBUG, // Log level, should be warning or error in production
-  RunningMode.FULL // Running mode
-).then(
-  (configured) => {
-    if (!configured) {
-      console.log('Purchasely SDK not properly initialized');
-      return;
-    }
-
-    console.log('Purchasely SDK is initialized');
-    setupPurchasely();
-  },
-  (error) => {
-    console.log('Purchasely SDK initialization error', error);
-  }
-);
+```sh
+npm install @purchasely/react-native-purchasely-google
+npm install @purchasely/react-native-purchasely-android-player # optional video support
 ```
 
-## 🎬 Usage
+All Purchasely React Native packages must use the exact same version.
 
-### 1️⃣ Full Screen Paywall
+## Initialization (v6)
 
-```ts
-import React from 'react';
-import { Button, View } from 'react-native';
-import Purchasely, { ProductResult } from 'react-native-purchasely';
-
-const FullScreenPaywall = () => {
-  const showPaywall = async () => {
-    try {
-      const result = await Purchasely.presentPresentationForPlacement({
-        placementVendorId: 'composer',
-        loadingBackgroundColor: '#FFFFFFFF',
-      });
-
-      console.log('Result is ' + result.result);
-
-      switch (result.result) {
-        case ProductResult.PRODUCT_RESULT_PURCHASED:
-        case ProductResult.PRODUCT_RESULT_RESTORED:
-          if (result.plan != null) {
-            console.log('User purchased ' + result.plan.name);
-          }
-          break;
-        case ProductResult.PRODUCT_RESULT_CANCELLED:
-          console.log('User cancelled');
-          break;
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <Button title="Show Paywall" onPress={showPaywall} />
-    </View>
-  );
-};
-
-export default FullScreenPaywall;
-```
-
-### 2️⃣ Nested View Paywall
+The v5 paywall API (`start({...})`, `startWithAPIKey`, `fetchPresentation`, `presentPresentationForPlacement`, `setPaywallActionInterceptorCallback`, `onProcessAction`, `readyToOpenDeeplink`, …) has been removed. Use the builder API:
 
 ```ts
-import { Text, View } from 'react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Header } from 'react-native/Libraries/NewAppScreen';
-import { Section } from './Section.tsx';
-import Purchasely, {
-  PLYPresentationView,
-  PresentPresentationResult,
-  ProductResult,
-  PurchaselyPresentation,
-} from 'react-native-purchasely';
-import { useEffect, useState } from 'react';
+import Purchasely from 'react-native-purchasely'
 
-export const PaywallScreen: React.FC<NativeStackScreenProps<any>> = ({ navigation }) => {
-  const [purchaselyPresentation, setPurchaselyPresentation] = useState<PurchaselyPresentation>();
-
-  useEffect(() => {
-    fetchPresentation();
-  }, []);
-
-  const fetchPresentation = async () => {
-    try {
-      setPurchaselyPresentation(
-        await Purchasely.fetchPresentation({
-          placementId: 'ONBOARDING',
-          contentId: null,
-        })
-      );
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const callback = (result: PresentPresentationResult) => {
-    console.log('### Paywall closed');
-    console.log('### Result is ' + result.result);
-    switch (result.result) {
-      case ProductResult.PRODUCT_RESULT_PURCHASED:
-      case ProductResult.PRODUCT_RESULT_RESTORED:
-        if (result.plan != null) {
-          console.log('User purchased ' + result.plan.name);
-        }
-        break;
-      case ProductResult.PRODUCT_RESULT_CANCELLED:
-        console.log('User cancelled');
-        break;
-    }
-    navigation.goBack();
-  };
-
-  if (purchaselyPresentation == null) {
-    return (
-      <View>
-        <Text>Loading ...</Text>
-      </View>
-    );
-  }
-
-  return (
-    <View style={{ flex: 1 }}>
-      <Header />
-      <PLYPresentationView
-        placementId="ACCOUNT"
-        flex={7}
-        presentation={purchaselyPresentation}
-        onPresentationClosed={(res: PresentPresentationResult) => callback(res)}
-      />
-      <View style={{ flex: 3, justifyContent: 'center', alignItems: 'center' }}>
-        <Section>
-          <Text>Your own React Native content</Text>
-        </Section>
-      </View>
-    </View>
-  );
-};
+const configured = await Purchasely.builder('YOUR_API_KEY')
+  .appUserId(null)              // optional
+  .runningMode('full')          // 'observer' (default) | 'full'
+  .logLevel('debug')            // 'debug' | 'info' | 'warn' | 'error'
+  .stores(['google'])           // Android only: 'google' | 'huawei' | 'amazon'
+  .storekitVersion('storeKit2') // iOS only: 'storeKit1' | 'storeKit2'
+  .allowDeeplink(true)          // call when your navigation is ready
+  .allowCampaigns(true)
+  .start()
 ```
 
-## 📖 Documentation
+## Display a paywall
 
-A complete documentation is available on our website: [Purchasely Docs](https://docs.purchasely.com/quick-start/sdk-installation/react-native-sdk).
+```ts
+const outcome = await Purchasely.presentation
+  .placement('ONBOARDING')
+  .contentId('content_123')
+  .build()
+  .display()
 
+if (outcome.error) {
+  console.error(outcome.error.message)
+} else if (outcome.purchaseResult === 'purchased' || outcome.purchaseResult === 'restored') {
+  console.log('Purchased plan:', outcome.plan)
+} else {
+  console.log('Dismissed:', outcome.closeReason)
+}
+```
+
+Use `Purchasely.presentation.screen('SCREEN_ID')` to target a specific screen, or `.default()` for the SDK default placement. `build()` returns a request with `preload()`, `display()`, `close()` and `back()`.
+
+## Action interception
+
+```ts
+Purchasely.interceptAction('purchase', async (_info, payload) => {
+  if (payload?.kind !== 'purchase') return 'notHandled'
+
+  const handled = await myBilling.purchase(payload.plan.productId)
+  return handled ? 'success' : 'failed'
+})
+
+Purchasely.interceptAction('navigate', async (_info, payload) => {
+  if (payload?.kind !== 'navigate') return 'notHandled'
+  await Linking.openURL(payload.url)
+  return 'success'
+})
+```
+
+Handlers return `'success' | 'failed' | 'notHandled'`; there is no `onProcessAction` in v6.
+
+## Embedded paywall
+
+`PLYPresentationView` remains available for embedded paywalls:
+
+```tsx
+import { PLYPresentationView } from 'react-native-purchasely'
+
+<PLYPresentationView
+  placementId="ACCOUNT"
+  flex={1}
+  onPresentationClosed={(result) => console.log(result)}
+/>
+```
+
+## Migration guide
+
+See [`MIGRATION-v6.md`](../../MIGRATION-v6.md) for the complete v5 → v6 mapping and platform limitations.
+
+## Documentation
+
+Full documentation: [Purchasely Docs](https://docs.purchasely.com/quick-start/sdk-installation/react-native-sdk).
