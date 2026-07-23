@@ -144,13 +144,6 @@ export const createMockPurchaselyModule = () => ({
     removeListeners: jest.fn(),
 })
 
-export const createMockPurchaselyViewModule = () => ({
-    onPresentationClosed: jest.fn().mockResolvedValue({
-        result: 0,
-        plan: null,
-    }),
-})
-
 // Setup NativeEventEmitter mock
 export const mockEventEmitter = {
     addListener: jest.fn(() => ({ remove: jest.fn() })),

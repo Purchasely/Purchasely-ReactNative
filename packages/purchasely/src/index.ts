@@ -600,6 +600,5 @@ export {
 } from './interceptor';
 export { PurchaselyBuilder } from './startBuilder';
 export { PLYPresentationView };
-export type { PLYPresentationViewResult } from './components/PLYPresentationView';
 
 export default Purchasely;
