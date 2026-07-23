@@ -42,6 +42,9 @@ First stable release of Purchasely 6 for React Native. Native SDKs: iOS pod
   (via a Swift `PLYDimension` shim); Android transitions now honour
   `backgroundColors` and map `inlinePaywall`.
 - `getDynamicOfferings()` round-trips `billingPlanType`.
+
+### Changed
+
 - `setUserAttributeWithInt` / `setUserAttributeWithDouble` / `…WithIntArray` /
   `…WithDoubleArray` now call distinct native typed overloads on both
   platforms (previously aliases of the `WithNumber` / `WithNumberArray`
@@ -60,6 +63,10 @@ First stable release of Purchasely 6 for React Native. Native SDKs: iOS pod
 - iOS embedded `PLYPresentationView`: fixed a double-preload (and duplicate
   `PRESENTATION_VIEWED` event) that could occur depending on React Native's
   prop-application order.
+- Embedded `PLYPresentationView`: unmounting a view without dismissing it now
+  evicts the preloaded `request` it had consumed natively (iOS/Android
+  parity); the same `request` must be re-preloaded before it is reused in a
+  new mount.
 
 ## [6.0.0-rc.3] — 2026-07-10
 

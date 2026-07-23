@@ -309,7 +309,11 @@ import { PLYPresentationView } from 'react-native-purchasely';
 `onPresentationClosed` fires once, when the embedded presentation is
 dismissed. You can also pass a preloaded `request` prop (from
 `Purchasely.presentation....build().preload()`) instead of `placementId` to
-reuse an already-loaded presentation without loading it twice.
+reuse an already-loaded presentation without loading it twice. Note:
+unmounting a `<PLYPresentationView request={...}>` without dismissing it
+evicts the preloaded entry natively (iOS/Android parity) — remounting the
+same `request` then shows a blank view until `request.preload()` is called
+again.
 
 ---
 

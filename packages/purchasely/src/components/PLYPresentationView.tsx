@@ -88,7 +88,8 @@ interface PLYPresentationViewProps {
    * `requestId` (no second preload) — mirrors the full-screen builder flow and
    * the native iOS/Android/Flutter SDKs. Preload before rendering; otherwise
    * `requestId` is null and the view falls back to `placementId` /
-   * `presentation`.
+   * `presentation`. Preload before EACH mount: a request consumed by an
+   * unmounted view is evicted natively and must be re-preloaded before reuse.
    */
   request?: PLYPresentationRequest;
   /**

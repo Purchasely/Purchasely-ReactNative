@@ -3,7 +3,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { Section } from './Section.tsx'
 import {
     PLYPresentationView,
-    ProductResult,
+    type PLYPresentationOutcome,
 } from 'react-native-purchasely'
 
 export const PaywallScreen: React.FC<NativeStackScreenProps<any>> = ({
@@ -17,18 +17,22 @@ export const PaywallScreen: React.FC<NativeStackScreenProps<any>> = ({
     console.log('### Paywall screen')
     console.log('placementId', placementId)
 
-    const callback = (result: any) => {
+    const callback = (outcome: PLYPresentationOutcome) => {
         console.log('### Paywall closed')
-        console.log('### Result is ' + result.result)
-        switch (result.result) {
-            case ProductResult.PRODUCT_RESULT_PURCHASED:
-            case ProductResult.PRODUCT_RESULT_RESTORED:
-                if (result.plan != null) {
-                    console.log('User purchased ' + result.plan.name)
+        console.log(
+            '### purchaseResult =',
+            outcome.purchaseResult,
+            'closeReason =',
+            outcome.closeReason
+        )
+        switch (outcome.purchaseResult) {
+            case 'purchased':
+            case 'restored':
+                if (outcome.plan != null) {
+                    console.log('User purchased ' + outcome.plan.name)
                 }
-
                 break
-            case ProductResult.PRODUCT_RESULT_CANCELLED:
+            case 'cancelled':
                 console.log('User cancelled')
                 break
         }
@@ -61,7 +65,7 @@ export const PaywallScreen: React.FC<NativeStackScreenProps<any>> = ({
             <PLYPresentationView
                 flex={7}
                 placementId={placementId}
-                onPresentationClosed={(res) => callback(res)}
+                onPresentationClosed={callback}
             />
 
             <View
