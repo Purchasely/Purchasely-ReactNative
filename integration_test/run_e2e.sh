@@ -4,7 +4,7 @@
 # Runs T1-T26 against a connected Android device/emulator, then T27 (cold-start
 # deeplink) as a dedicated second phase on a fresh process.
 # The test logic executes inside the RN JS context on-device;
-# UI drivers for T8/T9 are launched from the host when the device signals
+# UI drivers for T8/T9/T25 are launched from the host when the device signals
 # readiness via LogCat markers.
 #
 # T27 needs its own process because the SDK init builder must chain
@@ -56,6 +56,7 @@ else
 fi
 TAP_DRIVER="$SCRIPT_DIR/tools/tap_purchase.sh"
 BACK_DRIVER="$SCRIPT_DIR/tools/press_back.sh"
+INLINE_CLOSE_DRIVER="$SCRIPT_DIR/tools/tap_close_inline.sh"
 LOGCAT_FILE="/tmp/e2e_rn_logcat_$$.log"
 PKG="com.purchasely.demo"
 ACTIVITY="com.purchasely.demo/com.purchasely.MainActivity"
@@ -118,7 +119,10 @@ fi
 # -- Install -------------------------------------------------------------------
 log "Installing APK on $DEV..."
 adb -s "$DEV" shell pm uninstall "$PKG" 2>/dev/null || true
-adb -s "$DEV" install "$APK" 2>&1
+if ! adb -s "$DEV" install "$APK" 2>&1; then
+  err "adb install failed -- aborting"
+  exit 1
+fi
 ok "APK installed"
 
 # -- Clear LogCat --------------------------------------------------------------
@@ -143,7 +147,9 @@ TIMEOUT_SECS=600  # 10 minutes (T8/T9 have 40 s waits; T14-T26 add catalog/displ
 START_TS=$(date +%s)
 TAP_DONE=0
 BACK_DONE=0
+INLINE_CLOSE_DONE=0
 SUITE_RESULT=""
+DRIVER_PIDS=()
 
 while true; do
   NOW=$(date +%s)
@@ -159,14 +165,21 @@ while true; do
   if [ "$TAP_DONE" -eq 0 ] && grep -q '\[E2E:READY_FOR_TAP\]' "$LOGCAT_FILE" 2>/dev/null; then
     TAP_DONE=1
     log "T8: signaled -- launching tap driver in background..."
-    bash "$TAP_DRIVER" "$DEV" &
+    bash "$TAP_DRIVER" "$DEV" & DRIVER_PIDS+=("$!:T8 tap driver")
   fi
 
   # T9 back signal
   if [ "$BACK_DONE" -eq 0 ] && grep -q '\[E2E:READY_FOR_BACK\]' "$LOGCAT_FILE" 2>/dev/null; then
     BACK_DONE=1
     log "T9: signaled -- launching back driver in background..."
-    bash "$BACK_DRIVER" "$DEV" &
+    bash "$BACK_DRIVER" "$DEV" & DRIVER_PIDS+=("$!:T9 back driver")
+  fi
+
+  # T25 inline close signal
+  if [ "$INLINE_CLOSE_DONE" -eq 0 ] && grep -q '\[E2E:READY_FOR_INLINE_CLOSE\]' "$LOGCAT_FILE" 2>/dev/null; then
+    INLINE_CLOSE_DONE=1
+    log "T25: signaled -- launching inline close driver in background..."
+    bash "$INLINE_CLOSE_DRIVER" "$DEV" & DRIVER_PIDS+=("$!:T25 inline close driver")
   fi
 
   # Suite completion
@@ -213,8 +226,22 @@ fi
 kill "$LOGCAT_PID" 2>/dev/null || true
 LOGCAT_PID=""
 
-# Wait for background drivers (tap/back) to finish
-wait 2>/dev/null || true
+# Wait for background drivers (tap/back/inline-close) to finish, surfacing a
+# visible warning per driver exit code -- the JS-side waitFor()/fail() in
+# E2ETestRunner.tsx remains the actual gate, this is a diagnostic net so a
+# silently-failing driver doesn't read as a mysterious test timeout in the log.
+for entry in "${DRIVER_PIDS[@]:-}"; do
+  [ -z "$entry" ] && continue
+  pid="${entry%%:*}"
+  label="${entry#*:}"
+  wait "$pid" 2>/dev/null
+  driver_rc=$?
+  if [ "$driver_rc" -eq 0 ]; then
+    ok "$label exited 0"
+  else
+    warn "$label exited non-zero (rc=$driver_rc)"
+  fi
+done
 
 # -- Report --------------------------------------------------------------------
 echo ""
@@ -224,7 +251,13 @@ echo "==========================================="
 
 # Extract and print individual test results in order. T27 (cold-start phase)
 # logs a [E2E:T27:SKIP] in the main suite and its real PASS/FAIL in the phase
-# run — PASS is checked first so it takes precedence.
+# run — PASS is checked first so it takes precedence. Any id with NO marker at
+# all is collected into MISSING_IDS: this loop was previously cosmetic (a
+# warning only) with the exit code decided solely by the aggregate
+# [E2E:SUITE:PASS|FAIL] marker, so a test that silently never reported would
+# still read as a full pass. It is now authoritative -- a missing marker fails
+# the run.
+MISSING_IDS=()
 for id in T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13 T14 T15 T16 T17 T18 T19 T20 T21 T22 T23 T24 T25 T26 T27; do
   PASS_LINE=$(grep "\[E2E:${id}:PASS\]" "$LOGCAT_FILE" 2>/dev/null | tail -1)
   FAIL_LINE=$(grep "\[E2E:${id}:FAIL\]" "$LOGCAT_FILE" 2>/dev/null | tail -1)
@@ -236,15 +269,19 @@ for id in T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13 T14 T15 T16 T17 T18 T19 T20
   elif [ -n "$SKIP_LINE" ]; then
     warn "$id  SKIP $(echo "$SKIP_LINE" | sed "s/.*\[E2E:${id}:SKIP\] //")"
   else
-    warn "$id  (no result logged)"
+    err "$id  (no result logged)"
+    MISSING_IDS+=("$id")
   fi
 done
 
 echo "==========================================="
-if [ "$SUITE_RESULT" = "PASS" ] && [ "$T27_RESULT" != "FAIL" ]; then
+if [ "$SUITE_RESULT" = "PASS" ] && [ "$T27_RESULT" != "FAIL" ] && [ "${#MISSING_IDS[@]}" -eq 0 ]; then
   ok "ALL E2E TESTS PASSED"
   exit 0
 else
+  if [ "${#MISSING_IDS[@]}" -gt 0 ]; then
+    err "Missing result marker for: ${MISSING_IDS[*]}"
+  fi
   err "E2E TESTS FAILED"
   echo ""
   echo "--- E2E markers (last 100) ---"

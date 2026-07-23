@@ -1,15 +1,18 @@
 #!/bin/bash
 # Purchasely React Native — E2E test orchestrator (iOS Simulator)
 #
-# Mirrors run_e2e.sh for Android. Runs T1-T26 against an iOS simulator.
+# Mirrors run_e2e.sh for Android. Runs T1-T26 against an iOS simulator, then
+# T27 (cold-start deeplink) as a dedicated second phase on a fresh process.
 # The test logic executes inside the RN JS context on-device; UI
-# drivers for T8/T9 are launched from the host when the device signals
+# drivers for T8/T9/T25 are launched from the host when the device signals
 # readiness via log markers.
 #
-# T27 (cold-start deeplink) is SKIPPED on iOS: it needs a launch-arg →
-# initialProp bridge in AppDelegate to route the runner to its cold-start phase
-# (Android uses the E2E_PHASE intent extra). Wiring that is outside the
-# example/src perimeter, so the runner emits [E2E:T27:SKIP] on iOS.
+# T27 needs its own process because the SDK init builder must chain
+# `.handleDeeplink()` BEFORE start(); the app is relaunched with the real
+# environment variable E2E_PHASE=deeplink_coldstart (via `SIMCTL_CHILD_E2E_PHASE`
+# on `xcrun simctl launch`), which AppDelegate.swift forwards as a `phase`
+# initial prop (mirrors Android MainActivity forwarding the E2E_PHASE intent
+# extra).
 #
 # Build strategy (parity with Android): a *Release* build is used so the JS
 # bundle is embedded in the .app — no Metro bundler is required in CI. JS
@@ -84,6 +87,7 @@ APP_PATH="$DERIVED/Build/Products/${CONFIG}-iphonesimulator/example.app"
 LOGFILE="/tmp/e2e_rn_ios_$$.log"
 TAP_DRIVER="$SCRIPT_DIR/tools/tap_purchase_ios.sh"
 BACK_DRIVER="$SCRIPT_DIR/tools/swipe_dismiss_ios.sh"
+INLINE_CLOSE_DRIVER="$SCRIPT_DIR/tools/tap_close_inline_ios.sh"
 
 # ── Ensure Node is available (NVM) ───────────────────────────────────────────
 if ! command -v node &>/dev/null; then
@@ -131,7 +135,10 @@ fi
 # ── Install ───────────────────────────────────────────────────────────────────
 log "Installing app on $UDID..."
 xcrun simctl uninstall "$UDID" "$APP_BUNDLE" 2>/dev/null || true
-xcrun simctl install "$UDID" "$APP_PATH"
+if ! xcrun simctl install "$UDID" "$APP_PATH"; then
+  err "simctl install failed -- aborting"
+  exit 1
+fi
 ok "App installed"
 
 # ── Launch with console capture ───────────────────────────────────────────────
@@ -168,7 +175,9 @@ TIMEOUT_SECS=600
 START_TS=$(date +%s)
 TAP_DONE=0
 BACK_DONE=0
+INLINE_CLOSE_DONE=0
 SUITE_RESULT=""
+DRIVER_PIDS=()
 
 while true; do
   ELAPSED=$(( $(date +%s) - START_TS ))
@@ -181,14 +190,21 @@ while true; do
   if [ "$TAP_DONE" -eq 0 ] && grep -q '\[E2E:READY_FOR_TAP\]' "$LOGFILE" 2>/dev/null; then
     TAP_DONE=1
     log "T8: signaled — launching iOS tap driver..."
-    bash "$TAP_DRIVER" "$UDID" &
+    bash "$TAP_DRIVER" "$UDID" & DRIVER_PIDS+=("$!:T8 tap driver")
   fi
 
   # T9 back/swipe signal
   if [ "$BACK_DONE" -eq 0 ] && grep -q '\[E2E:READY_FOR_BACK\]' "$LOGFILE" 2>/dev/null; then
     BACK_DONE=1
     log "T9: signaled — launching iOS swipe-dismiss driver..."
-    bash "$BACK_DRIVER" "$UDID" &
+    bash "$BACK_DRIVER" "$UDID" & DRIVER_PIDS+=("$!:T9 swipe-dismiss driver")
+  fi
+
+  # T25 inline close signal
+  if [ "$INLINE_CLOSE_DONE" -eq 0 ] && grep -q '\[E2E:READY_FOR_INLINE_CLOSE\]' "$LOGFILE" 2>/dev/null; then
+    INLINE_CLOSE_DONE=1
+    log "T25: signaled — launching iOS inline close driver..."
+    bash "$INLINE_CLOSE_DRIVER" "$UDID" & DRIVER_PIDS+=("$!:T25 inline close driver")
   fi
 
   if grep -q '\[E2E:SUITE:PASS\]' "$LOGFILE" 2>/dev/null; then
@@ -201,11 +217,69 @@ while true; do
   sleep 0.5
 done
 
-# Stop the streams so `wait` doesn't hang
+# ── T27 cold-start deeplink phase (fresh process) ─────────────────────────────
+# Mirrors run_e2e.sh's Android relaunch: T27 chains .handleDeeplink() on the
+# start builder BEFORE start(), which needs a brand-new process. `xcrun simctl
+# launch` has no positional-argument channel for a keyed value, so the phase is
+# passed as a real environment variable via `SIMCTL_CHILD_E2E_PHASE` — simctl
+# strips the `SIMCTL_CHILD_` prefix before handing it to the launched process'
+# environment (read by AppDelegate.swift, forwarded as the `phase` initial
+# prop). Only attempted when the main suite passed (a failed main run already
+# exits 1). Output is appended to the same $LOGFILE the main suite wrote to, so
+# the report loop below sees both phases' markers.
+T27_RESULT="SKIP"
+if [ "$SUITE_RESULT" = "PASS" ]; then
+  log "T27: launching cold-start deeplink phase (E2E_PHASE=deeplink_coldstart)..."
+  kill "$STREAM_PID" 2>/dev/null || true
+  kill "$LAUNCH_PID"  2>/dev/null || true
+  xcrun simctl terminate "$UDID" "$APP_BUNDLE" 2>/dev/null || true
+  sleep 1
+
+  SIMCTL_CHILD_E2E_PHASE=deeplink_coldstart xcrun simctl launch --console --terminate-running-process \
+    "$UDID" "$APP_BUNDLE" E2E_MODE true >> "$LOGFILE" 2>&1 &
+  LAUNCH_PID=$!
+  xcrun simctl spawn "$UDID" log stream \
+    --level debug \
+    --predicate "process == \"$PROCESS_NAME\"" \
+    --style compact >> "$LOGFILE" 2>&1 &
+  STREAM_PID=$!
+
+  T27_START=$(date +%s)
+  while true; do
+    if [ $(( $(date +%s) - T27_START )) -ge 150 ]; then
+      err "T27: timeout waiting for cold-start deeplink result"
+      T27_RESULT="FAIL"; break
+    fi
+    # Match only PASS/FAIL (the main suite already logged [E2E:T27:SKIP]).
+    if grep -q '\[E2E:T27:PASS\]' "$LOGFILE" 2>/dev/null; then T27_RESULT="PASS"; break; fi
+    if grep -q '\[E2E:T27:FAIL\]' "$LOGFILE" 2>/dev/null; then T27_RESULT="FAIL"; break; fi
+    sleep 0.5
+  done
+  [ "$T27_RESULT" = "PASS" ] && ok "T27: cold-start deeplink phase PASSED"
+fi
+
+# Stop the streams so `wait` doesn't hang (either the T27 relaunch above, or the
+# original main-suite launch if T27 was skipped/not attempted).
 kill "$STREAM_PID" 2>/dev/null || true
 kill "$LAUNCH_PID"  2>/dev/null || true
 STREAM_PID=""; LAUNCH_PID=""
-wait 2>/dev/null || true
+
+# Wait for background drivers (tap/swipe/inline-close) to finish, surfacing a
+# visible warning per driver exit code -- the JS-side waitFor()/fail() in
+# E2ETestRunner.tsx remains the actual gate, this is a diagnostic net so a
+# silently-failing driver doesn't read as a mysterious test timeout in the log.
+for entry in "${DRIVER_PIDS[@]:-}"; do
+  [ -z "$entry" ] && continue
+  pid="${entry%%:*}"
+  label="${entry#*:}"
+  wait "$pid" 2>/dev/null
+  driver_rc=$?
+  if [ "$driver_rc" -eq 0 ]; then
+    ok "$label exited 0"
+  else
+    warn "$label exited non-zero (rc=$driver_rc)"
+  fi
+done
 
 # ── Report ────────────────────────────────────────────────────────────────────
 echo ""
@@ -213,6 +287,12 @@ echo "==========================================="
 echo " Purchasely RN E2E — iOS results"
 echo "==========================================="
 
+# Any id with NO marker at all is collected into MISSING_IDS: this loop was
+# previously cosmetic (a warning only), with the exit code decided solely by
+# the aggregate [E2E:SUITE:PASS|FAIL] marker, so a test that silently never
+# reported would still read as a full pass. It is now authoritative -- a
+# missing marker fails the run.
+MISSING_IDS=()
 for id in T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13 T14 T15 T16 T17 T18 T19 T20 T21 T22 T23 T24 T25 T26 T27; do
   PASS_LINE=$(grep "\[E2E:${id}:PASS\]" "$LOGFILE" 2>/dev/null | tail -1)
   FAIL_LINE=$(grep "\[E2E:${id}:FAIL\]" "$LOGFILE" 2>/dev/null | tail -1)
@@ -224,15 +304,19 @@ for id in T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13 T14 T15 T16 T17 T18 T19 T20
   elif [ -n "$SKIP_LINE" ]; then
     warn "$id  SKIP $(echo "$SKIP_LINE" | sed "s/.*\[E2E:${id}:SKIP\] //")"
   else
-    warn "$id  (no result logged)"
+    err "$id  (no result logged)"
+    MISSING_IDS+=("$id")
   fi
 done
 
 echo "==========================================="
-if [ "$SUITE_RESULT" = "PASS" ]; then
+if [ "$SUITE_RESULT" = "PASS" ] && [ "$T27_RESULT" != "FAIL" ] && [ "${#MISSING_IDS[@]}" -eq 0 ]; then
   ok "ALL E2E TESTS PASSED (iOS)"
   exit 0
 else
+  if [ "${#MISSING_IDS[@]}" -gt 0 ]; then
+    err "Missing result marker for: ${MISSING_IDS[*]}"
+  fi
   err "E2E TESTS FAILED (iOS)"
   echo ""
   echo "--- E2E markers (last 100) ---"
