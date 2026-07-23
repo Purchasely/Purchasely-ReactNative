@@ -1849,6 +1849,13 @@ RCT_EXPORT_METHOD(registerActionInterceptor:(NSString *)kind) {
                     }
                     case PLYPresentationActionClose:
                     case PLYPresentationActionCloseAll: {
+                        // Unlike Android's PLYPresentationAction.Close(closeReason:), the iOS
+                        // SDK surfaces no real close reason here — PLYInterceptorInfo and
+                        // PLYPresentationActionParameters carry no such field, and the only
+                        // call site (DefaultActionsHandler.callInterceptorOrExecute) is reached
+                        // exclusively from in-paywall UI actions. "button" is therefore accurate
+                        // for every case this SDK version can produce, but cannot vary the way
+                        // Android's can — fixable only with an iOS SDK change, not from this bridge.
                         payloadOut[@"closeReason"] = @"button";
                         break;
                     }
