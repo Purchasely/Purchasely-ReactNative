@@ -265,12 +265,32 @@ done
 # prop). Only attempted when the main suite passed (a failed main run already
 # exits 1). Output is appended to the same $LOGFILE the main suite wrote to, so
 # the report loop below sees both phases' markers.
+#
+# Reinstalls before relaunching (unlike Android's equivalent phase, which just
+# force-stops + relaunches the same install). This is NOT parity for its own
+# sake: bisected empirically (uninstall+reinstall vs. plain terminate+relaunch;
+# wiping ONLY the app's UserDefaults plist on the SAME binary; a 10x longer
+# cooldown between terminate and relaunch) down to one variable — a fresh
+# install (or an install with its UserDefaults wiped) makes this phase pass in
+# ~1.5-2s every time, while relaunching the SAME install right after T1-T26
+# (which has warmed up plenty of `com.purchasely.cache.*` / device-key /
+# anonymous-user-id state) hangs forever with ZERO `[Purchasely]` log output,
+# even though the underlying network calls to api.purchasely.io /
+# paywall.purchasely.io succeed. Android's SDK handles the identical
+# "warm-state relaunch + immediate cold-start deeplink" scenario fine (its
+# script doesn't reinstall either) — so this is a genuine iOS-native-SDK gap
+# in the cold-start deeplink/presentation-resolution path when local SDK
+# state is warm, not an RN/bridge bug and not something to patch here (see
+# the mission report). Reinstalling makes this phase actually exercise a
+# genuine cold start (a user who just installed the app tapping a deeplink),
+# which is what T27 claims to test in the first place.
 T27_RESULT="SKIP"
 if [ "$SUITE_RESULT" = "PASS" ]; then
   log "T27: launching cold-start deeplink phase (E2E_PHASE=deeplink_coldstart)..."
   kill "$STREAM_PID" 2>/dev/null || true
   kill "$LAUNCH_PID"  2>/dev/null || true
-  xcrun simctl terminate "$UDID" "$APP_BUNDLE" 2>/dev/null || true
+  xcrun simctl uninstall "$UDID" "$APP_BUNDLE" 2>/dev/null || true
+  xcrun simctl install "$UDID" "$APP_PATH"
   sleep 1
 
   # Same attach-race guard as the main launch above: get the stream confirmed
