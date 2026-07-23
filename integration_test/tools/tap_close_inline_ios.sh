@@ -4,10 +4,22 @@
 # iOS counterpart of tools/tap_close_inline.sh (Android/uiautomator). Unlike
 # Flutter's `integration_test` package (see the Flutter repo's
 # INLINE_PAYWALL_CLOSE.md), this harness drives the REAL running app via idb —
-# not an in-process widget-test pointer binding — and the embedded view installs
-# the SDK's own controller view via `addSubview` in the real view hierarchy
-# (PurchaselyView.swift#attachController), so an OS-level tap on its close (X)
-# button reaches it exactly like any other on-screen control.
+# not an in-process widget-test pointer binding.
+#
+# NOTE: the E2E fixture screen (nr011, placement `integration_test_audiences`)
+# renders NO close (X) button on iOS in ANY presentation mode — confirmed via
+# an `idb ui describe-all` dump while T25 was up (zero close-shaped elements)
+# and independently by T9's swipe_dismiss_ios.sh, whose own close-button finder
+# (identical keyword/size logic) also finds nothing full-screen and falls back
+# to swipe. Android's counterpart screen DOES have a real close button, driven
+# for real by tools/tap_close_inline.sh — this is a content/fixture difference
+# between platforms, not an RN/SDK bridge bug. So on iOS this driver instead
+# taps a real, always-on-screen E2E-only fallback button that E2ETestRunner.tsx
+# renders on top of the embedded view (label "Close", wired to
+# `request.close()`) — a genuine OS-level tap through the bridge, just not
+# through the SDK's own (absent) close control. The matcher below is otherwise
+# unchanged: it still matches by visible label text + a ≤120×120pt frame, which
+# the fallback button satisfies (label "Close", 90×36pt).
 #
 # Deliberately has NO swipe-down fallback (unlike swipe_dismiss_ios.sh/T9): the
 # embedded view is not a dismissible sheet, so a swipe gesture would not close

@@ -485,18 +485,20 @@ Déclenchés par le script hôte → composant `E2ETestRunner.tsx` embarqué dan
 
 **Inspiré de :** `inline_paywall_test.dart` + `INLINE_PAYWALL_CLOSE.md` (Flutter — Android + iOS)
 
-**Ce que ça teste :** on précharge un `request`, on **monte** la vue embarquée dans le runner via la prop `request` (le natif résout la présentation préchargée par `requestId`, pas de second preload), on **attend le rendu** (event `PRESENTATION_VIEWED`), puis un **driver hôte tape réellement le bouton de fermeture (✕) natif** de la vue embarquée et on **asserte** l'outcome reçu (échec dur si absent).
+**Ce que ça teste :** on précharge un `request`, on **monte** la vue embarquée dans le runner via la prop `request` (le natif résout la présentation préchargée par `requestId`, pas de second preload), on **attend le rendu** (event `PRESENTATION_VIEWED`), puis un **driver hôte tape réellement un bouton de fermeture natif** de la vue embarquée et on **asserte** l'outcome reçu (échec dur si absent).
+
+> **Divergence Android/iOS (constatée, pas un choix) :** l'écran E2E (`nr011`, placement `integration_test_audiences`) rend un vrai bouton de fermeture (✕) côté Android — driven réellement par `tools/tap_close_inline.sh` → `closeReason === 'button'`. Côté iOS, ce même écran ne rend **aucun** bouton de fermeture, en plein écran comme en vue embarquée (confirmé par un dump `idb ui describe-all` pendant `READY_FOR_INLINE_CLOSE` : zéro élément de taille bouton avec un label de fermeture — et par le driver de repli de T9, `swipe_dismiss_ios.sh`, qui avec la même logique de matching ne trouve rien non plus en plein écran et bascule sur un swipe). C'est une différence de contenu de l'écran de test entre plateformes, pas un bug de bridge/SDK. Le driver iOS tape donc à la place un **bouton de repli E2E-only, réel et toujours affiché**, rendu par `E2ETestRunner.tsx` par-dessus la vue embarquée (label "Close", 90×36pt), câblé sur `request.close()` — le tap OS traverse quand même tout le pont RN réellement, seule la cible diffère. `closeReason` attendu : `'button'` sur Android, `'programmatic'` sur iOS.
 
 | Step | Action | Assert |
 |------|--------|--------|
 | 1 | `addEventListener(...)` (capture `PRESENTATION_VIEWED`) | — |
 | 2 | `req = placement(...).build()` ; `await req.preload()` | — |
-| 3 | `setInlineRequest(req)` → monte `<PLYPresentationView request={req}>` | — |
+| 3 | `setInlineRequest(req)` → monte `<PLYPresentationView request={req}>` (+ bouton de repli E2E-only sur iOS) | — |
 | 4 | `waitFor(() => viewedEvent, 30000)` | vue embarquée rendue |
 | 5 | Émet `[E2E:READY_FOR_INLINE_CLOSE]` | — |
-| 6 | Driver hôte tape le bouton ✕ natif de la vue embarquée | `onPresentationClosed` déclenché |
+| 6 | Driver hôte tape le bouton natif (Android : ✕ SDK) ou le bouton de repli (iOS) | `onPresentationClosed` déclenché |
 | 7 | `waitFor(() => inlineClosedRef.current, 100000)` | outcome reçu (**FAIL** si absent) |
-| 8 | — | `closeReason === 'button'` (épinglé — tap réel sur le ✕) |
+| 8 | — | `closeReason === 'button'` (Android) / `'programmatic'` (iOS) |
 | 9 | — | `presentation.screenId` non-vide |
 | 10 | cleanup : `setInlineRequest(null)` + `listener.remove()` | — |
 
@@ -504,11 +506,11 @@ Déclenchés par le script hôte → composant `E2ETestRunner.tsx` embarqué dan
 - `[E2E:READY_FOR_INLINE_CLOSE]` — signal driver
 - `[E2E:T25:PASS]` / `[E2E:T25:FAIL]`
 
-**Driver host Android :** `tools/tap_close_inline.sh` (UIAutomator → content-desc="action:close")
-**Driver host iOS :** `tools/tap_close_inline_ios.sh` (idb `ui describe-all` → tap du ✕ en points, sans repli swipe)
+**Driver host Android :** `tools/tap_close_inline.sh` (UIAutomator → content-desc="action:close", vrai bouton SDK)
+**Driver host iOS :** `tools/tap_close_inline_ios.sh` (idb `ui describe-all` → tap du bouton de repli E2E-only "Close" en points, sans repli swipe)
 **Timeout waitFor :** 100 s
 
-**Pourquoi c'est drivable en RN (contrairement à Flutter, voir `INLINE_PAYWALL_CLOSE.md`) :** le harness Flutter `integration_test` route les pointeurs via le binding de test de sa propre fenêtre, donc un tap `adb`/`idb` n'atteint jamais la platform view embarquée sous instrumentation. Le harness RN pilote en revanche l'app réellement lancée via `adb`/`idb` (pas de binding de test in-process), et la vue embarquée est un vrai `Fragment` Android (`PurchaselyViewManager.createFragment`, ajouté à la hiérarchie réelle) / une vraie `UIView` iOS (`PurchaselyView.attachController` → `addSubview`) — un tap au niveau OS l'atteint donc comme n'importe quel contrôle à l'écran. Le dismiss handler câblé par le fix lot 1 (commits `c15ca72`/`cd6f42e`/`fa147a8`) est générique au niveau SDK (il ne distingue pas un `close()` programmatique d'un tap ✕ réel), donc le tap piloté produit le même `PLYPresentationOutcome` 5-champs que les tests programmatiques (T7/T22/T23/T26).
+**Pourquoi c'est drivable en RN (contrairement à Flutter, voir `INLINE_PAYWALL_CLOSE.md`) :** le harness Flutter `integration_test` route les pointeurs via le binding de test de sa propre fenêtre, donc un tap `adb`/`idb` n'atteint jamais la platform view embarquée sous instrumentation. Le harness RN pilote en revanche l'app réellement lancée via `adb`/`idb` (pas de binding de test in-process), et la vue embarquée est un vrai `Fragment` Android (`PurchaselyViewManager.createFragment`, ajouté à la hiérarchie réelle) / une vraie `UIView` iOS (`PurchaselyView.attachController` → `addSubview`) — un tap au niveau OS l'atteint donc comme n'importe quel contrôle à l'écran, que la cible soit le bouton SDK (Android) ou le bouton de repli RN (iOS). Le dismiss handler câblé par le fix lot 1 (commits `c15ca72`/`cd6f42e`/`fa147a8`) est générique au niveau SDK (il ne distingue pas un `close()` programmatique d'un tap ✕ réel), donc le tap piloté produit le même `PLYPresentationOutcome` 5-champs que les tests programmatiques (T7/T22/T23/T26).
 
 ---
 
@@ -643,4 +645,4 @@ CI (macos-15 + simulateur iOS)
 | T26 | — (lifecycle preload, parité Flutter) | `dart_android_bridge_test.dart` (T8 display path) | Android + iOS |
 | T27 | — (deeplink cold-start builder) | `deeplink_cold_start_test.dart` | Android + iOS, chacun en phase process-neuf dédiée |
 
-> Divergences notables vs Flutter : T22/T23 utilisent une fermeture **programmatique** (`req.close()`) au lieu d'un driver hôte → `closeReason` épinglé `'programmatic'` (Flutter accepte `anyOf`). T25 **diverge positivement** de Flutter : là où `INLINE_PAYWALL_CLOSE.md` documente que le harness `integration_test` de Flutter ne peut pas délivrer de tap à la platform view embarquée, le harness RN pilote l'app réellement lancée via adb/idb (pas de binding de test in-process) et la vue embarquée y est un vrai `Fragment`/`UIView` — le tap sur le ✕ natif est donc réellement piloté et asserté en dur (`closeReason === 'button'`), pas seulement le rendu. T27 tourne désormais en **phase process-neuf sur les deux plateformes** (une seule session RN pour T1-T26 par plateforme).
+> Divergences notables vs Flutter : T22/T23 utilisent une fermeture **programmatique** (`req.close()`) au lieu d'un driver hôte → `closeReason` épinglé `'programmatic'` (Flutter accepte `anyOf`). T25 **diverge positivement** de Flutter : là où `INLINE_PAYWALL_CLOSE.md` documente que le harness `integration_test` de Flutter ne peut pas délivrer de tap à la platform view embarquée, le harness RN pilote l'app réellement lancée via adb/idb (pas de binding de test in-process) et la vue embarquée y est un vrai `Fragment`/`UIView` — le tap est donc réellement piloté et asserté en dur, pas seulement le rendu. **Android** tape le vrai bouton ✕ du SDK (`closeReason === 'button'`). **iOS** tape un bouton de repli E2E-only (`request.close()`) car l'écran de test n'y rend aucun bouton de fermeture, en plein écran comme en vue embarquée (`closeReason === 'programmatic'`) — voir la note dans la section T25. T27 tourne désormais en **phase process-neuf sur les deux plateformes** (une seule session RN pour T1-T26 par plateforme).

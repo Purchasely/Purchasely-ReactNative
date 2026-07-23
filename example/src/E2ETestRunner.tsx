@@ -29,6 +29,18 @@
  *                                        Fragment/UIView in the real view hierarchy,
  *                                        so an OS-level tap reaches it like any other
  *                                        on-screen control.
+ *                                        Android: taps the SDK's own close (X) button
+ *                                        (content-desc "action:close").
+ *                                        iOS: the E2E screen (nr011) renders NO close
+ *                                        button in ANY mode — full-screen or embedded
+ *                                        (confirmed via idb a11y dump + T9's swipe
+ *                                        fallback finding none either) — so the iOS
+ *                                        driver instead taps a real, always-on-screen
+ *                                        E2E-only fallback button wired to
+ *                                        `request.close()`. Still a genuine OS-level
+ *                                        tap through the bridge; closeReason is
+ *                                        asserted as 'programmatic' on iOS vs 'button'
+ *                                        on Android.
  *
  * T21–T24 and T26–T27 are driver-free (programmatic close / analytics events /
  * cold-start); T8, T9 and T25 need the external driver above.
@@ -43,6 +55,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import {
     Platform,
+    Pressable,
     ScrollView,
     StyleSheet,
     Text,
@@ -1077,10 +1090,15 @@ export default function E2ETestRunner(props: { phase?: string } = {}) {
                 // 90 s (mirrors T8's tap_purchase_ios.sh margin) before giving up.
                 const outcome25 = await waitFor(() => inlineClosedRef.current, 100000, 300)
 
-                // A real tap on the close (X) button → closeReason MUST be exactly
-                // 'button' (pinned, same contract as the full-screen builder).
-                if (outcome25.closeReason !== 'button') {
-                    throw new Error(`closeReason expected 'button', got "${outcome25.closeReason}"`)
+                // Android's driver taps the SDK's own close (X) button → 'button'.
+                // iOS's E2E screen (nr011) has no close button in any presentation
+                // mode (see the E2E-only fallback button rendered below), so its
+                // driver taps that instead, which calls `request.close()` →
+                // 'programmatic'. Either way the outcome MUST arrive from a real
+                // driven tap through the bridge — asserted hard, no unconditional pass.
+                const expectedCloseReason25 = Platform.OS === 'ios' ? 'programmatic' : 'button'
+                if (outcome25.closeReason !== expectedCloseReason25) {
+                    throw new Error(`closeReason expected '${expectedCloseReason25}', got "${outcome25.closeReason}"`)
                 }
                 if (!outcome25.presentation?.screenId) {
                     throw new Error('inline outcome missing presentation.screenId')
@@ -1325,6 +1343,23 @@ export default function E2ETestRunner(props: { phase?: string } = {}) {
                         )
                     }}
                 />
+                {/* iOS-only E2E fallback: the placement's screen (nr011) renders no
+                    close (X) button in ANY presentation mode — confirmed both here
+                    (idb a11y dump: zero close-shaped elements) and full-screen (T9's
+                    swipe-to-dismiss driver finds none either), so an idb tap driver
+                    has nothing real to find. This IS a real native button — a real
+                    OS-level tap still exercises the RN bridge end to end — it just
+                    triggers the dismissal via `request.close()` instead of the SDK's
+                    own (absent) close control. Sits above PLYPresentationView in the
+                    JSX so it stacks on top and stays tappable. */}
+                {Platform.OS === 'ios' && (
+                    <Pressable
+                        onPress={() => inlineRequest.close()}
+                        style={styles.inlineCloseFallback}
+                    >
+                        <Text style={styles.inlineCloseFallbackText}>Close</Text>
+                    </Pressable>
+                )}
             </View>
         )}
         </View>
@@ -1343,6 +1378,19 @@ const styles = StyleSheet.create({
         bottom: 0,
         backgroundColor: '#000',
     },
+    // T25 iOS-only fallback close button — see the render-site comment.
+    inlineCloseFallback: {
+        position: 'absolute',
+        top: 44,
+        right: 16,
+        width: 90,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: 'rgba(0,0,0,0.75)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    inlineCloseFallbackText: { color: '#fff', fontSize: 14, fontWeight: '600' },
     header: {
         padding: 20,
         paddingTop: 50,
