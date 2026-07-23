@@ -153,6 +153,13 @@ static NSDictionary *presentationToMap(id<PLYPresentation> presentation) {
             @"isDefault": @(NO),
         }];
     }
+    // iOS delivers `connections` as an unordered Set; sort by id so the order is
+    // deterministic and matches Android, which delivers an ordered List.
+    [connections sortUsingComparator:^NSComparisonResult(NSDictionary *lhs, NSDictionary *rhs) {
+        NSString *lid = [lhs[@"id"] isKindOfClass:[NSString class]] ? lhs[@"id"] : @"";
+        NSString *rid = [rhs[@"id"] isKindOfClass:[NSString class]] ? rhs[@"id"] : @"";
+        return [lid compare:rid];
+    }];
     map[@"connections"] = connections;
     return map;
 }
@@ -1617,7 +1624,9 @@ RCT_EXPORT_METHOD(goBackToPreviousScreen:(NSString *)requestId) {
 RCT_EXPORT_METHOD(setCustomScreenProvider:(NSString *)componentName
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject) {
-    if (componentName.length == 0) {
+    NSString *trimmedComponentName =
+        [componentName stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    if (trimmedComponentName.length == 0) {
         RCTLogWarn(@"[Purchasely] Custom Screen component name cannot be blank");
         reject(@"custom_screen_provider_invalid",
                @"Custom Screen component name cannot be blank",

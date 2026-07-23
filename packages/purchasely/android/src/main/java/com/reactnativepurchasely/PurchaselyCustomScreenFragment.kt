@@ -19,22 +19,33 @@ class PurchaselyCustomScreenFragment : Fragment() {
 
   override fun onResume() {
     super.onResume()
-    val application = requireActivity().application as ReactApplication
-    if (ReactNativeFeatureFlags.enableBridgelessArchitecture()) {
-      application.reactHost?.onHostResume(requireActivity())
-    } else {
-      application.reactNativeHost.reactInstanceManager.onHostResume(requireActivity())
-    }
+    forwardHostLifecycle(resumed = true)
   }
 
   override fun onPause() {
-    val application = requireActivity().application as ReactApplication
-    if (ReactNativeFeatureFlags.enableBridgelessArchitecture()) {
-      application.reactHost?.onHostPause(requireActivity())
-    } else {
-      application.reactNativeHost.reactInstanceManager.onHostPause(requireActivity())
-    }
+    forwardHostLifecycle(resumed = false)
     super.onPause()
+  }
+
+  /**
+   * Forward the host lifecycle to the shared React instance. The
+   * `ReactApplication` cast is the same one [onCreateView] deliberately guards,
+   * so failures here must warn-log rather than crash the host app.
+   */
+  private fun forwardHostLifecycle(resumed: Boolean) {
+    runCatching {
+      val activity = requireActivity()
+      val application = activity.application as ReactApplication
+      if (ReactNativeFeatureFlags.enableBridgelessArchitecture()) {
+        val reactHost = application.reactHost ?: return@runCatching
+        if (resumed) reactHost.onHostResume(activity) else reactHost.onHostPause(activity)
+      } else {
+        val manager = application.reactNativeHost.reactInstanceManager
+        if (resumed) manager.onHostResume(activity) else manager.onHostPause(activity)
+      }
+    }.onFailure { error ->
+      Log.w(TAG, "Unable to forward host lifecycle to the React instance", error)
+    }
   }
 
   override fun onCreateView(

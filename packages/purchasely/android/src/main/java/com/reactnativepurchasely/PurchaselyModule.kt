@@ -892,6 +892,10 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
   /** Restore the native SDK's unregistered-provider behaviour. */
   @ReactMethod
   fun removeCustomScreenProvider() {
+    // Drop any presentations captured under the outgoing provider so entries
+    // never mounted (or missed by the Fragment teardown guard) don't accumulate
+    // across register/unregister cycles.
+    customScreenPresentations.clear()
     UiThreadUtil.runOnUiThread { Purchasely.setCustomScreenProvider(null) }
   }
 
