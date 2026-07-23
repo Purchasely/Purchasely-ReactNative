@@ -637,4 +637,8 @@ export function removeDefaultPresentationDismissHandler(): void {
     // Drop the live reference so the per-request DISMISSED fallback stops
     // routing to it once the host removes its default handler.
     currentDefaultDismissHandler = null;
+    // Tell native to actually stop invoking its stored handler — without this,
+    // the native SDK keeps calling it and emitting DEFAULT_DISMISSED events
+    // that no JS listener is left to filter out.
+    NativeModules.Purchasely.removeDefaultPresentationDismissHandler();
 }

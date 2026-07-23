@@ -307,6 +307,15 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   }
 
   @ReactMethod
+  fun removeDefaultPresentationDismissHandler() {
+    // The native SDK exposes no unregister API for the global dismiss handler,
+    // only `setDefaultPresentationDismissHandler` (which replaces whatever is
+    // currently registered) — overwrite it with a no-op so the native listener
+    // genuinely stops doing anything, mirroring the Flutter Android plugin.
+    Purchasely.setDefaultPresentationDismissHandler { }
+  }
+
+  @ReactMethod
   fun synchronize(promise: Promise) {
     // v6 native SDK exposes onSuccess/onError callbacks. Bridge them to the JS
     // promise so callers can `await Purchasely.synchronize()` and catch failures.

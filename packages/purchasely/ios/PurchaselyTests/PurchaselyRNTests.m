@@ -42,10 +42,15 @@
 
 - (void)testDefaultPresentationDismissHandlerIsBridged {
     // RCT_EXPORT_METHOD generates a `setDefaultPresentationDismissHandler` method
-    // on the module. The native call itself is guarded by `respondsToSelector:`,
-    // so registering is a safe no-op until the native SDK ships the v6 rename.
+    // on the module, forwarding straight to `[Purchasely setDefaultPresentationDismissHandler:]`
+    // (available since the native v6 rename — no `respondsToSelector:` guard needed).
     XCTAssertTrue([self.purchaselyModule respondsToSelector:@selector(setDefaultPresentationDismissHandler)],
                   @"setDefaultPresentationDismissHandler should be exported to the bridge");
+}
+
+- (void)testRemoveDefaultPresentationDismissHandlerIsBridged {
+    XCTAssertTrue([self.purchaselyModule respondsToSelector:@selector(removeDefaultPresentationDismissHandler)],
+                  @"removeDefaultPresentationDismissHandler should be exported to the bridge");
 }
 
 #pragma mark - Constants Export Tests

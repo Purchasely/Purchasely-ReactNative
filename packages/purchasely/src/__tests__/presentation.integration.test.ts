@@ -112,6 +112,7 @@ describe('façade · integration with native bridge', () => {
         native.unregisterActionInterceptor.mockClear();
         native.completeActionInterceptor.mockClear();
         native.setDefaultPresentationDismissHandler.mockClear();
+        native.removeDefaultPresentationDismissHandler.mockClear();
         native.__testResetListeners();
         // Reset the module-level single-handler state between tests.
         removeDefaultPresentationDismissHandler();
@@ -652,10 +653,13 @@ describe('façade · integration with native bridge', () => {
             expect(native.setDefaultPresentationDismissHandler).toHaveBeenCalledTimes(2);
         });
 
-        it('removeDefaultPresentationDismissHandler stops further deliveries', () => {
+        it('removeDefaultPresentationDismissHandler stops further deliveries and tells native to stop', () => {
             const handler = jest.fn();
             setDefaultPresentationDismissHandler(handler);
+            native.removeDefaultPresentationDismissHandler.mockClear();
             removeDefaultPresentationDismissHandler();
+
+            expect(native.removeDefaultPresentationDismissHandler).toHaveBeenCalledTimes(1);
 
             emit(PURCHASELY_PRESENTATION_EVENTS.DEFAULT_DISMISSED, {
                 presentation: fakePresentationPayload,

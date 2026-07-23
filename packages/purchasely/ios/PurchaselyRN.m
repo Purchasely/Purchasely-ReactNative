@@ -1630,6 +1630,12 @@ RCT_EXPORT_METHOD(setDefaultPresentationDismissHandler) {
     });
 }
 
+RCT_EXPORT_METHOD(removeDefaultPresentationDismissHandler) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [Purchasely setDefaultPresentationDismissHandler:nil];
+    });
+}
+
 #pragma mark - closePresentation / goBackToPreviousScreen
 
 RCT_EXPORT_METHOD(closePresentation:(NSString *)requestId) {
