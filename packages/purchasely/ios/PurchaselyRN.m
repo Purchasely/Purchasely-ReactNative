@@ -512,6 +512,7 @@ RCT_EXPORT_METHOD(start:(NSString * _Nonnull)apiKey
                   logLevel:(NSInteger)logLevel
                   runningMode:(NSInteger)runningMode
                   purchaselySdkVersion:(NSString * _Nullable)purchaselySdkVersion
+                  startOptions:(NSDictionary * _Nullable)startOptions
                   initialized:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject) {
 
@@ -522,6 +523,22 @@ RCT_EXPORT_METHOD(start:(NSString * _Nonnull)apiKey
         logLevel:(PLYLogLevel)logLevel]
         appTechnology:PLYAppTechnologyReactNative]
         sdkBridgeVersion:purchaselySdkVersion];
+
+    // Applied on the builder chain — before `startWithInitialized:` — so these
+    // take effect atomically with configuration, closing the race window a
+    // separate post-start call would leave open for an early campaign/deeplink
+    // to fire against the wrong default. `automaticDeeplinkHandling` has no
+    // iOS builder equivalent (Android-only) and is ignored here.
+    if ([startOptions isKindOfClass:[NSDictionary class]]) {
+        id allowDeeplink = startOptions[@"allowDeeplink"];
+        if ([allowDeeplink isKindOfClass:[NSNumber class]]) {
+            builder = [builder allowDeeplink:[allowDeeplink boolValue]];
+        }
+        id allowCampaigns = startOptions[@"allowCampaigns"];
+        if ([allowCampaigns isKindOfClass:[NSNumber class]]) {
+            builder = [builder allowCampaigns:[allowCampaigns boolValue]];
+        }
+    }
 
     [builder startWithInitialized:^(NSError * _Nullable error) {
         if (error != nil) {
@@ -1905,20 +1922,6 @@ RCT_EXPORT_METHOD(completeActionInterceptor:(NSString *)callbackId result:(NSStr
     // Invoke outside the lock — the callback re-enters the SDK's action handler.
     if (cb != nil) {
         cb(result);
-    }
-}
-
-#pragma mark - start options
-
-RCT_EXPORT_METHOD(applyStartOptions:(NSDictionary *)options) {
-    if (![options isKindOfClass:[NSDictionary class]]) { return; }
-    id allowDeeplink = options[@"allowDeeplink"];
-    if ([allowDeeplink isKindOfClass:[NSNumber class]]) {
-        [self allowDeeplink:[allowDeeplink boolValue]];
-    }
-    id allowCampaigns = options[@"allowCampaigns"];
-    if ([allowCampaigns isKindOfClass:[NSNumber class]]) {
-        [self allowCampaigns:[allowCampaigns boolValue]];
     }
 }
 

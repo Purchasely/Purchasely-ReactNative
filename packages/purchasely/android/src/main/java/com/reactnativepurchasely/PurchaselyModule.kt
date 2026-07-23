@@ -194,7 +194,20 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
             logLevel: Int,
             runningMode: Int,
             bridgeVersion: String,
+            startOptions: ReadableMap,
             promise: Promise) {
+    val allowDeeplink = if (startOptions.hasKey("allowDeeplink") && !startOptions.isNull("allowDeeplink")) {
+      startOptions.getBoolean("allowDeeplink")
+    } else null
+    val allowCampaigns = if (startOptions.hasKey("allowCampaigns") && !startOptions.isNull("allowCampaigns")) {
+      startOptions.getBoolean("allowCampaigns")
+    } else null
+    val automaticDeeplinkHandling = if (
+      startOptions.hasKey("automaticDeeplinkHandling") && !startOptions.isNull("automaticDeeplinkHandling")
+    ) {
+      startOptions.getBoolean("automaticDeeplinkHandling")
+    } else null
+
     Purchasely.Builder(reactApplicationContext.applicationContext)
       .apiKey(apiKey)
       .stores(getStoresInstances(stores.toArrayList().filterNotNull()))
@@ -208,6 +221,15 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
         // Only an explicit `full` opts into Purchasely owning the flow.
         else -> PLYRunningMode.Observer
       })
+      .apply {
+        // Applied on the builder chain — before `.build()`/`Purchasely.start()` —
+        // so these take effect atomically with configuration, closing the race
+        // window a separate post-start call would leave open for an early
+        // campaign/deeplink to fire against the wrong default.
+        allowDeeplink?.let { this.allowDeeplink(it) }
+        allowCampaigns?.let { this.allowCampaigns(it) }
+        automaticDeeplinkHandling?.let { this.automaticDeeplinkHandling(it) }
+      }
       .build()
 
     Purchasely.eventListener = eventListener
@@ -1090,23 +1112,6 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
         else -> PLYInterceptResult.NOT_HANDLED
       }
     )
-  }
-
-  @ReactMethod
-  fun applyStartOptions(options: ReadableMap) {
-    if (options.hasKey("allowDeeplink") && !options.isNull("allowDeeplink")) {
-      Purchasely.allowDeeplink = options.getBoolean("allowDeeplink")
-    }
-    if (options.hasKey("allowCampaigns") && !options.isNull("allowCampaigns")) {
-      Purchasely.allowCampaigns = options.getBoolean("allowCampaigns")
-    }
-    if (options.hasKey("automaticDeeplinkHandling") && !options.isNull("automaticDeeplinkHandling")) {
-      // Purchasely.automaticDeeplinkHandling is a public @Volatile var, documented as
-      // "Settable in Builder at start and at runtime" (Purchasely.kt) — unlike
-      // billingPlanType-style builder-only options, this one can be set here even
-      // though applyStartOptions runs after start() already consumed the builder.
-      Purchasely.automaticDeeplinkHandling = options.getBoolean("automaticDeeplinkHandling")
-    }
   }
 
   // --- presentation private helpers ---

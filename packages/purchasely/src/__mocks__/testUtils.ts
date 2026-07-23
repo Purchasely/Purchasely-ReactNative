@@ -70,7 +70,6 @@ export const mockConstants = {
 export const createMockPurchaselyModule = () => ({
     getConstants: jest.fn(() => mockConstants),
     start: jest.fn().mockResolvedValue(true),
-    applyStartOptions: jest.fn(),
     allowDeeplink: jest.fn(),
     allowCampaigns: jest.fn(),
     userLogin: jest.fn().mockResolvedValue(true),

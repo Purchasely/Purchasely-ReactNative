@@ -26,7 +26,6 @@ jest.mock('react-native', () => ({
             getAnonymousUserId: jest.fn().mockResolvedValue('anonymous-user-id'),
             setLogLevel: jest.fn(),
             readyToOpenDeeplink: jest.fn(),
-            applyStartOptions: jest.fn(),
             setAttribute: jest.fn(),
             setLanguage: jest.fn(),
             synchronize: jest.fn(),
@@ -152,16 +151,17 @@ describe('Purchasely SDK', () => {
                 null,
                 mockConstants.logLevelError,
                 mockConstants.runningModeObserver,
-                '6.0.0'
+                '6.0.0',
+                {}
             )
-            expect(mockedPurchasely.applyStartOptions).not.toHaveBeenCalled()
         })
 
         it('should expose apiKey as the Flutter-compatible builder alias', async () => {
             await Purchasely.apiKey('api-key').allowDeeplink(true).allowCampaigns(false).start()
 
             expect(mockedPurchasely.start).toHaveBeenCalled()
-            expect(mockedPurchasely.applyStartOptions).toHaveBeenCalledWith({
+            const startOptions = mockedPurchasely.start.mock.calls[0][7]
+            expect(startOptions).toEqual({
                 allowDeeplink: true,
                 allowCampaigns: false,
             })
@@ -206,7 +206,7 @@ describe('Purchasely SDK', () => {
                 'onProcessAction',
                 'setDefaultPresentationResultCallback',
                 'setDefaultPresentationResultHandler',
-                'readyToOpenDeeplink', // top-level; only reachable via builder.allowDeeplink()/start() internals
+                'readyToOpenDeeplink', // top-level; allowDeeplink is now applied via the atomic start() options map
                 'presentSubscriptions',
             ]
 

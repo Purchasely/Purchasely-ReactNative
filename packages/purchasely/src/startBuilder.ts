@@ -147,18 +147,11 @@ export class PurchaselyBuilder {
             }
         });
 
-        const configured: boolean = await NativeModules.Purchasely.start(
-            this.state.apiKey,
-            androidStoreNames,
-            this.state.storekitVersion === 'storeKit1',
-            this.state.appUserId ?? null,
-            LOG_LEVEL_MAP[this.state.logLevel],
-            RUNNING_MODE_MAP[this.state.runningMode],
-            bridgeVersion
-        );
-
-        // Apply optional chain-only options through the bridge. Omitted options
-        // are intentionally absent so native defaults match Flutter v6.
+        // Chain-only options, applied by native on/before its own start() call
+        // (built into the same builder chain that starts the SDK) so there is no
+        // window where a campaign/deeplink can fire against the wrong default.
+        // Omitted options are intentionally absent so native defaults match
+        // Flutter v6.
         const startOptions: Record<string, boolean> = {};
         if (this.state.allowDeeplink !== undefined && this.state.allowDeeplink !== null) {
             startOptions.allowDeeplink = this.state.allowDeeplink;
@@ -172,14 +165,17 @@ export class PurchaselyBuilder {
         ) {
             startOptions.automaticDeeplinkHandling = this.state.automaticDeeplinkHandling;
         }
-        if (Object.keys(startOptions).length > 0) {
-            if (NativeModules.Purchasely.applyStartOptions) {
-                NativeModules.Purchasely.applyStartOptions(startOptions);
-            } else if (startOptions.allowDeeplink !== undefined) {
-                // Fallback for older native bridges still ignoring applyStartOptions.
-                NativeModules.Purchasely.readyToOpenDeeplink(startOptions.allowDeeplink);
-            }
-        }
+
+        const configured: boolean = await NativeModules.Purchasely.start(
+            this.state.apiKey,
+            androidStoreNames,
+            this.state.storekitVersion === 'storeKit1',
+            this.state.appUserId ?? null,
+            LOG_LEVEL_MAP[this.state.logLevel],
+            RUNNING_MODE_MAP[this.state.runningMode],
+            bridgeVersion,
+            startOptions
+        );
 
         // Replay a cold-start deeplink now that the SDK is configured.
         if (this.state.deeplink) {

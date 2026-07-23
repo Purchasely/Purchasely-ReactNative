@@ -6,8 +6,8 @@
  * allowCampaigns). This file drives `PurchaselyBuilder` directly to cover the
  * chain modifiers that were previously untested: `stores()`,
  * `storekitVersion()`, `runningMode()`, `logLevel()`, `appUserId()`, the
- * cold-start `handleDeeplink()` replay, the `applyStartOptions` /
- * `readyToOpenDeeplink` fallback branch, and the `sdkVersion` override.
+ * atomic `startOptions` map passed to native `start()`, the cold-start
+ * `handleDeeplink()` replay, and the `sdkVersion` override.
  */
 
 import { mockConstants } from '../__mocks__/testUtils'
@@ -22,8 +22,6 @@ jest.mock('react-native', () => ({
         Purchasely: {
             getConstants: jest.fn(() => require('../__mocks__/testUtils').mockConstants),
             start: jest.fn().mockResolvedValue(true),
-            applyStartOptions: jest.fn(),
-            readyToOpenDeeplink: jest.fn(),
             handleDeeplink: jest.fn().mockResolvedValue(true),
         },
     },
@@ -38,8 +36,6 @@ describe('PurchaselyBuilder', () => {
     beforeEach(() => {
         jest.clearAllMocks()
         mockNative.start = jest.fn().mockResolvedValue(true)
-        mockNative.applyStartOptions = jest.fn()
-        mockNative.readyToOpenDeeplink = jest.fn()
         mockNative.handleDeeplink = jest.fn().mockResolvedValue(true)
         // Static field can leak mutations across tests — reset to the
         // package default before each test.
@@ -57,7 +53,8 @@ describe('PurchaselyBuilder', () => {
                 null, // appUserId
                 mockConstants.logLevelError,
                 mockConstants.runningModeObserver,
-                '6.0.0'
+                '6.0.0',
+                {} // no chain-only options set -> empty startOptions map
             )
         })
     })
@@ -129,50 +126,50 @@ describe('PurchaselyBuilder', () => {
         })
     })
 
-    describe('allowDeeplink() / allowCampaigns() chain modifiers', () => {
-        it('calls applyStartOptions with only allowDeeplink when only it is set', async () => {
+    describe('allowDeeplink() / allowCampaigns() chain modifiers — atomic startOptions map', () => {
+        it('passes only allowDeeplink in the startOptions map (8th arg) when only it is set', async () => {
             await PurchaselyBuilder.apiKey('api-key').allowDeeplink(true).start()
-            expect(mockNative.applyStartOptions).toHaveBeenCalledWith({ allowDeeplink: true })
+            expect(mockNative.start.mock.calls[0][7]).toEqual({ allowDeeplink: true })
         })
 
-        it('calls applyStartOptions with only allowCampaigns when only it is set', async () => {
+        it('passes only allowCampaigns in the startOptions map when only it is set', async () => {
             await PurchaselyBuilder.apiKey('api-key').allowCampaigns(false).start()
-            expect(mockNative.applyStartOptions).toHaveBeenCalledWith({ allowCampaigns: false })
+            expect(mockNative.start.mock.calls[0][7]).toEqual({ allowCampaigns: false })
         })
 
-        it('calls applyStartOptions with both when both are set', async () => {
+        it('passes both in the startOptions map when both are set', async () => {
             await PurchaselyBuilder.apiKey('api-key')
                 .allowDeeplink(true)
                 .allowCampaigns(true)
                 .start()
-            expect(mockNative.applyStartOptions).toHaveBeenCalledWith({
+            expect(mockNative.start.mock.calls[0][7]).toEqual({
                 allowDeeplink: true,
                 allowCampaigns: true,
             })
         })
 
-        it('does not call applyStartOptions when neither modifier is set', async () => {
+        it('passes an empty startOptions map when neither modifier is set', async () => {
             await PurchaselyBuilder.apiKey('api-key').start()
-            expect(mockNative.applyStartOptions).not.toHaveBeenCalled()
+            expect(mockNative.start.mock.calls[0][7]).toEqual({})
         })
 
-        it('falls back to readyToOpenDeeplink when the native bridge has no applyStartOptions', async () => {
-            delete mockNative.applyStartOptions
-            await PurchaselyBuilder.apiKey('api-key').allowDeeplink(true).start()
-            expect(mockNative.readyToOpenDeeplink).toHaveBeenCalledWith(true)
-        })
-
-        it('does not call the readyToOpenDeeplink fallback for allowCampaigns-only (no allowDeeplink key)', async () => {
-            delete mockNative.applyStartOptions
-            await PurchaselyBuilder.apiKey('api-key').allowCampaigns(true).start()
-            expect(mockNative.readyToOpenDeeplink).not.toHaveBeenCalled()
-        })
-
-        it('forwards automaticDeeplinkHandling (Android-only) through applyStartOptions', async () => {
+        it('forwards automaticDeeplinkHandling (Android-only) through the startOptions map', async () => {
             await PurchaselyBuilder.apiKey('api-key').automaticDeeplinkHandling(false).start()
-            expect(mockNative.applyStartOptions).toHaveBeenCalledWith({
+            expect(mockNative.start.mock.calls[0][7]).toEqual({
                 automaticDeeplinkHandling: false,
             })
+        })
+
+        it('the startOptions map is passed as part of the single start() call — no separate native call follows', async () => {
+            const callOrder: string[] = []
+            mockNative.start = jest.fn().mockImplementation(async () => {
+                callOrder.push('start')
+                return true
+            })
+
+            await PurchaselyBuilder.apiKey('api-key').allowDeeplink(true).start()
+
+            expect(callOrder).toEqual(['start'])
         })
     })
 
