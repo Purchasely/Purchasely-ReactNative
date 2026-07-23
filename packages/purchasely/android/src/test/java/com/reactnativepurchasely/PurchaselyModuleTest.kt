@@ -1,7 +1,12 @@
 package com.reactnativepurchasely
 
+import com.facebook.react.bridge.Arguments
+import com.facebook.react.bridge.JavaOnlyArray
+import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
+import com.facebook.react.bridge.ReadableArray
 import io.purchasely.ext.*
+import io.purchasely.ext.presentation.PLYPresentationType
 import io.purchasely.storage.userData.PLYUserAttributeSource
 import io.purchasely.storage.userData.PLYUserAttributeType
 import io.purchasely.views.presentation.PLYThemeMode
@@ -11,6 +16,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.mockito.Mock
 import org.mockito.Mockito.mock
+import org.mockito.Mockito.mockStatic
+import org.mockito.Mockito.never
+import org.mockito.Mockito.verify
 import org.mockito.junit.MockitoJUnitRunner
 
 /**
@@ -37,6 +45,19 @@ class PurchaselyModuleTest {
     @Test
     fun `module name should be Purchasely`() {
         assertEquals("Purchasely", purchaselyModule.name)
+    }
+
+    // endregion
+
+    // region iOS-only API fallbacks
+
+    @Test
+    fun `sign promotional offer resolves null on Android`() {
+        val promise = mock(Promise::class.java)
+
+        purchaselyModule.signPromotionalOffer("product", "offer", promise)
+
+        verify(promise).resolve(null)
     }
 
     // endregion
@@ -119,6 +140,9 @@ class PurchaselyModuleTest {
         assertTrue(constants.containsKey("batchInstallationId"))
         assertTrue(constants.containsKey("adjustId"))
         assertTrue(constants.containsKey("appsflyerId"))
+        // [ENM-04 / REC-11] present on both natives but never bridged before.
+        assertTrue(constants.containsKey("oneSignalExternalId"))
+        assertTrue(constants.containsKey("oneSignalUserId"))
         assertTrue(constants.containsKey("mixpanelDistinctId"))
         assertTrue(constants.containsKey("clevertapId"))
         assertTrue(constants.containsKey("sendinblueUserEmail"))
@@ -145,6 +169,8 @@ class PurchaselyModuleTest {
         assertEquals(Attribute.BATCH_INSTALLATION_ID.ordinal, constants["batchInstallationId"])
         assertEquals(Attribute.ADJUST_ID.ordinal, constants["adjustId"])
         assertEquals(Attribute.APPSFLYER_ID.ordinal, constants["appsflyerId"])
+        assertEquals(Attribute.ONESIGNAL_EXTERNAL_ID.ordinal, constants["oneSignalExternalId"])
+        assertEquals(Attribute.ONESIGNAL_USER_ID.ordinal, constants["oneSignalUserId"])
         assertEquals(Attribute.MIXPANEL_DISTINCT_ID.ordinal, constants["mixpanelDistinctId"])
         assertEquals(Attribute.CLEVER_TAP_ID.ordinal, constants["clevertapId"])
     }
@@ -171,13 +197,13 @@ class PurchaselyModuleTest {
         assertEquals(DistributionType.UNKNOWN.ordinal, constants["unknown"])
     }
 
+    // [ENM-06 / REC-17] The v5 runningModeTransactionOnly / runningModePaywallObserver
+    // constants were removed — only Observer / Full remain in v6.
     @Test
     fun `getConstants should contain running mode constants`() {
         val constants = purchaselyModule.constants
 
-        assertTrue(constants.containsKey("runningModeTransactionOnly"))
         assertTrue(constants.containsKey("runningModeObserver"))
-        assertTrue(constants.containsKey("runningModePaywallObserver"))
         assertTrue(constants.containsKey("runningModeFull"))
     }
 
@@ -186,13 +212,11 @@ class PurchaselyModuleTest {
         val constants = purchaselyModule.constants
 
         val runningModes = setOf(
-            constants["runningModeTransactionOnly"],
             constants["runningModeObserver"],
-            constants["runningModePaywallObserver"],
             constants["runningModeFull"]
         )
 
-        assertEquals(4, runningModes.size)
+        assertEquals(2, runningModes.size)
     }
 
     @Test
@@ -406,6 +430,87 @@ class PurchaselyModuleTest {
     }
 
     // endregion
+
+    // region User attribute read — array conversion (regression: E2E T14)
+
+    /**
+     * Reading an array-typed attribute (String[]/Integer[]/Float[]/Boolean[]) must go
+     * through Arguments.makeNativeArray. Handing a raw Java array to promise.resolve()
+     * throws "Cannot convert argument of type class [Ljava.lang.String;" at runtime
+     * (Arguments.kt), which is what broke E2E T14 on device.
+     */
+    @Test
+    fun `userAttribute resolves array attributes as a native array, not a raw java array`() {
+        val promise = mock(Promise::class.java)
+        val rawArray: Any = arrayOf("alpha", "beta", "gamma") // java.lang.String[]
+
+        // WritableNativeArray is final + JNI-backed, so we can't mock its instances.
+        // We only assert the routing: the raw array is turned into a List and handed to
+        // Arguments.makeNativeArray (never resolved as-is).
+        val purchaselyStatic = mockStatic(Purchasely::class.java)
+        val argumentsStatic = mockStatic(Arguments::class.java)
+        try {
+            purchaselyStatic.`when`<Any> { Purchasely.userAttribute("e2e_str_arr") }
+                .thenReturn(rawArray)
+
+            purchaselyModule.userAttribute("e2e_str_arr", promise)
+
+            // The array must be normalized to a List and converted, not resolved raw.
+            argumentsStatic.verify { Arguments.makeNativeArray(listOf("alpha", "beta", "gamma")) }
+            verify(promise, never()).resolve(rawArray)
+        } finally {
+            argumentsStatic.close()
+            purchaselyStatic.close()
+        }
+    }
+
+    // endregion
+
+    // region revokeDataProcessingConsent wire-string mapping (REC-15 / ENM-12)
+
+    /**
+     * [REC-15 / ENM-12] Pins mapPurposesFromReadableArray's mapping to the
+     * native PLYDataProcessingPurpose enum, and locks in the "align en
+     * douceur" widening: RN's own kebab-case singular strings AND the
+     * SCREAMING_SNAKE_CASE plural convention used by the other Purchasely
+     * SDKs must both resolve to the same native purpose.
+     */
+    @Test
+    fun `revokeDataProcessingConsent accepts both kebab-case and SCREAMING_SNAKE_CASE wire strings`() {
+        val mapper = PurchaselyModule::class.java
+            .getDeclaredMethod("mapPurposesFromReadableArray", ReadableArray::class.java)
+            .apply { isAccessible = true }
+
+        @Suppress("UNCHECKED_CAST")
+        fun map(vararg purposes: String) = mapper.invoke(
+            purchaselyModule,
+            JavaOnlyArray.of(*purposes)
+        ) as Set<PLYDataProcessingPurpose>
+
+        assertEquals(
+            setOf(PLYDataProcessingPurpose.ThirdPartyIntegrations),
+            map("third-party-integration")
+        )
+        assertEquals(
+            setOf(PLYDataProcessingPurpose.ThirdPartyIntegrations),
+            map("THIRD_PARTY_INTEGRATIONS")
+        )
+        assertEquals(
+            setOf(PLYDataProcessingPurpose.AllNonEssentials),
+            map("ALL_NON_ESSENTIALS")
+        )
+        assertEquals(
+            setOf(
+                PLYDataProcessingPurpose.Analytics,
+                PLYDataProcessingPurpose.IdentifiedAnalytics,
+                PLYDataProcessingPurpose.Campaigns,
+                PLYDataProcessingPurpose.Personalization
+            ),
+            map("ANALYTICS", "IDENTIFIED_ANALYTICS", "CAMPAIGNS", "PERSONALIZATION")
+        )
+    }
+
+    // endregion
 }
 
 /**
@@ -504,5 +609,8 @@ class EnumOrdinalConsistencyTest {
         assertNotNull(Attribute.BRANCH_USER_DEVELOPER_IDENTITY)
         assertNotNull(Attribute.MOENGAGE_UNIQUE_ID)
         assertNotNull(Attribute.BATCH_CUSTOM_USER_ID)
+        // [ENM-04 / REC-11]
+        assertNotNull(Attribute.ONESIGNAL_EXTERNAL_ID)
+        assertNotNull(Attribute.ONESIGNAL_USER_ID)
     }
 }
