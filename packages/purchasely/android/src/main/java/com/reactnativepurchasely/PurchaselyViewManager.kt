@@ -262,6 +262,18 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
       // guard upstream absorbs any future double-fire.
       val preloaded = requestId?.let { PurchaselyModule.loadedPresentation(it) }
       if (preloaded != null) {
+        // `preloadPresentation` (PurchaselyModule.wirePresentationCallbacks) always wires
+        // `onCloseRequested` to forward a PRESENTATION_CLOSE_REQUESTED JS event — meant for a
+        // full-screen non-dismissible modal, where the app decides how to react to a close
+        // attempt. For a full-screen/flow presentation this is harmless: PLYFlowListener's own
+        // onCloseRequested is consulted first and this callback never runs. An embedded view has
+        // no flow listener, so the SDK's PLYPresentationView.close() falls straight to this
+        // callback and — finding it non-null — invokes it INSTEAD of tearing down the view: the
+        // native close (X) tap silently no-ops forever (root cause of E2E T25 hanging). Embedded
+        // views have no such "ask before closing" contract, so clear it before building the view:
+        // the tap now falls through to the SDK's default self-close (removeView →
+        // onDetachedFromWindow → outcome callback).
+        preloaded.onCloseRequested = null
         val pv: PLYPresentationView? =
           preloaded.buildView(host.context) { outcome -> callback(outcome) }
         pv?.let { host.addView(it) }
