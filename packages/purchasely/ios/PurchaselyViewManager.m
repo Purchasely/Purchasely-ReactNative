@@ -14,8 +14,7 @@
 RCT_EXPORT_VIEW_PROPERTY(placementId, NSString)
 RCT_EXPORT_VIEW_PROPERTY(presentation, NSDictionary)
 RCT_EXPORT_VIEW_PROPERTY(requestId, NSString)
-
-RCT_EXTERN_METHOD(onPresentationClosed:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject);
+RCT_EXPORT_VIEW_PROPERTY(viewId, NSString)
 
 @end
 

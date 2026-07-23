@@ -355,8 +355,6 @@ static PLYTransition *plyTransitionFromMap(NSDictionary *map) {
 
 RCT_EXPORT_MODULE(Purchasely);
 
-static NSMutableArray<id<PLYPresentation>> *_presentationsLoaded;
-static RCTPromiseResolveBlock _purchaseResolve;
 static UIViewController *_sharedViewController;
 // Weak handle to the active event-emitting module instance, so the embedded
 // `PurchaselyView` (a separate UIView) can surface a PRESENTATION_VIEWED event.
@@ -373,14 +371,6 @@ static __weak PurchaselyRN *_sharedEmitter;
     _sharedViewController = viewController;
 }
 
-+ (NSMutableArray<id<PLYPresentation>> *)presentationsLoaded {
-    return _presentationsLoaded;
-}
-
-+ (void)setPresentationsLoaded:(NSMutableArray<id<PLYPresentation>> *)presentationsLoaded {
-    _presentationsLoaded = presentationsLoaded;
-}
-
 + (id<PLYPresentation>)loadedPresentationForRequestId:(NSString *)requestId {
     if (requestId == nil) { return nil; }
     ensurePresentationState();
@@ -389,18 +379,61 @@ static __weak PurchaselyRN *_sharedEmitter;
     }
 }
 
-+ (RCTPromiseResolveBlock)purchaseResolve {
-    return _purchaseResolve;
++ (id<PLYPresentation>)takeLoadedPresentationMatchingScreenId:(NSString *)screenId placementId:(NSString *)placementId {
+    if (screenId == nil || placementId == nil) { return nil; }
+    ensurePresentationState();
+    @synchronized (kPresentationStateLock) {
+        for (NSString *key in kPresentationsByRequest) {
+            id<PLYPresentation> presentation = kPresentationsByRequest[key];
+            if ([presentation.screenId isEqualToString:screenId] &&
+                [presentation.placementId isEqualToString:placementId]) {
+                [kPresentationsByRequest removeObjectForKey:key];
+                return presentation;
+            }
+        }
+    }
+    return nil;
 }
 
-+ (void)setPurchaseResolve:(RCTPromiseResolveBlock)purchaseResolve {
-    _purchaseResolve = [purchaseResolve copy];
++ (void)emitPresentationDismissedForId:(NSString *)routingId outcome:(PLYPresentationOutcome *)outcome {
+    PurchaselyRN *emitter = _sharedEmitter;
+    if (emitter == nil || !emitter.shouldEmit) { return; }
+
+    id<PLYPresentation> presentation = outcome.presentation;
+    if (presentation == nil) {
+        @synchronized (kPresentationStateLock) {
+            presentation = kPresentationsByRequest[routingId];
+        }
+    }
+    NSMutableDictionary *body = [NSMutableDictionary new];
+    body[@"requestId"] = routingId;
+    if (presentation != nil) {
+        body[@"presentation"] = presentationToMap(presentation);
+    }
+    NSNumber *ordinal = purchaseResultOrdinal(outcome.purchaseResult);
+    if (ordinal != nil) {
+        body[@"purchaseResult"] = ordinal;
+    }
+    if (outcome.plan != nil) {
+        body[@"plan"] = [outcome.plan asDictionary];
+    }
+    if (outcome.error != nil) {
+        body[@"error"] = presentationErrorToMap(outcome.error);
+    } else {
+        NSString *closeReason = closeReasonToRNString(outcome.closeReason);
+        if (closeReason != nil) {
+            body[@"closeReason"] = closeReason;
+        }
+    }
+    [emitter sendEventWithName:kPresentationEventDismissed body:body];
+    @synchronized (kPresentationStateLock) {
+        [kPresentationsByRequest removeObjectForKey:routingId];
+    }
 }
 
 - (instancetype)init {
 	self = [super init];
 
-    PurchaselyRN.presentationsLoaded = [NSMutableArray new];
     self.shouldReopenPaywall = NO;
     self.shouldEmit = NO;
 
@@ -1324,7 +1357,6 @@ RCT_EXPORT_METHOD(preloadPresentation:(NSString *)requestId
         event[@"requestId"] = requestId;
         if (presentation != nil) {
             event[@"presentation"] = presentationToMap(presentation);
-            [PurchaselyRN.presentationsLoaded addObject:presentation];
             @synchronized (kPresentationStateLock) {
                 kPresentationsByRequest[requestId] = presentation;
             }
@@ -1346,6 +1378,13 @@ RCT_EXPORT_METHOD(preloadPresentation:(NSString *)requestId
             return;
         }
         applyPresentationDisplayOptions(builder, payload);
+        // Wire the dismiss handler at preload time (mirrors Flutter's
+        // `buildRequest`, shared by preload + display) so an embedded
+        // `PLYPresentationView` reusing this requestId — which never calls
+        // `displayPresentation:` — still gets its dismissal emitted.
+        [builder onDismissed:^(PLYPresentationOutcome *outcome) {
+            [PurchaselyRN emitPresentationDismissedForId:requestId outcome:outcome];
+        }];
         id<PLYPresentationRequest> request = [builder build];
         [request preloadWithCompletion:onFetchCompletion];
         resolve(@(YES));

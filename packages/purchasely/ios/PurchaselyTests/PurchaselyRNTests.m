@@ -32,10 +32,6 @@
     XCTAssertNotNil(self.purchaselyModule, @"PurchaselyRN module should initialize");
 }
 
-- (void)testPresentationsLoadedInitialization {
-    XCTAssertNotNil([PurchaselyRN presentationsLoaded], @"presentationsLoaded array should be initialized");
-}
-
 #pragma mark - Default presentation dismiss handler
 
 - (void)testSupportedEventsIncludesDefaultPresentationDismissed {
@@ -217,36 +213,6 @@
 
     UIViewController *retrievedVC = [PurchaselyRN sharedViewController];
     XCTAssertEqual(newVC, retrievedVC, @"setSharedViewController should update the shared instance");
-}
-
-#pragma mark - Presentations Loaded Tests
-
-- (void)testPresentationsLoadedIsArray {
-    NSMutableArray *presentations = [PurchaselyRN presentationsLoaded];
-    XCTAssertTrue([presentations isKindOfClass:[NSMutableArray class]], @"presentationsLoaded should be a mutable array");
-}
-
-- (void)testSetPresentationsLoaded {
-    NSMutableArray *newArray = [NSMutableArray arrayWithObjects:@"test", nil];
-    [PurchaselyRN setPresentationsLoaded:newArray];
-
-    NSMutableArray *retrieved = [PurchaselyRN presentationsLoaded];
-    XCTAssertEqual(newArray, retrieved, @"setPresentationsLoaded should update the array");
-}
-
-#pragma mark - Purchase Resolve Tests
-
-- (void)testPurchaseResolveInitiallyNil {
-    // Reset to nil
-    [PurchaselyRN setPurchaseResolve:nil];
-    XCTAssertNil([PurchaselyRN purchaseResolve], @"purchaseResolve should be nil initially");
-}
-
-- (void)testSetPurchaseResolve {
-    RCTPromiseResolveBlock resolveBlock = ^(id result) {};
-    [PurchaselyRN setPurchaseResolve:resolveBlock];
-
-    XCTAssertNotNil([PurchaselyRN purchaseResolve], @"purchaseResolve should not be nil after setting");
 }
 
 #pragma mark - Module Properties Tests

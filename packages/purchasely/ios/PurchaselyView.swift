@@ -37,7 +37,20 @@ class PurchaselyView: UIView {
     }
   }
 
-  var onPresentationClosedPromise: RCTPromiseResolveBlock?
+  /// Id the JS `PLYPresentationView` component listens on for the dismiss
+  /// event routed through `PURCHASELY_PRESENTATION_DISMISSED` — the bridge
+  /// `requestId` when reusing a preloaded presentation (identical to
+  /// `requestId` above in that case), or a component-generated id for the
+  /// `presentation` prop and fresh `placementId` paths, which have no bridge
+  /// `requestId` of their own. Re-runs `setupView()` on change like the other
+  /// props so the `presentation` prop path's dismiss re-wiring (see
+  /// `getPresentationController`) uses the final value regardless of prop
+  /// application order.
+  @objc var viewId: String? {
+    didSet {
+      setupView()
+    }
+  }
 
   override init(frame: CGRect) {
     super.init(frame: frame)
@@ -167,12 +180,11 @@ class PurchaselyView: UIView {
       // v6 / iso Flutter: when a `requestId` is provided, reuse the presentation
       // the JS layer already preloaded (`request.preload()`) instead of loading a
       // new one. Mirrors Android's `PurchaselyModule.loadedPresentation(requestId)`.
+      // Its dismissal is already routed by `preloadPresentation:`'s own wiring,
+      // keyed by this same requestId — nothing left to wire here.
       if let requestId = self.requestId,
          let loaded = PurchaselyRN.loadedPresentation(forRequestId: requestId),
          let controller = loaded.controller {
-          PurchaselyRN.purchaseResolve = { [weak self] result in
-              self?.onPresentationClosedPromise?(result)
-          }
           return controller
       }
 
@@ -181,33 +193,28 @@ class PurchaselyView: UIView {
       // the placement id to recreate the view controller on subsequent visits.
       let effectivePlacementId = placementId ?? presentation?.placementId
 
-      guard let presentation = presentation,
-              let presentationPlacementId = presentation.placementId,
-              let loadedPresentations = PurchaselyRN.presentationsLoaded as? [PLYPresentation],
-              let presentationLoaded = loadedPresentations.filter({ $0.screenId == presentation.id && $0.placementId == presentationPlacementId }).first,
-              let presentationLoadedController = presentationLoaded.controller else {
-          return self.createNativeViewController(placementId: effectivePlacementId)
-        }
-    return prefetchPresentationViewController(presentation: presentation,
-                                              presentationLoadedController: presentationLoadedController)
-  }
+      // The `presentation` prop carries no bridge `requestId` (it's the raw
+      // screen data JS resolved from a `preload()`), so the matching loaded
+      // presentation is resolved by screen/placement identity instead — atomically
+      // claimed (single-use) so a second view can't reuse the same instance.
+      if let presentation = presentation,
+         let presentationPlacementId = presentation.placementId,
+         let matched = PurchaselyRN.takeLoadedPresentation(matchingScreenId: presentation.id,
+                                                            placementId: presentationPlacementId),
+         let controller = matched.controller {
+          // Re-route this presentation's dismissal to the id the JS component
+          // is actually listening on (it doesn't know the internal requestId
+          // `preloadPresentation:` wired earlier) — `onDismissed` is a single
+          // settable slot, so this replaces that wiring rather than stacking.
+          if let routingId = viewId {
+              matched.onDismissed = { outcome in
+                  PurchaselyRN.emitPresentationDismissed(forId: routingId, outcome: outcome)
+              }
+          }
+          return controller
+      }
 
-  private func prefetchPresentationViewController(presentation: PurchaselyPresentation,
-                                                  presentationLoadedController: PLYPresentationViewController) -> UIViewController? {
-    self.removeLoadedPresentation(presentation: presentation)
-
-    PurchaselyRN.purchaseResolve = { [weak self] result in
-      self?.onPresentationClosedPromise?(result)
-    }
-    return presentationLoadedController
-  }
-
-  private func removeLoadedPresentation(presentation: PurchaselyPresentation) {
-    var presentationsLoaded = (PurchaselyRN.presentationsLoaded as? [PLYPresentation]) ?? []
-    if let indexToRemove = presentationsLoaded.firstIndex(where: { $0.screenId == presentation.id }) {
-        presentationsLoaded.remove(at: indexToRemove)
-    }
-    PurchaselyRN.presentationsLoaded = NSMutableArray(array: presentationsLoaded)
+      return createNativeViewController(placementId: effectivePlacementId)
   }
 
   private func createNativeViewController(placementId: String?) -> UIViewController? {
@@ -217,19 +224,12 @@ class PurchaselyView: UIView {
     // Build a presentation request, preload it, then install the controller once
     // the SDK hands it back. Preload is asynchronous, so we return nil here and
     // swap the real view in via `attachController` on completion.
+    let routingId = viewId
     let request = PLYPresentationBuilder
       .from(placementId: placementId)
-      .onDismissed { [weak self] outcome in
-        guard let self = self else { return }
-        let resultDict: NSDictionary
-        if let plan = outcome.plan {
-          resultDict = ["result": self.productResultOrdinal(outcome.purchaseResult), "plan": plan.asDictionary()]
-        } else {
-          resultDict = ["result": self.productResultOrdinal(outcome.purchaseResult), "plan": NSNull()]
-        }
-        DispatchQueue.main.async {
-          self.onPresentationClosedPromise?(resultDict)
-        }
+      .onDismissed { outcome in
+        guard let routingId = routingId else { return }
+        PurchaselyRN.emitPresentationDismissed(forId: routingId, outcome: outcome)
       }
       .build()
 
