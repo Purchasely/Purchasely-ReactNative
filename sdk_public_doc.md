@@ -129,9 +129,9 @@ npm install @purchasely/react-native-purchasely-android-player --save
 ```json
 // package.json
 "dependencies": {
-  "react-native-purchasely": "6.0.0-rc.3",
-  "@purchasely/react-native-purchasely-google": "6.0.0-rc.3",
-  "@purchasely/react-native-purchasely-android-player": "6.0.0-rc.3"
+  "react-native-purchasely": "6.0.0",
+  "@purchasely/react-native-purchasely-google": "6.0.0",
+  "@purchasely/react-native-purchasely-android-player": "6.0.0"
 }
 ```
 

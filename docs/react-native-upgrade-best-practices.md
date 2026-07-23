@@ -483,7 +483,7 @@ This SDK's verified toolchain pins per React Native version. Use as a known-good
 
 **RN 0.86.0 notes:**
 - Node minimum raised to **22.11** (bump `.nvmrc` to `v22` and every `engines.node`).
-- Purchasely Android SDK **6.0.0-rc.3** is compiled with Kotlin **2.3.21**;
+- Purchasely Android SDK **6.0.1** is compiled with Kotlin **2.3.21**;
   consumers and the example app must use a compatible Kotlin Gradle plugin.
 - `@react-native/*` packages (babel-preset, eslint-config, metro-config, typescript-config) and the example app all move to `0.86.0`; `@react-native-community/cli*` to `20.1.0`.
 - Metro: `@react-native/metro-config@0.86.0` pulls metro `^0.84.x`, so bump `metro-cache` / `metro-config` devDeps to `^0.84.0` to avoid a duplicated metro tree.
