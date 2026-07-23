@@ -648,6 +648,22 @@ RCT_EXPORT_METHOD(setUserAttributeWithNumber:(NSString * _Nonnull)key
     }
 }
 
+RCT_EXPORT_METHOD(setUserAttributeWithInt:(NSString * _Nonnull)key
+                  value:(NSInteger)value
+                  legalBasis:(NSString * _Nullable)legalBasis) {
+    [Purchasely setUserAttributeWithIntValue:value
+                                      forKey:key
+                      processingLegalBasis:[self legalBasisFromString:legalBasis]];
+}
+
+RCT_EXPORT_METHOD(setUserAttributeWithDouble:(NSString * _Nonnull)key
+                  value:(double)value
+                  legalBasis:(NSString * _Nullable)legalBasis) {
+    [Purchasely setUserAttributeWithDoubleValue:value
+                                         forKey:key
+                         processingLegalBasis:[self legalBasisFromString:legalBasis]];
+}
+
 RCT_EXPORT_METHOD(setUserAttributeWithDate:(NSString * _Nonnull)key
                   value:(NSString * _Nonnull)value
                   legalBasis:(NSString * _Nullable)legalBasis) {
@@ -715,6 +731,24 @@ RCT_EXPORT_METHOD(setUserAttributeWithNumberArray:(NSString * _Nonnull)key
                                             forKey:key
                             processingLegalBasis:lb];
     }
+}
+
+// Int Array
+RCT_EXPORT_METHOD(setUserAttributeWithIntArray:(NSString * _Nonnull)key
+                  value:(NSArray<NSNumber *> * _Nonnull)value
+                  legalBasis:(NSString * _Nullable)legalBasis) {
+    [Purchasely setUserAttributeWithIntArray:value
+                                      forKey:key
+                      processingLegalBasis:[self legalBasisFromString:legalBasis]];
+}
+
+// Double Array
+RCT_EXPORT_METHOD(setUserAttributeWithDoubleArray:(NSString * _Nonnull)key
+                  value:(NSArray<NSNumber *> * _Nonnull)value
+                  legalBasis:(NSString * _Nullable)legalBasis) {
+    [Purchasely setUserAttributeWithDoubleArray:value
+                                         forKey:key
+                         processingLegalBasis:[self legalBasisFromString:legalBasis]];
 }
 
 RCT_EXPORT_METHOD(incrementUserAttribute:(NSString * _Nonnull)key

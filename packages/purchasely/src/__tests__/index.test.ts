@@ -63,10 +63,14 @@ jest.mock('react-native', () => ({
             isEligibleForIntroOffer: jest.fn().mockResolvedValue(true),
             setUserAttributeWithString: jest.fn(),
             setUserAttributeWithNumber: jest.fn(),
+            setUserAttributeWithInt: jest.fn(),
+            setUserAttributeWithDouble: jest.fn(),
             setUserAttributeWithBoolean: jest.fn(),
             setUserAttributeWithDate: jest.fn(),
             setUserAttributeWithStringArray: jest.fn(),
             setUserAttributeWithNumberArray: jest.fn(),
+            setUserAttributeWithIntArray: jest.fn(),
+            setUserAttributeWithDoubleArray: jest.fn(),
             setUserAttributeWithBooleanArray: jest.fn(),
             incrementUserAttribute: jest.fn(),
             decrementUserAttribute: jest.fn(),
@@ -305,31 +309,42 @@ describe('Purchasely SDK', () => {
             )
         })
 
-        it('should expose int/double aliases for Flutter parity', () => {
+        it('should call the typed Int/Double setters through their own native methods', () => {
             Purchasely.setUserAttributeWithInt('age', 25)
             Purchasely.setUserAttributeWithDouble('weight', 78.2)
             Purchasely.setUserAttributeWithIntArray('scores', [1, 2])
             Purchasely.setUserAttributeWithDoubleArray('weights', [1.5, 2.5])
 
-            expect(mockedPurchasely.setUserAttributeWithNumber).toHaveBeenCalledWith(
+            expect(mockedPurchasely.setUserAttributeWithInt).toHaveBeenCalledWith(
                 'age',
                 25,
                 undefined
             )
-            expect(mockedPurchasely.setUserAttributeWithNumber).toHaveBeenCalledWith(
+            expect(mockedPurchasely.setUserAttributeWithDouble).toHaveBeenCalledWith(
                 'weight',
                 78.2,
                 undefined
             )
-            expect(mockedPurchasely.setUserAttributeWithNumberArray).toHaveBeenCalledWith(
+            expect(mockedPurchasely.setUserAttributeWithIntArray).toHaveBeenCalledWith(
                 'scores',
                 [1, 2],
                 undefined
             )
-            expect(mockedPurchasely.setUserAttributeWithNumberArray).toHaveBeenCalledWith(
+            expect(mockedPurchasely.setUserAttributeWithDoubleArray).toHaveBeenCalledWith(
                 'weights',
                 [1.5, 2.5],
                 undefined
+            )
+            expect(mockedPurchasely.setUserAttributeWithNumber).not.toHaveBeenCalled()
+            expect(mockedPurchasely.setUserAttributeWithNumberArray).not.toHaveBeenCalled()
+        })
+
+        it('forwards a legal basis through the typed Int/Double setters', () => {
+            Purchasely.setUserAttributeWithInt('age', 25, PLYDataProcessingLegalBasis.ESSENTIAL)
+            expect(mockedPurchasely.setUserAttributeWithInt).toHaveBeenCalledWith(
+                'age',
+                25,
+                PLYDataProcessingLegalBasis.ESSENTIAL
             )
         })
 

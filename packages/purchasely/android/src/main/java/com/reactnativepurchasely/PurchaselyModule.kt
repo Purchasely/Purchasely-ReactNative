@@ -434,6 +434,16 @@ fun setUserAttributeWithNumber(key: String, value: Double, legalBasis: String?) 
 }
 
 @ReactMethod
+fun setUserAttributeWithInt(key: String, value: Double, legalBasis: String?) {
+  Purchasely.setUserAttribute(key, value.toInt(), legalBasisFromString(legalBasis))
+}
+
+@ReactMethod
+fun setUserAttributeWithDouble(key: String, value: Double, legalBasis: String?) {
+  Purchasely.setUserAttribute(key, value.toFloat(), legalBasisFromString(legalBasis))
+}
+
+@ReactMethod
 fun setUserAttributeWithBoolean(key: String, value: Boolean, legalBasis: String?) {
   Purchasely.setUserAttribute(key, value, legalBasisFromString(legalBasis))
 }
@@ -470,6 +480,22 @@ fun setUserAttributeWithStringArray(key: String, value: ReadableArray, legalBasi
 @ReactMethod
 fun setUserAttributeWithNumberArray(key: String, value: ReadableArray, legalBasis: String?) {
   // v6's Purchasely.setUserAttribute expects java.lang.Float[] for number arrays.
+  val array: Array<Float> = value.toArrayList()
+    .mapNotNull { it?.toString()?.toFloatOrNull() }
+    .toTypedArray()
+  Purchasely.setUserAttribute(key, array, legalBasisFromString(legalBasis))
+}
+
+@ReactMethod
+fun setUserAttributeWithIntArray(key: String, value: ReadableArray, legalBasis: String?) {
+  val array: Array<Int> = value.toArrayList()
+    .mapNotNull { it?.toString()?.toDoubleOrNull()?.toInt() }
+    .toTypedArray()
+  Purchasely.setUserAttribute(key, array, legalBasisFromString(legalBasis))
+}
+
+@ReactMethod
+fun setUserAttributeWithDoubleArray(key: String, value: ReadableArray, legalBasis: String?) {
   val array: Array<Float> = value.toArrayList()
     .mapNotNull { it?.toString()?.toFloatOrNull() }
     .toTypedArray()

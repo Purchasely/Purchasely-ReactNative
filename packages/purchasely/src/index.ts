@@ -341,8 +341,13 @@ const setUserAttributeWithNumber = (key: string, value: number, legalBasis?: PLY
   return NativeModules.Purchasely.setUserAttributeWithNumber(key, value, legalBasis);
 };
 
-const setUserAttributeWithInt = setUserAttributeWithNumber;
-const setUserAttributeWithDouble = setUserAttributeWithNumber;
+const setUserAttributeWithInt = (key: string, value: number, legalBasis?: PLYDataProcessingLegalBasis): void => {
+  return NativeModules.Purchasely.setUserAttributeWithInt(key, value, legalBasis);
+};
+
+const setUserAttributeWithDouble = (key: string, value: number, legalBasis?: PLYDataProcessingLegalBasis): void => {
+  return NativeModules.Purchasely.setUserAttributeWithDouble(key, value, legalBasis);
+};
 
 const setUserAttributeWithBoolean = (key: string, value: boolean, legalBasis?: PLYDataProcessingLegalBasis): void => {
   return NativeModules.Purchasely.setUserAttributeWithBoolean(key, value, legalBasis);
@@ -372,8 +377,21 @@ const setUserAttributeWithBooleanArray = (
   return NativeModules.Purchasely.setUserAttributeWithBooleanArray(key, value, legalBasis);
 };
 
-const setUserAttributeWithIntArray = setUserAttributeWithNumberArray;
-const setUserAttributeWithDoubleArray = setUserAttributeWithNumberArray;
+const setUserAttributeWithIntArray = (
+  key: string,
+  value: number[],
+  legalBasis?: PLYDataProcessingLegalBasis
+): void => {
+  return NativeModules.Purchasely.setUserAttributeWithIntArray(key, value, legalBasis);
+};
+
+const setUserAttributeWithDoubleArray = (
+  key: string,
+  value: number[],
+  legalBasis?: PLYDataProcessingLegalBasis
+): void => {
+  return NativeModules.Purchasely.setUserAttributeWithDoubleArray(key, value, legalBasis);
+};
 
 const userAttributes = (): Promise<Record<string, any>> => {
   return NativeModules.Purchasely.userAttributes();
