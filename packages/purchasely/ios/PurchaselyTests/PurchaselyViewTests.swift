@@ -139,10 +139,17 @@ class PurchaselyViewTests: XCTestCase {
 
     // MARK: - Background Color Tests
 
-    func testViewHasDefaultBackgroundColor() {
-        // View should have a background color (clear or default)
-        // This is a basic sanity check
-        XCTAssertNotNil(purchaselyView.backgroundColor, "View should have a background color")
+    func testViewHasNoBackgroundColorByDefault() {
+        XCTAssertNil(purchaselyView.backgroundColor, "View should preserve UIView's default background")
+    }
+
+    // MARK: - Purchase Result Compatibility Tests
+
+    func testPurchaseResultOrdinalsPreserveJavaScriptContract() {
+        XCTAssertEqual(purchaselyView.productResultOrdinal(.purchased), 0)
+        XCTAssertEqual(purchaselyView.productResultOrdinal(.cancelled), 1)
+        XCTAssertEqual(purchaselyView.productResultOrdinal(.restored), 2)
+        XCTAssertEqual(purchaselyView.productResultOrdinal(.none), 1)
     }
 
     // MARK: - Combined Property Tests

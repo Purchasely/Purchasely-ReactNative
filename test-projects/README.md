@@ -8,17 +8,18 @@ This directory contains two test projects demonstrating the Purchasely React Nat
 
 A test project using **Expo** (managed workflow with development build).
 
-- **Location:** `./expo-purchasely-test/`
-- **Prerequisites:** Node.js 18+, Expo CLI
-- **Documentation:** See [expo-purchasely-test/README.md](./expo-purchasely-test/README.md)
+-   **Location:** `./expo-purchasely-test/`
+-   **Prerequisites:** Node.js 18+, Expo CLI
+-   **Documentation:** See [expo-purchasely-test/README.md](./expo-purchasely-test/README.md)
 
 ### 2. rn-purchasely-test
 
 A test project using **React Native CLI** (bare workflow).
 
-- **Location:** `./rn-purchasely-test/`
-- **Prerequisites:** Node.js 18+, Xcode 15+ (iOS), Android Studio (Android)
-- **Documentation:** See [rn-purchasely-test/README.md](./rn-purchasely-test/README.md)
+-   **Location:** `./rn-purchasely-test/`
+-   **Prerequisites:** Node.js 22.11+, Xcode 15+ (iOS), Android Studio (Android)
+-   **Compatibility target:** React Native 0.86 with the New Architecture and local v6 Purchasely packages
+-   **Documentation:** See [rn-purchasely-test/README.md](./rn-purchasely-test/README.md)
 
 ## Quick Start
 
@@ -74,6 +75,6 @@ Replace this with your own API key from the Purchasely console.
 
 ## Documentation
 
-- [Purchasely Documentation](https://docs.purchasely.com/docs/installation-react-native)
-- [Expo Documentation](https://docs.expo.dev/)
-- [React Native Documentation](https://reactnative.dev/)
+-   [Purchasely Documentation](https://docs.purchasely.com/docs/installation-react-native)
+-   [Expo Documentation](https://docs.expo.dev/)
+-   [React Native Documentation](https://reactnative.dev/)

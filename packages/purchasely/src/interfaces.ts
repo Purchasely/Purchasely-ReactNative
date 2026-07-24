@@ -1,5 +1,5 @@
 import type { PLYDataProcessingLegalBasis } from './enums';
-import type { PurchaselyPresentation } from './types';
+import type { PLYBillingPlanType } from './types';
 
 export interface Constants {
   logLevelDebug: number;
@@ -20,7 +20,8 @@ export interface Constants {
   batchInstallationId: number;
   adjustId: number;
   appsflyerId: number;
-  onesignalPlayerId: number;
+  oneSignalExternalId: number;
+  oneSignalUserId: number;
   mixpanelDistinctId: number;
   clevertapId: number;
   sendinblueUserEmail: number;
@@ -40,9 +41,7 @@ export interface Constants {
   autoRenewingSubscription: number;
   nonRenewingSubscription: number;
   unknown: number;
-  runningModeTransactionOnly: number;
   runningModeObserver: number;
-  runningModePaywallObserver: number;
   runningModeFull: number;
   presentationTypeNormal: number;
   presentationTypeFallback: number;
@@ -73,48 +72,6 @@ export interface StartParameters {
   runningMode: number;
 }
 
-export interface FetchPresentationParameters {
-  placementId?: string | null;
-  presentationId?: string | null;
-  contentId?: string | null;
-}
-
-export interface PresentPresentationParameters {
-  presentation?: PurchaselyPresentation | null;
-  isFullscreen?: boolean;
-  loadingBackgroundColor?: string | null;
-}
-
-export interface PresentPresentationWithIdentifierParameters {
-  presentationVendorId?: string | null;
-  contentId?: string | null;
-  isFullscreen?: boolean;
-  loadingBackgroundColor?: string | null;
-}
-
-export interface PresentPresentationPlacementParameters {
-  placementVendorId?: string | null;
-  contentId?: string | null;
-  isFullscreen?: boolean;
-  loadingBackgroundColor?: string | null;
-}
-
-export interface PresentProductParameters {
-  productVendorId?: string | null;
-  presentationVendorId?: string | null;
-  contentId?: string | null;
-  isFullscreen?: boolean;
-  loadingBackgroundColor?: string | null;
-}
-
-export interface PresentPlanParameters {
-  planVendorId?: string | null;
-  presentationVendorId?: string | null;
-  contentId?: string | null;
-  isFullscreen?: boolean;
-  loadingBackgroundColor?: string | null;
-}
-
 export interface PurchasePlanParameters {
   planVendorId: string;
   offerId?: string | null;
@@ -132,8 +89,13 @@ export interface UserAttributesParameters {
   legalBasis?: PLYDataProcessingLegalBasis
 }
 
-export interface DynamicOffering {
+export interface PLYDynamicOffering {
   reference: string;
   planVendorId: string;
   offerVendorId?: string | null;
+  /**
+   * Billing plan type to force for this offering. Apple-only (iOS 26.4+);
+   * ignored on Android. Defaults to `'unspecified'` (native picks the default).
+   */
+  billingPlanType?: PLYBillingPlanType | null;
 }

@@ -11,13 +11,13 @@
 
 | Property | Value |
 |----------|-------|
-| Current Version | 5.7.3 |
-| React Native | 0.79.2 |
-| TypeScript | 5.2.2 (strict mode) |
-| Node.js | v20 (see `.nvmrc`) |
+| Current Version | 6.0.0 |
+| React Native | 0.86.0 |
+| TypeScript | 5.8.3 (strict mode) |
+| Node.js | v22 (see `.nvmrc`) |
 | Package Manager | Yarn 3.6.1 (workspaces) |
-| Native iOS SDK | 5.7.4 |
-| Native Android SDK | 5.7.4 |
+| Native iOS SDK | 6.0.0 |
+| Native Android SDK | 6.0.1 |
 
 ### Supported App Stores
 - Apple App Store (iOS)
@@ -109,7 +109,6 @@ ReactNative_SDK/
 | `tsconfig.build.json` | Build-specific TypeScript config |
 | `.eslintrc.js` | ESLint configuration |
 | `.prettierrc` | Prettier formatting rules |
-| `turbo.json` | Turbo build orchestration |
 | `.yarnrc.yml` | Yarn 3 workspace settings |
 
 ---
@@ -192,7 +191,7 @@ yarn player:clean
 | Type | Convention | Example |
 |------|------------|---------|
 | Components | PascalCase | `PLYPresentationView` |
-| Enums | PascalCase with PLY prefix | `PLYPresentationAction` |
+| Enums | PascalCase with PLY prefix | `PLYThemeMode` |
 | Private properties | Underscore prefix | `_view`, `_controller` |
 | Event constants | SCREAMING_SNAKE_CASE | `PURCHASELY_EVENTS` |
 | Functions | camelCase | `fetchPresentation` |
@@ -231,39 +230,57 @@ The following sections provide quick API examples. For comprehensive documentati
 
 Refer to the [SDK Public Documentation](../sdk_public_doc.md).
 
-### Initialization
+> **v6 paywall API only.** The v5 paywall methods (`start({...})`,
+> `presentPresentationForPlacement`, `presentPresentationWithIdentifier`,
+> `presentProductWithIdentifier`, `presentPlanWithIdentifier`,
+> `fetchPresentation`, `setPaywallActionInterceptorCallback`, `onProcessAction`,
+> `setDefaultPresentationResultCallback`, `readyToOpenDeeplink`, …) are
+> **removed**. Use the builders below. Full mapping: `MIGRATION-v6.md`.
+
+### Initialization (v6 builder)
 
 ```typescript
-import Purchasely, { LogLevels, RunningMode } from 'react-native-purchasely'
+import Purchasely from 'react-native-purchasely'
 
-await Purchasely.start({
-  apiKey: 'YOUR_API_KEY',
-  androidStores: ['Google'], // or ['Huawei', 'Amazon']
-  storeKit1: false,          // iOS: use StoreKit 2
-  userId: 'user_id',         // optional
-  logLevel: LogLevels.DEBUG,
-  runningMode: RunningMode.FULL
-})
+await Purchasely.builder('YOUR_API_KEY')
+  .appUserId('user_id')          // optional
+  .runningMode('full')           // 'observer' (default) | 'full'
+  .logLevel('debug')             // 'debug' | 'info' | 'warn' | 'error'
+  .allowDeeplink(true)           // replaces readyToOpenDeeplink(true)
+  .stores(['google'])            // Android only: 'google' | 'huawei' | 'amazon'
+  .storekitVersion('storeKit2')  // iOS only: 'storeKit1' | 'storeKit2'
+  .start()
 ```
 
-### Presentation Methods
+### Presentation Methods (v6 builders)
+
+`Purchasely.presentation` is the `PLYPresentationBuilder`. `build()` returns a
+`PLYPresentationRequest`; `display()` resolves at dismiss with a 5-field
+`PLYPresentationOutcome` (`{ presentation, purchaseResult, plan, closeReason,
+error }`). `preload()` resolves a `PLYLoadedPresentation` that also exposes
+`display()` / `close()` / `back()` delegating to its request.
 
 ```typescript
-// Fetch presentation data
-const presentation = await Purchasely.fetchPresentation({
-  placementVendorId: 'ONBOARDING',
-  contentId: 'content_123'
-})
+// Preload a placement (was fetchPresentation)
+const request = Purchasely.presentation.placement('ONBOARDING').build()
+const presentation = await request.preload()
 
-// Present full-screen paywall
-const result = await Purchasely.presentPresentationForPlacement({
-  placementVendorId: 'ONBOARDING',
-  isFullscreen: true
-})
+// Present a placement full-screen (was presentPresentationForPlacement)
+const outcome = await Purchasely.presentation.placement('ONBOARDING').build().display()
 
-// Present specific product or plan
-await Purchasely.presentProductWithIdentifier('product_id')
-await Purchasely.presentPlanWithIdentifier('plan_id')
+// Present a specific screen (was presentPresentationWithIdentifier)
+await Purchasely.presentation.screen('SCREEN_ID').build().display()
+
+// Present a specific product / plan (was presentProductWithIdentifier / presentPlanWithIdentifier)
+await Purchasely.presentation.screen('SCREEN_ID').contentId('CONTENT_ID').build().display()
+
+// Lifecycle: request.display() (show) / request.close() (hide) / request.back()
+
+// Action interception (was setPaywallActionInterceptorCallback + onProcessAction)
+Purchasely.interceptAction('purchase', async (info, payload) => {
+  // return 'success' | 'failed' | 'notHandled'
+  return 'notHandled'
+})
 ```
 
 ### Event Listening
@@ -319,14 +336,17 @@ const history = await Purchasely.userSubscriptionsHistory()
 
 ### Embedded Paywall Component
 
+`onPresentationClosed` receives the same 5-field `PLYPresentationOutcome` as
+`request.display()` (`{ presentation, purchaseResult, plan, closeReason, error }`):
+
 ```tsx
 import { PLYPresentationView } from 'react-native-purchasely'
 
 <PLYPresentationView
   placementId="ONBOARDING"
   flex={1}
-  onPresentationClosed={(result) => {
-    console.log('Closed with result:', result)
+  onPresentationClosed={(outcome) => {
+    console.log('Closed with outcome:', outcome.purchaseResult, outcome.closeReason)
   }}
 />
 ```
@@ -351,11 +371,9 @@ enum LogLevels {
   ERROR
 }
 
-// Running modes
+// Running modes (v6: only two modes, builder takes 'observer' | 'full')
 enum RunningMode {
-  TRANSACTION_ONLY,  // Handle transactions only
-  OBSERVER,          // Observe transactions
-  PAYWALL_OBSERVER,  // Observe paywalls
+  OBSERVER,          // Observe transactions (default)
   FULL               // Full functionality
 }
 
@@ -378,23 +396,21 @@ Each package uses Builder Bob to generate:
 - `lib/module/` - ESM build
 - `lib/typescript/` - TypeScript declarations
 
-### Turbo Pipeline
+### Workspace Build Pipeline
 
-Build orchestration with caching:
-- `build` - Main build task
-- `build:android` - Android native build
-- `build:ios` - iOS native build
+Yarn workspaces run package builds directly with `yarn all:prepare`; the CI
+Android and iOS jobs invoke Gradle and `xcodebuild` directly.
 
 ### Native Dependencies
 
 **iOS (CocoaPods):**
-- Purchasely SDK v5.7.4
-- Deployment target: iOS 13.4
+- Purchasely SDK v6.0.0
+- Deployment target: iOS 15.1
 
 **Android (Gradle):**
-- io.purchasely:core:5.7.4
-- Min SDK: 21
-- Kotlin: 1.9+
+- io.purchasely:core:6.0.1
+- Min SDK: 23
+- Kotlin: 2.3.21+
 - Java: 11
 
 ---
@@ -696,5 +712,4 @@ example/src/App.tsx
 # Configuration
 package.json
 tsconfig.json
-turbo.json
 ```

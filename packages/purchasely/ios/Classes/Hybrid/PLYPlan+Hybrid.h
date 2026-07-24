@@ -11,6 +11,11 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+/// Wire value for `PLYBillingPlanType` shared with JS ('unspecified' / 'upFront' / 'monthly').
+FOUNDATION_EXPORT NSString *PLYBillingPlanTypeToRNString(enum PLYBillingPlanType type);
+/// Inverse of `PLYBillingPlanTypeToRNString`; unknown / nil maps to `PLYBillingPlanTypeUnspecified`.
+FOUNDATION_EXPORT enum PLYBillingPlanType PLYBillingPlanTypeFromRNString(NSString * _Nullable value);
+
 @interface PLYPlan (Hybrid)
 
 - (NSDictionary *)asDictionary;

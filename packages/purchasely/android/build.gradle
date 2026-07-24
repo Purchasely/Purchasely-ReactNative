@@ -30,7 +30,7 @@ android {
   namespace = "com.reactnativepurchasely"
   compileSdkVersion getExtOrIntegerDefault('compileSdkVersion')
   defaultConfig {
-    minSdkVersion 21
+    minSdkVersion 23
     targetSdkVersion getExtOrIntegerDefault('targetSdkVersion')
     versionCode 1
     versionName "1.0"
@@ -138,7 +138,7 @@ dependencies {
   implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.2'
   implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
 
-  api 'io.purchasely:core:5.7.4'
+  api 'io.purchasely:core:6.0.1'
   api 'androidx.lifecycle:lifecycle-common-java8:2.2.0'
 
   // Test dependencies

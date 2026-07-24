@@ -17,6 +17,10 @@ end
 target 'example' do
   config = use_native_modules!
 
+  pod 'react-native-purchasely',
+      :path => '../node_modules/react-native-purchasely',
+      :testspecs => ['Tests']
+
   use_react_native!(
     :path => config[:reactNativePath],
     # An absolute path to your application root.
@@ -32,16 +36,18 @@ target 'example' do
       # :ccache_enabled => true
     )
 
-    # ponytail: fmt (bundled by Folly/RN 0.79) unconditionally redefines
-    # FMT_USE_CONSTEVAL from __cplusplus, so -DFMT_USE_CONSTEVAL=0 is ignored.
-    # Xcode 26's clang supports consteval under c++20, and fmt's consteval
-    # path there is broken. Building fmt itself as c++17 avoids that branch.
-    # Upgrade path: bump RN past the fmt version that fixes this, then drop.
+    # TODO(fmt-consteval): remove once React Native ships a fmt version that
+    # compiles under Xcode 26.x clang. Tracking: upstream fmt + RN bundled fmt.
+    # Xcode 26 / recent Clang reject fmt's consteval-based compile-time
+    # format-string checks ("call to consteval function ... is not a constant
+    # expression"). Disable fmt's consteval path on every target so the bundled
+    # fmt pod and its consumers (Folly, React-*) build under Xcode 26.x.
     installer.pods_project.targets.each do |target|
-      next unless target.name == 'fmt'
-
-      target.build_configurations.each do |build_config|
-        build_config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++17'
+      target.build_configurations.each do |config|
+        defs = config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] || ['$(inherited)']
+        defs = [defs] unless defs.is_a?(Array)
+        defs << 'FMT_USE_CONSTEVAL=0' unless defs.include?('FMT_USE_CONSTEVAL=0')
+        config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] = defs
       end
     end
   end

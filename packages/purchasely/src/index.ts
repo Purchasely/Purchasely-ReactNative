@@ -2,63 +2,68 @@ import { NativeEventEmitter, NativeModules } from 'react-native';
 
 import { PLYPresentationView } from './components/PLYPresentationView';
 import type {
-  Constants,
-  DynamicOffering,
-  FetchPresentationParameters,
-  PresentPlanParameters,
-  PresentPresentationParameters,
-  PresentPresentationPlacementParameters,
-  PresentPresentationWithIdentifierParameters,
-  PresentProductParameters,
+  PLYDynamicOffering,
   PurchasePlanParameters,
   SignPromotionalOfferParameters,
-  StartParameters,
   UserAttributesParameters,
 } from './interfaces';
-import { Attributes, LogLevels, PLYDataProcessingLegalBasis, PLYDataProcessingPurpose, PLYThemeMode, RunningMode } from './enums';
+import {
+  Attributes,
+  LogLevels,
+  PLYDataProcessingLegalBasis,
+  PLYDataProcessingPurpose,
+  PLYThemeMode,
+  PLYUserAttributeSource,
+  PLYUserAttributeType,
+} from './enums';
 import type {
-  PaywallActionInterceptorResult,
-  PresentPresentationResult,
-  PurchaselyEvent,
-  PurchaselyPlan,
-  PurchaselyPresentation,
-  PurchaselyProduct,
-  PurchaselyPromotionalOfferSignature,
-  PurchaselySubscription,
-  PurchaselyUserAttribute,
+  PLYEvent,
+  PLYPlan,
+  PLYProduct,
+  PLYPromotionalOfferSignature,
+  PLYSubscription,
+  PLYUserAttribute,
 } from './types';
+import {
+  PLYPresentationBuilder,
+  setDefaultPresentationDismissHandler,
+  removeDefaultPresentationDismissHandler,
+} from './presentation';
+import { PurchaselyBuilder } from './startBuilder';
+import {
+  interceptAction,
+  removeActionInterceptor,
+  removeAllActionInterceptors,
+} from './interceptor';
+import type {
+  PLYPresentation,
+  PLYPresentationActionKind,
+} from './presentationTypes';
 
-const purchaselyVersion = '5.7.3';
-
-const constants = NativeModules.Purchasely.getConstants() as Constants;
+const purchaselyVersion = '6.0.0';
 
 const PurchaselyEventEmitter = new NativeEventEmitter(NativeModules.Purchasely);
 
-const start = ({
-  apiKey,
-  androidStores = ['Google'],
-  storeKit1,
-  userId = null,
-  logLevel = LogLevels.ERROR,
-  runningMode = RunningMode.FULL,
-}: StartParameters): Promise<boolean> => {
-  return NativeModules.Purchasely.start(
-    apiKey,
-    androidStores,
-    storeKit1,
-    userId,
-    logLevel,
-    runningMode,
-    purchaselyVersion
-  );
+/**
+ * Cross-platform start builder. Mirrors the iOS/Android contract:
+ * `Purchasely.builder('API_KEY').appUserId('u').runningMode('full').start()`.
+ *
+ * This is the only supported way to initialize the SDK since 6.0.0.
+ */
+const builder = (apiKey: string): PurchaselyBuilder => {
+  // Ensure the bridge version stays in sync with the wrapper version.
+  PurchaselyBuilder.bridgeVersion = purchaselyVersion;
+  return PurchaselyBuilder.apiKey(apiKey);
 };
+
+const apiKey = builder;
 
 function setUserAttributeWithDate(key: string, value: Date, legalBasis?: PLYDataProcessingLegalBasis): void {
   const dateAsString = value.toISOString();
   return NativeModules.Purchasely.setUserAttributeWithDate(key, dateAsString, legalBasis);
 }
 
-type EventListenerCallback = (event: PurchaselyEvent) => void;
+type EventListenerCallback = (event: PLYEvent) => void;
 
 const addEventListener = (callback: EventListenerCallback) => {
   return PurchaselyEventEmitter.addListener('PURCHASELY_EVENTS', callback);
@@ -78,8 +83,13 @@ const removePurchasedListener = () => {
   return PurchaselyEventEmitter.removeAllListeners('PURCHASE_LISTENER');
 };
 
+const listenToEvents = addEventListener;
+const stopListeningToEvents = removeEventListener;
+const listenToPurchases = addPurchasedListener;
+const stopListeningToPurchases = removePurchasedListener;
+
 type UserAttributeSetListenerCallback = (
-  userAttribute: PurchaselyUserAttribute
+  userAttribute: PLYUserAttribute
 ) => void;
 
 const addUserAttributeSetListener = (
@@ -98,7 +108,7 @@ const removeUserAttributeSetListener = () => {
 };
 
 type UserAttributeRemovedListenerCallback = (
-  userAttribute: PurchaselyUserAttribute
+  userAttribute: PLYUserAttribute
 ) => void;
 
 const addUserAttributeRemovedListener = (
@@ -116,131 +126,52 @@ const removeUserAttributeRemovedListener = () => {
   );
 };
 
-type DefaultPresentationResultCallback = (
-  result: PresentPresentationResult
-) => void;
+export interface UserAttributeListener {
+  onUserAttributeSet?: (
+    key: string,
+    type: PLYUserAttributeType | null | undefined,
+    value: any,
+    source: PLYUserAttributeSource | null | undefined
+  ) => void;
+  onUserAttributeRemoved?: (
+    key: string,
+    source: PLYUserAttributeSource | null | undefined
+  ) => void;
+}
 
-const setDefaultPresentationResultCallback = (
-  callback: DefaultPresentationResultCallback
-) => {
-  Purchasely.setDefaultPresentationResultHandler().then((result) => {
-    setDefaultPresentationResultCallback(callback);
-    try {
-      callback(result);
-    } catch (e) {
-      console.warn(
-        '[Purchasely] Error with callback for default presentation result',
-        e
-      );
-    }
+const setUserAttributeListener = (listener: UserAttributeListener) => {
+  const setSubscription = addUserAttributeSetListener((attribute) => {
+    listener.onUserAttributeSet?.(
+      attribute.key,
+      attribute.type,
+      attribute.value,
+      attribute.source
+    );
   });
-};
-
-type PaywallActionInterceptorCallback = (
-  result: PaywallActionInterceptorResult
-) => void;
-
-const setPaywallActionInterceptorCallback = (
-  callback: PaywallActionInterceptorCallback
-) => {
-  Purchasely.setPaywallActionInterceptor().then((result) => {
-    setPaywallActionInterceptorCallback(callback);
-    try {
-      callback(result);
-    } catch (e) {
-      console.warn('[Purchasely] Error with paywall interceptor callback', e);
-    }
+  const removedSubscription = addUserAttributeRemovedListener((attribute) => {
+    listener.onUserAttributeRemoved?.(
+      attribute.key,
+      attribute.source
+    );
   });
+  return {
+    remove: () => {
+      setSubscription.remove();
+      removedSubscription.remove();
+    },
+  };
 };
 
-const fetchPresentation = ({
-  placementId = null,
-  presentationId = null,
-  contentId = null,
-}: FetchPresentationParameters): Promise<PurchaselyPresentation> => {
-  return NativeModules.Purchasely.fetchPresentation(
-    placementId,
-    presentationId,
-    contentId
-  );
-};
-
-const presentPresentation = ({
-  presentation = null,
-  isFullscreen = false,
-  loadingBackgroundColor = null,
-}: PresentPresentationParameters): Promise<PresentPresentationResult> => {
-  return NativeModules.Purchasely.presentPresentation(
-    presentation,
-    isFullscreen,
-    loadingBackgroundColor
-  );
-};
-
-const presentPresentationWithIdentifier = ({
-  presentationVendorId = null,
-  contentId = null,
-  isFullscreen = false,
-  loadingBackgroundColor = null,
-}: PresentPresentationWithIdentifierParameters): Promise<PresentPresentationResult> => {
-  return NativeModules.Purchasely.presentPresentationWithIdentifier(
-    presentationVendorId,
-    contentId,
-    isFullscreen,
-    loadingBackgroundColor
-  );
-};
-
-const presentPresentationForPlacement = ({
-  placementVendorId = null,
-  contentId = null,
-  isFullscreen = false,
-  loadingBackgroundColor = null,
-}: PresentPresentationPlacementParameters): Promise<PresentPresentationResult> => {
-  return NativeModules.Purchasely.presentPresentationForPlacement(
-    placementVendorId,
-    contentId,
-    isFullscreen,
-    loadingBackgroundColor
-  );
-};
-
-const presentProductWithIdentifier = ({
-  productVendorId = null,
-  presentationVendorId = null,
-  contentId = null,
-  isFullscreen = false,
-  loadingBackgroundColor = null,
-}: PresentProductParameters): Promise<PresentPresentationResult> => {
-  return NativeModules.Purchasely.presentProductWithIdentifier(
-    productVendorId,
-    presentationVendorId,
-    contentId,
-    isFullscreen,
-    loadingBackgroundColor
-  );
-};
-const presentPlanWithIdentifier = ({
-  planVendorId = null,
-  presentationVendorId = null,
-  contentId = null,
-  isFullscreen = false,
-  loadingBackgroundColor = null,
-}: PresentPlanParameters): Promise<PresentPresentationResult> => {
-  return NativeModules.Purchasely.presentPlanWithIdentifier(
-    planVendorId,
-    presentationVendorId,
-    contentId,
-    isFullscreen,
-    loadingBackgroundColor
-  );
+const clearUserAttributeListener = () => {
+  removeUserAttributeSetListener();
+  removeUserAttributeRemovedListener();
 };
 
 const purchaseWithPlanVendorId = ({
   planVendorId,
   offerId = null,
   contentId = null,
-}: PurchasePlanParameters): Promise<PurchaselyPlan> => {
+}: PurchasePlanParameters): Promise<PLYPlan> => {
   return NativeModules.Purchasely.purchaseWithPlanVendorId(
     planVendorId,
     offerId,
@@ -248,26 +179,22 @@ const purchaseWithPlanVendorId = ({
   );
 };
 
+/**
+ * Sign a StoreKit promotional offer so it can be redeemed in a subsequent
+ * purchase.
+ *
+ * **iOS only.** There is no Android equivalent (Google Play has no
+ * promotional-offer-signing primitive), so the Android native bridge is a
+ * no-op that resolves `null` instead of rejecting.
+ */
 const signPromotionalOffer = ({
   storeProductId,
   storeOfferId,
-}: SignPromotionalOfferParameters): Promise<PurchaselyPromotionalOfferSignature> => {
+}: SignPromotionalOfferParameters): Promise<PLYPromotionalOfferSignature | null> => {
   return NativeModules.Purchasely.signPromotionalOffer(
     storeProductId,
     storeOfferId
   );
-};
-
-const closePresentation = () => {
-  return NativeModules.Purchasely.closePresentation();
-};
-
-const hidePresentation = () => {
-  return NativeModules.Purchasely.hidePresentation();
-};
-
-const showPresentation = () => {
-  return NativeModules.Purchasely.showPresentation();
 };
 
 const incrementUserAttribute = ({
@@ -287,14 +214,6 @@ const decrementUserAttribute = ({
   return NativeModules.Purchasely.decrementUserAttribute(key, nonNullValue, legalBasis);
 };
 
-const getConstants = (): Constants => {
-  return constants;
-};
-
-const close = (): void => {
-  return NativeModules.Purchasely.close();
-};
-
 const getAnonymousUserId = (): Promise<string> => {
   return NativeModules.Purchasely.getAnonymousUserId();
 };
@@ -303,76 +222,107 @@ const userLogin = (userId: string): Promise<boolean> => {
   return NativeModules.Purchasely.userLogin(userId);
 };
 
-const userLogout = (): void => {
-  return NativeModules.Purchasely.userLogout();
+/**
+ * Log the current user out.
+ *
+ * @param clearUserAttributes Whether to also clear locally-stored user
+ * attributes. Defaults to `true`, matching both native SDKs' own default.
+ */
+const userLogout = (clearUserAttributes: boolean = true): void => {
+  return NativeModules.Purchasely.userLogout(clearUserAttributes);
 };
 
 const setLogLevel = (logLevel: LogLevels): void => {
   return NativeModules.Purchasely.setLogLevel(logLevel);
 };
 
-const readyToOpenDeeplink = (ready: boolean): void => {
-  return NativeModules.Purchasely.readyToOpenDeeplink(ready);
-};
-
 const setAttribute = (attribute: Attributes, value: string): void => {
   return NativeModules.Purchasely.setAttribute(attribute, value);
 };
 
-const allProducts = (): Promise<PurchaselyProduct[]> => {
+const allProducts = (): Promise<PLYProduct[]> => {
   return NativeModules.Purchasely.allProducts();
 };
 
 const productWithIdentifier = (
   vendorId: string
-): Promise<PurchaselyProduct> => {
+): Promise<PLYProduct> => {
   return NativeModules.Purchasely.productWithIdentifier(vendorId);
 };
 
-const planWithIdentifier = (vendorId: string): Promise<PurchaselyPlan> => {
+const planWithIdentifier = (vendorId: string): Promise<PLYPlan> => {
   return NativeModules.Purchasely.planWithIdentifier(vendorId);
 };
 
-const restoreAllProducts = (): Promise<boolean> => {
-  return NativeModules.Purchasely.restoreAllProducts();
+// Client-side timeout: the native restore call has no timeout of its own, so
+// (matching Flutter) we race it against a rejection. If the store never
+// resolves — a known StoreKit / Play Billing failure mode — the promise fails
+// instead of hanging forever. `timeout` is in milliseconds; omit it to wait
+// indefinitely.
+const withTimeout = <T>(
+  promise: Promise<T>,
+  timeout?: number | null,
+  label = 'restoreAllProducts'
+): Promise<T> => {
+  if (timeout == null) return promise;
+  let timer: ReturnType<typeof setTimeout>;
+  const guard = new Promise<T>((_resolve, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`Purchasely.${label} timed out after ${timeout}ms`)),
+      timeout
+    );
+  });
+  return Promise.race([promise, guard]).finally(() => clearTimeout(timer)) as Promise<T>;
 };
 
-const silentRestoreAllProducts = (): Promise<boolean> => {
-  return NativeModules.Purchasely.silentRestoreAllProducts();
+const restoreAllProducts = ({
+  timeout,
+}: { timeout?: number | null } = {}): Promise<boolean> => {
+  return withTimeout(
+    NativeModules.Purchasely.restoreAllProducts(),
+    timeout,
+    'restoreAllProducts'
+  );
 };
 
-const userSubscriptions = ({ invalidateCache = false }: { invalidateCache?: boolean | null } = {}): Promise<PurchaselySubscription[]> => {
+const silentRestoreAllProducts = ({
+  timeout,
+}: { timeout?: number | null } = {}): Promise<boolean> => {
+  return withTimeout(
+    NativeModules.Purchasely.silentRestoreAllProducts(),
+    timeout,
+    'silentRestoreAllProducts'
+  );
+};
+
+const userSubscriptions = ({ invalidateCache = false }: { invalidateCache?: boolean | null } = {}): Promise<PLYSubscription[]> => {
   return NativeModules.Purchasely.userSubscriptions(invalidateCache);
 };
 
-const userSubscriptionsHistory = (): Promise<PurchaselySubscription[]> => {
-  return NativeModules.Purchasely.userSubscriptionsHistory();
+const userSubscriptionsHistory = ({
+  invalidateCache = false,
+}: { invalidateCache?: boolean | null } = {}): Promise<PLYSubscription[]> => {
+  return NativeModules.Purchasely.userSubscriptionsHistory(invalidateCache);
 };
 
-const presentSubscriptions = (): void => {
-  return NativeModules.Purchasely.presentSubscriptions();
+const handleDeeplink = (deeplink: string | null): Promise<boolean> => {
+  return NativeModules.Purchasely.handleDeeplink(deeplink);
 };
 
-const isDeeplinkHandled = (deeplink: string | null): Promise<boolean> => {
-  return NativeModules.Purchasely.isDeeplinkHandled(deeplink);
-};
-
-const synchronize = (): void => {
+const synchronize = (): Promise<boolean> => {
+  // v6: the native SDKs (iOS success/failure, Android onSuccess/onError) now
+  // report completion. The returned promise resolves when the receipt sync
+  // finishes and rejects on failure. Awaiting is optional — fire-and-forget
+  // callers stay source-compatible with the previous `void` signature.
   return NativeModules.Purchasely.synchronize();
 };
 
-const setDefaultPresentationResultHandler =
-  (): Promise<PresentPresentationResult> => {
-    return NativeModules.Purchasely.setDefaultPresentationResultHandler();
-  };
+const allowDeeplink = (allow: boolean): void => {
+  return NativeModules.Purchasely.allowDeeplink(allow);
+};
 
-const setPaywallActionInterceptor =
-  (): Promise<PaywallActionInterceptorResult> => {
-    return NativeModules.Purchasely.setPaywallActionInterceptor();
-  };
-
-const onProcessAction = (processAction: boolean): void => {
-  return NativeModules.Purchasely.onProcessAction(processAction);
+const allowCampaigns = (allow: boolean): void => {
+  return NativeModules.Purchasely.allowCampaigns(allow);
 };
 
 const setLanguage = (language: string): void => {
@@ -389,6 +339,14 @@ const setUserAttributeWithString = (key: string, value: string, legalBasis?: PLY
 
 const setUserAttributeWithNumber = (key: string, value: number, legalBasis?: PLYDataProcessingLegalBasis): void => {
   return NativeModules.Purchasely.setUserAttributeWithNumber(key, value, legalBasis);
+};
+
+const setUserAttributeWithInt = (key: string, value: number, legalBasis?: PLYDataProcessingLegalBasis): void => {
+  return NativeModules.Purchasely.setUserAttributeWithInt(key, value, legalBasis);
+};
+
+const setUserAttributeWithDouble = (key: string, value: number, legalBasis?: PLYDataProcessingLegalBasis): void => {
+  return NativeModules.Purchasely.setUserAttributeWithDouble(key, value, legalBasis);
 };
 
 const setUserAttributeWithBoolean = (key: string, value: boolean, legalBasis?: PLYDataProcessingLegalBasis): void => {
@@ -419,7 +377,23 @@ const setUserAttributeWithBooleanArray = (
   return NativeModules.Purchasely.setUserAttributeWithBooleanArray(key, value, legalBasis);
 };
 
-const userAttributes = (): Promise<PurchaselyUserAttribute> => {
+const setUserAttributeWithIntArray = (
+  key: string,
+  value: number[],
+  legalBasis?: PLYDataProcessingLegalBasis
+): void => {
+  return NativeModules.Purchasely.setUserAttributeWithIntArray(key, value, legalBasis);
+};
+
+const setUserAttributeWithDoubleArray = (
+  key: string,
+  value: number[],
+  legalBasis?: PLYDataProcessingLegalBasis
+): void => {
+  return NativeModules.Purchasely.setUserAttributeWithDoubleArray(key, value, legalBasis);
+};
+
+const userAttributes = (): Promise<Record<string, any>> => {
   return NativeModules.Purchasely.userAttributes();
 };
 
@@ -435,16 +409,38 @@ const clearUserAttributes = (): void => {
   return NativeModules.Purchasely.clearUserAttributes();
 };
 
-const clientPresentationDisplayed = (
-  presentation: PurchaselyPresentation
-): void => {
-  return NativeModules.Purchasely.clientPresentationDisplayed(presentation);
+/**
+ * Reduce a presentation to the identifiers the native bridges use to look up
+ * the loaded native presentation. A `PLYLoadedPresentation` also carries
+ * functions (`display` / `close` / `back`) which the RN bridge cannot
+ * serialize, so only plain fields are sent.
+ */
+const clientPresentationPayload = (presentation: PLYPresentation) => ({
+  screenId: presentation.screenId ?? presentation.id ?? null,
+  placementId: presentation.placementId ?? null,
+});
+
+/**
+ * Notify Purchasely that a client (BYOS) paywall built from a preloaded
+ * `PLYPresentationType.CLIENT` presentation is now displayed.
+ *
+ * Pass the presentation obtained from
+ * `Purchasely.presentation…build().preload()`.
+ */
+const clientPresentationDisplayed = (presentation: PLYPresentation): void => {
+  return NativeModules.Purchasely.clientPresentationDisplayed(
+    clientPresentationPayload(presentation)
+  );
 };
 
-const clientPresentationClosed = (
-  presentation: PurchaselyPresentation
-): void => {
-  return NativeModules.Purchasely.clientPresentationClosed(presentation);
+/**
+ * Notify Purchasely that a client (BYOS) paywall previously reported through
+ * {@link clientPresentationDisplayed} has been closed.
+ */
+const clientPresentationClosed = (presentation: PLYPresentation): void => {
+  return NativeModules.Purchasely.clientPresentationClosed(
+    clientPresentationPayload(presentation)
+  );
 };
 
 const isAnonymous = (): Promise<boolean> => {
@@ -463,11 +459,26 @@ const clearBuiltInAttributes = (): void => {
   return NativeModules.Purchasely.clearBuiltInAttributes();
 };
 
-const setDynamicOffering = (offering: DynamicOffering): Promise<boolean> => {
-  return NativeModules.Purchasely.setDynamicOffering(offering.reference, offering.planVendorId, offering.offerVendorId);
+/** [PAR-07] Read every built-in (SDK-computed) user attribute. */
+const getBuiltInAttributes = (): Promise<Record<string, any>> => {
+  return NativeModules.Purchasely.getBuiltInAttributes();
 };
 
-const getDynamicOfferings = (): Promise<DynamicOffering[]> => {
+/** [PAR-07] Read a single built-in (SDK-computed) user attribute by key. */
+const getBuiltInAttribute = (key: string): Promise<any> => {
+  return NativeModules.Purchasely.getBuiltInAttribute(key);
+};
+
+const setDynamicOffering = (offering: PLYDynamicOffering): Promise<boolean> => {
+  return NativeModules.Purchasely.setDynamicOffering(
+    offering.reference,
+    offering.planVendorId,
+    offering.offerVendorId,
+    offering.billingPlanType ?? 'unspecified'
+  );
+};
+
+const getDynamicOfferings = (): Promise<PLYDynamicOffering[]> => {
   return NativeModules.Purchasely.getDynamicOfferings();
 };
 
@@ -488,39 +499,59 @@ const setDebugMode = (debugMode: boolean): void => {
   return NativeModules.Purchasely.setDebugMode(debugMode);
 };
 
+/**
+ * Close every Purchasely screen currently displayed, regardless of which
+ * request opened them. Unlike `PLYPresentationRequest#close()` (scoped to a
+ * single request on iOS; dismisses everything on Android — see its
+ * doc-comment), this is an explicit, cross-platform "close everything" call.
+ */
+const closeAllScreens = (): void => {
+  return NativeModules.Purchasely.closeAllScreens();
+};
+
 const Purchasely = {
-  start,
+  // paywall API — the only supported way to display & intercept paywalls.
+  builder,
+  apiKey,
+  presentation: PLYPresentationBuilder,
+  interceptAction: (
+    kind: PLYPresentationActionKind,
+    handler: Parameters<typeof interceptAction>[1]
+  ) => interceptAction(kind, handler),
+  removeActionInterceptor,
+  removeAllActionInterceptors,
+  // Global handler for presentations the app did not instantiate itself
+  // (campaigns, deeplinks, Promoted In-App Purchases).
+  setDefaultPresentationDismissHandler,
+  removeDefaultPresentationDismissHandler,
+  // Client (BYOS) presentations — notify Purchasely when your own paywall UI
+  // (built from a preloaded CLIENT presentation) is shown / closed.
+  clientPresentationDisplayed,
+  clientPresentationClosed,
+  // Core SDK — version-agnostic (user, products, subscriptions, attributes…).
   addEventListener,
   removeEventListener,
+  listenToEvents,
+  stopListeningToEvents,
   addPurchasedListener,
   removePurchasedListener,
+  listenToPurchases,
+  stopListeningToPurchases,
   addUserAttributeSetListener,
   removeUserAttributeSetListener,
   addUserAttributeRemovedListener,
   removeUserAttributeRemovedListener,
-  setDefaultPresentationResultCallback,
-  setPaywallActionInterceptorCallback,
-  fetchPresentation,
-  presentPresentation,
-  presentPresentationWithIdentifier,
-  presentPresentationForPlacement,
-  presentProductWithIdentifier,
-  presentPlanWithIdentifier,
+  setUserAttributeListener,
+  clearUserAttributeListener,
   purchaseWithPlanVendorId,
   setUserAttributeWithDate,
-  showPresentation,
-  closePresentation,
-  hidePresentation,
   signPromotionalOffer,
   incrementUserAttribute,
   decrementUserAttribute,
-  getConstants,
-  close,
   getAnonymousUserId,
   userLogin,
   userLogout,
   setLogLevel,
-  readyToOpenDeeplink,
   setAttribute,
   allProducts,
   productWithIdentifier,
@@ -529,41 +560,63 @@ const Purchasely = {
   silentRestoreAllProducts,
   userSubscriptions,
   userSubscriptionsHistory,
-  presentSubscriptions,
-  isDeeplinkHandled,
+  handleDeeplink,
   synchronize,
+  allowDeeplink,
+  allowCampaigns,
   setLanguage,
   userDidConsumeSubscriptionContent,
   setUserAttributeWithString,
   setUserAttributeWithNumber,
+  setUserAttributeWithInt,
+  setUserAttributeWithDouble,
   setUserAttributeWithBoolean,
   setUserAttributeWithStringArray,
   setUserAttributeWithNumberArray,
+  setUserAttributeWithIntArray,
+  setUserAttributeWithDoubleArray,
   setUserAttributeWithBooleanArray,
   userAttributes,
   userAttribute,
   clearUserAttribute,
   clearUserAttributes,
-  setDefaultPresentationResultHandler,
-  setPaywallActionInterceptor,
-  onProcessAction,
-  clientPresentationDisplayed,
-  clientPresentationClosed,
   isAnonymous,
   isEligibleForIntroOffer,
   setThemeMode,
   clearBuiltInAttributes,
+  getBuiltInAttributes,
+  getBuiltInAttribute,
   setDynamicOffering,
   getDynamicOfferings,
   removeDynamicOffering,
   clearDynamicOfferings,
   revokeDataProcessingConsent,
-  setDebugMode
+  setDebugMode,
+  closeAllScreens
 };
 
 export * from './types';
 export * from './enums';
 export * from './interfaces';
+// [PAR-14 / REC-17] `export type *` re-exports every type/interface from
+// presentationTypes.ts but excludes its one runtime value export,
+// `purchaseResultFromOrdinal` — documented `@internal`, used by presentation.ts
+// (which imports it directly from './presentationTypes', unaffected by this
+// barrel export), but never meant to be public API.
+export type * from './presentationTypes';
+export { PURCHASELY_PRESENTATION_EVENTS } from './events';
+export {
+  PLYPresentationBuilder,
+  PLYPresentationRequest,
+  setDefaultPresentationDismissHandler,
+  removeDefaultPresentationDismissHandler,
+} from './presentation';
+export {
+  interceptAction,
+  removeActionInterceptor,
+  removeAllActionInterceptors,
+} from './interceptor';
+export { PurchaselyBuilder } from './startBuilder';
 export { PLYPresentationView };
 
 export default Purchasely;

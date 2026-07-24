@@ -21,6 +21,7 @@ export enum SubscriptionSource {
   GOOGLE_PLAY_STORE = constants.sourcePlayStore,
   HUAWEI_APP_GALLERY = constants.sourceHuaweiAppGallery,
   AMAZON_APPSTORE = constants.sourceAmazonAppstore,
+  NONE = constants.sourceNone,
 }
 
 export enum Attributes {
@@ -30,7 +31,11 @@ export enum Attributes {
   BATCH_INSTALLATION_ID = constants.batchInstallationId,
   ADJUST_ID = constants.adjustId,
   APPSFLYER_ID = constants.appsflyerId,
-  ONESIGNAL_PLAYER_ID = constants.onesignalPlayerId,
+  // [ENM-04 / REC-11] ONESIGNAL_PLAYER_ID removed — no Android equivalent,
+  // and slated for removal from the native iOS SDK too. Replaced by the two
+  // OneSignal attributes both natives actually support.
+  ONESIGNAL_EXTERNAL_ID = constants.oneSignalExternalId,
+  ONESIGNAL_USER_ID = constants.oneSignalUserId,
   MIXPANEL_DISTINCT_ID = constants.mixpanelDistinctId,
   CLEVER_TAP_ID = constants.clevertapId,
   SENDINBLUE_USER_EMAIL = constants.sendinblueUserEmail,
@@ -55,10 +60,16 @@ export enum PlanType {
   PLAN_TYPE_UNKNOWN = constants.unknown,
 }
 
+/**
+ * SDK running mode. The v6 native SDKs (and the Flutter SDK) expose only two
+ * modes; the legacy v5 `TRANSACTION_ONLY` / `PAYWALL_OBSERVER` modes were
+ * removed.
+ *
+ * - `OBSERVER` — the host app owns the purchase flow; Purchasely only observes.
+ * - `FULL` — Purchasely owns the purchase flow.
+ */
 export enum RunningMode {
-  TRANSACTION_ONLY = constants.runningModeTransactionOnly,
   OBSERVER = constants.runningModeObserver,
-  PAYWALL_OBSERVER = constants.runningModePaywallObserver,
   FULL = constants.runningModeFull,
 }
 
@@ -66,20 +77,6 @@ export enum PLYThemeMode {
   LIGHT = constants.themeLight,
   DARK = constants.themeDark,
   SYSTEM = constants.themeSystem,
-}
-
-export enum PLYPaywallAction {
-  CLOSE = 'close',
-  CLOSE_ALL = 'closeAll',
-  LOGIN = 'login',
-  NAVIGATE = 'navigate',
-  PURCHASE = 'purchase',
-  RESTORE = 'restore',
-  OPEN_PRESENTATION = 'open_presentation',
-  OPEN_PLACEMENT = 'open_placement',
-  PROMO_CODE = 'promo_code',
-  OPEN_FLOW_STEP = 'open_flow_step',
-  WEB_CHECKOUT = 'web_checkout',
 }
 
 export enum PLYDataProcessingLegalBasis {

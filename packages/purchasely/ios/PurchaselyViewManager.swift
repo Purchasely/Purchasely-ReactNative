@@ -9,24 +9,19 @@ import Foundation
 
 @objc (PurchaselyViewManager)
 class PurchaselyViewManager: RCTViewManager {
-  
-  private var purchaselyView: PurchaselyView?
-  private var resolve: RCTPromiseResolveBlock?
- 
+
+  // MUST stay false. Fabric instantiates this manager's view on the main
+  // thread; returning true would force any `NativeModules.PurchaselyView`
+  // resolution to `dispatch_sync` onto that same main queue, deadlocking if it
+  // happens while the view is mid-creation. Returning false lets each thread
+  // resolve its own instance without a cross-thread hop. `view()` is still
+  // called on the main queue by UIManager regardless, and init does no UIKit
+  // work.
   override static func requiresMainQueueSetup() -> Bool {
-    return true
+    return false
   }
- 
+
   override func view() -> UIView! {
-    self.purchaselyView = PurchaselyView()
-    self.purchaselyView?.onPresentationClosedPromise = resolve
-    return self.purchaselyView!
-  }
-  
-  @objc func onPresentationClosed(_ resolve: @escaping RCTPromiseResolveBlock, reject: RCTPromiseRejectBlock) {
-    self.resolve = resolve
-    // Forward resolve to the current view — view() is called before this useEffect fires,
-    // so we must update onPresentationClosedPromise after the fact.
-    self.purchaselyView?.onPresentationClosedPromise = resolve
+    return PurchaselyView()
   }
 }
