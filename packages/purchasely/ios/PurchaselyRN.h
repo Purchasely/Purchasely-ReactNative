@@ -54,6 +54,15 @@
                                 outcome:(nonnull PLYPresentationOutcome *)outcome
     NS_SWIFT_NAME(emitPresentationDismissed(forId:outcome:));
 
+/// Emit a `PURCHASELY_PRESENTATION_CLOSE_REQUESTED` event for `requestId` —
+/// the native SDK requesting a close on its own (native close button, swipe,
+/// hardware back). Never emitted for a JS-programmatic `request.close()`
+/// (`closePresentation:` clears the presentation's `onCloseRequested` before
+/// closing it). Does not gate the dismissal: `onDismissed` /
+/// `PURCHASELY_PRESENTATION_DISMISSED` still follows normally.
++ (void)emitPresentationCloseRequestedForId:(nonnull NSString *)requestId
+    NS_SWIFT_NAME(emitPresentationCloseRequested(forId:));
+
 /// Emit a `PRESENTATION_VIEWED` analytics event to JS for an embedded
 /// `PLYPresentationView` that has just appeared on screen. The iOS native SDK
 /// only fires this event through its own full-screen display flow

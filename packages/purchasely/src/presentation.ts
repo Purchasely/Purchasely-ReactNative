@@ -253,6 +253,12 @@ export class PLYPresentationBuilder {
         return this;
     }
 
+    /**
+     * Register a callback for when the native SDK requests a close on its own
+     * (native close button, swipe, hardware back) — never for a programmatic
+     * {@link PLYPresentationRequest.close}. See
+     * {@link PLYPresentationRequest.onCloseRequested} for the full contract.
+     */
     onCloseRequested(handler: () => void): this {
         this.config.callbacks.onCloseRequested = handler;
         return this;
@@ -442,6 +448,18 @@ export class PLYPresentationRequest {
         return this;
     }
 
+    /**
+     * Register a callback for a native close request: the native SDK asking
+     * to close on its own (tap the native close button, swipe, hardware
+     * back). Purely informational — it does not gate the dismissal, and
+     * `onDismissed` still fires right after with the final outcome.
+     *
+     * @remarks
+     * Never fires for a programmatic {@link PLYPresentationRequest.close}:
+     * both native bridges clear this callback before closing, so a
+     * JS-initiated close goes straight to `onDismissed` without looping back
+     * here.
+     */
     onCloseRequested(handler: () => void): this {
         this.config.callbacks.onCloseRequested = handler;
         return this;

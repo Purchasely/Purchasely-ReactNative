@@ -8,6 +8,23 @@
 #import <XCTest/XCTest.h>
 #import "PurchaselyRN.h"
 
+// Captures events sent through RCTEventEmitter so
+// `emitPresentationCloseRequestedForId:` (the native onCloseRequested -> JS
+// bridge wired at preload/display time, see PurchaselyRN.m) can be asserted
+// without a full PLYPresentation double: the helper never touches a
+// presentation instance, only `_sharedEmitter`/`shouldEmit`.
+@interface PurchaselyRNCloseRequestedRecorder : PurchaselyRN
+@property (nonatomic, copy) NSString *lastEventName;
+@property (nonatomic, copy) NSDictionary *lastEventBody;
+@end
+
+@implementation PurchaselyRNCloseRequestedRecorder
+- (void)sendEventWithName:(NSString *)name body:(id)body {
+    self.lastEventName = name;
+    self.lastEventBody = body;
+}
+@end
+
 @interface PurchaselyRNTests : XCTestCase
 
 @property (nonatomic, strong) PurchaselyRN *purchaselyModule;
@@ -322,6 +339,41 @@
         @(stringArrayType), @(intArrayType), @(floatArrayType), @(boolArrayType)
     ]];
     XCTAssertEqual(uniqueValues.count, 9, @"All user attribute types should have unique values");
+}
+
+#pragma mark - CLOSE_REQUESTED semantics (native-initiated only, not request.close())
+
+- (void)testClosePresentationIsBridged {
+    XCTAssertTrue([self.purchaselyModule respondsToSelector:@selector(closePresentation:)],
+                  @"closePresentation: should be exported to the bridge");
+}
+
+- (void)testSupportedEventsIncludesCloseRequested {
+    NSArray<NSString *> *events = [self.purchaselyModule supportedEvents];
+    XCTAssertTrue([events containsObject:@"PURCHASELY_PRESENTATION_CLOSE_REQUESTED"],
+                  @"supportedEvents should expose the native close-requested event");
+}
+
+- (void)testEmitPresentationCloseRequestedForIdSendsEventWhenObserving {
+    PurchaselyRNCloseRequestedRecorder *recorder = [[PurchaselyRNCloseRequestedRecorder alloc] init];
+    [recorder startObserving];
+
+    [PurchaselyRN emitPresentationCloseRequestedForId:@"req-close-1"];
+
+    XCTAssertEqualObjects(recorder.lastEventName, @"PURCHASELY_PRESENTATION_CLOSE_REQUESTED");
+    XCTAssertEqualObjects(recorder.lastEventBody[@"requestId"], @"req-close-1");
+
+    [recorder stopObserving];
+}
+
+- (void)testEmitPresentationCloseRequestedForIdIsNoopWhenNotObserving {
+    PurchaselyRNCloseRequestedRecorder *recorder = [[PurchaselyRNCloseRequestedRecorder alloc] init];
+    // Never started observing — shouldEmit defaults to NO (testShouldEmitDefault).
+
+    [PurchaselyRN emitPresentationCloseRequestedForId:@"req-close-2"];
+
+    XCTAssertNil(recorder.lastEventName,
+                 @"emitPresentationCloseRequestedForId: should drop the event when nobody is observing");
 }
 
 @end

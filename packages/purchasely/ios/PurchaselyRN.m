@@ -439,6 +439,21 @@ static __weak PurchaselyRN *_sharedEmitter;
     }
 }
 
+/// Emit a `PURCHASELY_PRESENTATION_CLOSE_REQUESTED` event — the native SDK
+/// requesting a close on its own (user tap on the native close button, swipe,
+/// hardware back), never a JS-programmatic `request.close()` (see
+/// `closePresentation:`, which clears `onCloseRequested` before closing so it
+/// cannot loop back here). This does not gate the dismissal: the presentation
+/// keeps closing regardless, `onDismissed`/`PURCHASELY_PRESENTATION_DISMISSED`
+/// still follows normally — matches the native `onCloseRequested` doc ("not
+/// fully dismissed yet") and the Android reference behavior (native close
+/// always self-closes; the interception branch is never reached).
++ (void)emitPresentationCloseRequestedForId:(NSString *)requestId {
+    PurchaselyRN *emitter = _sharedEmitter;
+    if (emitter == nil || !emitter.shouldEmit) { return; }
+    [emitter sendEventWithName:kPresentationEventCloseRequested body:@{ @"requestId": requestId ?: @"" }];
+}
+
 - (instancetype)init {
 	self = [super init];
 
@@ -1444,6 +1459,12 @@ RCT_EXPORT_METHOD(preloadPresentation:(NSString *)requestId
         [builder onDismissed:^(PLYPresentationOutcome *outcome) {
             [PurchaselyRN emitPresentationDismissedForId:requestId outcome:outcome];
         }];
+        // Same reasoning as onDismissed above: wire onCloseRequested at preload
+        // time so an embedded `PLYPresentationView` reusing this requestId also
+        // gets native close notifications (see emitPresentationCloseRequestedForId:).
+        [builder onCloseRequested:^{
+            [PurchaselyRN emitPresentationCloseRequestedForId:requestId];
+        }];
         id<PLYPresentationRequest> request = [builder build];
         [request preloadWithCompletion:onFetchCompletion];
         resolve(@(YES));
@@ -1596,6 +1617,11 @@ RCT_EXPORT_METHOD(displayPresentation:(NSString *)requestId
         }
         applyPresentationDisplayOptions(builder, payload);
         [builder onDismissed:onDismissed];
+        // See emitPresentationCloseRequestedForId: — notification only, does
+        // not gate the dismissal handled by onDismissed above.
+        [builder onCloseRequested:^{
+            [PurchaselyRN emitPresentationCloseRequestedForId:requestId];
+        }];
         id<PLYPresentationRequest> request = [builder build];
         // v6: display through the SDK's own path (`displayWithTransition:
         // completion:`), which owns triggering the presentation itself —
@@ -1666,8 +1692,6 @@ RCT_EXPORT_METHOD(removeDefaultPresentationDismissHandler) {
 RCT_EXPORT_METHOD(closePresentation:(NSString *)requestId) {
     ensurePresentationState();
     dispatch_async(dispatch_get_main_queue(), ^{
-        // Notify JS so the host app can react before the native dismissal happens.
-        [self emitPresentationEvent:kPresentationEventCloseRequested body:@{ @"requestId": requestId ?: @"" }];
         id<PLYPresentation> presentation = nil;
         @synchronized (kPresentationStateLock) {
             presentation = kPresentationsByRequest[requestId];
@@ -1677,6 +1701,13 @@ RCT_EXPORT_METHOD(closePresentation:(NSString *)requestId) {
         // fall back to closing every Purchasely screen (`closeDisplayedPresentation`
         // was removed in the native v6 SDK).
         if (presentation != nil) {
+            // This is a JS-programmatic close: clear onCloseRequested first so
+            // it can never re-emit CLOSE_REQUESTED for this call — that event is
+            // reserved for the native SDK requesting a close on its own (see
+            // emitPresentationCloseRequestedForId:), matching the Android
+            // reference behavior where a programmatic closeAllScreens() shares
+            // the native self-close path but never loops back to JS either.
+            presentation.onCloseRequested = nil;
             [presentation close];
         } else {
             [Purchasely closeAllScreens];
