@@ -331,12 +331,21 @@ export class PLYPresentationRequest {
         this.teardownSubscriptions();
 
         return new Promise<PLYLoadedPresentation>((resolve, reject) => {
-            this.pendingSettler = { kind: 'preload', reject };
+            // Captured locally so late-arriving native/event callbacks can
+            // tell whether THEY are still the pending operation before
+            // touching any shared state — see the guards below.
+            const settler: PendingSettler = { kind: 'preload', reject };
+            this.pendingSettler = settler;
             const loadedSubscription =
                 presentationEventEmitter.addListener(
                     PURCHASELY_PRESENTATION_EVENTS.LOADED,
                     (event: PLYPresentationLifecycleEvent) => {
                         if (event.requestId !== requestId) {
+                            return;
+                        }
+                        if (this.pendingSettler !== settler) {
+                            // Superseded by a newer preload()/display() —
+                            // this promise already settled, no-op.
                             return;
                         }
                         loadedSubscription.remove();
@@ -362,6 +371,12 @@ export class PLYPresentationRequest {
                 requestId,
                 this.toNativePayload()
             ).catch((nativeError: any) => {
+                if (this.pendingSettler !== settler) {
+                    // A later preload()/display() already superseded this
+                    // one — this rejection is stale and must not tear down
+                    // the successor's listeners or invoke any callback.
+                    return;
+                }
                 loadedSubscription.remove();
                 this.pendingSettler = null;
                 reject(normalizeError(nativeError));
@@ -393,14 +408,25 @@ export class PLYPresentationRequest {
         this.teardownSubscriptions();
 
         return new Promise<PLYPresentationOutcome>((resolve) => {
-            this.pendingSettler = { kind: 'display', resolve };
-            this.bindLifecycleEvents(requestId, resolve);
+            // Captured locally so late-arriving native/event callbacks can
+            // tell whether THEY are still the pending operation before
+            // touching any shared state — see the guards below.
+            const settler: PendingSettler = { kind: 'display', resolve };
+            this.pendingSettler = settler;
+            this.bindLifecycleEvents(requestId, resolve, settler);
 
             NativeModules.Purchasely.displayPresentation(
                 requestId,
                 this.toNativePayload(),
                 transition ?? null
             ).catch((nativeError: any) => {
+                if (this.pendingSettler !== settler) {
+                    // A later preload()/display() already superseded this
+                    // one — this rejection is stale and must not invoke this
+                    // operation's callbacks or tear down the successor's
+                    // listeners/state.
+                    return;
+                }
                 const error = normalizeError(nativeError);
                 // Synthesize an outcome so consumers always receive one.
                 const outcome: PLYPresentationOutcome = {
@@ -518,7 +544,8 @@ export class PLYPresentationRequest {
 
     private bindLifecycleEvents(
         requestId: string,
-        resolve: (outcome: PLYPresentationOutcome) => void
+        resolve: (outcome: PLYPresentationOutcome) => void,
+        settler: PendingSettler
     ): void {
         const onPresented = presentationEventEmitter.addListener(
             PURCHASELY_PRESENTATION_EVENTS.PRESENTED,
@@ -556,6 +583,11 @@ export class PLYPresentationRequest {
             PURCHASELY_PRESENTATION_EVENTS.DISMISSED,
             (event: PLYPresentationLifecycleEvent) => {
                 if (event.requestId !== requestId) {
+                    return;
+                }
+                if (this.pendingSettler !== settler) {
+                    // Superseded by a newer preload()/display() — this
+                    // promise already settled, no-op.
                     return;
                 }
                 const presentation =

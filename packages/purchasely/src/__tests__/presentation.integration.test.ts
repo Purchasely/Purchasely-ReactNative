@@ -939,6 +939,98 @@ describe('façade · integration with native bridge', () => {
             expect(loaded.screenId).toBe('screen-abc');
             expect(onLoaded).toHaveBeenCalledTimes(1);
         });
+
+        // Regression: a superseded operation's native promise can still
+        // reject LATE (e.g. 'No current activity'), after the successor
+        // already started. That late rejection must be a pure no-op — it
+        // must not invoke onPresented/onDismissed with stale data, and must
+        // not tear down the successor's listeners/state (which would leave
+        // the successor's promise dangling forever).
+        it('(d) a late native rejection of a superseded display() is a no-op; the superseding display() still resolves at DISMISSED', async () => {
+            let rejectFirstNative: (error: any) => void = () => {};
+            native.displayPresentation.mockImplementationOnce(
+                () =>
+                    new Promise((_resolve, reject) => {
+                        rejectFirstNative = reject;
+                    })
+            );
+
+            const onPresented = jest.fn();
+            const onDismissed = jest.fn();
+            const req = PLYPresentationBuilder.placement('home')
+                .onPresented(onPresented)
+                .onDismissed(onDismissed)
+                .build();
+
+            const firstDisplayPromise = req.display();
+            const secondDisplayPromise = req.display();
+            expect(native.displayPresentation).toHaveBeenCalledTimes(2);
+            const [requestId] = native.displayPresentation.mock.calls[1];
+
+            const firstOutcome = await firstDisplayPromise;
+            expect(firstOutcome.error).toMatchObject({
+                message: expect.stringMatching(/superseded/i),
+            });
+
+            // The first display()'s native promise rejects LATE, well after
+            // it was superseded.
+            rejectFirstNative({ message: 'No current activity' });
+            await new Promise((r) => setImmediate(r));
+
+            // No parasitic callback invocation from the stale rejection.
+            expect(onPresented).not.toHaveBeenCalled();
+            expect(onDismissed).not.toHaveBeenCalled();
+
+            // The superseding display() still resolves normally at DISMISSED
+            // — its listeners were not torn down by the stale rejection.
+            emit(PURCHASELY_PRESENTATION_EVENTS.DISMISSED, {
+                requestId,
+                closeReason: 'button',
+            });
+            const secondOutcome = await secondDisplayPromise;
+            expect(secondOutcome.closeReason).toBe('button');
+            expect(secondOutcome.error).toBeFalsy();
+            expect(onDismissed).toHaveBeenCalledTimes(1);
+            expect(onDismissed).toHaveBeenCalledWith(secondOutcome);
+        });
+
+        it('(e) a late native rejection of a superseded preload() is a no-op; the superseding display() still works', async () => {
+            let rejectFirstNative: (error: any) => void = () => {};
+            native.preloadPresentation.mockImplementationOnce(
+                () =>
+                    new Promise((_resolve, reject) => {
+                        rejectFirstNative = reject;
+                    })
+            );
+
+            const onLoaded = jest.fn();
+            const req = PLYPresentationBuilder.placement('home')
+                .onLoaded(onLoaded)
+                .build();
+
+            const preloadPromise = req.preload();
+            const displayPromise = req.display();
+            const [displayRequestId] = native.displayPresentation.mock.calls[0];
+
+            await expect(preloadPromise).rejects.toMatchObject({
+                message: expect.stringMatching(/superseded/i),
+            });
+
+            // The preload()'s native promise rejects LATE, after display()
+            // already superseded it.
+            rejectFirstNative({ message: 'No current activity' });
+            await new Promise((r) => setImmediate(r));
+            expect(onLoaded).not.toHaveBeenCalled();
+
+            // display() still works normally.
+            emit(PURCHASELY_PRESENTATION_EVENTS.DISMISSED, {
+                requestId: displayRequestId,
+                closeReason: 'button',
+            });
+            const outcome = await displayPromise;
+            expect(outcome.closeReason).toBe('button');
+            expect(outcome.error).toBeFalsy();
+        });
     });
 
     describe('Action interceptor lifecycle', () => {
