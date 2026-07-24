@@ -270,6 +270,17 @@ export class PLYPresentationBuilder {
 }
 
 /**
+ * Closure(s) needed to settle the promise of whichever `preload()` /
+ * `display()` call is currently in flight on a {@link PLYPresentationRequest}.
+ * Kept so a later `preload()`/`display()` on the same request can settle the
+ * previous one as "superseded" instead of leaving it pending forever (see
+ * {@link PLYPresentationRequest.teardownSubscriptions}).
+ */
+type PendingSettler =
+    | { kind: 'preload'; reject: (error: PLYPresentationError) => void }
+    | { kind: 'display'; resolve: (outcome: PLYPresentationOutcome) => void };
+
+/**
  * Encapsulates a presentation request: it can be preloaded (without UI),
  * or displayed (which resolves at dismiss).
  */
@@ -282,6 +293,8 @@ export class PLYPresentationRequest {
     private subscriptions: EmitterSubscription[] = [];
     /** @internal */
     private livePresentation: PLYPresentation | null = null;
+    /** @internal */
+    private pendingSettler: PendingSettler | null = null;
 
     constructor(config: BuilderConfig) {
         this.config = config;
@@ -299,10 +312,20 @@ export class PLYPresentationRequest {
     /**
      * Preload the presentation. Resolves once the SDK reports the screen
      * is loaded (`onLoaded`). Rejects if the SDK fails before load.
+     *
+     * @remarks
+     * Calling `preload()` or `display()` again on the same request before
+     * this one settles supersedes it — see {@link display}'s remarks.
      */
     preload(): Promise<PLYLoadedPresentation> {
         const requestId = this.ensureRequestId();
+
+        // Settle whatever preload()/display() is still pending on this
+        // request as "superseded" before starting a fresh one.
+        this.teardownSubscriptions();
+
         return new Promise<PLYLoadedPresentation>((resolve, reject) => {
+            this.pendingSettler = { kind: 'preload', reject };
             const loadedSubscription =
                 presentationEventEmitter.addListener(
                     PURCHASELY_PRESENTATION_EVENTS.LOADED,
@@ -311,6 +334,7 @@ export class PLYPresentationRequest {
                             return;
                         }
                         loadedSubscription.remove();
+                        this.pendingSettler = null;
                         const presentation = normalizePresentation(
                             event.presentation
                         );
@@ -333,6 +357,7 @@ export class PLYPresentationRequest {
                 this.toNativePayload()
             ).catch((nativeError: any) => {
                 loadedSubscription.remove();
+                this.pendingSettler = null;
                 reject(normalizeError(nativeError));
             });
         });
@@ -344,19 +369,25 @@ export class PLYPresentationRequest {
      * their own `onPresented` / `onCloseRequested` callbacks via the builder.
      *
      * @remarks
-     * Calling `display()` while a `preload()` on this same request is still
-     * pending tears down that `preload()`'s LOADED subscription (see
-     * {@link teardownSubscriptions} below) — its promise then never settles.
-     * Await `preload()` (or don't preload at all) before calling `display()`
-     * on the same request.
+     * Calling `display()` (or `preload()`) again on the same request while a
+     * previous `preload()`/`display()` is still pending supersedes it instead
+     * of leaving it pending forever: a pending `preload()` **rejects** with a
+     * `{ message }` error naming the supersession; a pending `display()`
+     * **resolves** with a synthetic {@link PLYPresentationOutcome} whose
+     * `error.message` names it (`display()` never rejects — that contract
+     * holds here too). Neither case invokes the request's callbacks
+     * (`onLoaded` / `onDismissed` / the default handler) — only the promise
+     * settles.
      */
     display(transition?: PLYTransition | null): Promise<PLYPresentationOutcome> {
         const requestId = this.ensureRequestId();
 
-        // Allow multiple `display()` on the same request — clean up first.
+        // Settle whatever preload()/display() is still pending on this
+        // request as "superseded" before starting a fresh one.
         this.teardownSubscriptions();
 
         return new Promise<PLYPresentationOutcome>((resolve) => {
+            this.pendingSettler = { kind: 'display', resolve };
             this.bindLifecycleEvents(requestId, resolve);
 
             NativeModules.Purchasely.displayPresentation(
@@ -383,6 +414,7 @@ export class PLYPresentationRequest {
                 } else if (currentDefaultDismissHandler) {
                     currentDefaultDismissHandler(outcome);
                 }
+                this.pendingSettler = null;
                 resolve(outcome);
                 this.teardownSubscriptions();
             });
@@ -532,6 +564,7 @@ export class PLYPresentationRequest {
                 } else if (currentDefaultDismissHandler) {
                     currentDefaultDismissHandler(outcome);
                 }
+                this.pendingSettler = null;
                 resolve(outcome);
                 this.teardownSubscriptions();
             }
@@ -540,11 +573,51 @@ export class PLYPresentationRequest {
         this.subscriptions.push(onPresented, onCloseRequested, onDismissed);
     }
 
+    /**
+     * Settle whatever `preload()`/`display()` is still pending on this
+     * request — as "superseded" — then remove its listeners. Called at the
+     * start of every `preload()`/`display()` (so a new call supersedes the
+     * previous one instead of leaving its promise pending forever) and after
+     * the nominal DISMISSED / native-rejection paths resolve their own
+     * promise (a no-op there since {@link pendingSettler} was already cleared).
+     */
     private teardownSubscriptions(): void {
+        this.settlePendingAsSuperseded();
         for (const subscription of this.subscriptions) {
             subscription.remove();
         }
         this.subscriptions = [];
+    }
+
+    /**
+     * Settle the currently pending `preload()`/`display()` promise (if any)
+     * as superseded, without invoking any of the request's callbacks —
+     * only the promise settles. `preload()` rejects; `display()` resolves
+     * with a synthetic {@link PLYPresentationOutcome} (it never rejects).
+     */
+    private settlePendingAsSuperseded(): void {
+        const pending = this.pendingSettler;
+        if (!pending) {
+            return;
+        }
+        this.pendingSettler = null;
+        if (pending.kind === 'preload') {
+            pending.reject({
+                message:
+                    'Preload superseded by a newer preload()/display() call on the same request.',
+            });
+        } else {
+            pending.resolve({
+                presentation: this.livePresentation,
+                purchaseResult: null,
+                plan: null,
+                closeReason: null,
+                error: {
+                    message:
+                        'Display superseded by a newer display() call on the same request.',
+                },
+            });
+        }
     }
 
     private toNativePayload(): Record<string, unknown> {

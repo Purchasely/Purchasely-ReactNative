@@ -845,6 +845,102 @@ describe('façade · integration with native bridge', () => {
         });
     });
 
+    // Design (arbitrated): teardownSubscriptions() settles whatever
+    // preload()/display() is still pending on the SAME request as
+    // "superseded" instead of leaving its promise dangling forever (the bug
+    // the old JSDoc used to warn about). preload() rejects; display()
+    // resolves with a synthetic outcome (display() never rejects). Neither
+    // path invokes onLoaded/onDismissed/the default handler.
+    describe('preload()/display() supersession — no more dangling promises', () => {
+        it('(a) display() before LOADED rejects the pending preload() as superseded, and the display() still works', async () => {
+            const onLoaded = jest.fn();
+            const req = PLYPresentationBuilder.placement('home').onLoaded(onLoaded).build();
+
+            const preloadPromise = req.preload();
+            const [preloadRequestId] = native.preloadPresentation.mock.calls[0];
+
+            const displayPromise = req.display();
+            const [displayRequestId] = native.displayPresentation.mock.calls[0];
+            // Same request → same bridge id reused across preload()/display().
+            expect(displayRequestId).toBe(preloadRequestId);
+
+            await expect(preloadPromise).rejects.toMatchObject({
+                message: expect.stringMatching(/superseded/i),
+            });
+            expect(onLoaded).not.toHaveBeenCalled();
+
+            // A late LOADED for the superseded preload must not resolve/settle
+            // anything else (its listener was torn down).
+            emit(PURCHASELY_PRESENTATION_EVENTS.LOADED, {
+                requestId: preloadRequestId,
+                presentation: fakePresentationPayload,
+            });
+
+            // The display() this request now drives still resolves normally.
+            emit(PURCHASELY_PRESENTATION_EVENTS.DISMISSED, {
+                requestId: displayRequestId,
+                closeReason: 'button',
+            });
+            const outcome = await displayPromise;
+            expect(outcome.closeReason).toBe('button');
+            expect(outcome.error).toBeFalsy();
+        });
+
+        it('(b) a second display() resolves the first with a synthetic superseded outcome; the second resolves normally at DISMISSED', async () => {
+            const onDismissed = jest.fn();
+            const req = PLYPresentationBuilder.placement('home')
+                .onDismissed(onDismissed)
+                .build();
+
+            const firstDisplayPromise = req.display();
+            const secondDisplayPromise = req.display();
+            expect(native.displayPresentation).toHaveBeenCalledTimes(2);
+            const [requestId] = native.displayPresentation.mock.calls[1];
+
+            const firstOutcome = await firstDisplayPromise;
+            expect(firstOutcome.purchaseResult).toBeNull();
+            expect(firstOutcome.plan).toBeNull();
+            expect(firstOutcome.closeReason).toBeNull();
+            expect(firstOutcome.error).toMatchObject({
+                message: expect.stringMatching(/superseded/i),
+            });
+            // The superseded settlement never invokes onDismissed.
+            expect(onDismissed).not.toHaveBeenCalled();
+
+            emit(PURCHASELY_PRESENTATION_EVENTS.DISMISSED, {
+                requestId,
+                closeReason: 'programmatic',
+            });
+            const secondOutcome = await secondDisplayPromise;
+            expect(secondOutcome.closeReason).toBe('programmatic');
+            expect(secondOutcome.error).toBeFalsy();
+            expect(onDismissed).toHaveBeenCalledTimes(1);
+            expect(onDismissed).toHaveBeenCalledWith(secondOutcome);
+        });
+
+        it('(c) a second preload() rejects the first as superseded; the second resolves normally at LOADED', async () => {
+            const onLoaded = jest.fn();
+            const req = PLYPresentationBuilder.placement('home').onLoaded(onLoaded).build();
+
+            const firstPreloadPromise = req.preload();
+            const secondPreloadPromise = req.preload();
+            expect(native.preloadPresentation).toHaveBeenCalledTimes(2);
+            const [requestId] = native.preloadPresentation.mock.calls[1];
+
+            await expect(firstPreloadPromise).rejects.toMatchObject({
+                message: expect.stringMatching(/superseded/i),
+            });
+
+            emit(PURCHASELY_PRESENTATION_EVENTS.LOADED, {
+                requestId,
+                presentation: fakePresentationPayload,
+            });
+            const loaded = await secondPreloadPromise;
+            expect(loaded.screenId).toBe('screen-abc');
+            expect(onLoaded).toHaveBeenCalledTimes(1);
+        });
+    });
+
     describe('Action interceptor lifecycle', () => {
         it('registers, dispatches and resolves an interceptor end-to-end', async () => {
             const handler = jest.fn().mockResolvedValue('success' as const);
