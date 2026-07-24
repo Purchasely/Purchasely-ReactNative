@@ -3,8 +3,8 @@ name: E2E Android
 on:
   workflow_dispatch:
   schedule:
-    # 2h00 UTC chaque nuit
-    - cron: '0 2 * * *'
+    # 5h00 Paris (heure d'été) chaque nuit = 3h00 UTC
+    - cron: '0 3 * * *'
   push:
     branches:
       - feat/sdk-v6-migration

@@ -3,8 +3,8 @@ name: E2E iOS
 on:
   workflow_dispatch:
   schedule:
-    # 2h30 UTC chaque nuit (décalé de l'E2E Android à 2h00)
-    - cron: '30 2 * * *'
+    # 5h30 Paris (heure d'été) chaque nuit = 3h30 UTC (décalé de l'E2E Android à 5h00)
+    - cron: '30 3 * * *'
   push:
     branches:
       - feat/sdk-v6-migration
