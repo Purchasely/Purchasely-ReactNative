@@ -25,6 +25,9 @@ jobs:
       - name: Typecheck files
         run: yarn typecheck
 
+      - name: Build library
+        run: yarn purchasely:prepare
+
       - name: Typecheck example app
         run: yarn workspace example typecheck
 
