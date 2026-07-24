@@ -956,6 +956,14 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
 
   @ReactMethod
   fun closePresentation(requestId: String) {
+    // Defensive: an embedded PLYPresentationView with no flow listener re-reads
+    // its own onCloseRequested on a native SelfClose (PLYPresentationView.close()),
+    // so leaving it wired here could re-emit CLOSE_REQUESTED for what is actually
+    // this JS-programmatic close. A full-screen close never takes that path
+    // (ActionsOrchestrator's CloseAll bypasses it entirely), but clearing both
+    // tracked handles costs nothing and closes the embedded-view gap.
+    activePresentationRequests[requestId]?.onCloseRequested = null
+    activeLoadedPresentations[requestId]?.onCloseRequested = null
     activePresentationRequests.remove(requestId)
     activeLoadedPresentations.remove(requestId)
     // The SDK does not yet expose a per-request close, so this dismisses

@@ -368,12 +368,46 @@
 
 - (void)testEmitPresentationCloseRequestedForIdIsNoopWhenNotObserving {
     PurchaselyRNCloseRequestedRecorder *recorder = [[PurchaselyRNCloseRequestedRecorder alloc] init];
-    // Never started observing — shouldEmit defaults to NO (testShouldEmitDefault).
+    // Actually exercise the shouldEmit guard: go through the full observing
+    // lifecycle so `_sharedEmitter` is this recorder with `shouldEmit == NO`,
+    // instead of relying on `_sharedEmitter` being nil by happenstance
+    // (stopObserving flips shouldEmit back off but never clears _sharedEmitter).
+    [recorder startObserving];
+    [recorder stopObserving];
 
     [PurchaselyRN emitPresentationCloseRequestedForId:@"req-close-2"];
 
     XCTAssertNil(recorder.lastEventName,
-                 @"emitPresentationCloseRequestedForId: should drop the event when nobody is observing");
+                 @"emitPresentationCloseRequestedForId: should drop the event once the recorder has stopped observing");
+}
+
+- (void)testClosePresentationNeverEmitsCloseRequestedItself {
+    // [Fix B] The core breaking-change guarantee of 40fcfa1a: closePresentation:
+    // (the JS-programmatic close path) must never itself emit CLOSE_REQUESTED —
+    // that event is reserved for the native SDK asking to close on its own via
+    // the onCloseRequested hook wired at preload/display time.
+    PurchaselyRNCloseRequestedRecorder *recorder = [[PurchaselyRNCloseRequestedRecorder alloc] init];
+    [recorder startObserving];
+
+    // closePresentation: is an RCT_EXPORT_METHOD, not declared on the
+    // @interface (see the respondsToSelector: check above), so a direct
+    // message send won't compile — invoke it via its IMP instead.
+    IMP closePresentationImp = [self.purchaselyModule methodForSelector:@selector(closePresentation:)];
+    void (*closePresentation)(id, SEL, NSString *) = (void *)closePresentationImp;
+    closePresentation(self.purchaselyModule, @selector(closePresentation:), @"req-programmatic-close");
+
+    // closePresentation: dispatches its work onto the main queue; enqueue a
+    // second block after it to drain the queue in order before asserting.
+    XCTestExpectation *drained = [self expectationWithDescription:@"main queue drained"];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [drained fulfill];
+    });
+    [self waitForExpectationsWithTimeout:1.0 handler:nil];
+
+    XCTAssertNil(recorder.lastEventName,
+                 @"closePresentation: must never emit CLOSE_REQUESTED itself");
+
+    [recorder stopObserving];
 }
 
 @end

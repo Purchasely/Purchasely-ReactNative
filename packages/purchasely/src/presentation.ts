@@ -254,10 +254,11 @@ export class PLYPresentationBuilder {
     }
 
     /**
-     * Register a callback for when the native SDK requests a close on its own
-     * (native close button, swipe, hardware back) — never for a programmatic
+     * Register a callback for a native close request — the native SDK asking
+     * to close on its own — never for a programmatic
      * {@link PLYPresentationRequest.close}. See
-     * {@link PLYPresentationRequest.onCloseRequested} for the full contract.
+     * {@link PLYPresentationRequest.onCloseRequested} for the full contract,
+     * including the current per-platform coverage gap on Android.
      */
     onCloseRequested(handler: () => void): this {
         this.config.callbacks.onCloseRequested = handler;
@@ -476,15 +477,25 @@ export class PLYPresentationRequest {
 
     /**
      * Register a callback for a native close request: the native SDK asking
-     * to close on its own (tap the native close button, swipe, hardware
-     * back). Purely informational — it does not gate the dismissal, and
-     * `onDismissed` still fires right after with the final outcome.
+     * to close on its own. Purely informational — it does not gate the
+     * dismissal, and `onDismissed` still fires right after with the final
+     * outcome.
      *
      * @remarks
      * Never fires for a programmatic {@link PLYPresentationRequest.close}:
-     * both native bridges clear this callback before closing, so a
+     * both native bridges clear their tracked handler before closing, so a
      * JS-initiated close goes straight to `onDismissed` without looping back
      * here.
+     *
+     * Platform coverage differs today:
+     * - **iOS** fires for every presentation the bridge tracks, full-screen
+     *   or embedded (native close button, swipe, hardware back).
+     * - **Android** only fires for an embedded {@link PLYPresentationView}
+     *   displayed with no flow listener. A full-screen native close (back
+     *   button, swipe, the in-paywall close button) does **not** invoke it —
+     *   the native SDK does not yet route that path through this callback.
+     *   Full parity across platforms is expected in a future native SDK
+     *   release.
      */
     onCloseRequested(handler: () => void): this {
         this.config.callbacks.onCloseRequested = handler;

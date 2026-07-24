@@ -6,6 +6,7 @@ import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReadableArray
 import io.purchasely.ext.*
+import io.purchasely.ext.presentation.PLYPresentationBase
 import io.purchasely.ext.presentation.PLYPresentationType
 import io.purchasely.storage.userData.PLYUserAttributeSource
 import io.purchasely.storage.userData.PLYUserAttributeType
@@ -462,6 +463,43 @@ class PurchaselyModuleTest {
             argumentsStatic.close()
             purchaselyStatic.close()
         }
+    }
+
+    // endregion
+
+    // region closePresentation defensive onCloseRequested clear (Fix B)
+
+    /**
+     * [Fix B] `closePresentation` delegates to `Purchasely.closeAllScreens()`,
+     * a programmatic close, and must never be mistaken for a native close
+     * request. An embedded `PLYPresentationView` with no flow listener
+     * re-reads its own `onCloseRequested` on a native SelfClose, so the
+     * tracked Prepared's handler must be cleared before the SDK call is made,
+     * or that path could re-emit CLOSE_REQUESTED for this JS-programmatic close.
+     */
+    @Test
+    fun `closePresentation clears the tracked onCloseRequested handler before closing`() {
+        val requestId = "req-close-clear-test"
+        val prepared = PLYPresentationBase.builder()
+            .placementId("PLACEMENT")
+            .onCloseRequested { }
+            .build()
+
+        val requestsField = PurchaselyModule::class.java
+            .getDeclaredField("activePresentationRequests")
+            .apply { isAccessible = true }
+        @Suppress("UNCHECKED_CAST")
+        val requests = requestsField.get(null) as MutableMap<String, PLYPresentationBase.Prepared>
+        requests[requestId] = prepared
+
+        val purchaselyStatic = mockStatic(Purchasely::class.java)
+        try {
+            purchaselyModule.closePresentation(requestId)
+        } finally {
+            purchaselyStatic.close()
+        }
+
+        assertNull(prepared.onCloseRequested)
     }
 
     // endregion
