@@ -105,6 +105,9 @@ jobs:
           arch: x86_64
           target: google_apis
           avd-name: rn_e2e_api34
+          # The default API 34 data partition can exceed the free disk left
+          # after the React Native build and make the emulator exit at launch.
+          disk-size: 2048M
           disable-animations: true
           emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -no-snapshot
           script: bash integration_test/run_e2e.sh emulator-5554 --skip-build
