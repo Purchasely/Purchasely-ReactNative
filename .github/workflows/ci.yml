@@ -25,6 +25,12 @@ jobs:
       - name: Typecheck files
         run: yarn typecheck
 
+      - name: Typecheck example app
+        run: yarn workspace example typecheck
+
+      - name: Lint example app
+        run: yarn workspace example lint
+
   test:
     runs-on: ubuntu-latest
     steps:

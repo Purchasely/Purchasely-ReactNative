@@ -200,6 +200,11 @@ export const HomeScreen: React.FC<NativeStackScreenProps<any>> = ({
                 storeOfferId: 'com.purchasely.plus.yearly.winback.test',
             })
 
+            if (!signature) {
+                console.log('Signature: not available (Android has no promotional-offer-signing primitive)')
+                return
+            }
+
             console.log('Signature timestamp: ' + signature.timestamp)
             console.log('Signature planVendorId: ' + signature.planVendorId)
             console.log('Signature identifier: ' + signature.identifier)

@@ -5,9 +5,10 @@
   "scripts": {
     "android": "react-native run-android",
     "ios": "npx pod-install && react-native run-ios",
-    "lint": "eslint .",
+    "lint": "eslint . --ignore-pattern metro.config.js",
     "start": "react-native start",
-    "test": "jest"
+    "test": "jest",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@purchasely/react-native-purchasely-google": "workspace:*",

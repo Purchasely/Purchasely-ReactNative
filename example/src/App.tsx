@@ -3,12 +3,12 @@ import { NavigationContainer } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { HomeScreen } from './Home.tsx'
 import Purchasely, {
-    DynamicOffering,
+    PLYDynamicOffering,
     PLYInterceptResult,
     PLYDataProcessingLegalBasis,
     PLYDataProcessingPurpose,
     PLYPresentationBuilder,
-    PurchaselyUserAttribute,
+    PLYUserAttribute,
     removeAllActionInterceptors,
 } from 'react-native-purchasely'
 import { PaywallScreen } from './Paywall.tsx'
@@ -18,7 +18,7 @@ const Stack = createNativeStackNavigator()
 
 function App(): React.JSX.Element {
     async function setupPurchasely() {
-        var configured = false
+        let configured = false
         try {
             // chained builder — the only supported way to start the SDK.
             // `allowDeeplink(true)` replaces the legacy `readyToOpenDeeplink`.
@@ -135,7 +135,7 @@ function App(): React.JSX.Element {
         }
 
         Purchasely.addUserAttributeSetListener(
-            (attribute: PurchaselyUserAttribute) => {
+            (attribute: PLYUserAttribute) => {
                 console.log('Attribute set:', attribute)
             }
         )
@@ -213,7 +213,7 @@ function App(): React.JSX.Element {
         console.log('Dynamic offering p1y:', p1y)
 
         //get dynamic offerings
-        const offerings: DynamicOffering[] = await Purchasely.getDynamicOfferings()
+        const offerings: PLYDynamicOffering[] = await Purchasely.getDynamicOfferings()
         console.log('Dynamic offerings:', offerings)
 
         //remove a dynamic offering
@@ -224,7 +224,7 @@ function App(): React.JSX.Element {
 
         //Purchasely.revokeDataProcessingConsent([PLYDataProcessingPurpose.ALL_NON_ESSENTIALS])
 
-        const offeringsEmpty: DynamicOffering[] = await Purchasely.getDynamicOfferings()
+        const offeringsEmpty: PLYDynamicOffering[] = await Purchasely.getDynamicOfferings()
         console.log('Dynamic offerings:', offeringsEmpty)
 
         // Set paywall action interceptors. Each handler is typed by the
