@@ -4633,13 +4633,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"brace-expansion@npm:~1.1.13":
-  version: 1.1.14
-  resolution: "brace-expansion@npm:1.1.14"
+"brace-expansion@npm:~1.1.16":
+  version: 1.1.16
+  resolution: "brace-expansion@npm:1.1.16"
   dependencies:
     balanced-match: ^1.0.0
     concat-map: 0.0.1
-  checksum: 2de747a5891ea0d3a1946ea1ae26e056a47f7ea8d42a3009e1736ec3a31a5aa69a3c5da59d998426773553afe4c258e5b12d7953b534fa7f2cf12ce92eed4931
+  checksum: 11ab2d5b39d61bc0d0de9240a5d08a5f210a5650885ca4876271ef5996b4c5d172d697b501d673fe099ab721aa8bf0348507ad23a6148e169856209d2f9cab94
   languageName: node
   linkType: hard
 
@@ -9064,14 +9064,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"js-yaml@npm:>=4.2.0":
-  version: 5.1.0
-  resolution: "js-yaml@npm:5.1.0"
+"js-yaml@npm:>=5.2.2":
+  version: 5.2.2
+  resolution: "js-yaml@npm:5.2.2"
   dependencies:
     argparse: ^2.0.1
   bin:
     js-yaml: bin/js-yaml.mjs
-  checksum: ed920d295619d5a79dc97cf6a83e6be6aa7c23d60eacfd349da1df43c31feaaee9d3630742d59ca230c3d574083989bd397fe8d60d5ddf503e80b54c8cdd35ee
+  checksum: 651ad7009f48a3dad5084d58e56d52891ebbd5a942fee05735fa173b5f22c1df5af774a58f30f2ead2d87868b5438ae907f7d072ac0e425e6d04b970d0314885
   languageName: node
   linkType: hard
 
@@ -12697,16 +12697,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tar@npm:>=7.5.16":
-  version: 7.5.17
-  resolution: "tar@npm:7.5.17"
+"tar@npm:>=7.5.18":
+  version: 7.5.22
+  resolution: "tar@npm:7.5.22"
   dependencies:
     "@isaacs/fs-minipass": ^4.0.0
     chownr: ^3.0.0
     minipass: ^7.1.2
     minizlib: ^3.1.0
     yallist: ^5.0.0
-  checksum: f1b64247b7222df39468518588553677e6fff368c3b0ebc2a717a4fdaeaf38963e2930cdac6b9361ed9363f95b20df64e1128e9810b1df8ec2560310d71ec07d
+  checksum: e1434f40954410d191ab6d89017bfd40c24869cfd319d19dd74f84db13cbea15370a22bc9b8ecd699d05c2777ec6297f35dac318ed4829b6e776a7cb4f1f7c68
   languageName: node
   linkType: hard
 
