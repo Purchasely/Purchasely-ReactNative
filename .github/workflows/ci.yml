@@ -111,24 +111,31 @@ jobs:
       - name: Build library
         run: yarn prepare
 
+      # Only the content-addressed CocoaPods download caches are cached here.
+      # `example/ios/Pods` (the *generated* install tree) is deliberately NOT
+      # cached: a restore-key hit could hand a stale tree to `pod install`,
+      # which does not fully reconcile it, and the example app then compiled
+      # against stale React Native headers while linking the current prebuilt
+      # React.xcframework -- surfacing as missing `facebook::react::*` vtables
+      # in libRNScreens.a at link time.
       - name: Cache CocoaPods
         uses: actions/cache@v4
         with:
           path: |
-            example/ios/Pods
             ~/.cocoapods
             ~/Library/Caches/CocoaPods
-          key: ${{ runner.os }}-cocoapods-${{ hashFiles('example/ios/Podfile', 'packages/purchasely/react-native-purchasely.podspec') }}
+          key: ${{ runner.os }}-cocoapods-${{ hashFiles('example/ios/Podfile', 'packages/purchasely/react-native-purchasely.podspec', 'yarn.lock') }}
           restore-keys: |
             ${{ runner.os }}-cocoapods-
 
+      # Exact-match only (no restore-keys): a partial hit would mix object
+      # files built against a different Pods install, the same staleness class
+      # of failure described above.
       - name: Cache Xcode DerivedData
         uses: actions/cache@v4
         with:
           path: example/ios/DerivedData
-          key: ${{ runner.os }}-derived-data-${{ hashFiles('example/ios/Podfile', 'packages/purchasely/react-native-purchasely.podspec', 'example/ios/*.xcodeproj/project.pbxproj') }}
-          restore-keys: |
-            ${{ runner.os }}-derived-data-
+          key: ${{ runner.os }}-derived-data-${{ hashFiles('example/ios/Podfile', 'packages/purchasely/react-native-purchasely.podspec', 'example/ios/*.xcodeproj/project.pbxproj', 'yarn.lock') }}
 
       - name: Install CocoaPods
         run: |
@@ -175,14 +182,15 @@ jobs:
       - name: Build library
         run: yarn prepare
 
+      # See the note in build-ios: only the content-addressed download caches
+      # are cached, never the generated `example/ios/Pods` tree.
       - name: Cache CocoaPods
         uses: actions/cache@v4
         with:
           path: |
-            example/ios/Pods
             ~/.cocoapods
             ~/Library/Caches/CocoaPods
-          key: ${{ runner.os }}-cocoapods-${{ hashFiles('example/ios/Podfile', 'packages/purchasely/react-native-purchasely.podspec') }}
+          key: ${{ runner.os }}-cocoapods-${{ hashFiles('example/ios/Podfile', 'packages/purchasely/react-native-purchasely.podspec', 'yarn.lock') }}
           restore-keys: |
             ${{ runner.os }}-cocoapods-
 
