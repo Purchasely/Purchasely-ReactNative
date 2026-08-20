@@ -1236,6 +1236,10 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
             transformPlanToMap(plan).toMutableMap()
           )
         )
+        // Apple-only (iOS 26.4+ commitment); Google Play has no equivalent, so
+        // this is always "unspecified" here. Emitted for bridge parity so JS
+        // reads the same key shape on both platforms.
+        payload.putString("billingPlanType", "unspecified")
         offer?.let {
           val offerMap = Arguments.createMap()
           it.vendorId?.let { v -> offerMap.putString("vendorId", v) }
@@ -1398,7 +1402,12 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
         Pair("storeOfferId", storeOfferId),
         Pair("offerId", storeOfferId),
         Pair("offerVendorId", offerVendorId),
-        Pair("default", default)
+        Pair("default", default),
+        // billingPlanType is Apple-only (iOS 26.4+ commitment) — Google Play has
+        // no commitment concept, so the Android SDK exposes nothing to map here.
+        // Emitted as "unspecified" for bridge parity, matching the ignored
+        // `billingPlanType` on setDynamicOffering/getDynamicOfferings.
+        Pair("billingPlanType", "unspecified")
       )
     }
 

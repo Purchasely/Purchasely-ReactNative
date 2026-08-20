@@ -6,6 +6,7 @@
 //
 
 #import "PLYPresentationPlan+Hybrid.h"
+#import "PLYPlan+Hybrid.h"
 #import <Foundation/Foundation.h>
 
 @implementation PLYPresentationPlan (Hybrid)
@@ -32,7 +33,14 @@
     // `default` is an ObjC keyword; the v6 SDK exposes the property as
     // `default_` (getter `default`), so dot-syntax must use `default_`.
     [dict setObject:@(self.default_) forKey:@"default"];
-    
+
+    // Backend-resolved `commitment_billing_type`. Always emitted (never nil —
+    // the native enum defaults to `.unspecified` when the key is absent from
+    // the paywall JSON) so JS can tell a monthly-billing commitment plan from
+    // a plain one without inspecting `PLYPlan.commitmentInfo`.
+    [dict setObject:PLYBillingPlanTypeToRNString(self.billingPlanType)
+             forKey:@"billingPlanType"];
+
     return dict;
 }
 

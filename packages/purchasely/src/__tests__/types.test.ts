@@ -356,6 +356,15 @@ describe('Purchasely Types', () => {
             }
             expect(payload.plan.commitmentInfo?.[0]?.totalDuration).toBe(12)
         })
+
+        it('carries the resolved billingPlanType on the purchase payload', () => {
+            const payload: PLYPurchasePayload = {
+                kind: 'purchase',
+                plan: committedPlan,
+                billingPlanType: 'monthly',
+            }
+            expect(payload.billingPlanType).toBe('monthly')
+        })
     })
 
     describe('PLYCommitmentProgress (Apple-only)', () => {
@@ -565,6 +574,16 @@ describe('Purchasely Types', () => {
             }
 
             expect(plan.planVendorId).toBeNull()
+        })
+
+        it('should carry the commitment billingPlanType resolved by the paywall', () => {
+            const plan: PLYPresentationPlan = {
+                planVendorId: 'annual-billed-monthly',
+                storeProductId: 'store-product-123',
+                billingPlanType: 'monthly',
+            }
+
+            expect(plan.billingPlanType).toBe('monthly')
         })
     })
 

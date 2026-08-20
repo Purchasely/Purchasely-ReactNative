@@ -338,6 +338,9 @@ export type PLYEventProperties = {
  *   bridge duplicates `storeOfferId`'s value under this key.
  * - `planVendorId`, `storeProductId`, `offerVendorId`, `default` — genuinely
  *   cross-platform; both native models expose all four.
+ * - `billingPlanType` — emitted on both platforms for a stable wire shape, but
+ *   only ever meaningful on Apple (iOS 26.4+). Android's native SDK has no
+ *   commitment concept, so it is always `'unspecified'` there.
  */
 export type PLYPresentationPlan = {
   planVendorId: string | null;
@@ -350,6 +353,13 @@ export type PLYPresentationPlan = {
   storeOfferId?: string | null;
   offerVendorId?: string | null;
   default?: boolean | null;
+  /**
+   * Billing plan the paywall resolved for this plan — the backend's
+   * `commitment_billing_type`. Drives Apple's monthly-billing purchase option
+   * on iOS 26.4+. Always `'unspecified'` on Android and for plans without a
+   * commitment. See {@link PLYBillingPlanType}.
+   */
+  billingPlanType?: PLYBillingPlanType;
 };
 
 export type PLYPresentationMetadata = {

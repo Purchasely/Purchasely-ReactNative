@@ -1870,6 +1870,14 @@ RCT_EXPORT_METHOD(registerActionInterceptor:(NSString *)kind) {
                         if (params.plan != nil) {
                             payloadOut[@"plan"] = [params.plan asDictionary];
                         }
+                        // Billing plan the paywall resolved for this purchase.
+                        // `notHandled` lets the native SDK apply it itself; an
+                        // app that handles the purchase and returns `success`
+                        // needs this to know a monthly-billing commitment was
+                        // intended, since `purchaseWithPlanVendorId` has no way
+                        // to carry it (no such native overload in iOS 6.0.0).
+                        payloadOut[@"billingPlanType"] =
+                            PLYBillingPlanTypeToRNString(params.billingPlanType);
                         if (params.promoOffer != nil) {
                             NSMutableDictionary *offer = [NSMutableDictionary new];
                             if (params.promoOffer.vendorId != nil) {

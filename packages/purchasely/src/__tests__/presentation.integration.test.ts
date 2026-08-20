@@ -1085,6 +1085,51 @@ describe('façade · integration with native bridge', () => {
             expect(native.completeActionInterceptor).toHaveBeenCalledWith('cb-1', 'success');
         });
 
+        it('forwards the Apple commitment billingPlanType on the purchase payload', async () => {
+            const handler = jest.fn().mockResolvedValue('notHandled' as const);
+            interceptAction('purchase', handler);
+
+            emit(PURCHASELY_PRESENTATION_EVENTS.ACTION_INTERCEPTED, {
+                requestId: 'req-commitment',
+                callbackId: 'cb-commitment',
+                kind: 'purchase',
+                info: {},
+                payload: {
+                    plan: { vendorId: 'annual-billed-monthly' },
+                    billingPlanType: 'monthly',
+                },
+            });
+
+            await new Promise((r) => setImmediate(r));
+
+            const [, payload] = handler.mock.calls[0];
+            expect(payload).toMatchObject({
+                kind: 'purchase',
+                billingPlanType: 'monthly',
+            });
+        });
+
+        it("defaults billingPlanType to 'unspecified' when native omits it", async () => {
+            const handler = jest.fn().mockResolvedValue('notHandled' as const);
+            interceptAction('purchase', handler);
+
+            emit(PURCHASELY_PRESENTATION_EVENTS.ACTION_INTERCEPTED, {
+                requestId: 'req-no-commitment',
+                callbackId: 'cb-no-commitment',
+                kind: 'purchase',
+                info: {},
+                payload: { plan: { vendorId: 'plain-annual' } },
+            });
+
+            await new Promise((r) => setImmediate(r));
+
+            const [, payload] = handler.mock.calls[0];
+            expect(payload?.kind).toBe('purchase');
+            expect(
+                payload?.kind === 'purchase' ? payload.billingPlanType : null
+            ).toBe('unspecified');
+        });
+
         it('does not auto-resolve orphan events (native must time out)', async () => {
             // No JS interceptor registered for 'restore' — when the native
             // bridge emits the event nobody filters it in, so the bridge layer

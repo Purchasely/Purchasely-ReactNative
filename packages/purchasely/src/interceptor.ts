@@ -93,6 +93,9 @@ function normalizePayload(
                 plan: normalizePlan(raw.plan),
                 subscriptionOffer: raw.subscriptionOffer ?? null,
                 offer: raw.offer ?? null,
+                // Both bridges always emit this key; the fallback keeps the
+                // field meaningful against an older native build that doesn't.
+                billingPlanType: raw.billingPlanType ?? 'unspecified',
             };
         case 'close':
         case 'closeAll':

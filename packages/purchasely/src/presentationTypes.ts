@@ -14,6 +14,7 @@ import type {
     PLYWebCheckoutProvider,
 } from './enums';
 import type {
+    PLYBillingPlanType,
     PLYPlan,
     PLYPromoOffer,
     PLYSubscriptionOffer,
@@ -181,6 +182,19 @@ export interface PLYPurchasePayload {
     plan: PLYPlan;
     subscriptionOffer?: PLYSubscriptionOffer | null;
     offer?: PLYPromoOffer | null;
+    /**
+     * Billing plan the paywall resolved for this purchase. `'monthly'` means
+     * the paywall intended Apple's monthly-billing commitment (iOS 26.4+).
+     *
+     * Returning `'notHandled'` from the interceptor lets the native SDK
+     * complete the purchase and apply this billing plan itself. If you handle
+     * the purchase yourself and return `'success'`, be aware that
+     * `purchaseWithPlanVendorId` cannot carry the billing plan today, so the
+     * purchase is made up-front rather than in monthly instalments.
+     *
+     * Always `'unspecified'` on Android. See {@link PLYBillingPlanType}.
+     */
+    billingPlanType?: PLYBillingPlanType;
 }
 
 /** Typed payload for close / closeAll actions. */
