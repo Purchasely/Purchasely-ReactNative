@@ -53,22 +53,43 @@ jobs:
           done
           echo "All package versions match release tag: $TAG"
 
+      - name: Resolve the npm dist-tag from the release tag
+        id: dist_tag
+        run: |
+          TAG="${{ github.ref_name }}"
+          MAJOR="${TAG%%.*}"
+          PUBLISHED="$(npm view react-native-purchasely version 2>/dev/null || echo '0.0.0')"
+
+          if [ "$TAG" != "${TAG#*-}" ]; then
+            # 5.8.0-rc.1 and friends must never become `latest`
+            DIST_TAG="next"
+          elif [ "$(printf '%s\n%s\n' "$TAG" "$PUBLISHED" | sort -V | tail -n1)" = "$TAG" ]; then
+            # this release is the newest version of the package
+            DIST_TAG="latest"
+          else
+            # maintenance release on an older major: keep `latest` where it is
+            DIST_TAG="${MAJOR}.x"
+          fi
+
+          echo "release=$TAG  npm latest=$PUBLISHED  ->  dist-tag=$DIST_TAG"
+          echo "dist_tag=$DIST_TAG" >> "$GITHUB_OUTPUT"
+
       - name: Publish react-native-purchasely
         working-directory: packages/purchasely
-        run: npm publish --access public --provenance --tag 5.x
+        run: npm publish --access public --provenance --tag "${{ steps.dist_tag.outputs.dist_tag }}"
 
       - name: Publish @purchasely/react-native-purchasely-google
         working-directory: packages/google
-        run: npm publish --access public --provenance --tag 5.x
+        run: npm publish --access public --provenance --tag "${{ steps.dist_tag.outputs.dist_tag }}"
 
       - name: Publish @purchasely/react-native-purchasely-amazon
         working-directory: packages/amazon
-        run: npm publish --access public --provenance --tag 5.x
+        run: npm publish --access public --provenance --tag "${{ steps.dist_tag.outputs.dist_tag }}"
 
       - name: Publish @purchasely/react-native-purchasely-huawei
         working-directory: packages/huawei
-        run: npm publish --access public --provenance --tag 5.x
+        run: npm publish --access public --provenance --tag "${{ steps.dist_tag.outputs.dist_tag }}"
 
       - name: Publish @purchasely/react-native-purchasely-android-player
         working-directory: packages/android-player
-        run: npm publish --access public --provenance --tag 5.x
+        run: npm publish --access public --provenance --tag "${{ steps.dist_tag.outputs.dist_tag }}"
