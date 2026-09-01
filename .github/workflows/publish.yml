@@ -3,6 +3,9 @@ name: Publish to npm
 on:
   release:
     types: [published]
+  # The 5.7.3 and 6.0.0-rc.2 release events both failed and the actual publish
+  # was recovered by dispatching this workflow by hand. Keep that path open.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -25,15 +28,28 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          # a release event already resolves to the tagged commit; this is what
+          # makes a manual workflow_dispatch on a tag check out the right code
+          ref: ${{ github.ref }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          # Node 24 ships npm 11.x. Node 22 ships npm 10.9.4, below the 11.5.1
+          # that trusted publishing needs -- which is why this used to run
+          # `npm install -g npm@latest`, the step that failed the 5.7.3 release.
+          node-version: "24"
           registry-url: "https://registry.npmjs.org"
 
-      - name: Ensure npm >= 11.5.1 (required for trusted publishing)
-        run: npm install -g npm@latest
+      - name: Verify npm version (>= 11.5.1 required for trusted publishing)
+        run: |
+          NPM_VERSION="$(npm --version)"
+          echo "npm version: $NPM_VERSION"
+          if [ "$(printf '%s\n%s\n' "11.5.1" "$NPM_VERSION" | sort -V | head -n1)" != "11.5.1" ]; then
+            echo "::error::npm $NPM_VERSION is below required 11.5.1"
+            exit 1
+          fi
 
       - name: Build all packages
         run: |
