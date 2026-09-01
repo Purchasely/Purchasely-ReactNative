@@ -125,6 +125,11 @@ LOGFILE="/tmp/e2e_rn_ios_$$.log"
 TAP_DRIVER="$SCRIPT_DIR/tools/tap_purchase_ios.sh"
 BACK_DRIVER="$SCRIPT_DIR/tools/swipe_dismiss_ios.sh"
 INLINE_CLOSE_DRIVER="$SCRIPT_DIR/tools/tap_close_inline_ios.sh"
+NESTED_SHOT_DRIVER="$SCRIPT_DIR/tools/capture_nested_inline_ios.sh"
+DUAL_INLINE_DRIVER="$SCRIPT_DIR/tools/assert_dual_inline_ios.sh"
+# Screenshots and accessibility dumps land here; CI uploads the directory.
+ARTIFACT_DIR="${E2E_ARTIFACT_DIR:-$REPO_ROOT/integration_test/artifacts}"
+mkdir -p "$ARTIFACT_DIR"
 
 # ── Ensure Node is available (NVM) ───────────────────────────────────────────
 if ! command -v node &>/dev/null; then
@@ -214,6 +219,11 @@ START_TS=$(date +%s)
 TAP_DONE=0
 BACK_DONE=0
 INLINE_CLOSE_DONE=0
+NESTED_SHOT_DONE=0
+DUAL_INLINE_DONE=0
+# T29's verdict comes from the host, not from a JS marker: the sizes it checks
+# live in the native view tree, which JS cannot read.
+DUAL_INLINE_RESULT="SKIP"
 SUITE_RESULT=""
 DRIVER_PIDS=()
 
@@ -243,6 +253,36 @@ while true; do
     INLINE_CLOSE_DONE=1
     log "T25: signaled — launching iOS inline close driver..."
     bash "$INLINE_CLOSE_DRIVER" "$UDID" & DRIVER_PIDS+=("$!:T25 inline close driver")
+  fi
+
+  # T28 nested-in-react-native-screens capture. The hard assertion is the marker
+  # itself: on an unfixed build the app has already died on
+  # UIViewControllerHierarchyInconsistency and never gets here.
+  if [ "$NESTED_SHOT_DONE" -eq 0 ] && grep -q '\[E2E:READY_FOR_NESTED_SHOT\]' "$LOGFILE" 2>/dev/null; then
+    NESTED_SHOT_DONE=1
+    log "T28: signaled -- capturing the nested embedded view..."
+    bash "$NESTED_SHOT_DRIVER" "$UDID" "$ARTIFACT_DIR" & DRIVER_PIDS+=("$!:T28 nested capture")
+  fi
+
+  # T29 dual embedded views: assert the native frames, capture the proof.
+  if [ "$DUAL_INLINE_DONE" -eq 0 ] && grep -q '\[E2E:READY_FOR_DUAL_INLINE\]' "$LOGFILE" 2>/dev/null; then
+    DUAL_INLINE_DONE=1
+    DUAL_DP=$(grep -o '\[E2E:DUAL_INLINE_DP:[0-9]*:[0-9]*\]' "$LOGFILE" | tail -1 | tr -d '[]' | cut -d: -f3,4)
+    TALL_DP="${DUAL_DP%%:*}"
+    SHORT_DP="${DUAL_DP##*:}"
+    if [ -z "$TALL_DP" ] || [ -z "$SHORT_DP" ]; then
+      err "T29: the runner did not print [E2E:DUAL_INLINE_DP:tall:short]"
+      DUAL_INLINE_RESULT="FAIL"
+    else
+      log "T29: signaled -- asserting the two embedded views (${TALL_DP}pt / ${SHORT_DP}pt)..."
+      if bash "$DUAL_INLINE_DRIVER" "$UDID" "$TALL_DP" "$SHORT_DP" "$ARTIFACT_DIR"; then
+        DUAL_INLINE_RESULT="PASS"
+        ok "T29: native frame assertion PASSED"
+      else
+        DUAL_INLINE_RESULT="FAIL"
+        err "T29: native frame assertion FAILED"
+      fi
+    fi
   fi
 
   if grep -q '\[E2E:SUITE:PASS\]' "$LOGFILE" 2>/dev/null; then
@@ -358,7 +398,7 @@ echo "==========================================="
 # reported would still read as a full pass. It is now authoritative -- a
 # missing marker fails the run.
 MISSING_IDS=()
-for id in T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13 T14 T15 T16 T17 T18 T19 T20 T21 T22 T23 T24 T25 T26 T27; do
+for id in T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13 T14 T15 T16 T17 T18 T19 T20 T21 T22 T23 T24 T25 T26 T27 T28 T29; do
   PASS_LINE=$(grep "\[E2E:${id}:PASS\]" "$LOGFILE" 2>/dev/null | tail -1)
   FAIL_LINE=$(grep "\[E2E:${id}:FAIL\]" "$LOGFILE" 2>/dev/null | tail -1)
   SKIP_LINE=$(grep "\[E2E:${id}:SKIP\]" "$LOGFILE" 2>/dev/null | tail -1)
@@ -375,7 +415,17 @@ for id in T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13 T14 T15 T16 T17 T18 T19 T20
 done
 
 echo "==========================================="
-if [ "$SUITE_RESULT" = "PASS" ] && [ "$T27_RESULT" != "FAIL" ] && [ "${#MISSING_IDS[@]}" -eq 0 ]; then
+case "$DUAL_INLINE_RESULT" in
+  PASS) ok   "T29  native frames: each embedded view kept its own height" ;;
+  FAIL) err  "T29  native frames: the two embedded views did not keep their own heights" ;;
+  *)    warn "T29  native frames: not asserted (driver never ran)" ;;
+esac
+if [ -d "$ARTIFACT_DIR" ]; then
+  echo "Artifacts: $ARTIFACT_DIR"
+fi
+
+if [ "$SUITE_RESULT" = "PASS" ] && [ "$T27_RESULT" != "FAIL" ] \
+   && [ "$DUAL_INLINE_RESULT" != "FAIL" ] && [ "${#MISSING_IDS[@]}" -eq 0 ]; then
   ok "ALL E2E TESTS PASSED (iOS)"
   exit 0
 else

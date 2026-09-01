@@ -562,6 +562,54 @@ Déclenchés par le script hôte → composant `E2ETestRunner.tsx` embarqué dan
 
 ---
 
+## T28 — Vue embarquée imbriquée dans un écran `react-native-screens`
+
+**Ce que ça teste :** une `PLYPresentationView` montée **à l'intérieur** d'un `ScreenStack` / `ScreenStackItem` de `react-native-screens`, c'est-à-dire la hiérarchie que produit tout écran de `@react-navigation/native-stack`.
+
+**Le bug gardé (iOS) :** `PurchaselyView.attachController` déclarait le contrôleur embarqué enfant du **root** view controller de l'app, alors que sa vue vit sous un `RNSScreen`. UIKit lève `UIViewControllerHierarchyInconsistency` dès que les deux divergent et **l'app meurt**. Sur un build non corrigé ce test n'échoue donc pas : plus aucun marqueur n'est émis, et la suite tombe sur son propre filet.
+
+**Pourquoi T25 ne le voyait pas :** T25 monte la vue dans un overlay absolu, où le vrai ancêtre EST le root VC. C'est l'imbrication qui fait tout le test.
+
+Android n'a jamais eu le bug (il attend `isAttachedToWindow` avant de créer son fragment) mais fait tourner le même test en parité.
+
+| Step | Action | Assert |
+|------|--------|--------|
+| 1 | `presentation.placement(...).build().preload()` | — |
+| 2 | monter la vue dans `<ScreenStack><ScreenStackItem>` | — |
+| 3 | `waitFor(PRESENTATION_VIEWED, 30000)` | event reçu, app vivante |
+| 4 | `[E2E:READY_FOR_NESTED_SHOT]` → capture hôte | screenshot non vide |
+
+**Marqueurs :** `[E2E:T28:PASS]` / `[E2E:T28:FAIL]`, plus `[E2E:READY_FOR_NESTED_SHOT]`
+**Driver host :** `capture_nested_inline.sh` (Android) / `capture_nested_inline_ios.sh` (iOS) — capture seule, l'assertion dure est le marqueur lui-même.
+**Artefact :** `integration_test/artifacts/e2e_t28_nested_inline_{android,ios}.png`
+
+---
+
+## T29 — Deux vues embarquées montées en même temps gardent leur propre hauteur
+
+**Ce que ça teste :** deux `PLYPresentationView` montées simultanément dans des containers de hauteurs différentes (260dp et 110dp). Chacune doit rendre à **sa** taille.
+
+**Le bug gardé (Android) :** React Native réutilise **un seul** view manager pour toutes les `<PLYPresentationView />`. `PurchaselyViewManager` gardait `propWidth` / `propHeight` sur le manager lui-même : la dernière vue à recevoir son style imposait ses dimensions aux deux, et une bannière rendait rognée.
+
+**Pourquoi l'assertion est côté hôte :** les tailles qui dérapent sont celles des **enfants natifs**. JS ne les voit pas — les containers RN gardent la hauteur que le test leur a donnée quoi qu'il arrive. Le driver lit donc les bounds réels dans l'arbre de vues (`uiautomator dump` sur Android, `idb ui describe-all` sur iOS) et vérifie qu'ils diffèrent et suivent chacun son container. La capture d'écran est l'artefact que lit un humain, pas ce en quoi le test a confiance.
+
+**Note fixture :** l'app de test n'a qu'un placement, et deux `preload()` du même placement coup sur coup sont rejetés par le SDK. La seconde requête passe donc par `screen(id)` — même contenu, chemin embarqué identique. Une intégration réelle monte deux bannières depuis deux placements.
+
+| Step | Action | Assert |
+|------|--------|--------|
+| 1 | `placement(...).build().preload()` | `screenId` non-vide |
+| 2 | `screen(screenId).build().preload()` | — |
+| 3 | monter les deux vues (containers 260dp / 110dp) | — |
+| 4 | `waitFor(2 × PRESENTATION_VIEWED, 30000)` | les deux ont rendu |
+| 5 | `[E2E:DUAL_INLINE_DP:260:110]` + `[E2E:READY_FOR_DUAL_INLINE]` | — |
+| 6 | driver hôte : bounds natifs | hauteurs distinctes, chacune ≈ son container |
+
+**Marqueurs :** `[E2E:T29:PASS]` / `[E2E:T29:FAIL]`, plus `[E2E:DUAL_INLINE_DP:tall:short]` et `[E2E:READY_FOR_DUAL_INLINE]`
+**Driver host :** `assert_dual_inline.sh` (Android) / `assert_dual_inline_ios.sh` (iOS) — **verdict bloquant** : son échec fait échouer le run, indépendamment du marqueur JS qui, lui, ne dit que « les deux ont chargé ».
+**Artefact :** `integration_test/artifacts/e2e_t29_dual_inline_{android,ios}.png` + le dump de hiérarchie.
+
+---
+
 ## Architecture du runner
 
 ```
@@ -573,11 +621,13 @@ CI (ubuntu-latest + KVM)
               ├── surveille [E2E:READY_FOR_TAP]          → tap_purchase.sh       (T8)
               ├── surveille [E2E:READY_FOR_BACK]         → press_back.sh         (T9)
               ├── surveille [E2E:READY_FOR_INLINE_CLOSE] → tap_close_inline.sh   (T25)
-              ├── surveille [E2E:SUITE:PASS|FAIL] (suite principale T1-T26)
+              ├── surveille [E2E:READY_FOR_NESTED_SHOT]   → capture_nested_inline.sh (T28)
+              ├── surveille [E2E:READY_FOR_DUAL_INLINE]   → assert_dual_inline.sh    (T29, verdict bloquant)
+              ├── surveille [E2E:SUITE:PASS|FAIL] (suite principale T1-T26 + T28-T29)
               ├── si PASS → relaunch --es E2E_PHASE deeplink_coldstart (process neuf)
               │              └── surveille [E2E:T27:PASS|FAIL]          (T27 cold-start)
               ├── chaque driver hôte est `wait`é : code retour non-nul → warning visible
-              ├── tout id T1-T27 sans AUCUN marqueur PASS/FAIL/SKIP → échec (filet authoritatif)
+              ├── tout id T1-T29 sans AUCUN marqueur PASS/FAIL/SKIP → échec (filet authoritatif)
               └── exit 0 si (suite PASS ET T27 ≠ FAIL ET aucun marqueur manquant), sinon 1
 
 CI (macos-15 + simulateur iOS)
@@ -588,11 +638,13 @@ CI (macos-15 + simulateur iOS)
         ├── surveille [E2E:READY_FOR_TAP]          → tap_purchase_ios.sh      (idb ui tap, T8)
         ├── surveille [E2E:READY_FOR_BACK]         → swipe_dismiss_ios.sh     (idb close/swipe, T9)
         ├── surveille [E2E:READY_FOR_INLINE_CLOSE] → tap_close_inline_ios.sh  (idb ui tap, T25)
-        ├── surveille [E2E:SUITE:PASS|FAIL] (suite principale T1-T26)
+        ├── surveille [E2E:READY_FOR_NESTED_SHOT]   → capture_nested_inline_ios.sh (T28)
+        ├── surveille [E2E:READY_FOR_DUAL_INLINE]   → assert_dual_inline_ios.sh    (T29, verdict bloquant)
+        ├── surveille [E2E:SUITE:PASS|FAIL] (suite principale T1-T26 + T28-T29)
         ├── si PASS → relaunch SIMCTL_CHILD_E2E_PHASE=deeplink_coldstart (process neuf)
         │              └── surveille [E2E:T27:PASS|FAIL]          (T27 cold-start)
         ├── chaque driver hôte est `wait`é : code retour non-nul → warning visible
-        ├── tout id T1-T27 sans AUCUN marqueur PASS/FAIL/SKIP → échec (filet authoritatif)
+        ├── tout id T1-T29 sans AUCUN marqueur PASS/FAIL/SKIP → échec (filet authoritatif)
         └── exit 0 si (suite PASS ET T27 ≠ FAIL ET aucun marqueur manquant), sinon 1
 ```
 

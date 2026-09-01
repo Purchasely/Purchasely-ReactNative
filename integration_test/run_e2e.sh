@@ -57,6 +57,11 @@ fi
 TAP_DRIVER="$SCRIPT_DIR/tools/tap_purchase.sh"
 BACK_DRIVER="$SCRIPT_DIR/tools/press_back.sh"
 INLINE_CLOSE_DRIVER="$SCRIPT_DIR/tools/tap_close_inline.sh"
+NESTED_SHOT_DRIVER="$SCRIPT_DIR/tools/capture_nested_inline.sh"
+DUAL_INLINE_DRIVER="$SCRIPT_DIR/tools/assert_dual_inline.sh"
+# Screenshots and view-hierarchy dumps land here; CI uploads the directory.
+ARTIFACT_DIR="${E2E_ARTIFACT_DIR:-$REPO_ROOT/integration_test/artifacts}"
+mkdir -p "$ARTIFACT_DIR"
 LOGCAT_FILE="/tmp/e2e_rn_logcat_$$.log"
 PKG="com.purchasely.demo"
 ACTIVITY="com.purchasely.demo/com.purchasely.MainActivity"
@@ -151,6 +156,11 @@ START_TS=$(date +%s)
 TAP_DONE=0
 BACK_DONE=0
 INLINE_CLOSE_DONE=0
+NESTED_SHOT_DONE=0
+DUAL_INLINE_DONE=0
+# T29's verdict comes from the host, not from a JS marker: the sizes it checks
+# live in the native view tree, which JS cannot read.
+DUAL_INLINE_RESULT="SKIP"
 SUITE_RESULT=""
 DRIVER_PIDS=()
 
@@ -183,6 +193,36 @@ while true; do
     INLINE_CLOSE_DONE=1
     log "T25: signaled -- launching inline close driver in background..."
     bash "$INLINE_CLOSE_DRIVER" "$DEV" & DRIVER_PIDS+=("$!:T25 inline close driver")
+  fi
+
+  # T28 nested-in-react-native-screens capture
+  if [ "$NESTED_SHOT_DONE" -eq 0 ] && grep -q '\[E2E:READY_FOR_NESTED_SHOT\]' "$LOGCAT_FILE" 2>/dev/null; then
+    NESTED_SHOT_DONE=1
+    log "T28: signaled -- capturing the nested embedded view..."
+    bash "$NESTED_SHOT_DRIVER" "$DEV" "$ARTIFACT_DIR" & DRIVER_PIDS+=("$!:T28 nested capture")
+  fi
+
+  # T29 dual embedded views: assert the native bounds, capture the proof.
+  # The runner prints the two container heights it used, so this script and the
+  # runner cannot drift apart on hardcoded numbers.
+  if [ "$DUAL_INLINE_DONE" -eq 0 ] && grep -q '\[E2E:READY_FOR_DUAL_INLINE\]' "$LOGCAT_FILE" 2>/dev/null; then
+    DUAL_INLINE_DONE=1
+    DUAL_DP=$(grep -o '\[E2E:DUAL_INLINE_DP:[0-9]*:[0-9]*\]' "$LOGCAT_FILE" | tail -1 | tr -d '[]' | cut -d: -f3,4)
+    TALL_DP="${DUAL_DP%%:*}"
+    SHORT_DP="${DUAL_DP##*:}"
+    if [ -z "$TALL_DP" ] || [ -z "$SHORT_DP" ]; then
+      err "T29: the runner did not print [E2E:DUAL_INLINE_DP:tall:short]"
+      DUAL_INLINE_RESULT="FAIL"
+    else
+      log "T29: signaled -- asserting the two embedded views (${TALL_DP}dp / ${SHORT_DP}dp)..."
+      if bash "$DUAL_INLINE_DRIVER" "$DEV" "$TALL_DP" "$SHORT_DP" "$ARTIFACT_DIR"; then
+        DUAL_INLINE_RESULT="PASS"
+        ok "T29: native bounds assertion PASSED"
+      else
+        DUAL_INLINE_RESULT="FAIL"
+        err "T29: native bounds assertion FAILED"
+      fi
+    fi
   fi
 
   # Suite completion
@@ -261,7 +301,7 @@ echo "==========================================="
 # still read as a full pass. It is now authoritative -- a missing marker fails
 # the run.
 MISSING_IDS=()
-for id in T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13 T14 T15 T16 T17 T18 T19 T20 T21 T22 T23 T24 T25 T26 T27; do
+for id in T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13 T14 T15 T16 T17 T18 T19 T20 T21 T22 T23 T24 T25 T26 T27 T28 T29; do
   PASS_LINE=$(grep "\[E2E:${id}:PASS\]" "$LOGCAT_FILE" 2>/dev/null | tail -1)
   FAIL_LINE=$(grep "\[E2E:${id}:FAIL\]" "$LOGCAT_FILE" 2>/dev/null | tail -1)
   SKIP_LINE=$(grep "\[E2E:${id}:SKIP\]" "$LOGCAT_FILE" 2>/dev/null | tail -1)
@@ -277,8 +317,21 @@ for id in T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13 T14 T15 T16 T17 T18 T19 T20
   fi
 done
 
+# T29's own [E2E:T29:PASS] marker only says both views loaded. The size claim is
+# the host's, and it is a gate: a SKIP here means the marker never fired, which
+# is already covered by MISSING_IDS, but a FAIL must sink the run on its own.
+case "$DUAL_INLINE_RESULT" in
+  PASS) ok   "T29  native bounds: each embedded view kept its own height" ;;
+  FAIL) err  "T29  native bounds: the two embedded views did not keep their own heights" ;;
+  *)    warn "T29  native bounds: not asserted (driver never ran)" ;;
+esac
+if [ -d "$ARTIFACT_DIR" ]; then
+  echo "Artifacts: $ARTIFACT_DIR"
+fi
+
 echo "==========================================="
-if [ "$SUITE_RESULT" = "PASS" ] && [ "$T27_RESULT" != "FAIL" ] && [ "${#MISSING_IDS[@]}" -eq 0 ]; then
+if [ "$SUITE_RESULT" = "PASS" ] && [ "$T27_RESULT" != "FAIL" ] \
+   && [ "$DUAL_INLINE_RESULT" != "FAIL" ] && [ "${#MISSING_IDS[@]}" -eq 0 ]; then
   ok "ALL E2E TESTS PASSED"
   exit 0
 else
