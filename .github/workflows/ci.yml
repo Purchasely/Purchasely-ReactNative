@@ -5,6 +5,9 @@ on:
   pull_request:
     branches:
       - main
+      # maintenance branches for older majors (release/5.x, ...). Without this
+      # a PR targeting one gets zero checks and stays mergeable unverified.
+      - 'release/**'
   merge_group:
     types:
       - checks_requested
