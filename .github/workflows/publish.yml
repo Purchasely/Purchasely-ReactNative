@@ -55,20 +55,20 @@ jobs:
 
       - name: Publish react-native-purchasely
         working-directory: packages/purchasely
-        run: npm publish --access public --provenance
+        run: npm publish --access public --provenance --tag 5.x
 
       - name: Publish @purchasely/react-native-purchasely-google
         working-directory: packages/google
-        run: npm publish --access public --provenance
+        run: npm publish --access public --provenance --tag 5.x
 
       - name: Publish @purchasely/react-native-purchasely-amazon
         working-directory: packages/amazon
-        run: npm publish --access public --provenance
+        run: npm publish --access public --provenance --tag 5.x
 
       - name: Publish @purchasely/react-native-purchasely-huawei
         working-directory: packages/huawei
-        run: npm publish --access public --provenance
+        run: npm publish --access public --provenance --tag 5.x
 
       - name: Publish @purchasely/react-native-purchasely-android-player
         working-directory: packages/android-player
-        run: npm publish --access public --provenance
+        run: npm publish --access public --provenance --tag 5.x
