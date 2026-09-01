@@ -93,3 +93,7 @@ nitrogen/
 jest_dx/
 node-compile-cache/
 **/coverage/
+
+# E2E host-driver output: screenshots and view-hierarchy dumps from a local run.
+# CI uploads these as artifacts instead of committing them.
+integration_test/artifacts/
