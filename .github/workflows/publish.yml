@@ -67,8 +67,13 @@ jobs:
             # this release is the newest version of the package
             DIST_TAG="latest"
           else
-            # maintenance release on an older major: keep `latest` where it is
-            DIST_TAG="${MAJOR}.x"
+            # Maintenance release on an older major: keep `latest` where it is.
+            # The `release-` prefix is required, not cosmetic: npm refuses any
+            # dist-tag that parses as a SemVer range, so `5.x`, `v5` and `5`
+            # all fail with "Tag name must not be a valid SemVer range".
+            # Consumers are unaffected -- `npm i <pkg>@5.x` still resolves as a
+            # version range, which needs no dist-tag at all.
+            DIST_TAG="release-${MAJOR}"
           fi
 
           echo "release=$TAG  npm latest=$PUBLISHED  ->  dist-tag=$DIST_TAG"
