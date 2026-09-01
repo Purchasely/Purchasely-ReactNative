@@ -67,7 +67,15 @@ jobs:
         run: |
           TAG="${{ github.ref_name }}"
           MAJOR="${TAG%%.*}"
-          PUBLISHED="$(npm view react-native-purchasely version 2>/dev/null || echo '0.0.0')"
+
+          # Fail closed. A default here would be a default towards `latest`:
+          # any real version sorts above a placeholder, so a registry blip
+          # during a 5.x release would hand `latest` to the older major. There
+          # is no safe guess, so refuse to publish instead.
+          if ! PUBLISHED="$(npm view react-native-purchasely version 2>/dev/null)" || [ -z "$PUBLISHED" ]; then
+            echo "::error::could not read the published version of react-native-purchasely from npm; refusing to guess the dist-tag"
+            exit 1
+          fi
 
           if [ "$TAG" != "${TAG#*-}" ]; then
             # 6.1.0-rc.1 and friends must never become `latest`
