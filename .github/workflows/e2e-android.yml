@@ -96,7 +96,7 @@ jobs:
             exit 1
           fi
 
-      - name: Run E2E suite on emulator (T1-T27)
+      - name: Run E2E suite on emulator (T1-T29)
         # ReactiveCircus/android-emulator-runner handles: system-image install,
         # AVD creation, emulator start with KVM, boot wait, animations disable.
         uses: ReactiveCircus/android-emulator-runner@v2
