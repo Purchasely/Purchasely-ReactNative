@@ -1,5 +1,5 @@
 /**
- * E2E test runner — T1–T29
+ * E2E test runner — T1–T30
  *
  * Renders as the root component when the app is launched with E2E_MODE=true.
  * The main suite (T1–T26) runs sequentially in a single SDK session; T27
@@ -156,6 +156,7 @@ const INITIAL_TESTS: TestResult[] = [
     { id: 'T27', name: 'cold-start deeplink via builder .handleDeeplink() before start()', status: 'pending' },
     { id: 'T28', name: 'embedded view nested in a react-native-screens screen (no VC hierarchy crash)', status: 'pending' },
     { id: 'T29', name: 'two embedded views mounted at once keep their own height', status: 'pending' },
+    { id: 'T30', name: 'embedded view unmounted then remounted under another screen', status: 'pending' },
 ]
 
 // T29: the two container heights, in density-independent points. They must stay
@@ -184,6 +185,11 @@ export default function E2ETestRunner(props: { phase?: string } = {}) {
     const [dualRequests, setDualRequests] = useState<
         [PLYPresentationRequest, PLYPresentationRequest] | null
     >(null)
+    // T30: the embedded paywall request currently mounted, and WHICH of two
+    // react-native-screens screens hosts it. Remounting under the other screen is
+    // the whole point — see the test.
+    const [remountRequest, setRemountRequest] = useState<PLYPresentationRequest | null>(null)
+    const [remountScreen, setRemountScreen] = useState<'a' | 'b'>('a')
 
     function updateTest(id: string, patch: Partial<TestResult>) {
         setTests((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)))
@@ -1331,10 +1337,84 @@ export default function E2ETestRunner(props: { phase?: string } = {}) {
             }
         } catch (e) { fail('T29', e); suitePass = false; setDualRequests(null) }
 
+        await sleep(1000)
+
+        // ── T30 — unmount, then remount under ANOTHER screen ──────────────────
+        // Regression guard for the teardown/re-setup paths the T28 fix
+        // introduced, which nothing else exercises:
+        //
+        //   iOS: `didMoveToWindow` now releases the embedded controller from its
+        //   parent when the host leaves the window, and re-resolves the ancestor
+        //   on the way back in. An implementation that cached the first parent
+        //   instead would raise `UIViewControllerHierarchyInconsistency` again the
+        //   moment the view came back under a different screen — which is exactly
+        //   what a navigation stack does on every push and pop.
+        //
+        //   Android: `onDropViewInstance` now cancels the per-view Choreographer
+        //   callback and drops the view's props. If the cleanup were wrong, the
+        //   remount would either render nothing (props gone too early) or leave
+        //   the old frame loop running against a dead view.
+        //
+        // The remount deliberately lands under a DIFFERENT ScreenStackItem, so
+        // the second attach must resolve a different ancestor controller than the
+        // first — the case the fix exists for, not just "mount twice".
+        running('T30')
+        try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            let viewedA: any = null
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            let viewedB: any = null
+            let onScreenB = false
+            const listener30 = Purchasely.addEventListener((event: any) => {
+                if (event.name !== 'PRESENTATION_VIEWED') return
+                if (onScreenB) viewedB = event
+                else viewedA = event
+            })
+            try {
+                const first = Purchasely.presentation.placement(PLACEMENT_AUDIENCES).build()
+                await withTimeout(first.preload(), 30000, 'T30 first preload()')
+
+                setRemountScreen('a')
+                setRemountRequest(first)
+                await waitFor(() => viewedA, 60000, 300)
+
+                // Unmount: the host leaves the window entirely.
+                setRemountRequest(null)
+                await sleep(2000)
+
+                // Remount under the other screen. A fresh request, because a
+                // request consumed by an unmounted view is evicted natively and
+                // must be preloaded again before reuse (documented on the
+                // `request` prop).
+                const second = Purchasely.presentation.placement(PLACEMENT_AUDIENCES).build()
+                await withTimeout(second.preload(), 30000, 'T30 second preload()')
+
+                onScreenB = true
+                setRemountScreen('b')
+                setRemountRequest(second)
+
+                const seenB = await waitFor(() => viewedB, 60000, 300)
+
+                console.log('[E2E:READY_FOR_REMOUNT_SHOT]')
+                appendLog('T30: signaled READY_FOR_REMOUNT_SHOT — waiting for the host screenshot…')
+                await sleep(4000)
+
+                pass(
+                    'T30',
+                    `embedded view rendered under screen A, unmounted, then rendered again ` +
+                    `under screen B placement_id=${seenB.properties?.placement_id ?? 'n/a'} — ` +
+                    `ancestor re-resolved, no VC hierarchy crash`
+                )
+            } finally {
+                setRemountRequest(null)
+                listener30.remove()
+            }
+        } catch (e) { fail('T30', e); suitePass = false; setRemountRequest(null) }
+
         // ── Final report ──────────────────────────────────────────────────────
         setSuiteStatus(suitePass ? 'pass' : 'fail')
         if (suitePass) {
-            console.log('[E2E:SUITE:PASS] All main-suite tests passed (T1-T26 + T28-T29; T27 in cold-start phase)')
+            console.log('[E2E:SUITE:PASS] All main-suite tests passed (T1-T26 + T28-T30; T27 in cold-start phase)')
             appendLog('=== SUITE PASS ✓ ===')
         } else {
             console.log('[E2E:SUITE:FAIL] One or more tests failed')
@@ -1552,6 +1632,31 @@ export default function E2ETestRunner(props: { phase?: string } = {}) {
             deliberately different fixed heights. The labels are what makes the
             screenshot readable on its own; the hard assertion is the host driver
             reading the two native views' bounds. */}
+        {/* T30: the same embedded paywall, hosted by one of TWO distinct native
+            screens. `screenId` differs between them, so react-native-screens
+            creates a different RNSScreen — and therefore a different owning
+            UIViewController on iOS — for each. Remounting from one to the other
+            is what forces the ancestor to be resolved again. */}
+        {remountRequest && (
+            <View style={styles.inlineOverlay} testID="ply-e2e-remount-host">
+                <ScreenStack style={styles.fill}>
+                    <ScreenStackItem
+                        screenId={`ply-e2e-t30-${remountScreen}`}
+                        style={styles.fill}
+                    >
+                        <View style={styles.nestedScreenBody}>
+                            <Text style={styles.nestedScreenLabel}>
+                                T30 — screen {remountScreen.toUpperCase()}
+                            </Text>
+                            <View style={styles.nestedPaywallSlot}>
+                                <PLYPresentationView request={remountRequest} flex={1} />
+                            </View>
+                        </View>
+                    </ScreenStackItem>
+                </ScreenStack>
+            </View>
+        )}
+
         {dualRequests && (
             <View style={styles.dualOverlay} testID="ply-e2e-dual-host">
                 <Text style={styles.dualLabel}>T29 — tall slot ({T29_TALL_DP}dp)</Text>

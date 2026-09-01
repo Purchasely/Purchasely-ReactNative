@@ -127,6 +127,7 @@ BACK_DRIVER="$SCRIPT_DIR/tools/swipe_dismiss_ios.sh"
 INLINE_CLOSE_DRIVER="$SCRIPT_DIR/tools/tap_close_inline_ios.sh"
 NESTED_SHOT_DRIVER="$SCRIPT_DIR/tools/capture_nested_inline_ios.sh"
 DUAL_INLINE_DRIVER="$SCRIPT_DIR/tools/capture_dual_inline_ios.sh"
+REMOUNT_SHOT_DRIVER="$SCRIPT_DIR/tools/capture_remount_inline_ios.sh"
 # Screenshots land here; CI uploads the directory.
 ARTIFACT_DIR="${E2E_ARTIFACT_DIR:-$REPO_ROOT/integration_test/artifacts}"
 mkdir -p "$ARTIFACT_DIR"
@@ -221,6 +222,7 @@ BACK_DONE=0
 INLINE_CLOSE_DONE=0
 NESTED_SHOT_DONE=0
 DUAL_INLINE_DONE=0
+REMOUNT_SHOT_DONE=0
 SUITE_RESULT=""
 DRIVER_PIDS=()
 
@@ -268,6 +270,13 @@ while true; do
     DUAL_INLINE_DONE=1
     log "T29: signaled -- capturing the two embedded views..."
     bash "$DUAL_INLINE_DRIVER" "$UDID" "$ARTIFACT_DIR" & DRIVER_PIDS+=("$!:T29 dual capture")
+  fi
+
+  # T30 remount capture
+  if [ "$REMOUNT_SHOT_DONE" -eq 0 ] && grep -q '\[E2E:READY_FOR_REMOUNT_SHOT\]' "$LOGFILE" 2>/dev/null; then
+    REMOUNT_SHOT_DONE=1
+    log "T30: signaled -- capturing the remounted embedded view..."
+    bash "$REMOUNT_SHOT_DRIVER" "$UDID" "$ARTIFACT_DIR" & DRIVER_PIDS+=("$!:T30 remount capture")
   fi
 
   if grep -q '\[E2E:SUITE:PASS\]' "$LOGFILE" 2>/dev/null; then
@@ -383,7 +392,7 @@ echo "==========================================="
 # reported would still read as a full pass. It is now authoritative -- a
 # missing marker fails the run.
 MISSING_IDS=()
-for id in T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13 T14 T15 T16 T17 T18 T19 T20 T21 T22 T23 T24 T25 T26 T27 T28 T29; do
+for id in T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13 T14 T15 T16 T17 T18 T19 T20 T21 T22 T23 T24 T25 T26 T27 T28 T29 T30; do
   PASS_LINE=$(grep "\[E2E:${id}:PASS\]" "$LOGFILE" 2>/dev/null | tail -1)
   FAIL_LINE=$(grep "\[E2E:${id}:FAIL\]" "$LOGFILE" 2>/dev/null | tail -1)
   SKIP_LINE=$(grep "\[E2E:${id}:SKIP\]" "$LOGFILE" 2>/dev/null | tail -1)
