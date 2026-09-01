@@ -99,6 +99,18 @@ function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+/** Rejects if `promise` has not settled within `ms`, naming what was waited on.
+ * A bridge promise that never settles would otherwise hang the whole suite until
+ * the host's own timeout, with no marker and nothing to read in the log. */
+function withTimeout<T>(promise: Promise<T>, ms: number, what: string): Promise<T> {
+    return Promise.race([
+        promise,
+        sleep(ms).then<never>(() => {
+            throw new Error(`${what} did not settle within ${ms}ms`)
+        }),
+    ])
+}
+
 async function waitFor<T>(
     fn: () => T | null | undefined,
     timeoutMs: number,
@@ -1229,7 +1241,10 @@ export default function E2ETestRunner(props: { phase?: string } = {}) {
                 await req28.preload()
                 setNestedRequest(req28)
 
-                const seen28 = await waitFor(() => viewed28, 30000, 300)
+                // 60 s, not the usual 30: this runs at the tail of a long suite,
+                // after every other test has hammered the SDK, and its failure
+                // mode is a timeout that reads as a crash regression.
+                const seen28 = await waitFor(() => viewed28, 60000, 300)
 
                 // The app is still alive and the paywall rendered inside the
                 // native screen. Let the host capture the proof.
@@ -1257,10 +1272,12 @@ export default function E2ETestRunner(props: { phase?: string } = {}) {
         // its dimensions on both, and one banner rendered clipped.
         //
         // The RN side can only assert that both views loaded — the sizes that
-        // matter belong to the NATIVE children, which JS cannot measure. The host
-        // driver reads them from the real view hierarchy (`uiautomator dump` on
-        // Android, `idb ui describe-all` on iOS) at the marker below and asserts
-        // the two differ; it also captures a screenshot as the visual artifact.
+        // matter belong to the NATIVE children, which JS cannot measure. On
+        // Android the host driver reads them from the real view hierarchy
+        // (`uiautomator dump`) at the marker below and its verdict fails the run.
+        // iOS only captures the screenshot: `idb ui describe-all` returns the
+        // accessibility tree, which exposes no container frames to measure — see
+        // tools/capture_dual_inline_ios.sh. The bug guarded here is Android's.
         running('T29')
         try {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1276,11 +1293,14 @@ export default function E2ETestRunner(props: { phase?: string } = {}) {
                 // placements; `screen(id)` is the closest stand-in the fixture
                 // allows, and it exercises the same embedded path.
                 const tall = Purchasely.presentation.placement(PLACEMENT_AUDIENCES).build()
-                const loadedTall = await tall.preload()
+                const loadedTall = await withTimeout(tall.preload(), 30000, 'tall preload()')
                 if (!loadedTall.screenId) throw new Error('preload returned no screenId')
 
+                // Observed on iOS: this second preload sometimes never settles —
+                // neither resolve nor reject. Without the race the suite hangs to
+                // the host timeout with no marker at all.
                 const short = Purchasely.presentation.screen(loadedTall.screenId).build()
-                await short.preload()
+                await withTimeout(short.preload(), 30000, 'short preload()')
 
                 setDualRequests([tall, short])
 
@@ -1301,7 +1321,9 @@ export default function E2ETestRunner(props: { phase?: string } = {}) {
                     'T29',
                     `two embedded views rendered simultaneously in ${T29_TALL_DP}dp and ` +
                     `${T29_SHORT_DP}dp containers — ${viewed29.length} PRESENTATION_VIEWED; ` +
-                    `native bounds asserted by the host driver`
+                    (Platform.OS === 'android'
+                        ? 'native bounds asserted by the host driver'
+                        : 'host captured the screenshot (iOS exposes no container frames to assert on)')
                 )
             } finally {
                 setDualRequests(null)

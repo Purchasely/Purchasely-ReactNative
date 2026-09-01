@@ -605,7 +605,8 @@ Android n'a jamais eu le bug (il attend `isAttachedToWindow` avant de créer son
 | 6 | driver hôte : bounds natifs | hauteurs distinctes, chacune ≈ son container |
 
 **Marqueurs :** `[E2E:T29:PASS]` / `[E2E:T29:FAIL]`, plus `[E2E:DUAL_INLINE_DP:tall:short]` et `[E2E:READY_FOR_DUAL_INLINE]`
-**Driver host :** `assert_dual_inline.sh` (Android) / `assert_dual_inline_ios.sh` (iOS) — **verdict bloquant** : son échec fait échouer le run, indépendamment du marqueur JS qui, lui, ne dit que « les deux ont chargé ».
+**Driver host Android :** `assert_dual_inline.sh` — **verdict bloquant** : son échec fait échouer le run, indépendamment du marqueur JS qui, lui, ne dit que « les deux ont chargé ».
+**Driver host iOS :** `capture_dual_inline_ios.sh` — **capture seule, pas d'assertion**. `idb ui describe-all` rend l'arbre d'**accessibilité** : des labels et des contrôles, pas les `UIView` conteneurs dans lesquelles vivent les paywalls. Aucun élément ne porte la frame du slot, donc toute assertion de hauteur y serait une heuristique déguisée en mesure. iOS garde donc ce qu'il peut affirmer honnêtement : les deux vues se sont déclarées rendues (assertion JS de T29), et voici l'image. Le bug gardé est de toute façon un bug Android.
 **Artefact :** `integration_test/artifacts/e2e_t29_dual_inline_{android,ios}.png` + le dump de hiérarchie.
 
 ---
@@ -639,7 +640,7 @@ CI (macos-15 + simulateur iOS)
         ├── surveille [E2E:READY_FOR_BACK]         → swipe_dismiss_ios.sh     (idb close/swipe, T9)
         ├── surveille [E2E:READY_FOR_INLINE_CLOSE] → tap_close_inline_ios.sh  (idb ui tap, T25)
         ├── surveille [E2E:READY_FOR_NESTED_SHOT]   → capture_nested_inline_ios.sh (T28)
-        ├── surveille [E2E:READY_FOR_DUAL_INLINE]   → assert_dual_inline_ios.sh    (T29, verdict bloquant)
+        ├── surveille [E2E:READY_FOR_DUAL_INLINE]   → capture_dual_inline_ios.sh   (T29, capture seule)
         ├── surveille [E2E:SUITE:PASS|FAIL] (suite principale T1-T26 + T28-T29)
         ├── si PASS → relaunch SIMCTL_CHILD_E2E_PHASE=deeplink_coldstart (process neuf)
         │              └── surveille [E2E:T27:PASS|FAIL]          (T27 cold-start)
