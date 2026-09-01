@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - main
+      - 'release/**'
   merge_group:
     types:
       - checks_requested
@@ -83,7 +84,13 @@ jobs:
           ./gradlew :app:assembleDebug $GRADLE_FLAGS
 
   build-ios:
-    runs-on: macos-latest
+    # Pinned, do not move to macos-latest. This is the 5.x maintenance line:
+    # it ships React Native 0.79.2, whose bundled fmt does not compile under
+    # the Xcode 26 clang that macos-latest now carries ("call to consteval
+    # function ... is not a constant expression" in fmt/format-inl.h).
+    # macos-15 defaults to Xcode 16.4, the toolchain 5.x was released on.
+    # Drop the pin when this branch is retired, not before.
+    runs-on: macos-15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -101,17 +108,17 @@ jobs:
             example/ios/Pods
             ~/.cocoapods
             ~/Library/Caches/CocoaPods
-          key: ${{ runner.os }}-cocoapods-${{ hashFiles('example/ios/Podfile', 'packages/purchasely/react-native-purchasely.podspec') }}
+          key: ${{ runner.os }}-15-cocoapods-${{ hashFiles('example/ios/Podfile', 'packages/purchasely/react-native-purchasely.podspec') }}
           restore-keys: |
-            ${{ runner.os }}-cocoapods-
+            ${{ runner.os }}-15-cocoapods-
 
       - name: Cache Xcode DerivedData
         uses: actions/cache@v4
         with:
           path: example/ios/DerivedData
-          key: ${{ runner.os }}-derived-data-${{ hashFiles('example/ios/Podfile', 'packages/purchasely/react-native-purchasely.podspec', 'example/ios/*.xcodeproj/project.pbxproj') }}
+          key: ${{ runner.os }}-15-derived-data-${{ hashFiles('example/ios/Podfile', 'packages/purchasely/react-native-purchasely.podspec', 'example/ios/*.xcodeproj/project.pbxproj') }}
           restore-keys: |
-            ${{ runner.os }}-derived-data-
+            ${{ runner.os }}-15-derived-data-
 
       - name: Install CocoaPods
         run: |

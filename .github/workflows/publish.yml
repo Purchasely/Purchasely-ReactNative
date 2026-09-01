@@ -3,6 +3,9 @@ name: Publish to npm
 on:
   release:
     types: [published]
+  # The 5.7.3 and 6.0.0-rc.2 release events both failed and the actual publish
+  # was recovered by dispatching this workflow by hand. Keep that path open.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -25,15 +28,28 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          # a release event already resolves to the tagged commit; this is what
+          # makes a manual workflow_dispatch on a tag check out the right code
+          ref: ${{ github.ref }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          # Node 24 ships npm 11.x. Node 22 ships npm 10.9.4, below the 11.5.1
+          # that trusted publishing needs -- which is why this used to run
+          # `npm install -g npm@latest`, the step that failed the 5.7.3 release.
+          node-version: "24"
           registry-url: "https://registry.npmjs.org"
 
-      - name: Ensure npm >= 11.5.1 (required for trusted publishing)
-        run: npm install -g npm@latest
+      - name: Verify npm version (>= 11.5.1 required for trusted publishing)
+        run: |
+          NPM_VERSION="$(npm --version)"
+          echo "npm version: $NPM_VERSION"
+          if [ "$(printf '%s\n%s\n' "11.5.1" "$NPM_VERSION" | sort -V | head -n1)" != "11.5.1" ]; then
+            echo "::error::npm $NPM_VERSION is below required 11.5.1"
+            exit 1
+          fi
 
       - name: Build all packages
         run: |
@@ -53,22 +69,48 @@ jobs:
           done
           echo "All package versions match release tag: $TAG"
 
+      - name: Resolve the npm dist-tag from the release tag
+        id: dist_tag
+        run: |
+          TAG="${{ github.ref_name }}"
+          MAJOR="${TAG%%.*}"
+          PUBLISHED="$(npm view react-native-purchasely version 2>/dev/null || echo '0.0.0')"
+
+          if [ "$TAG" != "${TAG#*-}" ]; then
+            # 5.8.0-rc.1 and friends must never become `latest`
+            DIST_TAG="next"
+          elif [ "$(printf '%s\n%s\n' "$TAG" "$PUBLISHED" | sort -V | tail -n1)" = "$TAG" ]; then
+            # this release is the newest version of the package
+            DIST_TAG="latest"
+          else
+            # Maintenance release on an older major: keep `latest` where it is.
+            # The `release-` prefix is required, not cosmetic: npm refuses any
+            # dist-tag that parses as a SemVer range, so `5.x`, `v5` and `5`
+            # all fail with "Tag name must not be a valid SemVer range".
+            # Consumers are unaffected -- `npm i <pkg>@5.x` still resolves as a
+            # version range, which needs no dist-tag at all.
+            DIST_TAG="release-${MAJOR}"
+          fi
+
+          echo "release=$TAG  npm latest=$PUBLISHED  ->  dist-tag=$DIST_TAG"
+          echo "dist_tag=$DIST_TAG" >> "$GITHUB_OUTPUT"
+
       - name: Publish react-native-purchasely
         working-directory: packages/purchasely
-        run: npm publish --access public --provenance
+        run: npm publish --access public --provenance --tag "${{ steps.dist_tag.outputs.dist_tag }}"
 
       - name: Publish @purchasely/react-native-purchasely-google
         working-directory: packages/google
-        run: npm publish --access public --provenance
+        run: npm publish --access public --provenance --tag "${{ steps.dist_tag.outputs.dist_tag }}"
 
       - name: Publish @purchasely/react-native-purchasely-amazon
         working-directory: packages/amazon
-        run: npm publish --access public --provenance
+        run: npm publish --access public --provenance --tag "${{ steps.dist_tag.outputs.dist_tag }}"
 
       - name: Publish @purchasely/react-native-purchasely-huawei
         working-directory: packages/huawei
-        run: npm publish --access public --provenance
+        run: npm publish --access public --provenance --tag "${{ steps.dist_tag.outputs.dist_tag }}"
 
       - name: Publish @purchasely/react-native-purchasely-android-player
         working-directory: packages/android-player
-        run: npm publish --access public --provenance
+        run: npm publish --access public --provenance --tag "${{ steps.dist_tag.outputs.dist_tag }}"
