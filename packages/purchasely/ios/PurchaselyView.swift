@@ -81,7 +81,15 @@ class PurchaselyView: UIView {
   // "viewed" signal to JS at the same point (see `updateAppearanceState`).
   override func didMoveToWindow() {
     super.didMoveToWindow()
+    if window != nil {
+      attachControllerToParent()
+    }
     updateAppearanceState()
+    if window == nil {
+      // Balanced by `attachControllerToParent` on the next window entry, which
+      // re-resolves the ancestor: RN may re-mount this view under another screen.
+      detachControllerFromParent()
+    }
   }
 
   private func updateAppearanceState() {
@@ -120,7 +128,8 @@ class PurchaselyView: UIView {
   /// child-VC-containment pattern proven in the Flutter `NativeView`:
   ///   • frame + autoresizingMask (resynced in `layoutSubviews`) — no Auto Layout
   ///     constraints against the Yoga host view;
-  ///   • proper `addChild` / `didMove(toParent:)` containment;
+  ///   • proper `addChild` / `didMove(toParent:)` containment, DEFERRED to window
+  ///     entry (see `attachControllerToParent`);
   ///   • a BALANCED appearance transition driven from `updateAppearanceState`
   ///     (begin+end) on window entry — the old code called
   ///     `beginAppearanceTransition` without an `endAppearanceTransition`, so
@@ -135,14 +144,52 @@ class PurchaselyView: UIView {
     view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
     addSubview(view)
 
-    if let rootVC = PurchaselyView.findRootViewController() {
-      rootVC.addChild(controller)
-      controller.didMove(toParent: rootVC)
-    }
+    // Containment happens here only when we are ALREADY in a window (a prop set
+    // after mount, or the async `preload` completion); otherwise
+    // `didMoveToWindow` declares it on window entry.
+    attachControllerToParent()
 
-    // If we are already in a window (prop set after mount), drive the appearance
-    // transition now; otherwise `didMoveToWindow` will drive it on window entry.
     updateAppearanceState()
+  }
+
+  /// Declares the embedded controller a child of the view hierarchy's real
+  /// nearest ancestor controller.
+  ///
+  /// UIKit requires the parent declared through `addChild` to match the actual
+  /// ancestor of the child's view, and raises
+  /// `UIViewControllerHierarchyInconsistency` otherwise. The previous code always
+  /// used the app's ROOT controller, which crashed as soon as the inline view sat
+  /// inside a `RNSScreen` or a pager's `UIHostingController`.
+  ///
+  /// It is deferred to window entry on purpose: RN applies the props (and so runs
+  /// `setupView`) BEFORE inserting the view into its real hierarchy, when the
+  /// responder chain still ends at the root controller. This mirrors Android's
+  /// `isAttachedToWindow` wait in `PurchaselyViewManager.createFragment`.
+  private func attachControllerToParent() {
+    guard let controller = _controller, controller.parent == nil, window != nil else { return }
+    // The root controller stays as a fallback for a host mounted outside any
+    // controller-owned hierarchy.
+    guard let parent = nearestViewController() ?? PurchaselyView.findRootViewController() else { return }
+    parent.addChild(controller)
+    controller.didMove(toParent: parent)
+  }
+
+  private func detachControllerFromParent() {
+    guard let controller = _controller, controller.parent != nil else { return }
+    controller.willMove(toParent: nil)
+    controller.removeFromParent()
+  }
+
+  /// Nearest ancestor controller of this view, walking the responder chain
+  /// (`UIView.next` is the superview, or the owning controller for a controller's
+  /// root view). `internal` so the XCTest bundle can exercise it directly.
+  func nearestViewController() -> UIViewController? {
+    var responder: UIResponder? = next
+    while let current = responder {
+      if let controller = current as? UIViewController { return controller }
+      responder = current.next
+    }
+    return nil
   }
 
   private func detachController() {
@@ -154,11 +201,8 @@ class PurchaselyView: UIView {
         controller.beginAppearanceTransition(false, animated: false)
         controller.endAppearanceTransition()
       }
-      if controller.parent != nil {
-        controller.willMove(toParent: nil)
-        controller.removeFromParent()
-      }
     }
+    detachControllerFromParent()
     _appeared = false
     _view?.removeFromSuperview()
     _view = nil

@@ -194,6 +194,35 @@ class PurchaselyViewTests: XCTestCase {
         XCTAssertNil(purchaselyView.superview, "View should have no superview after removal")
     }
 
+    // MARK: - Nearest Ancestor Controller Tests
+
+    // Regression: `attachController` used to declare the embedded controller a
+    // child of the app's ROOT view controller. Under react-native-screens the
+    // real nearest ancestor is the RNSScreen's controller, and UIKit raises
+    // `UIViewControllerHierarchyInconsistency` when the two disagree.
+    func testNearestViewControllerFindsTheRealAncestor() {
+        let host = UIViewController()
+        let intermediate = UIView()
+        host.view.addSubview(intermediate)
+        intermediate.addSubview(purchaselyView)
+
+        XCTAssertTrue(purchaselyView.nearestViewController() === host,
+                      "Should walk the responder chain up to the owning controller, not the root VC")
+    }
+
+    func testNearestViewControllerIsNilWhenDetached() {
+        XCTAssertNil(purchaselyView.nearestViewController(),
+                     "A view with no superview has no ancestor controller")
+    }
+
+    func testNearestViewControllerIsNilUnderAControllerlessHierarchy() {
+        let parentView = UIView()
+        parentView.addSubview(purchaselyView)
+
+        XCTAssertNil(purchaselyView.nearestViewController(),
+                     "A plain view hierarchy owns no controller")
+    }
+
     // MARK: - Autoresizing Tests
 
     func testViewSupportAutoresizing() {
