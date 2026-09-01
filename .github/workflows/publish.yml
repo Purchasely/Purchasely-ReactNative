@@ -62,22 +62,56 @@ jobs:
           done
           echo "All package versions match release tag: $TAG"
 
+      - name: Resolve the npm dist-tag from the release tag
+        id: dist_tag
+        run: |
+          TAG="${{ github.ref_name }}"
+          MAJOR="${TAG%%.*}"
+
+          # Fail closed. A default here would be a default towards `latest`:
+          # any real version sorts above a placeholder, so a registry blip
+          # during a 5.x release would hand `latest` to the older major. There
+          # is no safe guess, so refuse to publish instead.
+          if ! PUBLISHED="$(npm view react-native-purchasely version 2>/dev/null)" || [ -z "$PUBLISHED" ]; then
+            echo "::error::could not read the published version of react-native-purchasely from npm; refusing to guess the dist-tag"
+            exit 1
+          fi
+
+          if [ "$TAG" != "${TAG#*-}" ]; then
+            # 6.1.0-rc.1 and friends must never become `latest`
+            DIST_TAG="next"
+          elif [ "$(printf '%s\n%s\n' "$TAG" "$PUBLISHED" | sort -V | tail -n1)" = "$TAG" ]; then
+            # this release is the newest version of the package
+            DIST_TAG="latest"
+          else
+            # Maintenance release on an older major: keep `latest` where it is.
+            # The `release-` prefix is required, not cosmetic: npm refuses any
+            # dist-tag that parses as a SemVer range, so `5.x`, `v5` and `5`
+            # all fail with "Tag name must not be a valid SemVer range".
+            # Consumers are unaffected -- `npm i <pkg>@5.x` still resolves as a
+            # version range, which needs no dist-tag at all.
+            DIST_TAG="release-${MAJOR}"
+          fi
+
+          echo "release=$TAG  npm latest=$PUBLISHED  ->  dist-tag=$DIST_TAG"
+          echo "dist_tag=$DIST_TAG" >> "$GITHUB_OUTPUT"
+
       - name: Publish react-native-purchasely
         working-directory: packages/purchasely
-        run: npm publish --access public --provenance --tag latest
+        run: npm publish --access public --provenance --tag "${{ steps.dist_tag.outputs.dist_tag }}"
 
       - name: Publish @purchasely/react-native-purchasely-google
         working-directory: packages/google
-        run: npm publish --access public --provenance --tag latest
+        run: npm publish --access public --provenance --tag "${{ steps.dist_tag.outputs.dist_tag }}"
 
       - name: Publish @purchasely/react-native-purchasely-amazon
         working-directory: packages/amazon
-        run: npm publish --access public --provenance --tag latest
+        run: npm publish --access public --provenance --tag "${{ steps.dist_tag.outputs.dist_tag }}"
 
       - name: Publish @purchasely/react-native-purchasely-huawei
         working-directory: packages/huawei
-        run: npm publish --access public --provenance --tag latest
+        run: npm publish --access public --provenance --tag "${{ steps.dist_tag.outputs.dist_tag }}"
 
       - name: Publish @purchasely/react-native-purchasely-android-player
         working-directory: packages/android-player
-        run: npm publish --access public --provenance --tag latest
+        run: npm publish --access public --provenance --tag "${{ steps.dist_tag.outputs.dist_tag }}"
