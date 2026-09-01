@@ -38,7 +38,7 @@ concurrency:
 
 jobs:
   e2e-android:
-    name: E2E Tests (Android T1-T29)
+    name: E2E Tests (Android T1-T30)
     # ubuntu-latest: KVM disponible pour x86_64, requis par reactivecircuit/android-emulator-runner.
     # macOS sera utilisé dans e2e-ios.yml (simulateur iOS).
     runs-on: ubuntu-latest
@@ -96,7 +96,7 @@ jobs:
             exit 1
           fi
 
-      - name: Run E2E suite on emulator (T1-T29)
+      - name: Run E2E suite on emulator (T1-T30)
         # ReactiveCircus/android-emulator-runner handles: system-image install,
         # AVD creation, emulator start with KVM, boot wait, animations disable.
         uses: ReactiveCircus/android-emulator-runner@v2

@@ -611,6 +611,32 @@ Android n'a jamais eu le bug (il attend `isAttachedToWindow` avant de créer son
 
 ---
 
+## T30 — Vue embarquée démontée puis remontée sous un autre écran
+
+**Ce que ça teste :** monter la vue dans un `ScreenStackItem`, la démonter, la remonter sous un **autre** `ScreenStackItem`. Le second attachement doit donc résoudre un ancêtre différent du premier.
+
+**Les chemins gardés**, tous deux introduits par les correctifs de cette branche et exercés par aucun autre test :
+
+- **iOS** — `didMoveToWindow` relâche désormais le contrôleur embarqué de son parent quand l'hôte quitte la fenêtre, et re-résout l'ancêtre au retour. Une implémentation qui garderait le premier parent en cache relèverait `UIViewControllerHierarchyInconsistency` dès que la vue revient sous un autre écran, ce que fait une pile de navigation à chaque push et chaque pop.
+- **Android** — `onDropViewInstance` annule maintenant le callback `Choreographer` de la vue et jette ses props. Un nettoyage faux ferait que le remontage ne rend rien (props jetées trop tôt), ou laisserait une boucle de frames orpheline tourner contre une vue morte.
+
+Remonter sous un écran **différent** est le point : « monter deux fois » ne prouverait rien.
+
+| Step | Action | Assert |
+|------|--------|--------|
+| 1 | preload + monter sous l'écran A | `PRESENTATION_VIEWED` |
+| 2 | démonter (l'hôte quitte la fenêtre) | — |
+| 3 | preload d'une **nouvelle** requête, monter sous l'écran B | `PRESENTATION_VIEWED` |
+| 4 | `[E2E:READY_FOR_REMOUNT_SHOT]` → capture hôte | screenshot non vide |
+
+Nouvelle requête à l'étape 3 : une requête consommée par une vue démontée est évincée côté natif et doit être préchargée à nouveau (documenté sur la prop `request`).
+
+**Marqueurs :** `[E2E:T30:PASS]` / `[E2E:T30:FAIL]`, plus `[E2E:READY_FOR_REMOUNT_SHOT]`
+**Driver host :** `capture_remount_inline.sh` / `capture_remount_inline_ios.sh` — capture seule, l'assertion dure est le marqueur.
+**Artefact :** `integration_test/artifacts/e2e_t30_remount_inline_{android,ios}.png`
+
+---
+
 ## Architecture du runner
 
 ```
@@ -624,11 +650,12 @@ CI (ubuntu-latest + KVM)
               ├── surveille [E2E:READY_FOR_INLINE_CLOSE] → tap_close_inline.sh   (T25)
               ├── surveille [E2E:READY_FOR_NESTED_SHOT]   → capture_nested_inline.sh (T28)
               ├── surveille [E2E:READY_FOR_DUAL_INLINE]   → assert_dual_inline.sh    (T29, verdict bloquant)
-              ├── surveille [E2E:SUITE:PASS|FAIL] (suite principale T1-T26 + T28-T29)
+              ├── surveille [E2E:READY_FOR_REMOUNT_SHOT]  → capture_remount_inline.sh (T30)
+              ├── surveille [E2E:SUITE:PASS|FAIL] (suite principale T1-T26 + T28-T30)
               ├── si PASS → relaunch --es E2E_PHASE deeplink_coldstart (process neuf)
               │              └── surveille [E2E:T27:PASS|FAIL]          (T27 cold-start)
               ├── chaque driver hôte est `wait`é : code retour non-nul → warning visible
-              ├── tout id T1-T29 sans AUCUN marqueur PASS/FAIL/SKIP → échec (filet authoritatif)
+              ├── tout id T1-T30 sans AUCUN marqueur PASS/FAIL/SKIP → échec (filet authoritatif)
               └── exit 0 si (suite PASS ET T27 ≠ FAIL ET aucun marqueur manquant), sinon 1
 
 CI (macos-15 + simulateur iOS)
@@ -641,11 +668,12 @@ CI (macos-15 + simulateur iOS)
         ├── surveille [E2E:READY_FOR_INLINE_CLOSE] → tap_close_inline_ios.sh  (idb ui tap, T25)
         ├── surveille [E2E:READY_FOR_NESTED_SHOT]   → capture_nested_inline_ios.sh (T28)
         ├── surveille [E2E:READY_FOR_DUAL_INLINE]   → capture_dual_inline_ios.sh   (T29, capture seule)
-        ├── surveille [E2E:SUITE:PASS|FAIL] (suite principale T1-T26 + T28-T29)
+        ├── surveille [E2E:READY_FOR_REMOUNT_SHOT]  → capture_remount_inline_ios.sh (T30)
+        ├── surveille [E2E:SUITE:PASS|FAIL] (suite principale T1-T26 + T28-T30)
         ├── si PASS → relaunch SIMCTL_CHILD_E2E_PHASE=deeplink_coldstart (process neuf)
         │              └── surveille [E2E:T27:PASS|FAIL]          (T27 cold-start)
         ├── chaque driver hôte est `wait`é : code retour non-nul → warning visible
-        ├── tout id T1-T29 sans AUCUN marqueur PASS/FAIL/SKIP → échec (filet authoritatif)
+        ├── tout id T1-T30 sans AUCUN marqueur PASS/FAIL/SKIP → échec (filet authoritatif)
         └── exit 0 si (suite PASS ET T27 ≠ FAIL ET aucun marqueur manquant), sinon 1
 ```
 
