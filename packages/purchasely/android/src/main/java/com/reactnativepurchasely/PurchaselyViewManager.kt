@@ -40,23 +40,23 @@ import kotlinx.coroutines.withContext
  */
 class PurchaselyViewManager(private val reactContext: ReactApplicationContext) : ViewGroupManager<FrameLayout>() {
 
-  private var propWidth: Int? = null
-  private var propHeight: Int? = null
-
   /** Props for a single mounted view, keyed by that view's own instance —
    * RN reuses this one manager across every `<PurchaselyView />`, so storing
    * props on the manager itself would let two simultaneous views clobber each
-   * other's placementId/screenId/requestId. */
-  private class ViewProps {
+   * other's placementId/screenId/requestId/width/height. */
+  internal class ViewProps {
     var placementId: String? = null
     var screenId: String? = null
     var requestId: String? = null
     var viewId: String? = null
+    var width: Int? = null
+    var height: Int? = null
+    var layoutCallback: Choreographer.FrameCallback? = null
   }
 
   private val propsByView = mutableMapOf<FrameLayout, ViewProps>()
 
-  private fun propsFor(view: FrameLayout): ViewProps =
+  internal fun propsFor(view: FrameLayout): ViewProps =
     propsByView.getOrPut(view) { ViewProps() }
 
   override fun getName(): String = "PurchaselyView"
@@ -102,7 +102,7 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
     val activity = (reactContext.currentActivity as? FragmentActivity) ?: return
 
     val parentView = root.findViewById<ViewGroup?>(reactNativeViewId) ?: return
-    setupLayout(parentView)
+    setupLayout(root, parentView)
 
     if (parentView.id != reactNativeViewId) {
       parentView.id = reactNativeViewId
@@ -149,29 +149,31 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
       .commitAllowingStateLoss()
   }
 
-  fun setupLayout(view: View) {
-    Choreographer.getInstance().postFrameCallback(object : Choreographer.FrameCallback {
+  /** Drives the embedded view's layout every frame. The callback is kept on the
+   * view's own props so `onDropViewInstance` can cancel it — it reschedules
+   * itself forever otherwise — and so a second `createFragment` (the
+   * attach-to-window retry) does not start a competing loop. */
+  private fun setupLayout(root: FrameLayout, view: View) {
+    val props = propsFor(root)
+    if (props.layoutCallback != null) return
+
+    val callback = object : Choreographer.FrameCallback {
       override fun doFrame(frameTimeNanos: Long) {
-        manuallyLayoutChildren(view)
+        manuallyLayoutChildren(view, props)
         view.viewTreeObserver.dispatchOnGlobalLayout()
         Choreographer.getInstance().postFrameCallback(this)
       }
-    })
+    }
+    props.layoutCallback = callback
+    Choreographer.getInstance().postFrameCallback(callback)
   }
 
-  fun manuallyLayoutChildren(view: View) {
+  private fun manuallyLayoutChildren(view: View, props: ViewProps) {
     for (i in 0 until (view as ViewGroup).childCount) {
       val child = view.getChildAt(i)
-      val width: Int = propWidth ?: when {
-        child.measuredWidth > 0 -> child.measuredWidth
-        (((child.parent as? View)?.measuredWidth) ?: 0) > 0 -> (child.parent as View).measuredWidth
-        else -> 0
-      }
-      val height: Int = propHeight ?: when {
-        child.measuredHeight > 0 -> child.measuredHeight
-        (((child.parent as? View)?.measuredHeight) ?: 0) > 0 -> (child.parent as View).measuredHeight
-        else -> 0
-      }
+      val parentView = child.parent as? View
+      val width = resolveChildSize(props.width, child.measuredWidth, parentView?.measuredWidth ?: 0)
+      val height = resolveChildSize(props.height, child.measuredHeight, parentView?.measuredHeight ?: 0)
       child.measure(
         View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
         View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY)
@@ -180,10 +182,22 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
     }
   }
 
+  internal fun resolveChildSize(propSize: Int?, childMeasured: Int, parentMeasured: Int): Int =
+    propSize ?: when {
+      childMeasured > 0 -> childMeasured
+      parentMeasured > 0 -> parentMeasured
+      else -> 0
+    }
+
   @ReactPropGroup(names = ["width", "height"], customType = "Style")
   fun setStyle(view: FrameLayout?, index: Int, value: Double) {
-    if (index == 0) propWidth = value.toInt()
-    if (index == 1) propHeight = value.toInt()
+    view ?: return
+    // RN sends NaN for a dimension the style never sets (a `flex`-sized view).
+    // `Double.NaN.toInt()` is 0, which would pin the paywall to a 0px box.
+    val size = if (value.isFinite() && value >= 0) value.toInt() else null
+    val props = propsFor(view)
+    if (index == 0) props.width = size
+    if (index == 1) props.height = size
   }
 
   @ReactProp(name = "placementId")
@@ -218,7 +232,9 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
     // Hardening: a view that unmounts without ever dismissing (e.g. the host
     // navigates away) would otherwise leak its entry in these maps forever —
     // only `emitPresentationDismissed`/`closePresentation` purged them before.
-    propsByView.remove(view)?.requestId?.let {
+    val props = propsByView.remove(view)
+    props?.layoutCallback?.let { Choreographer.getInstance().removeFrameCallback(it) }
+    props?.requestId?.let {
       PurchaselyModule.evictPresentationRequest(it)
     }
     val activity = (reactContext.currentActivity as? FragmentActivity) ?: return
