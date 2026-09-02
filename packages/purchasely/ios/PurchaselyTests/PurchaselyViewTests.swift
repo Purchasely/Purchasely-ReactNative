@@ -223,6 +223,70 @@ class PurchaselyViewTests: XCTestCase {
                      "A plain view hierarchy owns no controller")
     }
 
+    // The walk above is only half the fix: what UIKit checks is the parent
+    // DECLARED through `addChild`. These assert the declaration itself, which is
+    // what raised `UIViewControllerHierarchyInconsistency` in the client's app.
+    func testContainmentDeclaresTheNestedAncestorNotTheRootController() {
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 400, height: 600))
+        let root = UIViewController()
+        window.rootViewController = root
+        window.makeKeyAndVisible()
+
+        // Stands in for the RNSScreen controller the inline view sits inside.
+        let nested = UIViewController()
+        root.addChild(nested)
+        root.view.addSubview(nested.view)
+        nested.didMove(toParent: root)
+        nested.view.addSubview(purchaselyView)
+
+        let embedded = UIViewController()
+        purchaselyView._controller = embedded
+        purchaselyView.attachControllerToParent()
+
+        XCTAssertTrue(embedded.parent === nested,
+                      "Containment must name the real nearest ancestor, not the window's root VC")
+        XCTAssertFalse(embedded.parent === root,
+                       "Naming the root VC is the bug that crashed under react-native-screens")
+    }
+
+    func testContainmentIsReleasedWhenTheHostLeavesTheWindow() {
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 400, height: 600))
+        let root = UIViewController()
+        window.rootViewController = root
+        window.makeKeyAndVisible()
+        root.view.addSubview(purchaselyView)
+
+        let embedded = UIViewController()
+        purchaselyView._controller = embedded
+        purchaselyView.attachControllerToParent()
+        XCTAssertTrue(embedded.parent === root, "Precondition: containment declared")
+
+        // `didMoveToWindow(nil)` must release the parent, so a view remounted
+        // under another screen re-resolves its ancestor instead of keeping a
+        // stale one.
+        purchaselyView.removeFromSuperview()
+
+        XCTAssertNil(embedded.parent,
+                     "Leaving the window must release the declared parent")
+    }
+
+    func testContainmentIsSkippedWhenNoAncestorControllerExists() {
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 400, height: 600))
+        window.rootViewController = UIViewController()
+        window.makeKeyAndVisible()
+        // Mounted straight on the window, BESIDE the root controller's view, so
+        // no controller sits in this view's responder chain.
+        window.addSubview(purchaselyView)
+
+        let embedded = UIViewController()
+        purchaselyView._controller = embedded
+        purchaselyView.attachControllerToParent()
+
+        XCTAssertNil(embedded.parent,
+                     "With no ancestor controller there is no valid parent to declare — " +
+                     "falling back to the root VC would rebuild the inconsistency")
+    }
+
     // MARK: - Autoresizing Tests
 
     func testViewSupportAutoresizing() {

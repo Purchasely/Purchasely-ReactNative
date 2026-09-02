@@ -11,7 +11,9 @@ import Purchasely
 class PurchaselyView: UIView {
 
   private var _view: UIView?
-  private var _controller: UIViewController?
+  // `internal` so the XCTest bundle can install a stub controller and assert
+  // the containment `attachControllerToParent` declares.
+  var _controller: UIViewController?
   // Tracks whether we have already driven the embedded controller through an
   // "appeared" appearance transition, so we fire it exactly once per window entry.
   private var _appeared = false
@@ -165,11 +167,16 @@ class PurchaselyView: UIView {
   /// `setupView`) BEFORE inserting the view into its real hierarchy, when the
   /// responder chain still ends at the root controller. This mirrors Android's
   /// `isAttachedToWindow` wait in `PurchaselyViewManager.createFragment`.
-  private func attachControllerToParent() {
+  func attachControllerToParent() {
     guard let controller = _controller, controller.parent == nil, window != nil else { return }
-    // The root controller stays as a fallback for a host mounted outside any
-    // controller-owned hierarchy.
-    guard let parent = nearestViewController() ?? PurchaselyView.findRootViewController() else { return }
+    // No fallback to the app's root controller. A host mounted outside any
+    // controller-owned hierarchy has no valid parent to declare: the root
+    // controller's view is not our ancestor, so naming it would rebuild the very
+    // inconsistency this fix removes (and in a multi-scene app it could even name
+    // another window's root). Such a host simply gets no containment — the
+    // paywall still renders as a plain subview, and the appearance transition is
+    // driven from `updateAppearanceState`.
+    guard let parent = nearestViewController() else { return }
     parent.addChild(controller)
     controller.didMove(toParent: parent)
   }
@@ -207,18 +214,6 @@ class PurchaselyView: UIView {
     _view?.removeFromSuperview()
     _view = nil
     _controller = nil
-  }
-
-  /// Locates the host view controller, preferring the active scene's key window
-  /// (iOS 13+ multi-scene apps) and falling back to the app delegate's window.
-  /// Mirrors the Flutter `NativeView.findRootViewController()`.
-  private static func findRootViewController() -> UIViewController? {
-    if let windowScene = UIApplication.shared.connectedScenes
-        .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
-       let rootVC = windowScene.windows.first(where: { $0.isKeyWindow })?.rootViewController {
-      return rootVC
-    }
-    return UIApplication.shared.delegate?.window??.rootViewController
   }
 
   private func getPresentationController(presentation: PurchaselyPresentation?,
