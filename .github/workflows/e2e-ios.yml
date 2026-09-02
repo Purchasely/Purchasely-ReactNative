@@ -83,7 +83,37 @@ jobs:
           # idb_companion : tap Facebook (nécessite brew trust sur les brew récents).
           brew tap facebook/fb
           brew trust facebook/fb || true
-          brew install idb-companion
+
+          # idb-companion se compile depuis les sources et exige un Xcode COMPLET
+          # au moins aussi récent que celui que la formule déclare (26.0 à ce
+          # jour). Le job sélectionne volontairement Xcode 16.x pour builder l'app
+          # (RN 0.86), et brew refusait donc l'installation :
+          #   "A full installation of Xcode.app 26.0 is required to compile this
+          #    software" → l'étape échouait avant même de builder quoi que ce soit,
+          # ce qui laissait ce workflow rouge toutes les nuits.
+          #
+          # On sélectionne donc le Xcode le plus récent disponible le temps du
+          # `brew install`, puis on restaure celui du job. Les deux besoins sont
+          # indépendants : compiler idb-companion, et compiler l'app.
+          ORIGINAL_XCODE=$(xcode-select -p)
+          NEWEST_XCODE=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -1)
+          if [ -n "$NEWEST_XCODE" ] && [ "$NEWEST_XCODE/Contents/Developer" != "$ORIGINAL_XCODE" ]; then
+            echo "Selecting $NEWEST_XCODE to build idb-companion"
+            sudo xcode-select -s "$NEWEST_XCODE/Contents/Developer"
+          fi
+
+          # `|| true` : on restaure la sélection Xcode AVANT de décider de l'échec,
+          # sinon un `set -e` laisserait le runner sur le mauvais Xcode pour le
+          # build de l'app.
+          brew install idb-companion || IDB_COMPANION_FAILED=1
+
+          sudo xcode-select -s "$ORIGINAL_XCODE"
+          echo "Restored Xcode: $(xcodebuild -version | head -1)"
+
+          if [ -n "${IDB_COMPANION_FAILED:-}" ]; then
+            echo "::error::brew install idb-companion failed. Newest Xcode on this runner: ${NEWEST_XCODE:-none}. The formula needs a full Xcode at least as recent as the one it declares — this image may need bumping."
+            exit 1
+          fi
           # fb-idb (client Python) ne supporte pas Python 3.14 (asyncio.get_event_loop
           # y lève) — on l'isole dans un venv 3.11/3.12/3.13 déterministe et on
           # exporte le binaire via $IDB (lu par les drivers tap/swipe).
