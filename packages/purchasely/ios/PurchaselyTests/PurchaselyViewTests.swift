@@ -270,6 +270,43 @@ class PurchaselyViewTests: XCTestCase {
                      "Leaving the window must release the declared parent")
     }
 
+    // The claim this PR makes is that a view moved to another screen RE-RESOLVES
+    // its ancestor. Releasing the parent is only half of it, and T30 cannot see
+    // the other half: it drops the whole ScreenStack, so the second request gets
+    // brand-new native objects. This moves ONE view instance between two
+    // controllers, which is the case a missing re-resolve would break.
+    func testContainmentReResolvesTheAncestorWhenTheViewMovesToAnotherScreen() {
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 400, height: 600))
+        let root = UIViewController()
+        window.rootViewController = root
+        window.makeKeyAndVisible()
+
+        let screenA = UIViewController()
+        let screenB = UIViewController()
+        for screen in [screenA, screenB] {
+            root.addChild(screen)
+            root.view.addSubview(screen.view)
+            screen.didMove(toParent: root)
+        }
+
+        let embedded = UIViewController()
+        screenA.view.addSubview(purchaselyView)
+        purchaselyView._controller = embedded
+        purchaselyView.attachControllerToParent()
+        XCTAssertTrue(embedded.parent === screenA, "Precondition: declared under screen A")
+
+        // Move the SAME host view under screen B. `removeFromSuperview` releases
+        // the parent through `didMoveToWindow(nil)`; the re-add must resolve B.
+        purchaselyView.removeFromSuperview()
+        screenB.view.addSubview(purchaselyView)
+        purchaselyView.attachControllerToParent()
+
+        XCTAssertTrue(embedded.parent === screenB,
+                      "A view remounted under another screen must re-resolve its ancestor")
+        XCTAssertFalse(embedded.parent === screenA,
+                       "Keeping the stale parent is what UIKit answers with an inconsistency")
+    }
+
     func testContainmentIsSkippedWhenNoAncestorControllerExists() {
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 400, height: 600))
         window.rootViewController = UIViewController()
