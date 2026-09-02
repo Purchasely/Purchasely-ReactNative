@@ -61,6 +61,22 @@ class PurchaselyViewManagerTest {
         assertNull(manager.propsFor(view).height)
     }
 
+    // `ReactPropGroup` calls the setter back with `defaultDouble` (0.0) when a
+    // dimension is REMOVED from the JS style. Kept as a size, it would pin the
+    // paywall to a 0px box instead of letting it fall back to its measured size.
+    @Test
+    fun `a removed dimension resets to the measured size instead of zero`() {
+        val view = mock(FrameLayout::class.java)
+
+        manager.setStyle(view, 0, 320.0)
+        manager.setStyle(view, 1, 140.0)
+        manager.setStyle(view, 0, 0.0)
+        manager.setStyle(view, 1, 0.0)
+
+        assertNull(manager.propsFor(view).width)
+        assertNull(manager.propsFor(view).height)
+    }
+
     @Test
     fun `child size falls back to the measured size when no prop is set`() {
         assertEquals(48, manager.resolveChildSize(null, 48, 200))

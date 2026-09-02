@@ -192,9 +192,17 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
   @ReactPropGroup(names = ["width", "height"], customType = "Style")
   fun setStyle(view: FrameLayout?, index: Int, value: Double) {
     view ?: return
-    // RN sends NaN for a dimension the style never sets (a `flex`-sized view).
-    // `Double.NaN.toInt()` is 0, which would pin the paywall to a 0px box.
-    val size = if (value.isFinite() && value >= 0) value.toInt() else null
+    // 0 is RN's "unset" sentinel here, not a size: `ReactPropGroup` documents
+    // that a dimension REMOVED from the JS style calls this setter back with
+    // `defaultDouble`, which is 0.0. Taking it as a size pins the paywall to a
+    // 0px box, so it maps to null and `resolveChildSize` falls back to the
+    // measured size. `isFinite` guards the same way against a NaN or infinite
+    // value, whose `toInt()` is also 0.
+    //
+    // `<PLYPresentationView />` passes `style={{ flex }}` only, so this setter
+    // is reached solely by a consumer rendering the native component directly
+    // with explicit dimensions.
+    val size = if (value.isFinite() && value > 0) value.toInt() else null
     val props = propsFor(view)
     if (index == 0) props.width = size
     if (index == 1) props.height = size
