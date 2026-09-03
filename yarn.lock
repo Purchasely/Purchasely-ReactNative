@@ -6784,6 +6784,7 @@ __metadata:
     react: 19.2.3
     react-native: 0.86.0
     react-native-device-info: ^14.0.4
+    react-native-pager-view: ^9.0.4
     react-native-purchasely: "workspace:*"
     react-native-safe-area-context: ^5.4.0
     react-native-screens: ^4.16.0
@@ -11401,6 +11402,16 @@ __metadata:
   peerDependencies:
     react-native: "*"
   checksum: aa839dbe7df1246a4b5f9bcfeb3d4cc4be585f13a0d3ff6a03f57a0c2cfe7590291ac292dda4c51fd8765f94c870857676463e8e2f1660b057f3ae2b4335db29
+  languageName: node
+  linkType: hard
+
+"react-native-pager-view@npm:^9.0.4":
+  version: 9.0.4
+  resolution: "react-native-pager-view@npm:9.0.4"
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+  checksum: fcaffc64230dabb9fdc8af08e8ffd7719ae85869cb777fcbca3f1965eeb9a51b4779a7642fd8172d821fa912c03727d50e49991488c6a4ab72e9d33935c9067c
   languageName: node
   linkType: hard
 
