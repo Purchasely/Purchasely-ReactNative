@@ -92,10 +92,30 @@ class PurchaselyView: UIView {
     }
     updateAppearanceState()
     if window == nil {
-      // Deliver the disappear BEFORE the containment release below, in Apple's
-      // documented child-removal order, and reset `_appeared` — see
-      // `disappearAndDetachFromParent`.
-      disappearAndDetachFromParent(removeView: false)
+      // TRANSIENT exit — the host may still be mounted and come back (a pager
+      // recycling this row, a screen detaching under react-native-screens).
+      // Deliver a PLAIN disappear only: NO `willMove(toParent: nil)`. That call
+      // is what routes the SDK's `viewDidDisappear` into its terminal-dismissal
+      // branch (PRESENTATION_CLOSED + `onDismissed` delivered into client JS) —
+      // correct for a real teardown, wrong here, where the paywall is still on
+      // the component tree. Guarded on `_appeared` ONLY, never on
+      // `controller.parent != nil`: a controller that never got containment
+      // (`nearestViewController() == nil`) must still get a balanced disappear.
+      //
+      // ponytail: if UIKit already auto-forwarded a disappear to the child (a
+      // parent transition — push/pop, tab switch — while still in the
+      // window), `_appeared` cannot tell, so this delivers a SECOND disappear
+      // pair on top of it. The SDK absorbs this idempotently
+      // (`pauseAllVideos`/`pauseAllLottieAnimations`/`removeObservers` are
+      // unconditional and idempotent in `viewWillDisappear`) — see
+      // `testWindowExitDeliversASecondDisappearAfterAForwardedOne`. Fix by
+      // tracking the parent's own transitions if double delivery ever needs
+      // to be eliminated rather than just tolerated.
+      if let controller = _controller, _appeared {
+        controller.beginAppearanceTransition(false, animated: false)
+        controller.endAppearanceTransition()
+        _appeared = false
+      }
       // Balanced by `attachControllerToParent` on the next window entry, which
       // re-resolves the ancestor: RN may re-mount this view under another screen.
       detachControllerFromParent()
@@ -104,8 +124,8 @@ class PurchaselyView: UIView {
 
   // Ownership rule: UIKit owns appearance whenever a parent transition
   // delivers it. We drive exactly two things ourselves — the bootstrap
-  // appear (below) and the disappear on window exit / teardown
-  // (`disappearAndDetachFromParent`, called from `didMoveToWindow` and from
+  // appear (below) and the disappear on window exit / teardown (the PLAIN
+  // disappear in `didMoveToWindow` and the TERMINAL one in
   // `detachController`).
   private func updateAppearanceState() {
     guard let controller = _controller else { return }
@@ -122,47 +142,6 @@ class PurchaselyView: UIView {
         forRequestId: requestId,
         placementId: placementId ?? (presentation?["placementId"] as? String))
     }
-  }
-
-  // Delivers the SDK's disappear transition in Apple's documented
-  // child-removal order — `willMove(toParent: nil)` FIRST — so the SDK's own
-  // `viewDidDisappear` sees `isMovingFromParent == true` and takes its real
-  // cleanup branch (PRESENTATION_CLOSED, `presentationStrongRef = nil`,
-  // `FlowsManager.onPresentationClosed`) instead of the "not a dismissal" one.
-  // Resets `_appeared` so a host that leaves and re-enters the window later
-  // (no intervening `detachController`) gets a fresh appear from
-  // `updateAppearanceState` instead of staying latched stale — this is the
-  // re-arming fix.
-  //
-  // Two callers: window exit (`didMoveToWindow`, `removeView: false` — the
-  // subview stays attached, `self` itself is the one leaving the window) and
-  // `detachController` (`removeView: true` — full teardown, removing the
-  // subview between the begin/end transition matches the pre-existing order).
-  // No-op (beyond an optional subview removal) when the controller never
-  // appeared or already has no parent — nothing to balance.
-  //
-  // ponytail: if UIKit already auto-forwarded a disappear to the child (a
-  // parent transition — push/pop, tab switch — while still in the window),
-  // `_appeared` cannot tell, so a later window exit or `detachController`
-  // delivers a SECOND disappear pair on top of it. The SDK absorbs this
-  // idempotently (`pauseAllVideos`/`pauseAllLottieAnimations`/
-  // `removeObservers` are unconditional and idempotent in
-  // `viewWillDisappear`; the cleanup branch in `viewDidDisappear` is guarded
-  // by `isClosedEventFired`) — see
-  // `testWindowExitDeliversASecondDisappearAfterAForwardedOne`. Fix by
-  // tracking the parent's own transitions if double delivery ever needs to
-  // be eliminated rather than just tolerated.
-  private func disappearAndDetachFromParent(removeView: Bool) {
-    guard let controller = _controller, _appeared, controller.parent != nil else {
-      if removeView { _view?.removeFromSuperview() }
-      return
-    }
-    controller.willMove(toParent: nil)
-    controller.beginAppearanceTransition(false, animated: false)
-    if removeView { _view?.removeFromSuperview() }
-    controller.endAppearanceTransition()
-    controller.removeFromParent()
-    _appeared = false
   }
 
   private func setupView() {
@@ -251,12 +230,52 @@ class PurchaselyView: UIView {
     return nil
   }
 
-  // Full teardown: delivers the disappear (see `disappearAndDetachFromParent`)
-  // then clears our own state. `internal` so the XCTest bundle can drive
-  // teardown directly and assert the SDK's cleanup branch is reached (same
-  // seam precedent as `attachControllerToParent`).
+  // TERMINAL teardown, and the ONLY place that drives
+  // `willMove(toParent: nil)`. Reached with a live parent on a genuine
+  // replace-or-destroy-while-parented: a prop change / preload swap while the
+  // host is still in-window (`setupView()`'s `detachController()` before
+  // `attachController()` installs the new one). Apple's documented order —
+  // `willMove(toParent:)` FIRST — makes the SDK's own `viewDidDisappear` see
+  // `isMovingFromParent == true` and take its real cleanup branch
+  // (PRESENTATION_CLOSED, `presentationStrongRef = nil`,
+  // `FlowsManager.onPresentationClosed`) instead of the "not a dismissal" one.
+  //
+  // ponytail: on the REAL RN unmount path (`removeFromSuperview` ->
+  // `didMoveToWindow(nil)` -> deinit), `didMoveToWindow` already released the
+  // parent and reset `_appeared` via its own PLAIN disappear (see above)
+  // before `detachController` ever runs here — so this always lands in the
+  // second or third branch on that path, `willMove(toParent:)` never fires,
+  // and the SDK never reaches its cleanup branch: `presentationStrongRef`
+  // stays set and PRESENTATION_CLOSED does not fire for a plain unmount. This
+  // is PRE-EXISTING — identical on `main` and on the pre-fix commit — and is
+  // the accepted price of not firing a spurious terminal dismissal into
+  // client JS on every transient window exit (a pager recycling a row, a
+  // screen detaching). Not fixed here; fix by tracking real teardown
+  // (e.g. `deinit`) separately from window exit if this leak needs closing.
+  //
+  // Idempotency note: only `triggerPresentationClosedEvent` is guarded by the
+  // SDK's `isClosedEventFired`. `fireCancelledCompletionIfNeeded` uses
+  // different flags, and `presentationStrongRef = nil` is unguarded — all of
+  // them RESET on the next appear. So a second disappear with no appear in
+  // between is safe; that guarantee does NOT extend across an appear.
+  //
+  // `internal` so the XCTest bundle can drive teardown directly and assert
+  // the SDK's cleanup branch is reached (same seam precedent as
+  // `attachControllerToParent`).
   func detachController() {
-    disappearAndDetachFromParent(removeView: true)
+    if let controller = _controller, controller.parent != nil {
+      controller.willMove(toParent: nil)
+      controller.beginAppearanceTransition(false, animated: false)
+      _view?.removeFromSuperview()
+      controller.endAppearanceTransition()
+      controller.removeFromParent()
+    } else if let controller = _controller, _appeared {
+      controller.beginAppearanceTransition(false, animated: false)
+      controller.endAppearanceTransition()
+      _view?.removeFromSuperview()
+    } else {
+      _view?.removeFromSuperview()
+    }
     _appeared = false
     _view = nil
     _controller = nil

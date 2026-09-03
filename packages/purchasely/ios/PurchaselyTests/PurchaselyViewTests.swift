@@ -408,13 +408,14 @@ class PurchaselyViewTests: XCTestCase {
     // OWN transitions; it has no way to see a disappear UIKit forwarded
     // directly to the child, so window exit legitimately delivers a SECOND
     // disappear pair on top of one already delivered. This is a documented,
-    // known ceiling (see the `ponytail:` comment on
-    // `disappearAndDetachFromParent`), not a bug: the SDK absorbs it
-    // idempotently — `pauseAllVideos`/`pauseAllLottieAnimations`/
-    // `removeObservers` are unconditional and idempotent in
-    // `viewWillDisappear`, and the `viewDidDisappear` cleanup branch is
-    // guarded by the SDK's own `isClosedEventFired` take-once slot. Never
-    // delivering at all (the regression this branch replaces) is worse.
+    // known ceiling (see the `ponytail:` comment on `didMoveToWindow`), not a
+    // bug: this second disappear is PLAIN (no `willMove(toParent:)`, ddMoving
+    // stays 0 — see the assertion below), so only `viewWillDisappear`'s
+    // unconditional `pauseAllVideos`/`pauseAllLottieAnimations`/
+    // `removeObservers` run twice; the SDK's `isClosedEventFired`-guarded
+    // cleanup branch in `viewDidDisappear` is never reached on this path at
+    // all. Never delivering at all (the regression this branch replaces) is
+    // worse.
     //
     // Reproducing the forwarding mechanism itself (`shouldAutomaticallyForwardAppearanceMethods`)
     // deterministically in XCTest was NOT achievable: neither driving `screenA`'s
@@ -454,15 +455,86 @@ class PurchaselyViewTests: XCTestCase {
         XCTAssertEqual(stub.didDisappearCount, 2,
                        "Window exit cannot detect an already-forwarded disappear, so it adds its own " +
                        "on top — tolerated because the SDK absorbs it idempotently, see the " +
-                       "`ponytail:` comment on `disappearAndDetachFromParent`")
+                       "`ponytail:` comment on `didMoveToWindow`")
+        XCTAssertEqual(stub.didDisappearWhileMovingFromParentCount, 0,
+                       "Neither disappear here is terminal — a transient window exit must never drive " +
+                       "willMove(toParent: nil)")
     }
 
-    // The leak fix: `detachController` must drive `willMove(toParent: nil)`
-    // BEFORE the disappear transition, so the SDK's own `viewDidDisappear` sees
-    // `isMovingFromParent == true` and takes its real cleanup branch
-    // (PRESENTATION_CLOSED, releasing `presentationStrongRef`,
-    // `FlowsManager.onPresentationClosed`) instead of leaking the presentation
-    // graph forever.
+    // Path (ii) of the final arbitration: TWO full transient exit/re-entry
+    // cycles. ddMoving must stay 0 throughout — a host that leaves and comes
+    // back (pager recycling, screen detach/reattach) must never trip the
+    // SDK's terminal-dismissal branch, no matter how many times it happens.
+    func testTwoTransientExitReentryCyclesNeverGoTerminal() {
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 400, height: 600))
+        let root = UIViewController()
+        window.rootViewController = root
+        window.makeKeyAndVisible()
+        root.view.addSubview(purchaselyView)
+
+        let stub = AppearanceCountingViewController()
+        purchaselyView._controller = stub
+        purchaselyView.removeFromSuperview()
+        root.view.addSubview(purchaselyView)
+        assertCounters(stub, 1, 1, 0, 0, 0, "bootstrap")
+
+        purchaselyView.removeFromSuperview() // exit-1
+        assertCounters(stub, 1, 1, 1, 1, 0, "exit-1")
+
+        root.view.addSubview(purchaselyView) // reentry-1
+        assertCounters(stub, 2, 2, 1, 1, 0, "reentry-1")
+
+        purchaselyView.removeFromSuperview() // exit-2
+        assertCounters(stub, 2, 2, 2, 2, 0, "exit-2")
+
+        root.view.addSubview(purchaselyView) // reentry-2
+        assertCounters(stub, 3, 3, 2, 2, 0, "reentry-2")
+    }
+
+    private func assertCounters(_ stub: AppearanceCountingViewController,
+                                _ willAppear: Int, _ didAppear: Int,
+                                _ willDisappear: Int, _ didDisappear: Int, _ ddMoving: Int,
+                                _ label: String, file: StaticString = #filePath, line: UInt = #line) {
+        XCTAssertEqual(stub.willAppearCount, willAppear, "\(label): willAppear", file: file, line: line)
+        XCTAssertEqual(stub.didAppearCount, didAppear, "\(label): didAppear", file: file, line: line)
+        XCTAssertEqual(stub.willDisappearCount, willDisappear, "\(label): willDisappear", file: file, line: line)
+        XCTAssertEqual(stub.didDisappearCount, didDisappear, "\(label): didDisappear", file: file, line: line)
+        XCTAssertEqual(stub.didDisappearWhileMovingFromParentCount, ddMoving, "\(label): ddMoving",
+                       file: file, line: line)
+    }
+
+    // Path (v) of the final arbitration: no ancestor controller
+    // (`nearestViewController() == nil`, containment skipped). The MINOR fix —
+    // the disappear guard must never require `controller.parent != nil`, or a
+    // controller that never got containment gets nothing at all on window exit.
+    func testWindowExitDeliversAPlainDisappearWithNoAncestorController() {
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 400, height: 600))
+        window.rootViewController = UIViewController()
+        window.makeKeyAndVisible()
+        // Mounted straight on the window, beside the root controller's view —
+        // no controller sits in the responder chain, so containment is skipped.
+        window.addSubview(purchaselyView)
+
+        let stub = AppearanceCountingViewController()
+        purchaselyView._controller = stub
+        purchaselyView.removeFromSuperview()
+        window.addSubview(purchaselyView)
+        XCTAssertNil(stub.parent, "Precondition: no containment declared")
+        XCTAssertEqual(stub.didAppearCount, 1, "Precondition: bootstrap appear still fires without containment")
+
+        purchaselyView.removeFromSuperview()
+
+        XCTAssertEqual(stub.didDisappearCount, 1,
+                       "A controller with no containment must still get a balanced disappear on window exit")
+        XCTAssertEqual(stub.didDisappearWhileMovingFromParentCount, 0)
+    }
+
+    // When `detachController` is reached with the controller still parented
+    // (no prior window exit released it), it must drive
+    // `willMove(toParent: nil)` BEFORE the disappear transition, so the SDK's
+    // own `viewDidDisappear` sees `isMovingFromParent == true` and takes its
+    // real cleanup branch (PRESENTATION_CLOSED, releasing
+    // `presentationStrongRef`, `FlowsManager.onPresentationClosed`).
     func testDetachControllerReachesTheSDKCleanupBranch() {
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 400, height: 600))
         let root = UIViewController()
@@ -483,14 +555,18 @@ class PurchaselyViewTests: XCTestCase {
         XCTAssertNil(stub.parent, "Teardown must remove the controller from its parent")
     }
 
-    // The regression this whole redesign fixes: the REAL RN unmount path is
-    // `removeFromSuperview()` -> `didMoveToWindow()` with `window == nil` ->
-    // (eventually) `deinit`. The parent is released as part of that same
-    // window-exit call, so a teardown gated on `controller.parent != nil`
-    // (the previous, rejected version of this fix) sees a nil parent and
-    // delivers NOTHING — no pause*, no removeObservers, no PRESENTATION_CLOSED.
-    // Drives the exact sequence and asserts exactly one balanced disappear,
-    // reaching the SDK's cleanup branch.
+    // Path (i) of the final arbitration: production unmount
+    // (`removeFromSuperview()` -> `didMoveToWindow()` with `window == nil` ->
+    // eventually `deinit`) must NOT take the SDK's terminal-dismissal branch.
+    // `didMoveToWindow`'s window-exit branch delivers a PLAIN disappear only
+    // (no `willMove(toParent: nil)`) — ddMoving stays 0. A subsequent
+    // `detachController()` call (mirrors what `deinit`/a later `setupView()`
+    // does) finds the parent already released and `_appeared` already false,
+    // so it adds nothing further: bootstrap 1/1/0/0/0 -> after
+    // removeFromSuperview 1/1/1/1/0 -> after detach 1/1/1/1/0. This is the
+    // documented, accepted trade-off — see the `ponytail:` comment on
+    // `detachController` — for not firing a spurious PRESENTATION_CLOSED
+    // into client JS on every transient window exit.
     func testProductionUnmountDeliversExactlyOneDisappear() {
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 400, height: 600))
         let root = UIViewController()
@@ -502,17 +578,34 @@ class PurchaselyViewTests: XCTestCase {
         purchaselyView._controller = stub
         purchaselyView.removeFromSuperview()
         root.view.addSubview(purchaselyView)
-        XCTAssertEqual(stub.didAppearCount, 1, "Precondition: bootstrap appear delivered")
+        XCTAssertEqual(stub.willAppearCount, 1, "Bootstrap: 1/1/0/0/0")
+        XCTAssertEqual(stub.didAppearCount, 1)
+        XCTAssertEqual(stub.willDisappearCount, 0)
+        XCTAssertEqual(stub.didDisappearCount, 0)
+        XCTAssertEqual(stub.didDisappearWhileMovingFromParentCount, 0)
 
         // The real production unmount trigger — nothing else.
         purchaselyView.removeFromSuperview()
 
+        XCTAssertEqual(stub.willAppearCount, 1, "After removeFromSuperview: 1/1/1/1/0")
+        XCTAssertEqual(stub.didAppearCount, 1)
         XCTAssertEqual(stub.willDisappearCount, 1)
         XCTAssertEqual(stub.didDisappearCount, 1)
-        XCTAssertEqual(stub.didDisappearWhileMovingFromParentCount, 1,
-                       "Unmount must reach viewDidDisappear with isMovingFromParent == true, " +
-                       "or the SDK never fires PRESENTATION_CLOSED / releases presentationStrongRef")
+        XCTAssertEqual(stub.didDisappearWhileMovingFromParentCount, 0,
+                       "ddMoving must be 0 on a transient window exit — the SDK must not take its " +
+                       "terminal-dismissal branch for a paywall that is still mounted")
         XCTAssertNil(stub.parent, "Unmount must release containment (unchanged behaviour)")
+
+        // Explicit teardown after the unmount (deinit / a later setupView) —
+        // must not add anything further, since the disappear was already
+        // balanced above.
+        purchaselyView.detachController()
+
+        XCTAssertEqual(stub.willAppearCount, 1, "After detach: unchanged at 1/1/1/1/0")
+        XCTAssertEqual(stub.didAppearCount, 1)
+        XCTAssertEqual(stub.willDisappearCount, 1)
+        XCTAssertEqual(stub.didDisappearCount, 1)
+        XCTAssertEqual(stub.didDisappearWhileMovingFromParentCount, 0)
     }
 
     // Defect 2: a host that leaves the window and later re-enters it (e.g.
@@ -583,10 +676,8 @@ class PurchaselyViewTests: XCTestCase {
         let generation = purchaselyView._setupGeneration
         purchaselyView.installPreloadedController(incoming, generation: generation)
 
-        XCTAssertEqual(outgoing.willDisappearCount, 1)
-        XCTAssertEqual(outgoing.didDisappearCount, 1)
-        XCTAssertEqual(outgoing.didDisappearWhileMovingFromParentCount, 1,
-                       "Outgoing controller must reach the SDK cleanup branch")
+        // Path (iii) of the final arbitration — the ONLY path where ddMoving is 1.
+        assertCounters(outgoing, 1, 1, 1, 1, 1, "outgoing after swap")
         // See the FINDING above — 2, not 1, measured on unmodified `attachController`.
         XCTAssertEqual(incoming.willAppearCount, 2)
         XCTAssertEqual(incoming.didAppearCount, 2)
