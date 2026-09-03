@@ -151,7 +151,7 @@ describe('Purchasely SDK', () => {
                 null,
                 mockConstants.logLevelError,
                 mockConstants.runningModeObserver,
-                '6.0.0',
+                '6.1.0',
                 {}
             )
         })
@@ -861,6 +861,22 @@ describe('Purchasely SDK', () => {
             Purchasely.clearUserAttributeListener()
             expect(mockEventEmitter.removeAllListeners).toHaveBeenCalledWith('USER_ATTRIBUTE_SET_LISTENER')
             expect(mockEventEmitter.removeAllListeners).toHaveBeenCalledWith('USER_ATTRIBUTE_REMOVED_LISTENER')
+        })
+
+        it('should add the web redemption listener on the WEB_REDEMPTION_LISTENER event', () => {
+            const callback = jest.fn()
+            Purchasely.addWebRedemptionListener(callback)
+
+            expect(mockEventEmitter.addListener).toHaveBeenCalledWith(
+                'WEB_REDEMPTION_LISTENER',
+                callback
+            )
+        })
+
+        it('should remove the web redemption listener', () => {
+            Purchasely.removeWebRedemptionListener()
+
+            expect(mockEventEmitter.removeAllListeners).toHaveBeenCalledWith('WEB_REDEMPTION_LISTENER')
         })
     })
 
