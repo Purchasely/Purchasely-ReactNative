@@ -73,6 +73,7 @@ import Purchasely, {
     setDefaultPresentationDismissHandler,
     removeDefaultPresentationDismissHandler,
 } from 'react-native-purchasely'
+import BayardReproScreen from './BayardReproScreen'
 
 // ── Config ───────────────────────────────────────────────────────────────────
 const API_KEY = '0ad0594b-3b3d-4fea-8ee1-4b5df91efe87'
@@ -83,6 +84,11 @@ const DEEPLINK_AUDIENCES = `ply://ply/placements/${PLACEMENT_AUDIENCES}`
 // `am start … --es E2E_PHASE deeplink_coldstart` in a fresh process so the
 // start builder can chain `.handleDeeplink()` BEFORE `start()` (see T27).
 const COLDSTART_PHASE = 'deeplink_coldstart'
+
+// Opt-in client-configuration repro harness (La Croix Preprod) — see
+// BayardReproScreen.tsx. Never selected by run_e2e.sh / run_e2e_ios.sh, so
+// the existing E2E suite is completely unaffected.
+const BAYARD_PHASE = 'bayard_repro'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 type TestStatus = 'pending' | 'running' | 'pass' | 'fail' | 'skip'
@@ -168,9 +174,19 @@ const T29_TALL_DP = 260
 const T29_SHORT_DP = 110
 
 // ── Component ─────────────────────────────────────────────────────────────────
+// BAYARD_PHASE routes to the repro harness instead of the main suite — kept
+// as a wrapper (no hooks of its own) so the suite component below still calls
+// its hooks unconditionally on every render, per rules-of-hooks. T1-T30 stay
+// untouched: this branch is never taken by run_e2e.sh / run_e2e_ios.sh.
 export default function E2ETestRunner(props: { phase?: string } = {}) {
-    // Android forwards the E2E_PHASE intent extra as `phase`; iOS/default => 'all'.
     const phase = props.phase ?? 'all'
+    if (phase === BAYARD_PHASE) {
+        return <BayardReproScreen />
+    }
+    return <E2ETestRunnerSuite phase={phase} />
+}
+
+function E2ETestRunnerSuite({ phase }: { phase: string }) {
     const [tests, setTests] = useState<TestResult[]>(INITIAL_TESTS)
     const [suiteStatus, setSuiteStatus] = useState<'running' | 'pass' | 'fail' | 'idle'>('idle')
     const [log, setLog] = useState<string[]>([])
