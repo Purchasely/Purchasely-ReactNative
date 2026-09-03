@@ -348,6 +348,27 @@
                   @"closePresentation: should be exported to the bridge");
 }
 
+#pragma mark - Web2App redemption (6.1.0)
+
+- (void)testSupportedEventsIncludesWebRedemptionListener {
+    NSArray<NSString *> *events = [self.purchaselyModule supportedEvents];
+    XCTAssertTrue([events containsObject:@"WEB_REDEMPTION_LISTENER"],
+                  @"supportedEvents should expose the web redemption event");
+}
+
+- (void)testModuleConformsToWebRedemptionDelegate {
+    // The bridge registers itself on the start chain
+    // (`webRedemptionDelegate:appHandlesRedemptionAlert:`), so it must conform.
+    XCTAssertTrue([self.purchaselyModule conformsToProtocol:@protocol(PLYWebRedemptionDelegate)],
+                  @"PurchaselyRN should conform to PLYWebRedemptionDelegate");
+}
+
+- (void)testWebRedemptionCompletedIsImplemented {
+    // Swift `webRedemptionCompleted(result:)` bridges to this selector.
+    XCTAssertTrue([self.purchaselyModule respondsToSelector:@selector(webRedemptionCompletedWithResult:)],
+                  @"the web redemption delegate callback should be implemented");
+}
+
 - (void)testSupportedEventsIncludesCloseRequested {
     NSArray<NSString *> *events = [self.purchaselyModule supportedEvents];
     XCTAssertTrue([events containsObject:@"PURCHASELY_PRESENTATION_CLOSE_REQUESTED"],
