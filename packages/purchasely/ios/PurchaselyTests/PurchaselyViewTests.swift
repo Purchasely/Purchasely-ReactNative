@@ -550,8 +550,14 @@ class PurchaselyViewTests: XCTestCase {
 
         purchaselyView.detachController()
 
-        XCTAssertEqual(stub.didDisappearWhileMovingFromParentCount, 1,
-                       "Teardown must reach viewDidDisappear with isMovingFromParent == true")
+        // ddMoving is 0 BY DESIGN. Reaching the SDK's terminal branch would also
+        // emit PRESENTATION_CLOSED and fire `onDismissed` into JS for a banner
+        // that is only being reconfigured, so the disappear is kept PLAIN and the
+        // containment release follows it. See the comment on `detachController`.
+        XCTAssertEqual(stub.didDisappearWhileMovingFromParentCount, 0,
+                       "Teardown must NOT take the SDK's terminal-dismissal branch — " +
+                       "that would emit a spurious PRESENTATION_CLOSED for a reconfigured banner")
+        XCTAssertEqual(stub.didDisappearCount, 1, "Teardown must still deliver exactly one disappear")
         XCTAssertNil(stub.parent, "Teardown must remove the controller from its parent")
     }
 
@@ -676,8 +682,10 @@ class PurchaselyViewTests: XCTestCase {
         let generation = purchaselyView._setupGeneration
         purchaselyView.installPreloadedController(incoming, generation: generation)
 
-        // Path (iii) of the final arbitration — the ONLY path where ddMoving is 1.
-        assertCounters(outgoing, 1, 1, 1, 1, 1, "outgoing after swap")
+        // Path (iii): the outgoing controller gets exactly one PLAIN disappear.
+        // ddMoving is 0 on EVERY path now — see `detachController`: the terminal
+        // branch would emit PRESENTATION_CLOSED for a mere reconfiguration.
+        assertCounters(outgoing, 1, 1, 1, 1, 0, "outgoing after swap")
         // See the FINDING above — 2, not 1, measured on unmodified `attachController`.
         XCTAssertEqual(incoming.willAppearCount, 2)
         XCTAssertEqual(incoming.didAppearCount, 2)

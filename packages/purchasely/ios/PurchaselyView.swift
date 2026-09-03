@@ -267,11 +267,29 @@ class PurchaselyView: UIView {
   // `attachControllerToParent`).
   func detachController() {
     if let controller = _controller, controller.parent != nil {
-      controller.willMove(toParent: nil)
+      // The disappear is PLAIN here — `willMove(toParent: nil)` comes AFTER the
+      // transition, so `isMovingFromParent` is false while the SDK runs
+      // `viewDidDisappear` and it takes its non-terminal branch.
+      //
+      // Deliberate, and it costs us something. Driving `willMove` FIRST would
+      // reach the SDK's cleanup branch (nil-ing `presentationStrongRef`, so no
+      // leak) — but that branch also emits PRESENTATION_CLOSED with a
+      // `screenDuration` and fires `onDismissed` into JS. An inline banner whose
+      // `placementId` prop is swapped is being RECONFIGURED, not closed, so those
+      // would be spurious events, and every integrator's analytics would show a
+      // step change in PRESENTATION_CLOSED for inline banners.
+      //
+      // ponytail: we keep `main`'s analytics and `main`'s leak — one presentation
+      // retained per in-window prop swap, via the controller <-> presentation
+      // cycle the SDK documents. The clean fix is SDK-side: a way to release a
+      // preloaded presentation without emitting a close event. Until then,
+      // integrators who want no leak should REMOUNT the view (`key=` on
+      // `<PLYPresentationView />`) rather than swap its `placementId` in place —
+      // the unmount path releases everything.
       controller.beginAppearanceTransition(false, animated: false)
       _view?.removeFromSuperview()
       controller.endAppearanceTransition()
-      controller.removeFromParent()
+      detachControllerFromParent()
     } else if let controller = _controller, _appeared {
       controller.beginAppearanceTransition(false, animated: false)
       controller.endAppearanceTransition()
