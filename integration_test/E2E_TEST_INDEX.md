@@ -562,6 +562,81 @@ Déclenchés par le script hôte → composant `E2ETestRunner.tsx` embarqué dan
 
 ---
 
+## T28 — Vue embarquée imbriquée dans un écran `react-native-screens`
+
+**Ce que ça teste :** une `PLYPresentationView` montée **à l'intérieur** d'un `ScreenStack` / `ScreenStackItem` de `react-native-screens`, c'est-à-dire la hiérarchie que produit tout écran de `@react-navigation/native-stack`.
+
+**Le bug gardé (iOS) :** `PurchaselyView.attachController` déclarait le contrôleur embarqué enfant du **root** view controller de l'app, alors que sa vue vit sous un `RNSScreen`. UIKit lève `UIViewControllerHierarchyInconsistency` dès que les deux divergent et **l'app meurt**. Sur un build non corrigé ce test n'échoue donc pas : plus aucun marqueur n'est émis, et la suite tombe sur son propre filet.
+
+**Pourquoi T25 ne le voyait pas :** T25 monte la vue dans un overlay absolu, où le vrai ancêtre EST le root VC. C'est l'imbrication qui fait tout le test.
+
+Android n'a jamais eu le bug (il attend `isAttachedToWindow` avant de créer son fragment) mais fait tourner le même test en parité.
+
+| Step | Action | Assert |
+|------|--------|--------|
+| 1 | `presentation.placement(...).build().preload()` | — |
+| 2 | monter la vue dans `<ScreenStack><ScreenStackItem>` | — |
+| 3 | `waitFor(PRESENTATION_VIEWED, 30000)` | event reçu, app vivante |
+| 4 | `[E2E:READY_FOR_NESTED_SHOT]` → capture hôte | screenshot non vide |
+
+**Marqueurs :** `[E2E:T28:PASS]` / `[E2E:T28:FAIL]`, plus `[E2E:READY_FOR_NESTED_SHOT]`
+**Driver host :** `capture_nested_inline.sh` (Android) / `capture_nested_inline_ios.sh` (iOS) — capture seule, l'assertion dure est le marqueur lui-même.
+**Artefact :** `integration_test/artifacts/e2e_t28_nested_inline_{android,ios}.png`
+
+---
+
+## T29 — Deux vues embarquées montées en même temps gardent leur propre hauteur
+
+**Ce que ça teste :** deux `PLYPresentationView` montées simultanément dans des containers de hauteurs différentes (260dp et 110dp). Chacune doit rendre à **sa** taille.
+
+**Le bug gardé (Android) :** React Native réutilise **un seul** view manager pour toutes les `<PLYPresentationView />`. `PurchaselyViewManager` gardait `propWidth` / `propHeight` sur le manager lui-même : la dernière vue à recevoir son style imposait ses dimensions aux deux, et une bannière rendait rognée.
+
+**Pourquoi l'assertion est côté hôte :** les tailles qui dérapent sont celles des **enfants natifs**. JS ne les voit pas — les containers RN gardent la hauteur que le test leur a donnée quoi qu'il arrive. Le driver lit donc les bounds réels dans l'arbre de vues (`uiautomator dump` sur Android, `idb ui describe-all` sur iOS) et vérifie qu'ils diffèrent et suivent chacun son container. La capture d'écran est l'artefact que lit un humain, pas ce en quoi le test a confiance.
+
+**Note fixture :** l'app de test n'a qu'un placement, et deux `preload()` du même placement coup sur coup sont rejetés par le SDK. La seconde requête passe donc par `screen(id)` — même contenu, chemin embarqué identique. Une intégration réelle monte deux bannières depuis deux placements.
+
+| Step | Action | Assert |
+|------|--------|--------|
+| 1 | `placement(...).build().preload()` | `screenId` non-vide |
+| 2 | `screen(screenId).build().preload()` | — |
+| 3 | monter les deux vues (containers 260dp / 110dp) | — |
+| 4 | `waitFor(2 × PRESENTATION_VIEWED, 30000)` | les deux ont rendu |
+| 5 | `[E2E:DUAL_INLINE_DP:260:110]` + `[E2E:READY_FOR_DUAL_INLINE]` | — |
+| 6 | driver hôte : bounds natifs | hauteurs distinctes, chacune ≈ son container |
+
+**Marqueurs :** `[E2E:T29:PASS]` / `[E2E:T29:FAIL]`, plus `[E2E:DUAL_INLINE_DP:tall:short]` et `[E2E:READY_FOR_DUAL_INLINE]`
+**Driver host Android :** `assert_dual_inline.sh` — **verdict bloquant** : son échec fait échouer le run, indépendamment du marqueur JS qui, lui, ne dit que « les deux ont chargé ».
+**Driver host iOS :** `capture_dual_inline_ios.sh` — **capture seule, pas d'assertion**. `idb ui describe-all` rend l'arbre d'**accessibilité** : des labels et des contrôles, pas les `UIView` conteneurs dans lesquelles vivent les paywalls. Aucun élément ne porte la frame du slot, donc toute assertion de hauteur y serait une heuristique déguisée en mesure. iOS garde donc ce qu'il peut affirmer honnêtement : les deux vues se sont déclarées rendues (assertion JS de T29), et voici l'image. Le bug gardé est de toute façon un bug Android.
+**Artefact :** `integration_test/artifacts/e2e_t29_dual_inline_{android,ios}.png` + le dump de hiérarchie.
+
+---
+
+## T30 — Vue embarquée démontée puis remontée sous un autre écran
+
+**Ce que ça teste :** monter la vue dans un `ScreenStackItem`, la démonter, la remonter sous un **autre** `ScreenStackItem`. Le second attachement doit donc résoudre un ancêtre différent du premier.
+
+**Les chemins gardés**, tous deux introduits par les correctifs de cette branche et exercés par aucun autre test :
+
+- **iOS** — `didMoveToWindow` relâche désormais le contrôleur embarqué de son parent quand l'hôte quitte la fenêtre, et re-résout l'ancêtre au retour. Une implémentation qui garderait le premier parent en cache relèverait `UIViewControllerHierarchyInconsistency` dès que la vue revient sous un autre écran, ce que fait une pile de navigation à chaque push et chaque pop.
+- **Android** — `onDropViewInstance` annule maintenant le callback `Choreographer` de la vue et jette ses props. Un nettoyage faux ferait que le remontage ne rend rien (props jetées trop tôt), ou laisserait une boucle de frames orpheline tourner contre une vue morte.
+
+Remonter sous un écran **différent** est le point : « monter deux fois » ne prouverait rien.
+
+| Step | Action | Assert |
+|------|--------|--------|
+| 1 | preload + monter sous l'écran A | `PRESENTATION_VIEWED` |
+| 2 | démonter (l'hôte quitte la fenêtre) | — |
+| 3 | preload d'une **nouvelle** requête, monter sous l'écran B | `PRESENTATION_VIEWED` |
+| 4 | `[E2E:READY_FOR_REMOUNT_SHOT]` → capture hôte | screenshot non vide |
+
+Nouvelle requête à l'étape 3 : une requête consommée par une vue démontée est évincée côté natif et doit être préchargée à nouveau (documenté sur la prop `request`).
+
+**Marqueurs :** `[E2E:T30:PASS]` / `[E2E:T30:FAIL]`, plus `[E2E:READY_FOR_REMOUNT_SHOT]`
+**Driver host :** `capture_remount_inline.sh` / `capture_remount_inline_ios.sh` — capture seule, l'assertion dure est le marqueur.
+**Artefact :** `integration_test/artifacts/e2e_t30_remount_inline_{android,ios}.png`
+
+---
+
 ## Architecture du runner
 
 ```
@@ -573,11 +648,14 @@ CI (ubuntu-latest + KVM)
               ├── surveille [E2E:READY_FOR_TAP]          → tap_purchase.sh       (T8)
               ├── surveille [E2E:READY_FOR_BACK]         → press_back.sh         (T9)
               ├── surveille [E2E:READY_FOR_INLINE_CLOSE] → tap_close_inline.sh   (T25)
-              ├── surveille [E2E:SUITE:PASS|FAIL] (suite principale T1-T26)
+              ├── surveille [E2E:READY_FOR_NESTED_SHOT]   → capture_nested_inline.sh (T28)
+              ├── surveille [E2E:READY_FOR_DUAL_INLINE]   → assert_dual_inline.sh    (T29, verdict bloquant)
+              ├── surveille [E2E:READY_FOR_REMOUNT_SHOT]  → capture_remount_inline.sh (T30)
+              ├── surveille [E2E:SUITE:PASS|FAIL] (suite principale T1-T26 + T28-T30)
               ├── si PASS → relaunch --es E2E_PHASE deeplink_coldstart (process neuf)
               │              └── surveille [E2E:T27:PASS|FAIL]          (T27 cold-start)
               ├── chaque driver hôte est `wait`é : code retour non-nul → warning visible
-              ├── tout id T1-T27 sans AUCUN marqueur PASS/FAIL/SKIP → échec (filet authoritatif)
+              ├── tout id T1-T30 sans AUCUN marqueur PASS/FAIL/SKIP → échec (filet authoritatif)
               └── exit 0 si (suite PASS ET T27 ≠ FAIL ET aucun marqueur manquant), sinon 1
 
 CI (macos-15 + simulateur iOS)
@@ -588,11 +666,14 @@ CI (macos-15 + simulateur iOS)
         ├── surveille [E2E:READY_FOR_TAP]          → tap_purchase_ios.sh      (idb ui tap, T8)
         ├── surveille [E2E:READY_FOR_BACK]         → swipe_dismiss_ios.sh     (idb close/swipe, T9)
         ├── surveille [E2E:READY_FOR_INLINE_CLOSE] → tap_close_inline_ios.sh  (idb ui tap, T25)
-        ├── surveille [E2E:SUITE:PASS|FAIL] (suite principale T1-T26)
+        ├── surveille [E2E:READY_FOR_NESTED_SHOT]   → capture_nested_inline_ios.sh (T28)
+        ├── surveille [E2E:READY_FOR_DUAL_INLINE]   → capture_dual_inline_ios.sh   (T29, capture seule)
+        ├── surveille [E2E:READY_FOR_REMOUNT_SHOT]  → capture_remount_inline_ios.sh (T30)
+        ├── surveille [E2E:SUITE:PASS|FAIL] (suite principale T1-T26 + T28-T30)
         ├── si PASS → relaunch SIMCTL_CHILD_E2E_PHASE=deeplink_coldstart (process neuf)
         │              └── surveille [E2E:T27:PASS|FAIL]          (T27 cold-start)
         ├── chaque driver hôte est `wait`é : code retour non-nul → warning visible
-        ├── tout id T1-T27 sans AUCUN marqueur PASS/FAIL/SKIP → échec (filet authoritatif)
+        ├── tout id T1-T30 sans AUCUN marqueur PASS/FAIL/SKIP → échec (filet authoritatif)
         └── exit 0 si (suite PASS ET T27 ≠ FAIL ET aucun marqueur manquant), sinon 1
 ```
 

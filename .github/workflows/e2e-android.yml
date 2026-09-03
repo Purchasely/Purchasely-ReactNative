@@ -38,7 +38,7 @@ concurrency:
 
 jobs:
   e2e-android:
-    name: E2E Tests (Android T1-T27)
+    name: E2E Tests (Android T1-T30)
     # ubuntu-latest: KVM disponible pour x86_64, requis par reactivecircuit/android-emulator-runner.
     # macOS sera utilisé dans e2e-ios.yml (simulateur iOS).
     runs-on: ubuntu-latest
@@ -96,7 +96,7 @@ jobs:
             exit 1
           fi
 
-      - name: Run E2E suite on emulator (T1-T27)
+      - name: Run E2E suite on emulator (T1-T30)
         # ReactiveCircus/android-emulator-runner handles: system-image install,
         # AVD creation, emulator start with KVM, boot wait, animations disable.
         uses: ReactiveCircus/android-emulator-runner@v2
@@ -111,6 +111,17 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -no-snapshot
           script: bash integration_test/run_e2e.sh emulator-5554 --skip-build
+
+      # Screenshots and view dumps from T28/T29: on success they are the visual
+      # record the tests exist to produce, so this runs either way.
+      - name: Upload E2E artifacts (screenshots, view dumps)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-android-artifacts-${{ github.run_id }}
+          path: integration_test/artifacts/
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Upload logcat on failure
         if: failure()

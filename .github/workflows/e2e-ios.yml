@@ -36,7 +36,7 @@ concurrency:
 
 jobs:
   e2e-ios:
-    name: E2E Tests (iOS T1-T27)
+    name: E2E Tests (iOS T1-T30)
     # macOS requis : simulateur iOS + xcodebuild. Pas de HVF nécessaire (le
     # simulateur iOS ne virtualise pas un OS invité, contrairement à l'émulateur
     # Android ARM — c'est pourquoi Android tourne sur ubuntu + KVM).
@@ -139,8 +139,19 @@ jobs:
           xcrun simctl bootstatus "$UDID" -b
           echo "IOS_SIMULATOR_UDID=$UDID" >> "$GITHUB_ENV"
 
-      - name: Run E2E suite on simulator (build Release + T1-T27)
+      - name: Run E2E suite on simulator (build Release + T1-T30)
         run: bash integration_test/run_e2e_ios.sh "$IOS_SIMULATOR_UDID"
+
+      # Screenshots and accessibility dumps from T28/T29: on success they are the
+      # visual record the tests exist to produce, so this runs either way.
+      - name: Upload E2E artifacts (screenshots, view dumps)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-ios-artifacts-${{ github.run_id }}
+          path: integration_test/artifacts/
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Upload logs on failure
         if: failure()

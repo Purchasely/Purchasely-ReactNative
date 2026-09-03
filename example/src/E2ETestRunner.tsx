@@ -1,5 +1,5 @@
 /**
- * E2E test runner — T1–T27
+ * E2E test runner — T1–T30
  *
  * Renders as the root component when the app is launched with E2E_MODE=true.
  * The main suite (T1–T26) runs sequentially in a single SDK session; T27
@@ -61,6 +61,7 @@ import {
     Text,
     View,
 } from 'react-native'
+import { ScreenStack, ScreenStackItem } from 'react-native-screens'
 import Purchasely, {
     LogLevels,
     PLYDataProcessingPurpose,
@@ -72,6 +73,7 @@ import Purchasely, {
     setDefaultPresentationDismissHandler,
     removeDefaultPresentationDismissHandler,
 } from 'react-native-purchasely'
+import BayardReproScreen from './BayardReproScreen'
 
 // ── Config ───────────────────────────────────────────────────────────────────
 const API_KEY = '0ad0594b-3b3d-4fea-8ee1-4b5df91efe87'
@@ -82,6 +84,11 @@ const DEEPLINK_AUDIENCES = `ply://ply/placements/${PLACEMENT_AUDIENCES}`
 // `am start … --es E2E_PHASE deeplink_coldstart` in a fresh process so the
 // start builder can chain `.handleDeeplink()` BEFORE `start()` (see T27).
 const COLDSTART_PHASE = 'deeplink_coldstart'
+
+// Opt-in client-configuration repro harness (La Croix Preprod) — see
+// BayardReproScreen.tsx. Never selected by run_e2e.sh / run_e2e_ios.sh, so
+// the existing E2E suite is completely unaffected.
+const BAYARD_PHASE = 'bayard_repro'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 type TestStatus = 'pending' | 'running' | 'pass' | 'fail' | 'skip'
@@ -96,6 +103,18 @@ interface TestResult {
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+/** Rejects if `promise` has not settled within `ms`, naming what was waited on.
+ * A bridge promise that never settles would otherwise hang the whole suite until
+ * the host's own timeout, with no marker and nothing to read in the log. */
+function withTimeout<T>(promise: Promise<T>, ms: number, what: string): Promise<T> {
+    return Promise.race([
+        promise,
+        sleep(ms).then<never>(() => {
+            throw new Error(`${what} did not settle within ${ms}ms`)
+        }),
+    ])
 }
 
 async function waitFor<T>(
@@ -141,12 +160,33 @@ const INITIAL_TESTS: TestResult[] = [
     { id: 'T25', name: 'embedded <PLYPresentationView request={…}> renders', status: 'pending' },
     { id: 'T26', name: 'PLYLoadedPresentation lifecycle: display/close → outcome', status: 'pending' },
     { id: 'T27', name: 'cold-start deeplink via builder .handleDeeplink() before start()', status: 'pending' },
+    { id: 'T28', name: 'embedded view nested in a react-native-screens screen (no VC hierarchy crash)', status: 'pending' },
+    { id: 'T29', name: 'two embedded views mounted at once keep their own height', status: 'pending' },
+    { id: 'T30', name: 'embedded view unmounted then remounted under another screen', status: 'pending' },
 ]
 
+// T29: the two container heights, in density-independent points. They must stay
+// far apart so the host driver can tell the two native paywall views apart by
+// their measured bounds alone. Kept in sync with `integration_test/tools/
+// assert_dual_inline.sh` and `assert_dual_inline_ios.sh`, which read them from
+// the [E2E:DUAL_INLINE_DP:tall:short] marker rather than hardcoding them.
+const T29_TALL_DP = 260
+const T29_SHORT_DP = 110
+
 // ── Component ─────────────────────────────────────────────────────────────────
+// BAYARD_PHASE routes to the repro harness instead of the main suite — kept
+// as a wrapper (no hooks of its own) so the suite component below still calls
+// its hooks unconditionally on every render, per rules-of-hooks. T1-T30 stay
+// untouched: this branch is never taken by run_e2e.sh / run_e2e_ios.sh.
 export default function E2ETestRunner(props: { phase?: string } = {}) {
-    // Android forwards the E2E_PHASE intent extra as `phase`; iOS/default => 'all'.
     const phase = props.phase ?? 'all'
+    if (phase === BAYARD_PHASE) {
+        return <BayardReproScreen />
+    }
+    return <E2ETestRunnerSuite phase={phase} />
+}
+
+function E2ETestRunnerSuite({ phase }: { phase: string }) {
     const [tests, setTests] = useState<TestResult[]>(INITIAL_TESTS)
     const [suiteStatus, setSuiteStatus] = useState<'running' | 'pass' | 'fail' | 'idle'>('idle')
     const [log, setLog] = useState<string[]>([])
@@ -154,6 +194,18 @@ export default function E2ETestRunner(props: { phase?: string } = {}) {
     const [inlineRequest, setInlineRequest] = useState<PLYPresentationRequest | null>(null)
     // T25: last outcome delivered to the embedded view's onPresentationClosed.
     const inlineClosedRef = useRef<PLYPresentationOutcome | null>(null)
+    // T28: the embedded paywall request mounted INSIDE a react-native-screens screen.
+    const [nestedRequest, setNestedRequest] = useState<PLYPresentationRequest | null>(null)
+    // T29: the two embedded paywall requests mounted side by side, in containers
+    // of DIFFERENT fixed heights (see T29_TALL_DP / T29_SHORT_DP).
+    const [dualRequests, setDualRequests] = useState<
+        [PLYPresentationRequest, PLYPresentationRequest] | null
+    >(null)
+    // T30: the embedded paywall request currently mounted, and WHICH of two
+    // react-native-screens screens hosts it. Remounting under the other screen is
+    // the whole point — see the test.
+    const [remountRequest, setRemountRequest] = useState<PLYPresentationRequest | null>(null)
+    const [remountScreen, setRemountScreen] = useState<'a' | 'b'>('a')
 
     function updateTest(id: string, patch: Partial<TestResult>) {
         setTests((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)))
@@ -171,7 +223,21 @@ export default function E2ETestRunner(props: { phase?: string } = {}) {
     }
 
     function fail(id: string, error: unknown) {
-        const msg = error instanceof Error ? error.message : String(error)
+        // A rejected bridge promise carries a plain object, whose String() is
+        // "[object Object]" — a failure marker that says nothing about what went
+        // wrong, and the log is all a CI run leaves behind.
+        const msg =
+            error instanceof Error
+                ? error.message
+                : typeof error === 'object' && error !== null
+                  ? (() => {
+                        try {
+                            return JSON.stringify(error)
+                        } catch {
+                            return Object.prototype.toString.call(error)
+                        }
+                    })()
+                  : String(error)
         updateTest(id, { status: 'fail', details: msg })
         console.error(`[E2E:${id}:FAIL] ${msg}`)
         appendLog(`✗ ${id}: ${msg}`)
@@ -1169,10 +1235,202 @@ export default function E2ETestRunner(props: { phase?: string } = {}) {
         // runColdStartPhase() below emits [E2E:T27:PASS|FAIL] for that phase.
         skip('T27', 'runs in dedicated cold-start phase (E2E_PHASE=deeplink_coldstart) — see phase [E2E:T27:PASS|FAIL]')
 
+        await sleep(1000)
+
+        // ── T28 — embedded view nested in a react-native-screens screen ───────
+        // Regression guard for the `UIViewControllerHierarchyInconsistency` crash:
+        // `PurchaselyView.attachController` used to declare the embedded
+        // controller a child of the app's ROOT view controller, while its view
+        // sat under an `RNSScreen`. UIKit raises as soon as the two disagree, so
+        // on the unfixed build this test does not fail — the whole app dies and
+        // NO further marker is ever emitted.
+        //
+        // T25 above cannot catch it: it mounts the view in a plain absolute
+        // overlay, where the real nearest ancestor controller IS the root one.
+        // The nesting is the entire point of this test.
+        //
+        // Android has never had the bug (it waits for `isAttachedToWindow` before
+        // creating its fragment) but runs the same test as a parity check.
+        running('T28')
+        try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            let viewed28: any = null
+            const listener28 = Purchasely.addEventListener((event: any) => {
+                if (event.name === 'PRESENTATION_VIEWED') viewed28 = event
+            })
+            try {
+                const req28 = Purchasely.presentation.placement(PLACEMENT_AUDIENCES).build()
+                await req28.preload()
+                setNestedRequest(req28)
+
+                // 60 s, not the usual 30: this runs at the tail of a long suite,
+                // after every other test has hammered the SDK, and its failure
+                // mode is a timeout that reads as a crash regression.
+                const seen28 = await waitFor(() => viewed28, 60000, 300)
+
+                // The app is still alive and the paywall rendered inside the
+                // native screen. Let the host capture the proof.
+                console.log('[E2E:READY_FOR_NESTED_SHOT]')
+                appendLog('T28: signaled READY_FOR_NESTED_SHOT — waiting for the host screenshot…')
+                await sleep(4000)
+
+                pass(
+                    'T28',
+                    `embedded view rendered inside a react-native-screens ScreenStackItem ` +
+                    `placement_id=${seen28.properties?.placement_id ?? 'n/a'} — no VC hierarchy crash`
+                )
+            } finally {
+                setNestedRequest(null)
+                listener28.remove()
+            }
+        } catch (e) { fail('T28', e); suitePass = false; setNestedRequest(null) }
+
+        await sleep(1000)
+
+        // ── T29 — two embedded views mounted at once keep their own height ────
+        // Regression guard for the Android view manager storing `propWidth` /
+        // `propHeight` on the MANAGER: RN reuses one manager instance across every
+        // `<PLYPresentationView />`, so the last view to receive its style forced
+        // its dimensions on both, and one banner rendered clipped.
+        //
+        // The RN side can only assert that both views loaded — the sizes that
+        // matter belong to the NATIVE children, which JS cannot measure. On
+        // Android the host driver reads them from the real view hierarchy
+        // (`uiautomator dump`) at the marker below and its verdict fails the run.
+        // iOS only captures the screenshot: `idb ui describe-all` returns the
+        // accessibility tree, which exposes no container frames to measure — see
+        // tools/capture_dual_inline_ios.sh. The bug guarded here is Android's.
+        running('T29')
+        try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const viewed29: any[] = []
+            const listener29 = Purchasely.addEventListener((event: any) => {
+                if (event.name === 'PRESENTATION_VIEWED') viewed29.push(event)
+            })
+            try {
+                // Two DIFFERENT request kinds for the same content: the fixture app
+                // has a single placement, and preloading it twice back to back is
+                // rejected by the SDK (a second fetch for a placement already being
+                // fetched). A real integration mounts two banners from two
+                // placements; `screen(id)` is the closest stand-in the fixture
+                // allows, and it exercises the same embedded path.
+                const tall = Purchasely.presentation.placement(PLACEMENT_AUDIENCES).build()
+                const loadedTall = await withTimeout(tall.preload(), 30000, 'tall preload()')
+                if (!loadedTall.screenId) throw new Error('preload returned no screenId')
+
+                // Observed on iOS: this second preload sometimes never settles —
+                // neither resolve nor reject. Without the race the suite hangs to
+                // the host timeout with no marker at all.
+                const short = Purchasely.presentation.screen(loadedTall.screenId).build()
+                await withTimeout(short.preload(), 30000, 'short preload()')
+
+                setDualRequests([tall, short])
+
+                // Both native views must report themselves as viewed. A single
+                // event means one of them never rendered.
+                await waitFor(() => (viewed29.length >= 2 ? viewed29.length : null), 30000, 300)
+
+                console.log(`[E2E:DUAL_INLINE_DP:${T29_TALL_DP}:${T29_SHORT_DP}]`)
+                console.log('[E2E:READY_FOR_DUAL_INLINE]')
+                appendLog('T29: signaled READY_FOR_DUAL_INLINE — waiting for the host bounds assertion…')
+
+                // The host writes its verdict back through the app's log by
+                // touching nothing: it asserts on its own side and fails the run.
+                // We only hold the two views on screen long enough for it.
+                await sleep(8000)
+
+                pass(
+                    'T29',
+                    `two embedded views rendered simultaneously in ${T29_TALL_DP}dp and ` +
+                    `${T29_SHORT_DP}dp containers — ${viewed29.length} PRESENTATION_VIEWED; ` +
+                    (Platform.OS === 'android'
+                        ? 'native bounds asserted by the host driver'
+                        : 'host captured the screenshot (iOS exposes no container frames to assert on)')
+                )
+            } finally {
+                setDualRequests(null)
+                listener29.remove()
+            }
+        } catch (e) { fail('T29', e); suitePass = false; setDualRequests(null) }
+
+        await sleep(1000)
+
+        // ── T30 — unmount, then remount under ANOTHER screen ──────────────────
+        // Regression guard for the teardown/re-setup paths the T28 fix
+        // introduced, which nothing else exercises:
+        //
+        //   iOS: `didMoveToWindow` now releases the embedded controller from its
+        //   parent when the host leaves the window, and re-resolves the ancestor
+        //   on the way back in. An implementation that cached the first parent
+        //   instead would raise `UIViewControllerHierarchyInconsistency` again the
+        //   moment the view came back under a different screen — which is exactly
+        //   what a navigation stack does on every push and pop.
+        //
+        //   Android: `onDropViewInstance` now cancels the per-view Choreographer
+        //   callback and drops the view's props. If the cleanup were wrong, the
+        //   remount would either render nothing (props gone too early) or leave
+        //   the old frame loop running against a dead view.
+        //
+        // The remount deliberately lands under a DIFFERENT ScreenStackItem, so
+        // the second attach must resolve a different ancestor controller than the
+        // first — the case the fix exists for, not just "mount twice".
+        running('T30')
+        try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            let viewedA: any = null
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            let viewedB: any = null
+            let onScreenB = false
+            const listener30 = Purchasely.addEventListener((event: any) => {
+                if (event.name !== 'PRESENTATION_VIEWED') return
+                if (onScreenB) viewedB = event
+                else viewedA = event
+            })
+            try {
+                const first = Purchasely.presentation.placement(PLACEMENT_AUDIENCES).build()
+                await withTimeout(first.preload(), 30000, 'T30 first preload()')
+
+                setRemountScreen('a')
+                setRemountRequest(first)
+                await waitFor(() => viewedA, 60000, 300)
+
+                // Unmount: the host leaves the window entirely.
+                setRemountRequest(null)
+                await sleep(2000)
+
+                // Remount under the other screen. A fresh request, because a
+                // request consumed by an unmounted view is evicted natively and
+                // must be preloaded again before reuse (documented on the
+                // `request` prop).
+                const second = Purchasely.presentation.placement(PLACEMENT_AUDIENCES).build()
+                await withTimeout(second.preload(), 30000, 'T30 second preload()')
+
+                onScreenB = true
+                setRemountScreen('b')
+                setRemountRequest(second)
+
+                const seenB = await waitFor(() => viewedB, 60000, 300)
+
+                console.log('[E2E:READY_FOR_REMOUNT_SHOT]')
+                appendLog('T30: signaled READY_FOR_REMOUNT_SHOT — waiting for the host screenshot…')
+                await sleep(4000)
+
+                pass(
+                    'T30',
+                    `embedded view rendered under screen A, unmounted, then rendered again ` +
+                    `under screen B placement_id=${seenB.properties?.placement_id ?? 'n/a'} — ` +
+                    `ancestor re-resolved, no VC hierarchy crash`
+                )
+            } finally {
+                setRemountRequest(null)
+                listener30.remove()
+            }
+        } catch (e) { fail('T30', e); suitePass = false; setRemountRequest(null) }
+
         // ── Final report ──────────────────────────────────────────────────────
         setSuiteStatus(suitePass ? 'pass' : 'fail')
         if (suitePass) {
-            console.log('[E2E:SUITE:PASS] All main-suite tests passed (T1-T26; T27 in cold-start phase)')
+            console.log('[E2E:SUITE:PASS] All main-suite tests passed (T1-T26 + T28-T30; T27 in cold-start phase)')
             appendLog('=== SUITE PASS ✓ ===')
         } else {
             console.log('[E2E:SUITE:FAIL] One or more tests failed')
@@ -1362,6 +1620,71 @@ export default function E2ETestRunner(props: { phase?: string } = {}) {
                 )}
             </View>
         )}
+
+        {/* T28: the embedded paywall inside a REAL react-native-screens screen.
+            `ScreenStack` + `ScreenStackItem` put a native RNSScreen — which owns
+            its own UIViewController on iOS — between the paywall's host view and
+            the window. That is the hierarchy the old `addChild(rootViewController)`
+            crashed on. Nothing here is a mock: it is the same component any app
+            using @react-navigation/native-stack mounts for every screen. */}
+        {nestedRequest && (
+            <View style={styles.inlineOverlay} testID="ply-e2e-nested-host">
+                <ScreenStack style={styles.fill}>
+                    <ScreenStackItem screenId="ply-e2e-t28" style={styles.fill}>
+                        <View style={styles.nestedScreenBody}>
+                            <Text style={styles.nestedScreenLabel}>
+                                T28 — inside react-native-screens
+                            </Text>
+                            <View style={styles.nestedPaywallSlot}>
+                                <PLYPresentationView request={nestedRequest} flex={1} />
+                            </View>
+                        </View>
+                    </ScreenStackItem>
+                </ScreenStack>
+            </View>
+        )}
+
+        {/* T29: two embedded paywalls on screen at the same time, in containers of
+            deliberately different fixed heights. The labels are what makes the
+            screenshot readable on its own; the hard assertion is the host driver
+            reading the two native views' bounds. */}
+        {/* T30: the same embedded paywall, hosted by one of TWO distinct native
+            screens. `screenId` differs between them, so react-native-screens
+            creates a different RNSScreen — and therefore a different owning
+            UIViewController on iOS — for each. Remounting from one to the other
+            is what forces the ancestor to be resolved again. */}
+        {remountRequest && (
+            <View style={styles.inlineOverlay} testID="ply-e2e-remount-host">
+                <ScreenStack style={styles.fill}>
+                    <ScreenStackItem
+                        screenId={`ply-e2e-t30-${remountScreen}`}
+                        style={styles.fill}
+                    >
+                        <View style={styles.nestedScreenBody}>
+                            <Text style={styles.nestedScreenLabel}>
+                                T30 — screen {remountScreen.toUpperCase()}
+                            </Text>
+                            <View style={styles.nestedPaywallSlot}>
+                                <PLYPresentationView request={remountRequest} flex={1} />
+                            </View>
+                        </View>
+                    </ScreenStackItem>
+                </ScreenStack>
+            </View>
+        )}
+
+        {dualRequests && (
+            <View style={styles.dualOverlay} testID="ply-e2e-dual-host">
+                <Text style={styles.dualLabel}>T29 — tall slot ({T29_TALL_DP}dp)</Text>
+                <View style={[styles.dualSlot, { height: T29_TALL_DP }]} testID="ply-e2e-dual-tall">
+                    <PLYPresentationView request={dualRequests[0]} flex={1} />
+                </View>
+                <Text style={styles.dualLabel}>T29 — short slot ({T29_SHORT_DP}dp)</Text>
+                <View style={[styles.dualSlot, { height: T29_SHORT_DP }]} testID="ply-e2e-dual-short">
+                    <PLYPresentationView request={dualRequests[1]} flex={1} />
+                </View>
+            </View>
+        )}
         </View>
     )
 }
@@ -1391,6 +1714,30 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     inlineCloseFallbackText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+    // T28 — nested-in-react-native-screens host.
+    fill: { flex: 1 },
+    nestedScreenBody: { flex: 1, backgroundColor: '#121212', paddingTop: 60 },
+    nestedScreenLabel: {
+        color: '#fff',
+        fontSize: 13,
+        fontWeight: '600',
+        paddingHorizontal: 16,
+        paddingBottom: 8,
+    },
+    nestedPaywallSlot: { flex: 1, marginHorizontal: 12, marginBottom: 12 },
+    // T29 — two embedded views, different fixed heights.
+    dualOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: '#121212',
+        paddingTop: 60,
+        paddingHorizontal: 12,
+    },
+    dualLabel: { color: '#fff', fontSize: 12, fontWeight: '600', marginBottom: 4, marginTop: 12 },
+    dualSlot: { width: '100%', backgroundColor: '#7f0000' },
     header: {
         padding: 20,
         paddingTop: 50,

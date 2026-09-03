@@ -1427,6 +1427,29 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
+  - react-native-pager-view (9.0.4):
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - SwiftUIIntrospect (~> 1.0)
+    - Yoga
   - react-native-purchasely (6.0.0):
     - Purchasely (= 6.0.0)
     - React-Core
@@ -1948,6 +1971,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
+  - SwiftUIIntrospect (1.3.0)
   - Yoga (0.0.0)
 
 DEPENDENCIES:
@@ -1991,6 +2015,7 @@ DEPENDENCIES:
   - React-Mapbuffer (from `../node_modules/react-native/ReactCommon`)
   - React-microtasksnativemodule (from `../node_modules/react-native/ReactCommon/react/nativemodule/microtasks`)
   - React-mutationobservernativemodule (from `../node_modules/react-native/ReactCommon/react/nativemodule/mutationobserver`)
+  - react-native-pager-view (from `../node_modules/react-native-pager-view`)
   - react-native-purchasely (from `../node_modules/react-native-purchasely`)
   - react-native-purchasely/Tests (from `../node_modules/react-native-purchasely`)
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
@@ -2036,6 +2061,7 @@ DEPENDENCIES:
 SPEC REPOS:
   trunk:
     - Purchasely
+    - SwiftUIIntrospect
 
 EXTERNAL SOURCES:
   FBLazyVector:
@@ -2117,6 +2143,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon/react/nativemodule/microtasks"
   React-mutationobservernativemodule:
     :path: "../node_modules/react-native/ReactCommon/react/nativemodule/mutationobserver"
+  react-native-pager-view:
+    :path: "../node_modules/react-native-pager-view"
   react-native-purchasely:
     :path: "../node_modules/react-native-purchasely"
   react-native-safe-area-context:
@@ -2200,8 +2228,8 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   FBLazyVector: b3e7ad108f0d882e30445c5527d774e3fd432f3d
-  hermes-engine: 65dfaeaf2bff6bb376ba6d10606221a33c7434a1
-  Purchasely: 7436e0b4b1f8c222c38069890b75fa2baf9ca620
+  hermes-engine: 7fa7794edc84e91e759bb4fe5095fe8bc63f8ceb
+  Purchasely: 4309bcf9d139c40dcad8ebe3d93751c8d6ae02cd
   RCTDeprecation: 2a74a2c57675e64419bd89078efde81f7c1de90b
   RCTRequired: 30451112e6fef4e6f31b4e7eee0845156e35e4b0
   RCTSwiftUI: 5aaf0b07e747ba749dc6acc94d8bd41eea4b570f
@@ -2239,7 +2267,8 @@ SPEC CHECKSUMS:
   React-Mapbuffer: ce449ccdf3b80384415b925606be8a4bdcfc65d3
   React-microtasksnativemodule: 2eb3f49d0d8e77b5343455eccd057010b8d38b6b
   React-mutationobservernativemodule: f0a0d5ae9b51caf7becbeabf836d716cfedb6bf2
-  react-native-purchasely: bf8953437ce5ee3e16c310c32753b31d9de5281e
+  react-native-pager-view: e91b5624568fda9e4c0fb0c44ed9669c2335e212
+  react-native-purchasely: 662d42a2c30aac229d9eb5c0a902be86e768d8a9
   react-native-safe-area-context: 3836dc43241ba89903508a442029e57f7491539f
   React-NativeModulesApple: a092d89b58f635ebfab88048b0eda9fb516819fd
   React-networking: 968bbbe73590149feb1e72b2af4f6a68e4796ece
@@ -2278,8 +2307,9 @@ SPEC CHECKSUMS:
   ReactNativeDependencies: fa0a54b3f5319ae0e3b9aff32bfee7a424b88e66
   RNDeviceInfo: d863506092aef7e7af3a1c350c913d867d795047
   RNScreens: 991cc417cd396602a6cf59a42139e5a9d91462a9
+  SwiftUIIntrospect: fee9aa07293ee280373a591e1824e8ddc869ba5d
   Yoga: fe50ab299e578f397fef753cf309c6703a4db29b
 
 PODFILE CHECKSUM: 415ffeb938406fb3d697d7124e5777c2516a9209
 
-COCOAPODS: 1.16.2
+COCOAPODS: 1.17.0

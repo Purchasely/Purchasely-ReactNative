@@ -11,10 +11,15 @@ import Purchasely
 class PurchaselyView: UIView {
 
   private var _view: UIView?
-  private var _controller: UIViewController?
-  // Tracks whether we have already driven the embedded controller through an
-  // "appeared" appearance transition, so we fire it exactly once per window entry.
+  // `_controller`, `_setupGeneration`, `attachControllerToParent`,
+  // `nearestViewController`, `detachController` and `installPreloadedController`
+  // are `internal` purely as XCTest seams.
+  var _controller: UIViewController?
+  // We drove the controller through an "appeared" transition; one per window entry.
   private var _appeared = false
+  // Bumped by every `setupView()`, so a slow preload completion can tell it has
+  // been superseded. See `installPreloadedController`.
+  var _setupGeneration = 0
 
   @objc var placementId: String? {
     didSet {
@@ -37,21 +42,11 @@ class PurchaselyView: UIView {
     }
   }
 
-  /// Id the JS `PLYPresentationView` component listens on for the dismiss
-  /// event routed through `PURCHASELY_PRESENTATION_DISMISSED` — the bridge
-  /// `requestId` when reusing a preloaded presentation (identical to
-  /// `requestId` above in that case), or a component-generated id for the
-  /// `presentation` prop and fresh `placementId` paths, which have no bridge
-  /// `requestId` of their own.
+  /// Id the JS component listens on for the dismiss event.
   ///
-  /// Plain stored property — NOT wired to `setupView()`. RN applies props in
-  /// an unspecified order, so `viewId` may land after `placementId`/
-  /// `presentation`, which already triggered `setupView()`/preload. Re-running
-  /// `setupView()` here would double-preload (and double-fire
-  /// `PRESENTATION_VIEWED`). Instead, the `onDismissed` closures wired in
-  /// `createNativeViewController` and `getPresentationController` read
-  /// `self?.viewId` lazily at dismiss time, so whatever value RN eventually
-  /// settles on is the one used for routing, regardless of application order.
+  /// Deliberately NOT wired to `setupView()`: RN applies props in any order, so
+  /// re-running setup here would double-preload. The `onDismissed` closures read
+  /// it lazily at dismiss time instead, so late application still routes right.
   @objc var viewId: String?
 
   override init(frame: CGRect) {
@@ -62,9 +57,7 @@ class PurchaselyView: UIView {
     super.init(coder: aDecoder)
   }
 
-  // Keep the embedded controller's view pinned to our bounds as Yoga resizes us.
-  // Frame-based layout (matching the Flutter `NativeView` container) — NOT Auto
-  // Layout against this Yoga-managed host view.
+  // Frame-based, not Auto Layout: the host view is Yoga-managed.
   override func layoutSubviews() {
     super.layoutSubviews()
     if let view = _view, view.frame != bounds {
@@ -72,18 +65,39 @@ class PurchaselyView: UIView {
     }
   }
 
-  // The embedded paywall becomes visible only when this host view enters a
-  // window. The RN app has been running for a while before an inline view
-  // mounts, so UIKit will NOT auto-forward the appearance lifecycle to a child
-  // controller added after the parent already appeared. We therefore drive a
-  // balanced appearance transition here so the controller receives
-  // viewWillAppear/viewDidAppear (its normal lifecycle), and we surface the
-  // "viewed" signal to JS at the same point (see `updateAppearanceState`).
+  // UIKit does not forward appearance to a child added after its parent already
+  // appeared, which is always the case for an inline view in a running RN app —
+  // so we drive the transition ourselves around window entry and exit.
   override func didMoveToWindow() {
     super.didMoveToWindow()
+    if window != nil {
+      attachControllerToParent()
+    }
     updateAppearanceState()
+    if window == nil {
+      // A window exit may be transient (a pager recycling this row), so keep the
+      // disappear PLAIN — no `willMove(toParent: nil)`. That call sends the SDK
+      // into its dismissal branch, which fires PRESENTATION_CLOSED and
+      // `onDismissed` into client JS for a paywall that is still mounted.
+      // Guarded on `_appeared` only: a controller that never got containment
+      // still needs its disappear.
+      //
+      // ponytail: if UIKit already forwarded a disappear via a parent transition
+      // we cannot tell, so this delivers a second one. The SDK's
+      // `viewWillDisappear` work is idempotent, so it is tolerated.
+      if let controller = _controller, _appeared {
+        controller.beginAppearanceTransition(false, animated: false)
+        controller.endAppearanceTransition()
+        _appeared = false
+      }
+      // Released so the next window entry re-resolves the ancestor — RN may
+      // remount this view under a different screen.
+      detachControllerFromParent()
+    }
   }
 
+  // Drives the bootstrap appear only. Disappears are driven by `didMoveToWindow`
+  // (window exit) and `detachController` (teardown).
   private func updateAppearanceState() {
     guard let controller = _controller else { return }
     let inWindow = (window != nil)
@@ -91,21 +105,17 @@ class PurchaselyView: UIView {
       _appeared = true
       controller.beginAppearanceTransition(true, animated: false)
       controller.endAppearanceTransition()
-      // The embedded paywall is now on screen. The iOS SDK only emits
-      // PRESENTATION_VIEWED through its own full-screen display flow, so surface
-      // it here for the embedded path (parity with Android, whose SDK fires it
-      // for embedded views too).
+      // The iOS SDK emits PRESENTATION_VIEWED only through its full-screen flow,
+      // so the embedded path surfaces it here (Android's SDK does it natively).
       PurchaselyRN.emitEmbeddedPresentationViewed(
         forRequestId: requestId,
         placementId: placementId ?? (presentation?["placementId"] as? String))
-    } else if !inWindow && _appeared {
-      _appeared = false
-      controller.beginAppearanceTransition(false, animated: false)
-      controller.endAppearanceTransition()
     }
   }
 
   private func setupView() {
+    _setupGeneration += 1
+
     // Clean up previous controller/view before setting up new ones.
     detachController()
 
@@ -116,16 +126,8 @@ class PurchaselyView: UIView {
     }
   }
 
-  /// Install a preloaded controller into this view using the frame-based,
-  /// child-VC-containment pattern proven in the Flutter `NativeView`:
-  ///   • frame + autoresizingMask (resynced in `layoutSubviews`) — no Auto Layout
-  ///     constraints against the Yoga host view;
-  ///   • proper `addChild` / `didMove(toParent:)` containment;
-  ///   • a BALANCED appearance transition driven from `updateAppearanceState`
-  ///     (begin+end) on window entry — the old code called
-  ///     `beginAppearanceTransition` without an `endAppearanceTransition`, so
-  ///     `viewDidAppear` (and thus the SDK's `onPresented`/PRESENTATION_VIEWED)
-  ///     never fired.
+  /// Installs a controller: frame-based layout, containment deferred to window
+  /// entry, and a balanced appearance transition. Mirrors Flutter's `NativeView`.
   private func attachController(_ controller: UIViewController) {
     _controller = controller
     let view = controller.view ?? UIView()
@@ -135,81 +137,101 @@ class PurchaselyView: UIView {
     view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
     addSubview(view)
 
-    if let rootVC = PurchaselyView.findRootViewController() {
-      rootVC.addChild(controller)
-      controller.didMove(toParent: rootVC)
-    }
+    // No-op unless we are already in a window; otherwise `didMoveToWindow` does it.
+    attachControllerToParent()
 
-    // If we are already in a window (prop set after mount), drive the appearance
-    // transition now; otherwise `didMoveToWindow` will drive it on window entry.
     updateAppearanceState()
   }
 
-  private func detachController() {
-    if let controller = _controller {
-      // Balance any appearance transition we drove so UIKit does not leave the
-      // controller in an "appeared" limbo before it is torn down.
-      if _appeared {
-        _appeared = false
-        controller.beginAppearanceTransition(false, animated: false)
-        controller.endAppearanceTransition()
-      }
-      if controller.parent != nil {
-        controller.willMove(toParent: nil)
-        controller.removeFromParent()
-      }
+  /// Declares the controller a child of our REAL nearest ancestor controller.
+  ///
+  /// UIKit raises `UIViewControllerHierarchyInconsistency` when the parent named
+  /// through `addChild` is not the actual ancestor. Naming the app's root
+  /// controller crashed any inline paywall inside an `RNSScreen` or a pager.
+  ///
+  /// Deferred to window entry because RN applies props — and so runs
+  /// `setupView` — before inserting the view, when the responder chain still
+  /// ends at the root. Android waits on `isAttachedToWindow` for the same reason.
+  func attachControllerToParent() {
+    guard let controller = _controller, controller.parent == nil, window != nil else { return }
+    // No root-controller fallback: naming a non-ancestor is the crash above. A
+    // host with no ancestor controller gets no containment and renders anyway.
+    guard let parent = nearestViewController() else { return }
+    parent.addChild(controller)
+    controller.didMove(toParent: parent)
+  }
+
+  private func detachControllerFromParent() {
+    guard let controller = _controller, controller.parent != nil else { return }
+    controller.willMove(toParent: nil)
+    controller.removeFromParent()
+  }
+
+  /// Walks the responder chain: `UIView.next` is the superview, or the owning
+  /// controller when the view is a controller's root view.
+  func nearestViewController() -> UIViewController? {
+    var responder: UIResponder? = next
+    while let current = responder {
+      if let controller = current as? UIViewController { return controller }
+      responder = current.next
+    }
+    return nil
+  }
+
+  /// Teardown: a prop change or preload swap replacing this controller, or
+  /// `deinit`. The disappear is PLAIN — `willMove(toParent: nil)` comes after the
+  /// transition, so the SDK does NOT take its dismissal branch.
+  ///
+  /// That is a trade-off, not an oversight. Driving `willMove` first would nil
+  /// the SDK's `presentationStrongRef` (no leak) but also emit
+  /// PRESENTATION_CLOSED and `onDismissed` — spurious for a banner that is being
+  /// reconfigured, and a visible step change in every integrator's analytics.
+  ///
+  /// ponytail: so we keep `main`'s leak of one retained presentation per
+  /// in-window swap. The real fix is an SDK-side silent release; until then,
+  /// remounting the view (`key=`) instead of swapping `placementId` avoids it.
+  func detachController() {
+    if let controller = _controller, controller.parent != nil {
+      controller.beginAppearanceTransition(false, animated: false)
+      _view?.removeFromSuperview()
+      controller.endAppearanceTransition()
+      detachControllerFromParent()
+    } else if let controller = _controller, _appeared {
+      controller.beginAppearanceTransition(false, animated: false)
+      controller.endAppearanceTransition()
+      _view?.removeFromSuperview()
+    } else {
+      _view?.removeFromSuperview()
     }
     _appeared = false
-    _view?.removeFromSuperview()
     _view = nil
     _controller = nil
   }
 
-  /// Locates the host view controller, preferring the active scene's key window
-  /// (iOS 13+ multi-scene apps) and falling back to the app delegate's window.
-  /// Mirrors the Flutter `NativeView.findRootViewController()`.
-  private static func findRootViewController() -> UIViewController? {
-    if let windowScene = UIApplication.shared.connectedScenes
-        .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
-       let rootVC = windowScene.windows.first(where: { $0.isKeyWindow })?.rootViewController {
-      return rootVC
-    }
-    return UIApplication.shared.delegate?.window??.rootViewController
-  }
-
   private func getPresentationController(presentation: PurchaselyPresentation?,
                                          placementId: String?) -> UIViewController? {
-      // v6 / iso Flutter: when a `requestId` is provided, reuse the presentation
-      // the JS layer already preloaded (`request.preload()`) instead of loading a
-      // new one. Mirrors Android's `PurchaselyModule.loadedPresentation(requestId)`.
-      // Its dismissal is already routed by `preloadPresentation:`'s own wiring,
-      // keyed by this same requestId — nothing left to wire here.
+      // A `requestId` means JS already preloaded this presentation: reuse it.
+      // Its dismissal is already routed by `preloadPresentation:`.
       if let requestId = self.requestId,
          let loaded = PurchaselyRN.loadedPresentation(forRequestId: requestId),
          let controller = loaded.controller {
           return controller
       }
 
-      // Capture effective placement id before guard bindings are lost in the else branch.
-      // When only the `presentation` prop is set (placementId prop is nil), we still need
-      // the placement id to recreate the view controller on subsequent visits.
+      // Needed to recreate the controller later when only `presentation` is set.
       let effectivePlacementId = placementId ?? presentation?.placementId
 
-      // The `presentation` prop carries no bridge `requestId` (it's the raw
-      // screen data JS resolved from a `preload()`), so the matching loaded
-      // presentation is resolved by screen/placement identity instead — atomically
-      // claimed (single-use) so a second view can't reuse the same instance.
+      // The `presentation` prop carries no `requestId`, so match the loaded
+      // presentation by screen/placement identity — claimed atomically so two
+      // views cannot share one instance.
       if let presentation = presentation,
          let presentationPlacementId = presentation.placementId,
          let matched = PurchaselyRN.takeLoadedPresentation(matchingScreenId: presentation.id,
                                                             placementId: presentationPlacementId),
          let controller = matched.controller {
-          // Re-route this presentation's dismissal to the id the JS component
-          // is actually listening on (it doesn't know the internal requestId
-          // `preloadPresentation:` wired earlier) — `onDismissed` is a single
-          // settable slot, so this replaces that wiring rather than stacking.
-          // `viewId` is read lazily at dismiss time (not captured now) since RN
-          // may still apply it after this method runs.
+          // Re-route the dismissal to the id JS actually listens on. `onDismissed`
+          // is one slot, so this replaces the earlier wiring. `viewId` is read
+          // lazily because RN may still apply it after this runs.
           matched.onDismissed = { [weak self] outcome in
               guard let routingId = self?.viewId else { return }
               PurchaselyRN.emitPresentationDismissed(forId: routingId, outcome: outcome)
@@ -223,12 +245,11 @@ class PurchaselyView: UIView {
   private func createNativeViewController(placementId: String?) -> UIViewController? {
     guard let placementId = placementId else { return nil }
 
-    // v6: `Purchasely.presentationController(for:loaded:completion:)` was removed.
-    // Build a presentation request, preload it, then install the controller once
-    // the SDK hands it back. Preload is asynchronous, so we return nil here and
-    // swap the real view in via `attachController` on completion.
-    // `viewId` is read lazily at dismiss time (not captured now) since RN may
-    // still apply it after this method runs.
+    // Preload is async, so return nil now and install the controller in the
+    // completion. The generation captured here is what makes a stale completion
+    // detectable — see `installPreloadedController`.
+    let generation = _setupGeneration
+
     let request = PLYPresentationBuilder
       .from(placementId: placementId)
       .onDismissed { [weak self] outcome in
@@ -239,12 +260,21 @@ class PurchaselyView: UIView {
 
     request.preload { [weak self] presentation, _ in
       DispatchQueue.main.async {
-        guard let self = self, let controller = presentation?.controller else { return }
-        self.detachController()
-        self.attachController(controller)
+        guard let controller = presentation?.controller else { return }
+        // ponytail: a superseded preload is dropped, not released — the SDK has no
+        // release for a presentation that was never displayed.
+        self?.installPreloadedController(controller, generation: generation)
       }
     }
     return nil
+  }
+
+  /// Installs a preloaded controller unless a newer `setupView()` has superseded
+  /// it — otherwise a slow preload would replace the paywall the props now name.
+  func installPreloadedController(_ controller: UIViewController, generation: Int) {
+    guard _setupGeneration == generation else { return }
+    detachController()
+    attachController(controller)
   }
 
   /// Map a v6 `PLYPurchaseResult` to the `ProductResult` ordinal JS expects.
@@ -261,13 +291,8 @@ class PurchaselyView: UIView {
 
   deinit {
     detachController()
-    // Hardening (parity with Android's `onDropViewInstance` →
-    // `evictPresentationRequest`): a view that unmounts without ever
-    // dismissing (e.g. the host navigates away) would otherwise leak the
-    // `requestId` entry this view consumed in `kPresentationsByRequest`
-    // forever — only `emitPresentationDismissed(forId:outcome:)` purged it
-    // before. No-op if `requestId` was never set or was already purged by a
-    // normal dismiss.
+    // A view that unmounts without ever dismissing would otherwise leak its
+    // `kPresentationsByRequest` entry. Parity with Android's `onDropViewInstance`.
     if let requestId = requestId {
       PurchaselyRN.evictPresentationRequest(requestId)
     }
