@@ -90,24 +90,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
    * `replay = false` and `context = null`, which keeps the JS shape stable.
    */
   private val webRedemptionListener = PLYWebRedemptionListener { result ->
-    val params = when (result) {
-      is PLYWebRedemptionResult.Success -> mapOf(
-        Pair("isSuccess", true),
-        Pair("context", result.context?.let {
-          mapOf(Pair("subscription", it.subscription?.let { data -> subscriptionToMap(data) }))
-        }),
-        Pair("replay", result.replay),
-        Pair("errorCode", null),
-        Pair("errorMessage", null),
-      )
-      is PLYWebRedemptionResult.Failure -> mapOf(
-        Pair("isSuccess", false),
-        Pair("context", null),
-        Pair("replay", false),
-        Pair("errorCode", result.errorCode),
-        Pair("errorMessage", result.errorMessage),
-      )
-    }
+    val params = webRedemptionResultToMap(result)
     sendEvent(reactApplicationContext, "WEB_REDEMPTION_LISTENER", Arguments.makeNativeMap(params))
   }
 
@@ -249,27 +232,16 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     // guarantee used to live; a string-typed bridge is the only place left to
     // catch a bad value. Reject it loudly and skip the modifier — the SDK
     // still starts, matching how native treats an unusable proxy url.
-    //
-    // `UUID.fromString` accepts a short form such as "1-2-3-4-5" that
-    // `NSUUID` refuses, so the round-trip check makes both platforms agree on
-    // what "canonical" means.
     val anonymousUserIdString = if (
       startOptions.hasKey("anonymousUserId") && !startOptions.isNull("anonymousUserId")
     ) {
       startOptions.getString("anonymousUserId")
     } else null
-    val anonymousUserId = anonymousUserIdString?.let { value ->
-      val parsed = try {
-        UUID.fromString(value)
-      } catch (e: IllegalArgumentException) {
-        null
-      }
-      if (parsed == null || !parsed.toString().equals(value, ignoreCase = true)) {
-        Log.e("Purchasely", "`anonymousUserId` must be a canonical UUID string, for example " +
-          "\"3f2504e0-4f89-11d3-9a0c-0305e82c3301\". Received \"$value\". " +
-          "The anonymous user id is not applied.")
-        null
-      } else parsed
+    val anonymousUserId = parseCanonicalUuid(anonymousUserIdString)
+    if (anonymousUserIdString != null && anonymousUserId == null) {
+      Log.e("Purchasely", "`anonymousUserId` must be a canonical UUID string, for example " +
+        "\"3f2504e0-4f89-11d3-9a0c-0305e82c3301\". Received \"$anonymousUserIdString\". " +
+        "The anonymous user id is not applied.")
     }
     val anonymousUserIdOverride = if (
       startOptions.hasKey("anonymousUserIdOverride") && !startOptions.isNull("anonymousUserIdOverride")
@@ -690,30 +662,6 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
   @ReactMethod
   fun clearUserAttributes() {
     Purchasely.clearUserAttributes()
-  }
-
-  /**
-   * Map one [PLYSubscriptionData] to the JS `PLYSubscription` shape.
-   *
-   * Shared by `userSubscriptions`, `userSubscriptionsHistory` and the web
-   * redemption listener, whose `context.subscription` is the same type, so the
-   * three report one subscription shape.
-   */
-  private fun subscriptionToMap(data: PLYSubscriptionData): Map<String, Any?> {
-    return data.data.toMap().toMutableMap().apply {
-      this["subscriptionSource"] = when(data.data.storeType) {
-        StoreType.GOOGLE_PLAY_STORE -> StoreType.GOOGLE_PLAY_STORE.ordinal
-        StoreType.HUAWEI_APP_GALLERY -> StoreType.HUAWEI_APP_GALLERY.ordinal
-        StoreType.AMAZON_APP_STORE -> StoreType.AMAZON_APP_STORE.ordinal
-        StoreType.APPLE_APP_STORE -> StoreType.APPLE_APP_STORE.ordinal
-        else -> null
-      }
-      if(data.data.plan == null) {
-        this["plan"] = transformPlanToMap(data.plan)
-      }
-      this["product"] = data.product.toMap()
-      remove("subscription_status") //Add in a next version
-    }
   }
 
   @ReactMethod
@@ -1448,6 +1396,30 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
     private val pendingActionInterceptors =
       ConcurrentHashMap<String, CompletableDeferred<PLYInterceptResult>>()
 
+    /**
+     * Map one [PLYSubscriptionData] to the JS `PLYSubscription` shape.
+     *
+     * Shared by `userSubscriptions`, `userSubscriptionsHistory` and the web
+     * redemption listener, whose `context.subscription` is the same type, so
+     * the three report one subscription shape.
+     */
+    fun subscriptionToMap(data: PLYSubscriptionData): Map<String, Any?> {
+      return data.data.toMap().toMutableMap().apply {
+        this["subscriptionSource"] = when(data.data.storeType) {
+          StoreType.GOOGLE_PLAY_STORE -> StoreType.GOOGLE_PLAY_STORE.ordinal
+          StoreType.HUAWEI_APP_GALLERY -> StoreType.HUAWEI_APP_GALLERY.ordinal
+          StoreType.AMAZON_APP_STORE -> StoreType.AMAZON_APP_STORE.ordinal
+          StoreType.APPLE_APP_STORE -> StoreType.APPLE_APP_STORE.ordinal
+          else -> null
+        }
+        if(data.data.plan == null) {
+          this["plan"] = transformPlanToMap(data.plan)
+        }
+        this["product"] = data.product.toMap()
+        remove("subscription_status") //Add in a next version
+      }
+    }
+
     fun transformPlanToMap(plan: PLYPlan?): Map<String, Any?> {
       if(plan == null) return emptyMap()
 
@@ -1569,4 +1541,56 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
 
     return metadata
   }
+}
+
+/**
+ * Parse a canonical UUID string, or return null.
+ *
+ * JS has no UUID type, so an anonymous user id crosses the bridge as a string.
+ * `UUID.fromString` is lenient and accepts a short form such as `"1-2-3-4-5"`
+ * that the iOS `NSUUID` parser refuses. The round-trip check makes both
+ * platforms agree on what "canonical" means, so one id string is accepted, or
+ * refused, on both.
+ *
+ * The caller logs the refusal. This function stays pure so a unit test can
+ * drive it without an Android logger.
+ */
+internal fun parseCanonicalUuid(value: String?): UUID? {
+  if (value == null) return null
+  val parsed = try {
+    UUID.fromString(value)
+  } catch (e: IllegalArgumentException) {
+    return null
+  }
+  return if (parsed.toString().equals(value, ignoreCase = true)) parsed else null
+}
+
+/**
+ * Flatten a [PLYWebRedemptionResult] to the shape the JS listener receives.
+ *
+ * The sealed Kotlin result and the flat iOS `PLYWebRedemptionResult` object
+ * both map to the same 5 keys, so one JS listener drives both platforms. A
+ * `Failure` still reports `replay = false` and `context = null`, which keeps
+ * the JS shape stable.
+ *
+ * `context` and `context.subscription` stay separately nullable: a success can
+ * carry no context at all, and a present context can carry no subscription.
+ */
+internal fun webRedemptionResultToMap(result: PLYWebRedemptionResult): Map<String, Any?> = when (result) {
+  is PLYWebRedemptionResult.Success -> mapOf(
+    Pair("isSuccess", true),
+    Pair("context", result.context?.let { context ->
+      mapOf(Pair("subscription", context.subscription?.let(PurchaselyModule::subscriptionToMap)))
+    }),
+    Pair("replay", result.replay),
+    Pair("errorCode", null),
+    Pair("errorMessage", null),
+  )
+  is PLYWebRedemptionResult.Failure -> mapOf(
+    Pair("isSuccess", false),
+    Pair("context", null),
+    Pair("replay", false),
+    Pair("errorCode", result.errorCode),
+    Pair("errorMessage", result.errorMessage),
+  )
 }

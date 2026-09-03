@@ -29,6 +29,8 @@ import type {
     PLYCommitmentInfo,
     PLYCommitmentProgress,
     PLYBillingPlanType,
+    PLYEventPropertyRedemption,
+    PLYWebRedemptionResult,
 } from '../types'
 import type { PLYPurchasePayload } from '../presentationTypes'
 
@@ -542,6 +544,157 @@ describe('Purchasely Types', () => {
             )
             expect(properties.stripe_purchase_id).toBe('pi_test_123')
         })
+
+        // Wire shape verified against iOS `RedemptionOutcome.swift` and the
+        // Android `RedemptionProperties` serializer, which the Android
+        // `PLYEventPropertiesRedemptionJsonRegressionTest` pins byte for byte.
+        it('should accept the REDEMPTION_CONSUMED payload', () => {
+            const event: PLYEvent = {
+                name: 'REDEMPTION_CONSUMED',
+                properties: {
+                    sdk_version: '6.1.0',
+                    event_name: 'REDEMPTION_CONSUMED',
+                    event_created_at_ms: 1705315200000,
+                    event_created_at: '2024-01-15T12:00:00Z',
+                    redemption: {
+                        token: 'redemption-token-123',
+                        receipt: {
+                            id: 'receipt-123',
+                            validation_status: 'COMPLETED',
+                        },
+                        subscriptions: [
+                            {
+                                public_id: 'subs-123',
+                                plan_id: 'plan-123',
+                                store_type: 'APPLE_APP_STORE',
+                                subscription_status: 'ACTIVE',
+                                environment: 'PROD',
+                            },
+                        ],
+                        purchase_context: {
+                            version: 1,
+                            source: 'web',
+                            sandbox: false,
+                            replay: false,
+                            built_in_attributes: [
+                                { key: 'firebase_app_instance_id', type: 'string', value: 'abc' },
+                            ],
+                            custom_attributes: [{ key: 'plan', type: 'string', value: 'gold' }],
+                        },
+                    },
+                },
+            }
+
+            expect(event.properties.redemption?.receipt?.validation_status).toBe('COMPLETED')
+            expect(event.properties.redemption?.subscriptions).toHaveLength(1)
+            expect(event.properties.redemption?.purchase_context?.replay).toBe(false)
+        })
+
+        it('should accept the REDEMPTION_FAILED payload, with error_message at the top level', () => {
+            const event: PLYEvent = {
+                name: 'REDEMPTION_FAILED',
+                properties: {
+                    sdk_version: '6.1.0',
+                    event_name: 'REDEMPTION_FAILED',
+                    event_created_at_ms: 1705315200000,
+                    event_created_at: '2024-01-15T12:00:00Z',
+                    redemption: {
+                        token: 'redemption-token-123',
+                        error_code: 'EXPIRED_REDEMPTION_TOKEN',
+                    },
+                    error_message: 'Redemption link has expired.',
+                },
+            }
+
+            expect(event.properties.redemption?.error_code).toBe('EXPIRED_REDEMPTION_TOKEN')
+            expect(event.properties.error_message).toBe('Redemption link has expired.')
+        })
+
+        // A transport or parsing failure never reaches the server, so it
+        // carries no code.
+        it('should accept a REDEMPTION_FAILED payload without an error code', () => {
+            const redemption: PLYEventPropertyRedemption = {
+                token: 'redemption-token-123',
+            }
+
+            expect(redemption.error_code).toBeUndefined()
+        })
+    })
+
+    describe('PLYWebRedemptionResult', () => {
+        it('should accept a success that granted a subscription', () => {
+            const result: PLYWebRedemptionResult = {
+                isSuccess: true,
+                context: {
+                    subscription: {
+                        purchaseToken: 'token-123',
+                        subscriptionSource: SubscriptionSource.APPLE_APP_STORE,
+                        nextRenewalDate: '2024-02-15T12:00:00Z',
+                        cancelledDate: '',
+                        plan: { vendorId: 'plan-123', name: 'Gold', type: PlanType.PLAN_TYPE_AUTO_RENEWING_SUBSCRIPTION },
+                        product: { name: 'Gold', vendorId: 'product-123', plans: [] },
+                    },
+                },
+                replay: false,
+                errorCode: null,
+                errorMessage: null,
+            }
+
+            expect(result.context?.subscription?.purchaseToken).toBe('token-123')
+        })
+
+        // Both levels are nullable on both platforms: a 200 can describe
+        // nothing, and a present context can hold no subscription.
+        it('should accept a success with a null context', () => {
+            const result: PLYWebRedemptionResult = {
+                isSuccess: true,
+                context: null,
+                replay: true,
+                errorCode: null,
+                errorMessage: null,
+            }
+
+            expect(result.context).toBeNull()
+            expect(result.replay).toBe(true)
+        })
+
+        it('should accept a success whose context holds a null subscription', () => {
+            const result: PLYWebRedemptionResult = {
+                isSuccess: true,
+                context: { subscription: null },
+                replay: false,
+                errorCode: null,
+                errorMessage: null,
+            }
+
+            expect(result.context?.subscription).toBeNull()
+        })
+
+        it('should accept a failure, with replay false and no context', () => {
+            const result: PLYWebRedemptionResult = {
+                isSuccess: false,
+                context: null,
+                replay: false,
+                errorCode: 'INVALID_REDEMPTION_TOKEN',
+                errorMessage: 'Redemption link is not valid.',
+            }
+
+            expect(result.errorCode).toBe('INVALID_REDEMPTION_TOKEN')
+            expect(result.replay).toBe(false)
+        })
+
+        // A transport failure never reaches the server, so it carries no code.
+        it('should accept a failure with a null error code', () => {
+            const result: PLYWebRedemptionResult = {
+                isSuccess: false,
+                context: null,
+                replay: false,
+                errorCode: null,
+                errorMessage: 'Redemption could not be completed.',
+            }
+
+            expect(result.errorCode).toBeNull()
+        })
     })
 
     describe('PLYPresentationPlan', () => {
@@ -672,9 +825,12 @@ describe('Purchasely Event Names', () => {
             'USER_LOGGED_IN',
             'USER_LOGGED_OUT',
             'SUBSCRIPTION_CONTENT_USED',
+            // New on both native platforms in 6.1.0 (Web2App redemption).
+            'REDEMPTION_CONSUMED',
+            'REDEMPTION_FAILED',
         ]
 
-        expect(eventNames).toHaveLength(42)
+        expect(eventNames).toHaveLength(44)
         eventNames.forEach(name => {
             expect(typeof name).toBe('string')
         })

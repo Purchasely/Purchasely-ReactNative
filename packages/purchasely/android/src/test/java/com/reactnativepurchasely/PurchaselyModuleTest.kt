@@ -6,6 +6,8 @@ import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReadableArray
 import io.purchasely.ext.*
+import io.purchasely.models.PLYWebRedemptionContext
+import io.purchasely.models.PLYWebRedemptionResult
 import io.purchasely.ext.presentation.PLYPresentationBase
 import io.purchasely.ext.presentation.PLYPresentationType
 import io.purchasely.storage.userData.PLYUserAttributeSource
@@ -546,6 +548,112 @@ class PurchaselyModuleTest {
             ),
             map("ANALYTICS", "IDENTIFIED_ANALYTICS", "CAMPAIGNS", "PERSONALIZATION")
         )
+    }
+
+    // endregion
+
+    // region 6.1.0 — anonymous user id + web redemption
+
+    /**
+     * `UUID.fromString` is lenient: it accepts a short form the iOS `NSUUID`
+     * parser refuses. `parseCanonicalUuid` adds a round-trip check so one id
+     * string is accepted, or refused, on both platforms.
+     */
+    @Test
+    fun `parseCanonicalUuid accepts a canonical uuid`() {
+        val parsed = parseCanonicalUuid("3f2504e0-4f89-11d3-9a0c-0305e82c3301")
+
+        assertNotNull(parsed)
+        assertEquals("3f2504e0-4f89-11d3-9a0c-0305e82c3301", parsed.toString())
+    }
+
+    @Test
+    fun `parseCanonicalUuid accepts an uppercase uuid`() {
+        val parsed = parseCanonicalUuid("3F2504E0-4F89-11D3-9A0C-0305E82C3301")
+
+        assertNotNull(parsed)
+        assertEquals("3f2504e0-4f89-11d3-9a0c-0305e82c3301", parsed.toString())
+    }
+
+    @Test
+    fun `parseCanonicalUuid refuses the lenient short form that iOS refuses`() {
+        assertNull(parseCanonicalUuid("1-2-3-4-5"))
+    }
+
+    @Test
+    fun `parseCanonicalUuid refuses a value that is not a uuid`() {
+        assertNull(parseCanonicalUuid("not-a-uuid"))
+        assertNull(parseCanonicalUuid(""))
+        assertNull(parseCanonicalUuid("3f2504e0-4f89-11d3-9a0c"))
+    }
+
+    @Test
+    fun `parseCanonicalUuid returns null for a null value`() {
+        assertNull(parseCanonicalUuid(null))
+    }
+
+    @Test
+    fun `webRedemptionResultToMap flattens a success that describes nothing`() {
+        val map = webRedemptionResultToMap(PLYWebRedemptionResult.Success(null, false))
+
+        assertEquals(true, map["isSuccess"])
+        assertNull(map["context"])
+        assertEquals(false, map["replay"])
+        assertNull(map["errorCode"])
+        assertNull(map["errorMessage"])
+    }
+
+    /**
+     * A present context can still carry a null subscription. Both levels stay
+     * nullable, so the JS side sees the same two-level shape the native SDKs
+     * report.
+     */
+    @Test
+    fun `webRedemptionResultToMap keeps a present context with a null subscription`() {
+        val result = PLYWebRedemptionResult.Success(PLYWebRedemptionContext(null), false)
+
+        val map = webRedemptionResultToMap(result)
+
+        assertEquals(true, map["isSuccess"])
+        @Suppress("UNCHECKED_CAST")
+        val context = map["context"] as Map<String, Any?>
+        assertTrue(context.containsKey("subscription"))
+        assertNull(context["subscription"])
+    }
+
+    @Test
+    fun `webRedemptionResultToMap reports a replayed token`() {
+        val map = webRedemptionResultToMap(PLYWebRedemptionResult.Success(null, true))
+
+        assertEquals(true, map["isSuccess"])
+        assertEquals(true, map["replay"])
+    }
+
+    @Test
+    fun `webRedemptionResultToMap flattens a failure and keeps the JS shape stable`() {
+        val result = PLYWebRedemptionResult.Failure(
+            "EXPIRED_REDEMPTION_TOKEN",
+            "Redemption link has expired."
+        )
+
+        val map = webRedemptionResultToMap(result)
+
+        assertEquals(false, map["isSuccess"])
+        assertNull(map["context"])
+        // A failure still reports replay, so the JS shape never changes.
+        assertEquals(false, map["replay"])
+        assertEquals("EXPIRED_REDEMPTION_TOKEN", map["errorCode"])
+        assertEquals("Redemption link has expired.", map["errorMessage"])
+    }
+
+    /** A transport or parsing failure never reached the server, so it has no code. */
+    @Test
+    fun `webRedemptionResultToMap accepts a failure with no error code`() {
+        val map = webRedemptionResultToMap(PLYWebRedemptionResult.Failure(null, "Network error"))
+
+        assertEquals(false, map["isSuccess"])
+        assertNull(map["errorCode"])
+        assertEquals("Network error", map["errorMessage"])
     }
 
     // endregion
