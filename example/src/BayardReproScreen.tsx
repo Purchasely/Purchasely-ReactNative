@@ -89,6 +89,12 @@ export default function BayardReproScreen() {
     // a view that has since been superseded by a newer one for a different
     // placement).
     const [swapPlacement, setSwapPlacement] = useState(PLACEMENT_HOME)
+    // (e) NON-keyed in-window prop change: same Banner instance stays mounted
+    // (no `key`, unlike swapPlacement above), only its placementId prop
+    // changes. This is the path 1b6ac2e's attachController fix targets — the
+    // view stays in the live window and the SDK swaps content under it. The
+    // positive control for PRESENTATION_CLOSED: exactly one is expected here.
+    const [inWindowPlacement, setInWindowPlacement] = useState(PLACEMENT_HOME)
     const navAwayTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
     const burstTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -150,6 +156,11 @@ export default function BayardReproScreen() {
         })
     }
 
+    function inWindowSwap() {
+        setInWindowPlacement((p) => (p === PLACEMENT_HOME ? PLACEMENT_ARTICLE : PLACEMENT_HOME))
+        log('inwindow-swap: prop change, no remount')
+    }
+
     function rapidSwitch() {
         setSwapPlacement((p) => (p === PLACEMENT_HOME ? PLACEMENT_ARTICLE : PLACEMENT_HOME))
         log('rapid-switch: single tap')
@@ -198,6 +209,16 @@ export default function BayardReproScreen() {
                 >
                     <Text style={styles.buttonText}>
                         {articleMounted ? 'Unmount' : 'Remount'} article banner
+                    </Text>
+                </Pressable>
+
+                <Pressable
+                    testID="bayard-inwindow-swap"
+                    style={styles.button}
+                    onPress={inWindowSwap}
+                >
+                    <Text style={styles.buttonText}>
+                        In-window swap (no remount): currently {inWindowPlacement}
                     </Text>
                 </Pressable>
 
@@ -281,6 +302,18 @@ export default function BayardReproScreen() {
                         testID="bayard-swap-banner"
                     />
                 </View>
+
+                {/* No `key` here — deliberately, unlike the swap slot above.
+                    Same Banner instance/native view stays mounted across the
+                    placementId change: this is the in-window swap Step 4
+                    exercises, not a remount. */}
+                <View style={styles.inWindowHost} testID="bayard-inwindow-host">
+                    <Banner
+                        placementId={inWindowPlacement}
+                        slot="inwindow"
+                        testID="bayard-inwindow-banner"
+                    />
+                </View>
             </View>
         </View>
     )
@@ -309,6 +342,7 @@ const styles = StyleSheet.create({
     homeHost: { height: 220 },
     pagerHost: { height: 90 },
     swapHost: { height: 130 },
+    inWindowHost: { height: 150 },
     pagerLabel: { color: '#fff', fontSize: 12, padding: 4 },
     bannerSlot: { flex: 1, backgroundColor: '#7f0000' },
     awayScreen: { flex: 1, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center' },
