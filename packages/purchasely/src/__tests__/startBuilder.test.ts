@@ -173,7 +173,7 @@ describe('PurchaselyBuilder', () => {
         })
     })
 
-    describe('anonymousUserId() — 6.1.0', () => {
+    describe('anonymousUserId() 6.1.0', () => {
         it('forwards the id and the default override=false through startOptions', async () => {
             await PurchaselyBuilder.apiKey('api-key')
                 .anonymousUserId('3f2504e0-4f89-11d3-9a0c-0305e82c3301')
@@ -196,7 +196,7 @@ describe('PurchaselyBuilder', () => {
             })
         })
 
-        it('does not validate the string in JS — the bridge parses it and rejects a bad value', async () => {
+        it('does not validate the string in JS: the bridge parses it and rejects a bad value', async () => {
             await expect(
                 PurchaselyBuilder.apiKey('api-key').anonymousUserId('not-a-uuid').start()
             ).resolves.toBe(true)
@@ -213,7 +213,7 @@ describe('PurchaselyBuilder', () => {
         })
     })
 
-    describe('proxy() — Android only, 6.1.0', () => {
+    describe('proxy() Android only, 6.1.0', () => {
         it('forwards the api url through startOptions', async () => {
             await PurchaselyBuilder.apiKey('api-key')
                 .proxy('https://svc.purchasely.io')
@@ -224,7 +224,7 @@ describe('PurchaselyBuilder', () => {
             })
         })
 
-        it('does not validate the scheme in JS — the native SDK refuses a bad value', async () => {
+        it('does not validate the scheme in JS: the native SDK refuses a bad value', async () => {
             await PurchaselyBuilder.apiKey('api-key').proxy('http://insecure.example').start()
             expect(mockNative.start.mock.calls[0][7]).toEqual({
                 proxy: 'http://insecure.example',
@@ -232,7 +232,7 @@ describe('PurchaselyBuilder', () => {
         })
     })
 
-    describe('appHandlesRedemptionAlert() — 6.1.0', () => {
+    describe('appHandlesRedemptionAlert() 6.1.0', () => {
         it('forwards true through startOptions', async () => {
             await PurchaselyBuilder.apiKey('api-key').appHandlesRedemptionAlert(true).start()
             expect(mockNative.start.mock.calls[0][7]).toEqual({

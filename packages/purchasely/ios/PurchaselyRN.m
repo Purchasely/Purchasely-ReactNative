@@ -570,7 +570,7 @@ RCT_EXPORT_METHOD(start:(NSString * _Nonnull)apiKey
         // JS has no UUID type, so the id crosses the bridge as a string and is
         // parsed here. The native builder takes a `UUID?`, which is where the
         // guarantee used to live; a string-typed bridge is the only place left
-        // to catch a bad value. Reject it loudly and skip the modifier — the
+        // to catch a bad value. Reject it loudly and skip the modifier. The
         // SDK still starts, matching how native treats an unusable proxy url.
         id anonymousUserId = startOptions[@"anonymousUserId"];
         if ([anonymousUserId isKindOfClass:[NSString class]]) {
