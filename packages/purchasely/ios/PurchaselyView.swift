@@ -127,12 +127,16 @@ class PurchaselyView: UIView {
   // appear (below) and the disappear on window exit / teardown (the PLAIN
   // disappear in `didMoveToWindow` and the TERMINAL one in
   // `detachController`).
-  private func updateAppearanceState() {
+  // `insertingView`, when given, runs BETWEEN `beginAppearanceTransition` and
+  // `endAppearanceTransition` instead of before either — see the call in
+  // `attachController` for why.
+  private func updateAppearanceState(insertingView insert: (() -> Void)? = nil) {
     guard let controller = _controller else { return }
     let inWindow = (window != nil)
     if inWindow && !_appeared {
       _appeared = true
       controller.beginAppearanceTransition(true, animated: false)
+      insert?()
       controller.endAppearanceTransition()
       // The embedded paywall is now on screen. The iOS SDK only emits
       // PRESENTATION_VIEWED through its own full-screen display flow, so surface
@@ -161,13 +165,30 @@ class PurchaselyView: UIView {
   /// child-VC-containment pattern proven in the Flutter `NativeView`:
   ///   • frame + autoresizingMask (resynced in `layoutSubviews`) — no Auto Layout
   ///     constraints against the Yoga host view;
-  ///   • proper `addChild` / `didMove(toParent:)` containment, DEFERRED to window
-  ///     entry (see `attachControllerToParent`);
-  ///   • a BALANCED appearance transition driven from `updateAppearanceState`
-  ///     (begin+end) on window entry — the old code called
-  ///     `beginAppearanceTransition` without an `endAppearanceTransition`, so
-  ///     `viewDidAppear` (and thus the SDK's `onPresented`/PRESENTATION_VIEWED)
-  ///     never fired.
+  ///   • proper `addChild` / `didMove(toParent:)` containment, declared BEFORE the
+  ///     view enters the hierarchy when we are already in a window (see
+  ///     `attachControllerToParent`), or deferred to window entry otherwise;
+  ///   • an appearance transition driven from `updateAppearanceState` (begin+end)
+  ///     on window entry — the old code called `beginAppearanceTransition` without
+  ///     an `endAppearanceTransition`, so `viewDidAppear` (and thus the SDK's
+  ///     `onPresented`/PRESENTATION_VIEWED) never fired.
+  ///
+  /// Containment MUST be declared before `addSubview` (ordering hygiene: UIKit
+  /// requires the declared parent to match the real ancestor before the child's
+  /// view enters that ancestor's hierarchy). Separately — and this is the part
+  /// that actually prevents the double-appear below — when we are ALREADY in a
+  /// live window, the view MUST enter the hierarchy inside an open
+  /// `beginAppearanceTransition`/`endAppearanceTransition` pair, not before
+  /// either. Measured directly (with probes, not inferred): inserting a
+  /// controller's view via a bare `addSubview` into a live window makes UIKit
+  /// run its OWN appearance pass on it, REGARDLESS of whether containment was
+  /// already declared — reordering containment ahead of `addSubview` alone does
+  /// NOT suppress it. `updateAppearanceState` then drives a second, independent
+  /// appearance pair on top of it: a real double-appear observed as "Unbalanced
+  /// calls to begin/end appearance transitions" for the incoming controller on
+  /// a prop change / preload swap while already in-window. Opening our own
+  /// transition BEFORE `addSubview` does suppress it: `addSubview` then only
+  /// completes a transition already in flight instead of starting its own.
   private func attachController(_ controller: UIViewController) {
     _controller = controller
     let view = controller.view ?? UIView()
@@ -175,14 +196,23 @@ class PurchaselyView: UIView {
 
     view.frame = bounds
     view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-    addSubview(view)
 
     // Containment happens here only when we are ALREADY in a window (a prop set
     // after mount, or the async `preload` completion); otherwise
-    // `didMoveToWindow` declares it on window entry.
+    // `didMoveToWindow` declares it on window entry. Declared before `addSubview`
+    // so the view never enters a live window unparented (see doc comment above).
     attachControllerToParent()
 
-    updateAppearanceState()
+    if window != nil {
+      // Already in a live window: fold `addSubview` inside the appearance
+      // transition (see doc comment above) instead of inserting the view
+      // first and driving the transition after.
+      updateAppearanceState(insertingView: { self.addSubview(view) })
+    } else {
+      addSubview(view)
+      // Not in a window yet: appearance is deferred to `didMoveToWindow`, same
+      // as before.
+    }
   }
 
   /// Declares the embedded controller a child of the view hierarchy's real
