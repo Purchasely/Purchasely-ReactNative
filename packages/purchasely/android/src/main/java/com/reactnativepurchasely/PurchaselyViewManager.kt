@@ -28,22 +28,15 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * View manager for `<PLYPresentationView />`. Hosts a `PLYPresentationView`
- * inside a React-Native managed Fragment.
- *
- * The presentation is sourced either from a `placementId` prop, a
- * `presentation` map produced by the builder, or a bridge `requestId` already
- * preloaded via `request.preload()`. Outcomes flow back to JS through the
- * `PURCHASELY_PRESENTATION_DISMISSED` event, routed by `requestId` (or the
- * JS-generated `viewId` when there is no bridge request), mirroring the
- * full-screen `displayPresentation` contract.
+ * View manager for `<PLYPresentationView />`, hosting a `PLYPresentationView`
+ * in an RN-managed Fragment. The presentation comes from a `placementId`, a
+ * `presentation` map, or an already-preloaded `requestId`. Outcomes go back to
+ * JS as `PURCHASELY_PRESENTATION_DISMISSED`, routed by `requestId` or `viewId`.
  */
 class PurchaselyViewManager(private val reactContext: ReactApplicationContext) : ViewGroupManager<FrameLayout>() {
 
-  /** Props for a single mounted view, keyed by that view's own instance —
-   * RN reuses this one manager across every `<PurchaselyView />`, so storing
-   * props on the manager itself would let two simultaneous views clobber each
-   * other's placementId/screenId/requestId/width/height. */
+  /** Per-view props. RN reuses ONE manager for every `<PurchaselyView />`, so
+   * anything stored on the manager itself gets clobbered by a second view. */
   internal class ViewProps {
     var placementId: String? = null
     var screenId: String? = null
@@ -127,9 +120,8 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
     }
 
     val props = propsByView[root] ?: ViewProps()
-    // Guards against double-emitting a dismissal for the fresh/ad hoc path,
-    // which wires this callback on both the request builder and the built
-    // view (see `PurchaselyFragment.attachPurchaselyView`).
+    // The fresh/ad hoc path wires this callback twice (builder + built view),
+    // so guard against emitting the dismissal twice.
     var delivered = false
     val outcomeHandler: (PLYPresentationOutcome) -> Unit = { outcome ->
       if (!delivered) {
@@ -149,10 +141,9 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
       .commitAllowingStateLoss()
   }
 
-  /** Drives the embedded view's layout every frame. The callback is kept on the
-   * view's own props so `onDropViewInstance` can cancel it — it reschedules
-   * itself forever otherwise — and so a second `createFragment` (the
-   * attach-to-window retry) does not start a competing loop. */
+  /** Lays the embedded view out every frame. The callback lives on the view's
+   * props so `onDropViewInstance` can cancel it (it reschedules itself forever)
+   * and so the attach-to-window retry cannot start a second loop. */
   private fun setupLayout(root: FrameLayout, view: View) {
     val props = propsFor(root)
     if (props.layoutCallback != null) return
@@ -192,16 +183,13 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
   @ReactPropGroup(names = ["width", "height"], customType = "Style")
   fun setStyle(view: FrameLayout?, index: Int, value: Double) {
     view ?: return
-    // 0 is RN's "unset" sentinel here, not a size: `ReactPropGroup` documents
-    // that a dimension REMOVED from the JS style calls this setter back with
-    // `defaultDouble`, which is 0.0. Taking it as a size pins the paywall to a
-    // 0px box, so it maps to null and `resolveChildSize` falls back to the
-    // measured size. `isFinite` guards the same way against a NaN or infinite
-    // value, whose `toInt()` is also 0.
+    // 0 is RN's "unset" value, not a size: `ReactPropGroup` calls this setter
+    // back with `defaultDouble` (0.0) when a dimension is REMOVED from the style.
+    // Kept as a size it would pin the paywall to a 0px box, so it maps to null
+    // and `resolveChildSize` falls back to the measured size.
     //
-    // `<PLYPresentationView />` passes `style={{ flex }}` only, so this setter
-    // is reached solely by a consumer rendering the native component directly
-    // with explicit dimensions.
+    // Unreachable from `<PLYPresentationView />`, which passes `style={{ flex }}`
+    // only — reached solely by rendering the native component directly.
     val size = if (value.isFinite() && value > 0) value.toInt() else null
     val props = propsFor(view)
     if (index == 0) props.width = size
@@ -237,9 +225,8 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
 
   override fun onDropViewInstance(view: FrameLayout) {
     super.onDropViewInstance(view)
-    // Hardening: a view that unmounts without ever dismissing (e.g. the host
-    // navigates away) would otherwise leak its entry in these maps forever —
-    // only `emitPresentationDismissed`/`closePresentation` purged them before.
+    // A view that unmounts without ever dismissing would otherwise leak its map
+    // entries forever — only the dismiss paths purged them before.
     val props = propsByView.remove(view)
     props?.layoutCallback?.let { Choreographer.getInstance().removeFrameCallback(it) }
     props?.requestId?.let {
@@ -259,10 +246,8 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
     const val COMMAND_CREATE = 1
   }
 
-  /**
-   * Fragment hosting a `PLYPresentationView`. The presentation is built
-   * lazily inside `onViewCreated` so the SDK can attach to the live Activity.
-   */
+  /** Fragment hosting a `PLYPresentationView`, built lazily in `onViewCreated`
+   * so the SDK attaches to the live Activity. */
   class PurchaselyFragment(
     private val screenId: String?,
     private val placementId: String?,
@@ -277,26 +262,16 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
     ): View = FrameLayout(inflater.context)
 
     private fun attachPurchaselyView(host: ViewGroup) {
-      // v6 / iso iOS+Flutter: when a requestId is provided, reuse the
-      // presentation the JS layer already preloaded (request.preload()) instead
-      // of building + preloading a new one inside the view. The inline dismiss
-      // path only invokes the `buildView` callback — the SDK never fires the
-      // preload-time `onDismissed` for an embedded view (proven by E2E T25) —
-      // so the outcome MUST be routed through `callback` here; the `delivered`
-      // guard upstream absorbs any future double-fire.
+      // A requestId means JS already preloaded this presentation: reuse it.
+      // The SDK never fires the preload-time `onDismissed` for an embedded view
+      // (E2E T25), so the outcome must be routed through `callback` here.
       val preloaded = requestId?.let { PurchaselyModule.loadedPresentation(it) }
       if (preloaded != null) {
-        // `preloadPresentation` (PurchaselyModule.wirePresentationCallbacks) always wires
-        // `onCloseRequested` to forward a PRESENTATION_CLOSE_REQUESTED JS event — meant for a
-        // full-screen non-dismissible modal, where the app decides how to react to a close
-        // attempt. For a full-screen/flow presentation this is harmless: PLYFlowListener's own
-        // onCloseRequested is consulted first and this callback never runs. An embedded view has
-        // no flow listener, so the SDK's PLYPresentationView.close() falls straight to this
-        // callback and — finding it non-null — invokes it INSTEAD of tearing down the view: the
-        // native close (X) tap silently no-ops forever (root cause of E2E T25 hanging). Embedded
-        // views have no such "ask before closing" contract, so clear it before building the view:
-        // the tap now falls through to the SDK's default self-close (removeView →
-        // onDetachedFromWindow → outcome callback).
+        // `preloadPresentation` always wires `onCloseRequested`, which only makes
+        // sense for a non-dismissible full-screen modal. An embedded view has no
+        // flow listener, so `close()` invokes that callback INSTEAD of tearing the
+        // view down and the X tap no-ops forever (this hung E2E T25). Clear it so
+        // the tap falls through to the SDK's default self-close.
         preloaded.onCloseRequested = null
         val pv: PLYPresentationView? =
           preloaded.buildView(host.context) { outcome -> callback(outcome) }
