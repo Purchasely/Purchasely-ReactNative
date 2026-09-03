@@ -576,7 +576,7 @@ RCT_EXPORT_METHOD(start:(NSString * _Nonnull)apiKey
         if ([anonymousUserId isKindOfClass:[NSString class]]) {
             NSUUID *parsed = [[NSUUID alloc] initWithUUIDString:(NSString *)anonymousUserId];
             if (parsed == nil) {
-                RCTLogError(@"Purchasely: `anonymousUserId` must be a canonical UUID string, "
+                RCTLogError(@"[Purchasely] `anonymousUserId` must be a canonical UUID string, "
                              "for example \"3f2504e0-4f89-11d3-9a0c-0305e82c3301\". Received \"%@\". "
                              "The anonymous user id is not applied.", anonymousUserId);
             } else {
