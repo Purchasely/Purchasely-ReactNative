@@ -356,6 +356,113 @@ class PurchaselyViewTests: XCTestCase {
                       "A completion matching the current generation must be applied")
     }
 
+    // MARK: - Appearance Transition Tests
+
+    // Bug B: declaring the real ancestor as parent (this PR) makes UIKit's
+    // automatic appearance forwarding live for the first time. `_appeared`
+    // only tracked OUR manual transitions, so a parent-forwarded disappear
+    // plus our own stale-`_appeared` disappear on window exit delivered a
+    // complete appear/disappear pair TWICE. A log grep cannot see this (no
+    // warning fires — it is silent double delivery), so this counts real
+    // UIKit callbacks on a stub controller instead.
+    func testBootstrapDrivesABalancedAppearOnWindowEntry() {
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 400, height: 600))
+        let root = UIViewController()
+        window.rootViewController = root
+        window.makeKeyAndVisible()
+        root.view.addSubview(purchaselyView)
+
+        let stub = AppearanceCountingViewController()
+        purchaselyView._controller = stub
+        // `_controller` must be set before window entry drives the transition —
+        // exactly `attachController`'s ordering, and what `didMoveToWindow` does
+        // for a prop set after mount. Recycling the window-entry path here (over
+        // calling `attachControllerToParent()` alone, which only declares
+        // containment) is what actually runs `updateAppearanceState()`.
+        purchaselyView.removeFromSuperview()
+        root.view.addSubview(purchaselyView)
+
+        XCTAssertEqual(stub.willAppearCount, 1,
+                       "A controller added after its parent already appeared needs a manually driven appear")
+        XCTAssertEqual(stub.didAppearCount, 1)
+        XCTAssertEqual(stub.willDisappearCount, 0)
+        XCTAssertEqual(stub.didDisappearCount, 0)
+    }
+
+    // pi's scenario: the host survives a parent transition (push/pop, tab
+    // switch), which UIKit auto-forwards to the child, then later leaves the
+    // window entirely. Before the fix, `_appeared` stayed stale after that
+    // forwarded disappear, so leaving the window drove a SECOND complete
+    // disappear pair.
+    //
+    // Reproducing the forwarding mechanism itself (`shouldAutomaticallyForwardAppearanceMethods`)
+    // deterministically in XCTest was NOT achievable: neither driving `screenA`'s
+    // own `beginAppearanceTransition`/`endAppearanceTransition` directly, nor a
+    // real `UINavigationController` push, delivered it in this environment — both
+    // require a running app + animation coordinator UIKit does not stand up for a
+    // bare `UIWindow` in a unit test host (`screenA.view` never entered
+    // `purchaselyView.window` even after `makeKeyAndVisible()`). Per the plan,
+    // this does not fake it — it asserts the actual invariant that makes the bug
+    // impossible instead: `stub.beginAppearanceTransition`/`endAppearanceTransition`
+    // stand in for "however delivered" a first disappear (UIKit forwarding, in
+    // production), and the assertion is that our own code no longer redelivers a
+    // second one on window exit, because the disappear branch is gone from
+    // `updateAppearanceState` entirely — there is no code path left that CAN
+    // double-fire, regardless of who delivered the first one.
+    func testNoDoubleDisappearAfterAnExternallyDeliveredDisappear() {
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 400, height: 600))
+        let root = UIViewController()
+        window.rootViewController = root
+        window.makeKeyAndVisible()
+        root.view.addSubview(purchaselyView)
+
+        let stub = AppearanceCountingViewController()
+        purchaselyView._controller = stub
+        purchaselyView.removeFromSuperview()
+        root.view.addSubview(purchaselyView)
+        XCTAssertEqual(stub.didAppearCount, 1, "Precondition: bootstrap appear delivered")
+
+        // Stands in for a parent transition UIKit auto-forwards to `stub` in
+        // production (e.g. a push/pop through the real ancestor `stub` is
+        // contained in via `attachControllerToParent`).
+        stub.beginAppearanceTransition(false, animated: false)
+        stub.endAppearanceTransition()
+        XCTAssertEqual(stub.didDisappearCount, 1, "Precondition: one disappear already delivered")
+
+        // The host later leaves the window entirely. Before the fix, stale
+        // `_appeared` drove a second manual disappear here.
+        purchaselyView.removeFromSuperview()
+
+        XCTAssertEqual(stub.didDisappearCount, 1,
+                       "Leaving the window must not add a second disappear on top of one already delivered")
+    }
+
+    // The leak fix: `detachController` must drive `willMove(toParent: nil)`
+    // BEFORE the disappear transition, so the SDK's own `viewDidDisappear` sees
+    // `isMovingFromParent == true` and takes its real cleanup branch
+    // (PRESENTATION_CLOSED, releasing `presentationStrongRef`,
+    // `FlowsManager.onPresentationClosed`) instead of leaking the presentation
+    // graph forever.
+    func testDetachControllerReachesTheSDKCleanupBranch() {
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 400, height: 600))
+        let root = UIViewController()
+        window.rootViewController = root
+        window.makeKeyAndVisible()
+        root.view.addSubview(purchaselyView)
+
+        let stub = AppearanceCountingViewController()
+        purchaselyView._controller = stub
+        purchaselyView.removeFromSuperview()
+        root.view.addSubview(purchaselyView)
+        XCTAssertEqual(stub.didAppearCount, 1, "Precondition: bootstrap appear delivered")
+
+        purchaselyView.detachController()
+
+        XCTAssertEqual(stub.didDisappearWhileMovingFromParentCount, 1,
+                       "Teardown must reach viewDidDisappear with isMovingFromParent == true")
+        XCTAssertNil(stub.parent, "Teardown must remove the controller from its parent")
+    }
+
     // MARK: - Autoresizing Tests
 
     func testViewSupportAutoresizing() {
@@ -430,5 +537,21 @@ class PurchaselyViewTests: XCTestCase {
 
         purchaselyView.presentation = presentationDict
         XCTAssertNotNil(purchaselyView.presentation, "Should handle nested data structures")
+    }
+}
+
+/// Counts real UIKit appearance callbacks. A log grep cannot see double
+/// delivery (no warning fires for it), so the appearance tests above assert
+/// against this stub's counters instead.
+final class AppearanceCountingViewController: UIViewController {
+    var willAppearCount = 0, didAppearCount = 0
+    var willDisappearCount = 0, didDisappearCount = 0
+    var didDisappearWhileMovingFromParentCount = 0
+    override func viewWillAppear(_ a: Bool)   { super.viewWillAppear(a);  willAppearCount += 1 }
+    override func viewDidAppear(_ a: Bool)    { super.viewDidAppear(a);   didAppearCount += 1 }
+    override func viewWillDisappear(_ a: Bool){ super.viewWillDisappear(a); willDisappearCount += 1 }
+    override func viewDidDisappear(_ a: Bool) {
+        super.viewDidDisappear(a); didDisappearCount += 1
+        if isMovingFromParent { didDisappearWhileMovingFromParentCount += 1 }
     }
 }
