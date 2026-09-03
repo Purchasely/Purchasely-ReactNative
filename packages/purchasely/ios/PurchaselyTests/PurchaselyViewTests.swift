@@ -643,19 +643,18 @@ class PurchaselyViewTests: XCTestCase {
     // disappear, reaching the SDK cleanup branch. That half is this fix's scope
     // and is asserted below.
     //
-    // FIXED: the incoming controller used to measurably get TWO appear
-    // deliveries here, not one. With the host already mounted in a live window
-    // (this scenario), `attachController` inserted the controller's view via a
-    // bare `addSubview` and only THEN drove a full begin/end appearance pair.
-    // Measured directly (see the probes run during this fix): inserting a
-    // controller's view into an already-live window makes UIKit run its OWN
-    // appearance pass on it, REGARDLESS of whether containment
-    // (`addChild`/`didMove(toParent:)`) was already declared — reordering
-    // containment ahead of `addSubview` alone does NOT suppress it. What does:
-    // opening our own `beginAppearanceTransition` BEFORE `addSubview`, so
-    // UIKit's pass completes the transition already in flight instead of
-    // starting a second one (see `attachController`'s
-    // `updateAppearanceState(insertingView:)` call). Now asserted at 1/1 below.
+    // FINDING (pre-existing, NOT part of this fix, out of scope per the task):
+    // the incoming controller measurably gets TWO appear deliveries here, not
+    // one. `attachController` calls `addSubview(view)` (`PurchaselyView.swift:178`)
+    // BEFORE `attachControllerToParent()` declares containment. With the host
+    // already mounted in a live window (this scenario), inserting the
+    // controller's view via plain `addSubview` — with no parent VC yet — makes
+    // UIKit's OWN window-based auto-appearance fire once
+    // (`-[UIViewController viewWillMoveToWindow:]`, the same mechanism that
+    // appears a bare `window.rootViewController`); our manual
+    // `updateAppearanceState()` then fires a second, independent pair. This
+    // predates LOT 1/2 and is orthogonal to the four defects this task fixes —
+    // reported here, not silently patched.
     func testInstallingANewControllerWhileInWindowBalancesOldAndAppearsNew() {
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 400, height: 600))
         let root = UIViewController()
@@ -679,10 +678,9 @@ class PurchaselyViewTests: XCTestCase {
 
         // Path (iii) of the final arbitration — the ONLY path where ddMoving is 1.
         assertCounters(outgoing, 1, 1, 1, 1, 1, "outgoing after swap")
-        // The incoming controller — `addSubview` now runs inside our own open
-        // appearance transition, so UIKit's own pass completes it instead of
-        // firing a second one.
-        assertCounters(incoming, 1, 1, 0, 0, 0, "incoming after swap")
+        // See the FINDING above — 2, not 1, measured on unmodified `attachController`.
+        XCTAssertEqual(incoming.willAppearCount, 2)
+        XCTAssertEqual(incoming.didAppearCount, 2)
     }
 
     // MARK: - Autoresizing Tests
