@@ -28,6 +28,10 @@ interface StartBuilderState {
     allowCampaigns?: boolean | null;
     automaticDeeplinkHandling?: boolean | null;
     deeplink?: string | null;
+    anonymousUserId?: string | null;
+    anonymousUserIdOverride?: boolean | null;
+    proxyApi?: string | null;
+    appHandlesRedemptionAlert?: boolean | null;
     androidStores: AndroidStore[];
     storekitVersion: StorekitVersion;
 }
@@ -39,6 +43,7 @@ interface StartBuilderState {
  * - `allowDeeplink` / `allowCampaigns` are optional chain modifiers.
  *   When omitted we keep each native SDK's default/backend-configured value.
  * - `stores(...)` is Android-only.
+ * - `proxy(...)` is Android-only.
  * - `storekitVersion(...)` is iOS-only.
  *
  * The default running mode is `'observer'` — the host app keeps full
@@ -51,7 +56,7 @@ export class PurchaselyBuilder {
      *
      * @internal
      */
-    static bridgeVersion = '6.0.0';
+    static bridgeVersion = '6.1.0';
 
     private constructor(private readonly state: StartBuilderState) {}
 
@@ -113,6 +118,75 @@ export class PurchaselyBuilder {
         return this;
     }
 
+    /**
+     * Set the anonymous user id that the SDK reports for this device.
+     *
+     * `id` must be a canonical UUID string, for example
+     * `'3f2504e0-4f89-11d3-9a0c-0305e82c3301'`. JavaScript has no UUID type,
+     * so the native bridge parses the string. The bridge logs an error and
+     * skips the modifier when the string is not a canonical UUID. The SDK
+     * still starts.
+     *
+     * The SDK stores the id in **uppercase**, on iOS and on Android.
+     *
+     * The SDK applies the id at `start()`, before it sends a network request
+     * or an event. The SDK applies the id only when the device holds no
+     * anonymous id yet, unless `override` is `true`.
+     *
+     * **`override: true` splits the user history.** The backend keeps every
+     * event and every purchase under the previous id. Use `override: true`
+     * only when the app owns the anonymous identity, for example after a
+     * cross-device restore.
+     *
+     * @param id A canonical UUID string.
+     * @param override `false` (the default) keeps an id that the SDK
+     * established before. `true` replaces it.
+     */
+    anonymousUserId(id: string, override: boolean = false): this {
+        this.state.anonymousUserId = id;
+        this.state.anonymousUserIdOverride = override;
+        return this;
+    }
+
+    /**
+     * Android-only.
+     *
+     * Route Purchasely API traffic through a proxy instead of
+     * `api.purchasely.io`, for a region where that host is unreachable. The
+     * SDK overrides the API host only: the paywall host and the tracking
+     * host always stay on production.
+     *
+     * `api` must be an `https` base URL. The native SDK refuses any other
+     * value with an error log and keeps the production host, so the bridge
+     * does not validate the value again.
+     *
+     * @param api The `https` base URL of the API proxy.
+     */
+    proxy(api: string): this {
+        this.state.proxyApi = api;
+        return this;
+    }
+
+    /**
+     * Hand the Web2App redemption result screen to the app.
+     *
+     * This flag decides who shows the outcome of a redemption, and with it
+     * when the SDK calls the listener that you add with
+     * `Purchasely.addWebRedemptionListener`:
+     *
+     * - `false` (the default): the SDK shows its own popin and calls the
+     *   listener after the user acknowledges the popin.
+     * - `true`: the SDK shows nothing and calls the listener as soon as the
+     *   redemption settles. The app must then show its own result screen.
+     *
+     * This is a start-time option because it changes what the native SDK
+     * presents. Set it before `start()`.
+     */
+    appHandlesRedemptionAlert(handles: boolean): this {
+        this.state.appHandlesRedemptionAlert = handles;
+        return this;
+    }
+
     /** Android-only. */
     stores(stores: AndroidStore[]): this {
         this.state.androidStores = stores;
@@ -152,7 +226,7 @@ export class PurchaselyBuilder {
         // window where a campaign/deeplink can fire against the wrong default.
         // Omitted options are intentionally absent so native defaults match
         // Flutter v6.
-        const startOptions: Record<string, boolean> = {};
+        const startOptions: Record<string, boolean | string> = {};
         if (this.state.allowDeeplink !== undefined && this.state.allowDeeplink !== null) {
             startOptions.allowDeeplink = this.state.allowDeeplink;
         }
@@ -164,6 +238,21 @@ export class PurchaselyBuilder {
             this.state.automaticDeeplinkHandling !== null
         ) {
             startOptions.automaticDeeplinkHandling = this.state.automaticDeeplinkHandling;
+        }
+        // The bridge parses `anonymousUserId` into a native UUID. An invalid
+        // string is rejected there, with a log, and start() still succeeds.
+        if (this.state.anonymousUserId !== undefined && this.state.anonymousUserId !== null) {
+            startOptions.anonymousUserId = this.state.anonymousUserId;
+            startOptions.anonymousUserIdOverride = this.state.anonymousUserIdOverride ?? false;
+        }
+        if (this.state.proxyApi !== undefined && this.state.proxyApi !== null) {
+            startOptions.proxy = this.state.proxyApi;
+        }
+        if (
+            this.state.appHandlesRedemptionAlert !== undefined &&
+            this.state.appHandlesRedemptionAlert !== null
+        ) {
+            startOptions.appHandlesRedemptionAlert = this.state.appHandlesRedemptionAlert;
         }
 
         const configured: boolean = await NativeModules.Purchasely.start(
