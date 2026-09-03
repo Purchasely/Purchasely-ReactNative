@@ -255,9 +255,12 @@ class PurchaselyView: UIView {
   //
   // Idempotency note: only `triggerPresentationClosedEvent` is guarded by the
   // SDK's `isClosedEventFired`. `fireCancelledCompletionIfNeeded` uses
-  // different flags, and `presentationStrongRef = nil` is unguarded — all of
-  // them RESET on the next appear. So a second disappear with no appear in
-  // between is safe; that guarantee does NOT extend across an appear.
+  // different flags, and `presentationStrongRef = nil` is unguarded. The event
+  // and completion flags reset on the next appear; `presentationStrongRef` does
+  // NOT — the SDK re-establishes it only in `LegacyPresentation.display`, which
+  // the embedded inline path never calls, so it stays nil (nilling it twice is
+  // harmless). So a second disappear with no appear in between is safe; that
+  // guarantee does NOT extend across an appear.
   //
   // `internal` so the XCTest bundle can drive teardown directly and assert
   // the SDK's cleanup branch is reached (same seam precedent as

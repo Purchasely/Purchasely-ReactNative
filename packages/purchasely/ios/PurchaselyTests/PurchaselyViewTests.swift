@@ -645,7 +645,7 @@ class PurchaselyViewTests: XCTestCase {
     //
     // FINDING (pre-existing, NOT part of this fix, out of scope per the task):
     // the incoming controller measurably gets TWO appear deliveries here, not
-    // one. `attachController` (`PurchaselyView.swift:193`) calls `addSubview(view)`
+    // one. `attachController` calls `addSubview(view)` (`PurchaselyView.swift:178`)
     // BEFORE `attachControllerToParent()` declares containment. With the host
     // already mounted in a live window (this scenario), inserting the
     // controller's view via plain `addSubview` — with no parent VC yet — makes
