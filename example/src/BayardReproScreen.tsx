@@ -15,7 +15,7 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react'
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { ScreenStack, ScreenStackItem } from 'react-native-screens'
 import PagerView from 'react-native-pager-view'
 import Purchasely, { PLYPresentationView } from 'react-native-purchasely'
@@ -29,6 +29,13 @@ function log(line: string) {
     console.log(`${LOG_PREFIX} ${line}`)
 }
 
+// CAVEAT: PLYPresentationView forwards no ref and the native view's actual
+// measured size isn't readable from here (packages/purchasely/src is out of
+// scope for this harness) — onLayout below measures the FIXED-HEIGHT WRAPPER
+// `View`, not the SDK content inside it. A total collapse of the wrapper
+// still shows as h:0; a paywall that renders clipped or short WITHIN an
+// unclipped wrapper does not. For that, read the native view hierarchy the
+// way T29's `assert_dual_inline*.sh` does.
 function Banner({
     placementId,
     slot,
@@ -72,22 +79,34 @@ export default function BayardReproScreen() {
     // (b) unmount entirely.
     const [homeMounted, setHomeMounted] = useState(true)
     const [articleMounted, setArticleMounted] = useState(true)
-    // (c) rapid switch slot: same mounted <PLYPresentationView>, placementId
-    // flipped between the two placements — exercises the preload generation
-    // guard (mounting placement B before placement A's preload settled must
-    // not let A's stale preload land in B's slot).
+    // (c) rapid switch slot. A placementId prop change alone does not
+    // re-trigger a load on Android — PurchaselyViewManager.setPlacementId()
+    // only stores the value; the native fragment is created once, by the
+    // `create` command dispatched from PLYPresentationView's mount effect.
+    // Keying the slot by placementId forces a real unmount + fresh mount on
+    // BOTH platforms — a new native view/fragment per switch, which is the
+    // actual shape of the preload generation race (a stale preload landing on
+    // a view that has since been superseded by a newer one for a different
+    // placement).
     const [swapPlacement, setSwapPlacement] = useState(PLACEMENT_HOME)
     const navAwayTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const burstTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
     useEffect(() => {
         let mounted = true
         async function init() {
             log('SDK init start (La Croix Preprod)')
             try {
-                const ok = await Purchasely.builder(API_KEY)
+                // stores() is Android-only; storekitVersion() is iOS-only — mirrors
+                // App.tsx / E2ETestRunner.tsx so plans/prices resolve the same way.
+                const b = Purchasely.builder(API_KEY)
                     .runningMode('full')
                     .logLevel('debug')
-                    .start()
+                const ok = await (
+                    Platform.OS === 'android'
+                        ? b.stores(['google'])
+                        : b.storekitVersion('storeKit2')
+                ).start()
                 if (!mounted) return
                 log(`SDK init ok=${ok}`)
                 setSdkReady(ok)
@@ -104,6 +123,7 @@ export default function BayardReproScreen() {
         return () => {
             mounted = false
             if (navAwayTimer.current) clearTimeout(navAwayTimer.current)
+            if (burstTimer.current) clearTimeout(burstTimer.current)
         }
     }, [])
 
@@ -131,11 +151,20 @@ export default function BayardReproScreen() {
     }
 
     function rapidSwitch() {
-        setSwapPlacement((p) => {
-            const next = p === PLACEMENT_HOME ? PLACEMENT_ARTICLE : PLACEMENT_HOME
-            log(`rapid-switch slot: ${p} -> ${next}`)
-            return next
-        })
+        setSwapPlacement((p) => (p === PLACEMENT_HOME ? PLACEMENT_ARTICLE : PLACEMENT_HOME))
+        log('rapid-switch: single tap')
+    }
+
+    // A single host tap is hundreds of ms (adb/idb latency) — plenty of time
+    // for a preload to land before the next switch, so the race is never
+    // exercised. This fires N flips ~60ms apart, well inside a preload's
+    // flight time, so a later flip's completion can overtake an earlier one.
+    function rapidBurst(remaining = 6) {
+        setSwapPlacement((p) => (p === PLACEMENT_HOME ? PLACEMENT_ARTICLE : PLACEMENT_HOME))
+        log(`rapid-burst: flip (${remaining} left)`)
+        if (remaining > 1) {
+            burstTimer.current = setTimeout(() => rapidBurst(remaining - 1), 60)
+        }
     }
 
     return (
@@ -181,6 +210,16 @@ export default function BayardReproScreen() {
                         Rapid switch slot: currently {swapPlacement} (tap repeatedly)
                     </Text>
                 </Pressable>
+
+                <Pressable
+                    testID="bayard-rapid-burst"
+                    style={styles.button}
+                    onPress={() => rapidBurst()}
+                >
+                    <Text style={styles.buttonText}>
+                        Rapid burst (6 flips, ~60ms apart, one tap)
+                    </Text>
+                </Pressable>
             </ScrollView>
 
             {/* (d) both real banners mounted at once. Home banner lives inside a
@@ -208,26 +247,35 @@ export default function BayardReproScreen() {
                     </View>
                 )}
 
+                {/* Client shape is react-navigation screen -> pager -> banner: the
+                    pager page also sits inside its own ScreenStackItem so the
+                    ancestor-VC chain (RNSScreen -> UIPageViewController -> page VC
+                    -> paywall VC) matches, not just the pager alone. */}
                 {articleMounted && (
                     <View style={styles.pagerHost} testID="bayard-pager-host">
-                        <PagerView style={styles.fill} initialPage={0}>
-                            <View key="article-body" style={styles.fill}>
-                                <Text style={styles.pagerLabel}>article body text…</Text>
-                                <Banner
-                                    placementId={PLACEMENT_ARTICLE}
-                                    slot="article"
-                                    testID="bayard-article-banner"
-                                />
-                            </View>
-                            <View key="next-article" style={styles.fill}>
-                                <Text style={styles.pagerLabel}>next article (swipe)</Text>
-                            </View>
-                        </PagerView>
+                        <ScreenStack style={styles.fill}>
+                            <ScreenStackItem screenId="bayard-article-screen" style={styles.fill}>
+                                <PagerView style={styles.fill} initialPage={0}>
+                                    <View key="article-body" style={styles.fill}>
+                                        <Text style={styles.pagerLabel}>article body text…</Text>
+                                        <Banner
+                                            placementId={PLACEMENT_ARTICLE}
+                                            slot="article"
+                                            testID="bayard-article-banner"
+                                        />
+                                    </View>
+                                    <View key="next-article" style={styles.fill}>
+                                        <Text style={styles.pagerLabel}>next article (swipe)</Text>
+                                    </View>
+                                </PagerView>
+                            </ScreenStackItem>
+                        </ScreenStack>
                     </View>
                 )}
 
                 <View style={styles.swapHost} testID="bayard-swap-host">
                     <Banner
+                        key={swapPlacement}
                         placementId={swapPlacement}
                         slot="swap"
                         testID="bayard-swap-banner"
@@ -252,9 +300,15 @@ const styles = StyleSheet.create({
     },
     buttonText: { color: '#fff', fontSize: 13 },
     stage: { flex: 1, flexDirection: 'column' },
-    homeHost: { height: 140 },
-    pagerHost: { height: 140 },
-    swapHost: { height: 100 },
+    // Deliberately different heights per slot (mirrors T29's tall/short split)
+    // so a host reading these frames from the log can tell slots apart by
+    // bounds alone — three identical heights would make a shared-size
+    // regression invisible even though the log "moved". pagerHost is pinned
+    // near the client's screen max_height (87dp, see symptom 2) so a clipped
+    // "Je m'abonne" button is realistic rather than hidden by spare headroom.
+    homeHost: { height: 220 },
+    pagerHost: { height: 90 },
+    swapHost: { height: 130 },
     pagerLabel: { color: '#fff', fontSize: 12, padding: 4 },
     bannerSlot: { flex: 1, backgroundColor: '#7f0000' },
     awayScreen: { flex: 1, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center' },
