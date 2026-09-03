@@ -554,8 +554,10 @@ RCT_EXPORT_METHOD(start:(NSString * _Nonnull)apiKey
     // Applied on the builder chain — before `startWithInitialized:` — so these
     // take effect atomically with configuration, closing the race window a
     // separate post-start call would leave open for an early campaign/deeplink
-    // to fire against the wrong default. `automaticDeeplinkHandling` has no
-    // iOS builder equivalent (Android-only) and is ignored here.
+    // to fire against the wrong default. `automaticDeeplinkHandling` and
+    // `proxy` have no iOS builder equivalent (both Android-only) and are
+    // ignored here.
+    BOOL appHandlesRedemptionAlert = NO;
     if ([startOptions isKindOfClass:[NSDictionary class]]) {
         id allowDeeplink = startOptions[@"allowDeeplink"];
         if ([allowDeeplink isKindOfClass:[NSNumber class]]) {
@@ -565,7 +567,36 @@ RCT_EXPORT_METHOD(start:(NSString * _Nonnull)apiKey
         if ([allowCampaigns isKindOfClass:[NSNumber class]]) {
             builder = [builder allowCampaigns:[allowCampaigns boolValue]];
         }
+        // JS has no UUID type, so the id crosses the bridge as a string and is
+        // parsed here. The native builder takes a `UUID?`, which is where the
+        // guarantee used to live; a string-typed bridge is the only place left
+        // to catch a bad value. Reject it loudly and skip the modifier — the
+        // SDK still starts, matching how native treats an unusable proxy url.
+        id anonymousUserId = startOptions[@"anonymousUserId"];
+        if ([anonymousUserId isKindOfClass:[NSString class]]) {
+            NSUUID *parsed = [[NSUUID alloc] initWithUUIDString:(NSString *)anonymousUserId];
+            if (parsed == nil) {
+                RCTLogError(@"Purchasely: `anonymousUserId` must be a canonical UUID string, "
+                             "for example \"3f2504e0-4f89-11d3-9a0c-0305e82c3301\". Received \"%@\". "
+                             "The anonymous user id is not applied.", anonymousUserId);
+            } else {
+                id override = startOptions[@"anonymousUserIdOverride"];
+                BOOL shouldOverride = [override isKindOfClass:[NSNumber class]] ? [override boolValue] : NO;
+                builder = [builder appAnonymousUserId:parsed override:shouldOverride];
+            }
+        }
+        id handlesAlert = startOptions[@"appHandlesRedemptionAlert"];
+        if ([handlesAlert isKindOfClass:[NSNumber class]]) {
+            appHandlesRedemptionAlert = [handlesAlert boolValue];
+        }
     }
+
+    // Registered unconditionally: the native SDK has no runtime setter on
+    // purpose, because a redemption can settle during `start()` (a cold start
+    // that the link itself triggered, or a token left pending by a previous
+    // launch). The bridge emits `WEB_REDEMPTION_LISTENER`, which reaches no one
+    // when JS added no listener, so this is behaviour-neutral by default.
+    builder = [builder webRedemptionDelegate:self appHandlesRedemptionAlert:appHandlesRedemptionAlert];
 
     [builder startWithInitialized:^(NSError * _Nullable error) {
         if (error != nil) {
@@ -1246,6 +1277,7 @@ RCT_EXPORT_METHOD(closeAllScreens) {
     @"PURCHASE_LISTENER",
     @"USER_ATTRIBUTE_SET_LISTENER",
     @"USER_ATTRIBUTE_REMOVED_LISTENER",
+    @"WEB_REDEMPTION_LISTENER",
     // cross-platform bridge events. Names mirror the Android bridge so the
     // same JS layer drives both platforms. See the presentation section below.
     @"PURCHASELY_PRESENTATION_LOADED",
@@ -1331,6 +1363,37 @@ RCT_EXPORT_METHOD(closeAllScreens) {
     [self sendEventWithName:@"USER_ATTRIBUTE_REMOVED_LISTENER" body:body];
 }
 
+
+/// `PLYWebRedemptionDelegate`. The SDK calls this on the main thread, once per
+/// settled redemption. Mapped to the flat 5-field shape the Android bridge
+/// emits, so one JS listener drives both platforms.
+///
+/// `context` and `context.subscription` are separately nullable, and both stay
+/// nullable in the emitted body: a success can carry no context at all, and a
+/// present context can carry no subscription.
+///
+/// `errorMessage` can hold the backend's masked email hint for an expired
+/// link. The `REDEMPTION_FAILED` event drops that hint on purpose; this
+/// channel keeps it, so the app can tell the user where the fresh link went.
+- (void)webRedemptionCompletedWithResult:(PLYWebRedemptionResult * _Nonnull)result {
+    if (!self.shouldEmit) return;
+
+    id context = [NSNull null];
+    if (result.context != nil) {
+        PLYSubscription *subscription = result.context.subscription;
+        context = @{ @"subscription": subscription != nil ? subscription.asDictionary : [NSNull null] };
+    }
+
+    NSDictionary<NSString *, id> *body = @{
+        @"isSuccess": @(result.isSuccess),
+        @"context": context,
+        @"replay": @(result.replay),
+        @"errorCode": result.errorCode ?: [NSNull null],
+        @"errorMessage": result.errorMessage ?: [NSNull null]
+    };
+
+    [self sendEventWithName:@"WEB_REDEMPTION_LISTENER" body:body];
+}
 
 - (void)purchasePerformed {
   if (!self.shouldEmit) return;
