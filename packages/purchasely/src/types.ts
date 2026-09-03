@@ -202,7 +202,7 @@ export type PLYEventName =
   | 'WEB_CHECKOUT_TIMED_OUT'
   /**
    * A Web2App redemption granted its content. New in 6.1.0 on both native
-   * platforms. A replayed link reports this event too — read
+   * platforms. A replayed link reports this event too. Read
    * `properties.redemption.purchase_context.replay` to tell a first
    * redemption from a repeat.
    */

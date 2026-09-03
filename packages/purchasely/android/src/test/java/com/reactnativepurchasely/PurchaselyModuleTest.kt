@@ -552,7 +552,7 @@ class PurchaselyModuleTest {
 
     // endregion
 
-    // region 6.1.0 — anonymous user id + web redemption
+    // region 6.1.0: anonymous user id + web redemption
 
     /**
      * `UUID.fromString` is lenient: it accepts a short form the iOS `NSUUID`
