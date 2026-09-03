@@ -89,7 +89,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
    * emits, so one JS listener drives both platforms. A `Failure` still reports
    * `replay = false` and `context = null`, which keeps the JS shape stable.
    */
-  private val webRedemptionListener = PLYWebRedemptionListener { result ->
+  private val bridgeWebRedemptionListener = PLYWebRedemptionListener { result ->
     val params = webRedemptionResultToMap(result)
     sendEvent(reactApplicationContext, "WEB_REDEMPTION_LISTENER", Arguments.makeNativeMap(params))
   }
@@ -221,7 +221,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     val proxyApi = if (startOptions.hasKey("proxy") && !startOptions.isNull("proxy")) {
       startOptions.getString("proxy")
     } else null
-    val appHandlesRedemptionAlert = if (
+    val handlesRedemptionAlert = if (
       startOptions.hasKey("appHandlesRedemptionAlert") && !startOptions.isNull("appHandlesRedemptionAlert")
     ) {
       startOptions.getBoolean("appHandlesRedemptionAlert")
@@ -237,8 +237,8 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     ) {
       startOptions.getString("anonymousUserId")
     } else null
-    val anonymousUserId = parseCanonicalUuid(anonymousUserIdString)
-    if (anonymousUserIdString != null && anonymousUserId == null) {
+    val parsedAnonymousUserId = parseCanonicalUuid(anonymousUserIdString)
+    if (anonymousUserIdString != null && parsedAnonymousUserId == null) {
       Log.e("Purchasely", "`anonymousUserId` must be a canonical UUID string, for example " +
         "\"3f2504e0-4f89-11d3-9a0c-0305e82c3301\". Received \"$anonymousUserIdString\". " +
         "The anonymous user id is not applied.")
@@ -271,14 +271,14 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
         allowCampaigns?.let { this.allowCampaigns(it) }
         automaticDeeplinkHandling?.let { this.automaticDeeplinkHandling(it) }
         proxyApi?.let { this.proxy(it) }
-        anonymousUserId?.let { this.anonymousUserId(it, anonymousUserIdOverride) }
+        parsedAnonymousUserId?.let { this.anonymousUserId(it, anonymousUserIdOverride) }
         // Registered unconditionally: the native SDK has no runtime setter on
         // purpose, because a redemption can settle during `start()` (a cold
         // start that the link itself triggered, or a token left pending by a
         // previous launch). The bridge emits `WEB_REDEMPTION_LISTENER`, which
         // reaches no one when JS added no listener, so this is
         // behaviour-neutral by default.
-        this.webRedemptionListener(appHandlesRedemptionAlert, webRedemptionListener)
+        this.webRedemptionListener(handlesRedemptionAlert, bridgeWebRedemptionListener)
       }
       .build()
 
