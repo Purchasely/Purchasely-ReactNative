@@ -324,6 +324,38 @@ class PurchaselyViewTests: XCTestCase {
                      "falling back to the root VC would rebuild the inconsistency")
     }
 
+    // MARK: - Stale Preload Completion Tests
+
+    // Bug: `request.preload` completions carry no identity. If a prop change
+    // starts a second `setupView()` while an earlier preload is still in
+    // flight, the stale completion must not replace the controller the newer
+    // generation already installed.
+    func testASupersededPreloadCompletionIsIgnored() {
+        let generation = purchaselyView._setupGeneration
+        let current = UIViewController()
+        purchaselyView.installPreloadedController(current, generation: generation)
+        XCTAssertTrue(purchaselyView._controller === current, "Precondition: current controller installed")
+
+        // Simulate a prop change starting a new generation before the stale
+        // completion runs.
+        purchaselyView._setupGeneration += 1
+        let stale = UIViewController()
+        purchaselyView.installPreloadedController(stale, generation: generation)
+
+        XCTAssertTrue(purchaselyView._controller === current,
+                      "A completion from a superseded generation must not replace the current controller")
+    }
+
+    func testTheCurrentGenerationCompletionIsApplied() {
+        let generation = purchaselyView._setupGeneration
+        let controller = UIViewController()
+
+        purchaselyView.installPreloadedController(controller, generation: generation)
+
+        XCTAssertTrue(purchaselyView._controller === controller,
+                      "A completion matching the current generation must be applied")
+    }
+
     // MARK: - Autoresizing Tests
 
     func testViewSupportAutoresizing() {

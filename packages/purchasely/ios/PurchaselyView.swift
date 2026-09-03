@@ -17,6 +17,10 @@ class PurchaselyView: UIView {
   // Tracks whether we have already driven the embedded controller through an
   // "appeared" appearance transition, so we fire it exactly once per window entry.
   private var _appeared = false
+  // Identifies the `setupView` generation a preload completion belongs to, so a
+  // slow completion cannot replace the paywall a newer generation installed.
+  // `internal` so the XCTest bundle can drive `installPreloadedController` directly.
+  var _setupGeneration = 0
 
   @objc var placementId: String? {
     didSet {
@@ -116,6 +120,8 @@ class PurchaselyView: UIView {
   }
 
   private func setupView() {
+    _setupGeneration += 1
+
     // Clean up previous controller/view before setting up new ones.
     detachController()
 
@@ -268,6 +274,8 @@ class PurchaselyView: UIView {
     // swap the real view in via `attachController` on completion.
     // `viewId` is read lazily at dismiss time (not captured now) since RN may
     // still apply it after this method runs.
+    let generation = _setupGeneration
+
     let request = PLYPresentationBuilder
       .from(placementId: placementId)
       .onDismissed { [weak self] outcome in
@@ -278,12 +286,24 @@ class PurchaselyView: UIView {
 
     request.preload { [weak self] presentation, _ in
       DispatchQueue.main.async {
-        guard let self = self, let controller = presentation?.controller else { return }
-        self.detachController()
-        self.attachController(controller)
+        guard let controller = presentation?.controller else { return }
+        // ponytail: a superseded preload is dropped, not closed — the SDK exposes no
+        // release for a presentation that was never displayed, and close() routes
+        // through real UIKit dismiss/pop primitives. Revisit if the SDK adds one.
+        self?.installPreloadedController(controller, generation: generation)
       }
     }
     return nil
+  }
+
+  /// Installs a controller handed back by an async `preload` completion, but
+  /// only if no newer `setupView()` call (a prop change while the preload was
+  /// in flight) has already superseded this one. `internal` so the XCTest
+  /// bundle can exercise the guard without a real SDK preload.
+  func installPreloadedController(_ controller: UIViewController, generation: Int) {
+    guard _setupGeneration == generation else { return }
+    detachController()
+    attachController(controller)
   }
 
   /// Map a v6 `PLYPurchaseResult` to the `ProductResult` ordinal JS expects.
