@@ -20,6 +20,15 @@ on:
     types:
       - checks_requested
 
+# A force-push to a PR used to leave the previous run alive: 8 jobs, two of
+# them on macOS runners. e2e-android.yml and e2e-ios.yml already do this.
+concurrency:
+  group: ci-${{ github.ref }}
+  # Cancel superseded PR runs only. A `push: main` run must finish -- it is the
+  # one that seeds the shared cache scope -- and a merge_group or release run
+  # must never be cancelled either.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -330,7 +339,23 @@ jobs:
       - name: Build local v6 packages
         run: yarn all:prepare
 
+      # `npm ci` in this project took 416 s, uncached: it is outside the yarn
+      # workspace, so the `Setup` action's node_modules cache does not cover
+      # it. Caching it is safe because the three local packages are RELATIVE
+      # SYMLINKS into ../../packages (verified: node_modules/react-native-purchasely
+      # -> ../../../packages/purchasely), so a restored tree still points at
+      # this checkout's freshly built packages, never at a stale copy. Only
+      # third-party dependencies are cached, and they move only with the
+      # lockfile that keys this entry.
+      - name: Restore RN 0.86 test project dependencies
+        id: rn086-node-modules
+        uses: actions/cache@v4
+        with:
+          path: test-projects/rn-purchasely-test/node_modules
+          key: ${{ runner.os }}-rn086-node-modules-${{ hashFiles('test-projects/rn-purchasely-test/package-lock.json') }}
+
       - name: Install RN 0.86 test project dependencies
+        if: steps.rn086-node-modules.outputs.cache-hit != 'true'
         working-directory: test-projects/rn-purchasely-test
         run: npm ci --ignore-scripts
 
@@ -379,7 +404,23 @@ jobs:
       - name: Build local v6 packages
         run: yarn all:prepare
 
+      # `npm ci` in this project took 416 s, uncached: it is outside the yarn
+      # workspace, so the `Setup` action's node_modules cache does not cover
+      # it. Caching it is safe because the three local packages are RELATIVE
+      # SYMLINKS into ../../packages (verified: node_modules/react-native-purchasely
+      # -> ../../../packages/purchasely), so a restored tree still points at
+      # this checkout's freshly built packages, never at a stale copy. Only
+      # third-party dependencies are cached, and they move only with the
+      # lockfile that keys this entry.
+      - name: Restore RN 0.86 test project dependencies
+        id: rn086-node-modules
+        uses: actions/cache@v4
+        with:
+          path: test-projects/rn-purchasely-test/node_modules
+          key: ${{ runner.os }}-rn086-node-modules-${{ hashFiles('test-projects/rn-purchasely-test/package-lock.json') }}
+
       - name: Install RN 0.86 test project dependencies
+        if: steps.rn086-node-modules.outputs.cache-hit != 'true'
         working-directory: test-projects/rn-purchasely-test
         run: npm ci --ignore-scripts
 
