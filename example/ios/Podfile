@@ -33,7 +33,16 @@ target 'example' do
       installer,
       config[:reactNativePath],
       :mac_catalyst_enabled => false,
-      # :ccache_enabled => true
+      # Wraps every clang invocation in react-native/scripts/xcode/ccache-clang.sh.
+      # The hook alone is NOT enough: React Native writes CCACHE_BINARY as an Xcode
+      # *build setting*, and Xcode does not export build settings into compiler
+      # process environments, so the wrapper's `exec $CCACHE_BINARY clang` falls
+      # back to plain clang with no warning and ccache records zero reads. The
+      # xcodebuild step must export CCACHE_BINARY itself -- see the `build-ios` job
+      # in .github/workflows/ci.yml. The hook is also a silent no-op when ccache is
+      # not installed at `pod install` time, so a local build without ccache is
+      # unaffected.
+      :ccache_enabled => true
     )
 
     # TODO(fmt-consteval): remove once React Native ships a fmt version that

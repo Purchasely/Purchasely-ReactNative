@@ -148,6 +148,38 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cocoapods-
 
+      # ccache must exist BEFORE `pod install`: the Podfile's :ccache_enabled hook
+      # probes `command -v ccache` at install time and silently no-ops when it is
+      # missing. CCACHE_BINARY goes into GITHUB_ENV, not a hardcoded path, because
+      # React Native's ccache-clang.sh wrapper reads it from the *process*
+      # environment -- the build setting RN writes is invisible to the compiler, so
+      # without this every compile silently bypasses ccache (0 reads, 0 writes,
+      # build still green).
+      - name: Configure ccache
+        id: ccache
+        run: |
+          set -euo pipefail
+          command -v ccache >/dev/null || brew install ccache
+          echo "CCACHE_BINARY=$(command -v ccache)" >> "$GITHUB_ENV"
+          # Bounds what this job uploads. The measured footprint for this build is
+          # ~110 MB; the 5 GB default would be a liability on a 10 GB repo quota.
+          echo "CCACHE_MAXSIZE=500M" >> "$GITHUB_ENV"
+          # Keys the cache: ccache's default compiler_check is `mtime`, so a runner
+          # image that ships a new Xcode invalidates every entry. Without the
+          # version in the key we would carry a permanently-missing cache.
+          echo "xcode=$(xcodebuild -version | head -1 | tr ' ' '-')" >> "$GITHUB_OUTPUT"
+
+      # Unlike the DerivedData cache this replaces, a PARTIAL hit is safe here:
+      # ccache is content-addressed, so a stale entry can only be unused, never
+      # wrong. Hence the restore-keys fallback.
+      - name: Cache ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/ccache
+          key: ${{ runner.os }}-ccache-${{ steps.ccache.outputs.xcode }}-${{ hashFiles('example/ios/Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-ccache-${{ steps.ccache.outputs.xcode }}-
+
       # No DerivedData cache. It used to be cached here, exact-key, but it never
       # hit: until the `push: main` trigger above, no run wrote to the shared
       # cache scope. Measured once it did hit (runs 33867614845 cold ->
@@ -165,6 +197,7 @@ jobs:
 
       - name: Prebuild CocoaPods targets
         run: |
+          ccache -z
           xcodebuild \
             -workspace example/ios/example.xcworkspace \
             -scheme Pods-example \
@@ -247,6 +280,12 @@ jobs:
             -derivedDataPath example/ios/DerivedDataFrameworks \
             CODE_SIGNING_ALLOWED=NO \
             build
+
+      # A ccache that is wired up wrong fails OPEN: the build succeeds and is
+      # merely slow. This step is the only signal, so it runs even on failure.
+      - name: Report ccache statistics
+        if: always()
+        run: ccache -s
 
   ios-unit-tests:
     name: iOS Unit Tests (bridge)
