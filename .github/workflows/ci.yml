@@ -2,6 +2,14 @@ name: CI
 on:
   workflow_call:
   workflow_dispatch:
+  # A cache written during a `pull_request` run is scoped to that PR's ref and
+  # is unreadable from any other branch; only the default branch's scope is
+  # shared. Without this trigger no run ever writes there, so every PR
+  # reinstalled its pods and node_modules from cold. One run per merge seeds
+  # the caches that every later PR restores.
+  push:
+    branches:
+      - main
   pull_request:
     branches:
       - main
@@ -11,6 +19,15 @@ on:
   merge_group:
     types:
       - checks_requested
+
+# A force-push to a PR used to leave the previous run alive: 8 jobs, two of
+# them on macOS runners. e2e-android.yml and e2e-ios.yml already do this.
+concurrency:
+  group: ci-${{ github.ref }}
+  # Cancel superseded PR runs only. A `push: main` run must finish -- it is the
+  # one that seeds the shared cache scope -- and a merge_group or release run
+  # must never be cancelled either.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   lint:
@@ -131,15 +148,14 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cocoapods-
 
-      # Exact-match only (no restore-keys): a partial hit would mix object
-      # files built against a different Pods install, the same staleness class
-      # of failure described above.
-      - name: Cache Xcode DerivedData
-        uses: actions/cache@v4
-        with:
-          path: example/ios/DerivedData
-          key: ${{ runner.os }}-derived-data-${{ hashFiles('example/ios/Podfile', 'packages/purchasely/react-native-purchasely.podspec', 'example/ios/*.xcodeproj/project.pbxproj', 'yarn.lock') }}
-
+      # No DerivedData cache. It used to be cached here, exact-key, but it never
+      # hit: until the `push: main` trigger above, no run wrote to the shared
+      # cache scope. Measured once it did hit (runs 33867614845 cold ->
+      # 33868869757 warm, same commit): `Prebuild CocoaPods targets` 231 s ->
+      # 202 s and the XCTest job 180 s -> 178 s, i.e. run-to-run variance and
+      # no reuse. `pod install` regenerates the Pods project on every run, so
+      # Xcode discards the restored objects and rebuilds regardless. 222 MB of
+      # a repository cache quota that is already at its cap, for nothing.
       - name: Install CocoaPods
         run: |
           cd example/ios
@@ -323,7 +339,23 @@ jobs:
       - name: Build local v6 packages
         run: yarn all:prepare
 
+      # `npm ci` in this project took 416 s, uncached: it is outside the yarn
+      # workspace, so the `Setup` action's node_modules cache does not cover
+      # it. Caching it is safe because the three local packages are RELATIVE
+      # SYMLINKS into ../../packages (verified: node_modules/react-native-purchasely
+      # -> ../../../packages/purchasely), so a restored tree still points at
+      # this checkout's freshly built packages, never at a stale copy. Only
+      # third-party dependencies are cached, and they move only with the
+      # lockfile that keys this entry.
+      - name: Restore RN 0.86 test project dependencies
+        id: rn086-node-modules
+        uses: actions/cache@v4
+        with:
+          path: test-projects/rn-purchasely-test/node_modules
+          key: ${{ runner.os }}-rn086-node-modules-${{ hashFiles('test-projects/rn-purchasely-test/package-lock.json') }}
+
       - name: Install RN 0.86 test project dependencies
+        if: steps.rn086-node-modules.outputs.cache-hit != 'true'
         working-directory: test-projects/rn-purchasely-test
         run: npm ci --ignore-scripts
 
@@ -372,7 +404,23 @@ jobs:
       - name: Build local v6 packages
         run: yarn all:prepare
 
+      # `npm ci` in this project took 416 s, uncached: it is outside the yarn
+      # workspace, so the `Setup` action's node_modules cache does not cover
+      # it. Caching it is safe because the three local packages are RELATIVE
+      # SYMLINKS into ../../packages (verified: node_modules/react-native-purchasely
+      # -> ../../../packages/purchasely), so a restored tree still points at
+      # this checkout's freshly built packages, never at a stale copy. Only
+      # third-party dependencies are cached, and they move only with the
+      # lockfile that keys this entry.
+      - name: Restore RN 0.86 test project dependencies
+        id: rn086-node-modules
+        uses: actions/cache@v4
+        with:
+          path: test-projects/rn-purchasely-test/node_modules
+          key: ${{ runner.os }}-rn086-node-modules-${{ hashFiles('test-projects/rn-purchasely-test/package-lock.json') }}
+
       - name: Install RN 0.86 test project dependencies
+        if: steps.rn086-node-modules.outputs.cache-hit != 'true'
         working-directory: test-projects/rn-purchasely-test
         run: npm ci --ignore-scripts
 
