@@ -2,6 +2,14 @@ name: CI
 on:
   workflow_call:
   workflow_dispatch:
+  # A cache written during a `pull_request` run is scoped to that PR's ref and
+  # is unreadable from any other branch; only the default branch's scope is
+  # shared. Without this trigger no run ever writes there, so every PR
+  # reinstalled its pods and node_modules from cold. One run per merge seeds
+  # the caches that every later PR restores.
+  push:
+    branches:
+      - main
   pull_request:
     branches:
       - main
@@ -131,15 +139,14 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cocoapods-
 
-      # Exact-match only (no restore-keys): a partial hit would mix object
-      # files built against a different Pods install, the same staleness class
-      # of failure described above.
-      - name: Cache Xcode DerivedData
-        uses: actions/cache@v4
-        with:
-          path: example/ios/DerivedData
-          key: ${{ runner.os }}-derived-data-${{ hashFiles('example/ios/Podfile', 'packages/purchasely/react-native-purchasely.podspec', 'example/ios/*.xcodeproj/project.pbxproj', 'yarn.lock') }}
-
+      # No DerivedData cache. It used to be cached here, exact-key, but it never
+      # hit: until the `push: main` trigger above, no run wrote to the shared
+      # cache scope. Measured once it did hit (runs 33867614845 cold ->
+      # 33868869757 warm, same commit): `Prebuild CocoaPods targets` 231 s ->
+      # 202 s and the XCTest job 180 s -> 178 s, i.e. run-to-run variance and
+      # no reuse. `pod install` regenerates the Pods project on every run, so
+      # Xcode discards the restored objects and rebuilds regardless. 222 MB of
+      # a repository cache quota that is already at its cap, for nothing.
       - name: Install CocoaPods
         run: |
           cd example/ios

@@ -1,0 +1,53 @@
+name: Cleanup PR caches
+
+# Actions cache is capped at 10 GB per repository, and GitHub evicts the
+# least-recently-used entries once the cap is reached. The Gradle caches alone
+# are ~1.5 GB per PR ref, so a handful of stale refs is enough to evict the
+# entries the open PRs actually restore. GitHub only expires a cache after 7
+# days without a read; this deletes a PR's caches the moment it closes, which
+# is as soon as they are certainly dead.
+on:
+  pull_request:
+    types:
+      - closed
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    # A pull_request run from a fork gets a read-only GITHUB_TOKEN, so the
+    # deletion would fail. Skip instead of failing loudly.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    permissions:
+      # The only write scope this workflow needs.
+      actions: write
+    steps:
+      - name: Delete every cache scoped to the closed PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          # The ref an `actions/cache` entry is written under during a
+          # pull_request run.
+          CACHE_REF: refs/pull/${{ github.event.pull_request.number }}/merge
+        run: |
+          set -euo pipefail
+
+          ids=$(gh api --paginate \
+            "repos/$GH_REPO/actions/caches?ref=$CACHE_REF&per_page=100" \
+            --jq '.actions_caches[].id')
+
+          if [ -z "$ids" ]; then
+            echo "No cache entry for $CACHE_REF."
+            exit 0
+          fi
+
+          count=0
+          for id in $ids; do
+            # Keep going on a single failure: another run of this workflow, or
+            # GitHub's own eviction, may have removed the entry already.
+            if gh api -X DELETE "repos/$GH_REPO/actions/caches/$id" >/dev/null; then
+              count=$((count + 1))
+            else
+              echo "Could not delete cache $id, continuing."
+            fi
+          done
+          echo "Deleted $count cache entries for $CACHE_REF."
