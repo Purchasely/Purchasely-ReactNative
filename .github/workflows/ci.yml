@@ -169,6 +169,69 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             build
 
+  # Regression guard for the client-reported build failure fixed by b99a2d1:
+  # under `use_frameworks!`, the pod's generated Swift header lands in
+  # `react_native_purchasely.framework/Headers/` instead of `DerivedSources/`,
+  # so the quoted `#import "react_native_purchasely-Swift.h"` in PurchaselyRN.m
+  # was not found. Every other iOS job installs pods WITHOUT `use_frameworks!`,
+  # so none of them compiles that layout.
+  #
+  # Only the `react-native-purchasely` pod scheme is built: the discriminating
+  # unit is whether PurchaselyRN.m compiles inside a framework-layout target.
+  # Building the whole example app under `use_frameworks!` would add unrelated
+  # pod failure surface to a header-resolution check.
+  #
+  # `static` linkage only. The reporter saw `:linkage => :static` and `:dynamic`
+  # fail on the very same header path, and both put the header in the framework
+  # bundle, so the second linkage costs a macOS runner and proves nothing new.
+  build-ios-frameworks:
+    name: iOS Build (use_frameworks!)
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Build library
+        run: yarn prepare
+
+      # Download caches only (content-addressed, shared with the other iOS
+      # jobs). The generated `Pods` tree is never cached -- see build-ios.
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cocoapods
+            ~/Library/Caches/CocoaPods
+          key: ${{ runner.os }}-cocoapods-${{ hashFiles('example/ios/Podfile', 'packages/purchasely/react-native-purchasely.podspec', 'yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cocoapods-
+
+      # No DerivedData cache: its key in the other iOS jobs hashes the same
+      # files, so both layouts would share one entry and hand each other object
+      # files built for the wrong linkage.
+      - name: Install CocoaPods with use_frameworks!
+        run: |
+          cd example/ios
+          pod install --repo-update
+        env:
+          NO_FLIPPER: 1
+          # Read by example/ios/Podfile -> use_frameworks! :linkage => :static
+          USE_FRAMEWORKS: static
+
+      - name: Build the react-native-purchasely pod under use_frameworks!
+        run: |
+          xcodebuild \
+            -workspace example/ios/example.xcworkspace \
+            -scheme react-native-purchasely \
+            -configuration Debug \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath example/ios/DerivedDataFrameworks \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
   ios-unit-tests:
     name: iOS Unit Tests (bridge)
     runs-on: macos-latest
