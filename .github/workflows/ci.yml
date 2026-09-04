@@ -218,6 +218,15 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             build
 
+      # A ccache that is wired up wrong fails OPEN: the build succeeds and is
+      # merely slow. This step is the only signal, so it runs even on failure.
+      # It belongs to THIS job only: ccache is NOT preinstalled on the macOS
+      # runner image, so `ccache -s` in a job without the Configure step above
+      # exits 127 and fails the job.
+      - name: Report ccache statistics
+        if: always()
+        run: ccache -s
+
   # Regression guard for the client-reported build failure fixed by b99a2d1:
   # under `use_frameworks!`, the pod's generated Swift header lands in
   # `react_native_purchasely.framework/Headers/` instead of `DerivedSources/`,
@@ -281,11 +290,6 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             build
 
-      # A ccache that is wired up wrong fails OPEN: the build succeeds and is
-      # merely slow. This step is the only signal, so it runs even on failure.
-      - name: Report ccache statistics
-        if: always()
-        run: ccache -s
 
   ios-unit-tests:
     name: iOS Unit Tests (bridge)
