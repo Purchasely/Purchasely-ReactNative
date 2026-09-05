@@ -39,7 +39,7 @@ describe('PurchaselyBuilder', () => {
         mockNative.handleDeeplink = jest.fn().mockResolvedValue(true)
         // Static field can leak mutations across tests — reset to the
         // package default before each test.
-        PurchaselyBuilder.bridgeVersion = '6.0.0'
+        PurchaselyBuilder.bridgeVersion = '6.1.0'
     })
 
     describe('apiKey() defaults', () => {
@@ -53,7 +53,7 @@ describe('PurchaselyBuilder', () => {
                 null, // appUserId
                 mockConstants.logLevelError,
                 mockConstants.runningModeObserver,
-                '6.0.0',
+                '6.1.0',
                 {} // no chain-only options set -> empty startOptions map
             )
         })
@@ -173,6 +173,106 @@ describe('PurchaselyBuilder', () => {
         })
     })
 
+    describe('anonymousUserId() 6.1.0', () => {
+        it('forwards the id and the default override=false through startOptions', async () => {
+            await PurchaselyBuilder.apiKey('api-key')
+                .anonymousUserId('3f2504e0-4f89-11d3-9a0c-0305e82c3301')
+                .start()
+
+            expect(mockNative.start.mock.calls[0][7]).toEqual({
+                anonymousUserId: '3f2504e0-4f89-11d3-9a0c-0305e82c3301',
+                anonymousUserIdOverride: false,
+            })
+        })
+
+        it('forwards override=true when asked', async () => {
+            await PurchaselyBuilder.apiKey('api-key')
+                .anonymousUserId('3f2504e0-4f89-11d3-9a0c-0305e82c3301', true)
+                .start()
+
+            expect(mockNative.start.mock.calls[0][7]).toEqual({
+                anonymousUserId: '3f2504e0-4f89-11d3-9a0c-0305e82c3301',
+                anonymousUserIdOverride: true,
+            })
+        })
+
+        it('does not validate the string in JS: the bridge parses it and rejects a bad value', async () => {
+            await expect(
+                PurchaselyBuilder.apiKey('api-key').anonymousUserId('not-a-uuid').start()
+            ).resolves.toBe(true)
+
+            expect(mockNative.start.mock.calls[0][7]).toEqual({
+                anonymousUserId: 'not-a-uuid',
+                anonymousUserIdOverride: false,
+            })
+        })
+
+        it('omits both keys when the modifier is never called', async () => {
+            await PurchaselyBuilder.apiKey('api-key').start()
+            expect(mockNative.start.mock.calls[0][7]).toEqual({})
+        })
+    })
+
+    describe('proxy() Android only, 6.1.0', () => {
+        it('forwards the api url through startOptions', async () => {
+            await PurchaselyBuilder.apiKey('api-key')
+                .proxy('https://svc.purchasely.io')
+                .start()
+
+            expect(mockNative.start.mock.calls[0][7]).toEqual({
+                proxy: 'https://svc.purchasely.io',
+            })
+        })
+
+        it('does not validate the scheme in JS: the native SDK refuses a bad value', async () => {
+            await PurchaselyBuilder.apiKey('api-key').proxy('http://insecure.example').start()
+            expect(mockNative.start.mock.calls[0][7]).toEqual({
+                proxy: 'http://insecure.example',
+            })
+        })
+    })
+
+    describe('appHandlesRedemptionAlert() 6.1.0', () => {
+        it('forwards true through startOptions', async () => {
+            await PurchaselyBuilder.apiKey('api-key').appHandlesRedemptionAlert(true).start()
+            expect(mockNative.start.mock.calls[0][7]).toEqual({
+                appHandlesRedemptionAlert: true,
+            })
+        })
+
+        it('forwards an explicit false through startOptions', async () => {
+            await PurchaselyBuilder.apiKey('api-key').appHandlesRedemptionAlert(false).start()
+            expect(mockNative.start.mock.calls[0][7]).toEqual({
+                appHandlesRedemptionAlert: false,
+            })
+        })
+
+        it('omits the key when the modifier is never called', async () => {
+            await PurchaselyBuilder.apiKey('api-key').start()
+            expect(mockNative.start.mock.calls[0][7]).toEqual({})
+        })
+    })
+
+    describe('the 6.1.0 options travel in the same atomic startOptions map', () => {
+        it('carries every modifier in one start() call', async () => {
+            await PurchaselyBuilder.apiKey('api-key')
+                .allowDeeplink(false)
+                .anonymousUserId('3f2504e0-4f89-11d3-9a0c-0305e82c3301', true)
+                .proxy('https://svc.purchasely.io')
+                .appHandlesRedemptionAlert(true)
+                .start()
+
+            expect(mockNative.start).toHaveBeenCalledTimes(1)
+            expect(mockNative.start.mock.calls[0][7]).toEqual({
+                allowDeeplink: false,
+                anonymousUserId: '3f2504e0-4f89-11d3-9a0c-0305e82c3301',
+                anonymousUserIdOverride: true,
+                proxy: 'https://svc.purchasely.io',
+                appHandlesRedemptionAlert: true,
+            })
+        })
+    })
+
     describe('handleDeeplink() — cold-start replay', () => {
         it('replays the deeplink through native.handleDeeplink after start() resolves', async () => {
             const callOrder: string[] = []
@@ -212,7 +312,7 @@ describe('PurchaselyBuilder', () => {
 
         it('uses the static bridgeVersion by default', async () => {
             await PurchaselyBuilder.apiKey('api-key').start()
-            expect(mockNative.start.mock.calls[0][6]).toBe('6.0.0')
+            expect(mockNative.start.mock.calls[0][6]).toBe('6.1.0')
         })
 
         it('overrides the bridge version with the sdkVersion argument when provided', async () => {

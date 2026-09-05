@@ -23,6 +23,7 @@ import type {
   PLYPromotionalOfferSignature,
   PLYSubscription,
   PLYUserAttribute,
+  PLYWebRedemptionResult,
 } from './types';
 import {
   PLYPresentationBuilder,
@@ -40,7 +41,7 @@ import type {
   PLYPresentationActionKind,
 } from './presentationTypes';
 
-const purchaselyVersion = '6.0.0';
+const purchaselyVersion = '6.1.0';
 
 const PurchaselyEventEmitter = new NativeEventEmitter(NativeModules.Purchasely);
 
@@ -124,6 +125,70 @@ const removeUserAttributeRemovedListener = () => {
   return PurchaselyEventEmitter.removeAllListeners(
     'USER_ATTRIBUTE_REMOVED_LISTENER'
   );
+};
+
+type WebRedemptionListenerCallback = (
+  result: PLYWebRedemptionResult
+) => void;
+
+/**
+ * Listen to the outcome of a Web2App redemption
+ * (`{scheme}://ply/redeem/{token}`).
+ *
+ * **Add the listener before `Purchasely.builder(...).start()`.** A redemption
+ * can settle during `start()`, from a cold start that the link itself
+ * triggered, or from a token that a previous launch left pending. A listener
+ * that you add after `start()` misses exactly the case it is most needed for.
+ *
+ * The SDK calls the listener on the main thread, exactly once per settled
+ * redemption, on success and on failure alike.
+ *
+ * The `appHandlesRedemptionAlert` start option decides *when*:
+ *
+ * - `false` (the default): the SDK shows its own popin and calls the listener
+ *   after the user acknowledges it, so the app acts on a screen that the user
+ *   already dismissed.
+ * - `true`: the SDK shows nothing and calls the listener as soon as the
+ *   redemption settles. The app must then show its own result screen.
+ *
+ * Two more behaviours to know:
+ *
+ * - `result.replay` is `true` when the **server** reports that the token was
+ *   redeemed before. The SDK keeps no cache and calls the server every time,
+ *   so this is a verdict about the token, not an observation of the user.
+ * - A redemption deeplink is **not** subject to `allowDeeplink`. The native
+ *   SDK intercepts `ply/redeem` out of band, before the routing branch that
+ *   the gate sits behind. A redemption still completes with
+ *   `allowDeeplink(false)`.
+ * - **On iOS only**, `result.errorMessage` for an expired link can contain a
+ *   masked email address, so the app can tell the user where the fresh link
+ *   went. The analytics event drops it. Show that text to the user. Do not
+ *   forward it to an analytics stack or to a crash reporter.
+ *
+ * @example
+ * ```ts
+ * Purchasely.addWebRedemptionListener((result) => {
+ *   if (result.isSuccess) {
+ *     unlock(result.context?.subscription)
+ *   } else {
+ *     showError(result.errorCode, result.errorMessage)
+ *   }
+ * })
+ * await Purchasely.builder('API_KEY').appHandlesRedemptionAlert(true).start()
+ * ```
+ */
+const addWebRedemptionListener = (
+  callback: WebRedemptionListenerCallback
+) => {
+  return PurchaselyEventEmitter.addListener(
+    'WEB_REDEMPTION_LISTENER',
+    callback
+  );
+};
+
+/** Remove every listener added with {@link addWebRedemptionListener}. */
+const removeWebRedemptionListener = () => {
+  return PurchaselyEventEmitter.removeAllListeners('WEB_REDEMPTION_LISTENER');
 };
 
 export interface UserAttributeListener {
@@ -543,6 +608,8 @@ const Purchasely = {
   removeUserAttributeRemovedListener,
   setUserAttributeListener,
   clearUserAttributeListener,
+  addWebRedemptionListener,
+  removeWebRedemptionListener,
   purchaseWithPlanVendorId,
   setUserAttributeWithDate,
   signPromotionalOffer,

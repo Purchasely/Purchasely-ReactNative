@@ -12,6 +12,8 @@ import io.purchasely.ext.presentation.PLYPresentation
 import io.purchasely.ext.presentation.PLYPresentationType
 import io.purchasely.models.PLYPlan
 import io.purchasely.models.PLYPresentationPlan
+import io.purchasely.models.PLYSubscriptionData
+import io.purchasely.models.PLYWebRedemptionResult
 import io.purchasely.storage.userData.PLYUserAttributeSource
 import io.purchasely.storage.userData.PLYUserAttributeType
 import io.purchasely.views.presentation.PLYThemeMode
@@ -77,6 +79,19 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
       ))
       sendEvent(reactApplicationContext, "USER_ATTRIBUTE_REMOVED_LISTENER", params)
     }
+  }
+
+  /**
+   * Bridges [PLYWebRedemptionListener] to the `WEB_REDEMPTION_LISTENER` event.
+   *
+   * The native SDK calls this on the main thread, once per settled redemption.
+   * The sealed result is flattened to the same 5-field shape the iOS bridge
+   * emits, so one JS listener drives both platforms. A `Failure` still reports
+   * `replay = false` and `context = null`, which keeps the JS shape stable.
+   */
+  private val bridgeWebRedemptionListener = PLYWebRedemptionListener { result ->
+    val params = webRedemptionResultToMap(result)
+    sendEvent(reactApplicationContext, "WEB_REDEMPTION_LISTENER", Arguments.makeNativeMap(params))
   }
 
   override fun getName(): String {
@@ -203,6 +218,36 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     ) {
       startOptions.getBoolean("automaticDeeplinkHandling")
     } else null
+    val proxyApi = if (startOptions.hasKey("proxy") && !startOptions.isNull("proxy")) {
+      startOptions.getString("proxy")
+    } else null
+    val handlesRedemptionAlert = if (
+      startOptions.hasKey("appHandlesRedemptionAlert") && !startOptions.isNull("appHandlesRedemptionAlert")
+    ) {
+      startOptions.getBoolean("appHandlesRedemptionAlert")
+    } else false
+
+    // JS has no UUID type, so the id crosses the bridge as a string and is
+    // parsed here. The native builder takes a `UUID?`, which is where the
+    // guarantee used to live; a string-typed bridge is the only place left to
+    // catch a bad value. Reject it loudly and skip the modifier. The SDK
+    // still starts, matching how native treats an unusable proxy url.
+    val anonymousUserIdString = if (
+      startOptions.hasKey("anonymousUserId") && !startOptions.isNull("anonymousUserId")
+    ) {
+      startOptions.getString("anonymousUserId")
+    } else null
+    val parsedAnonymousUserId = parseCanonicalUuid(anonymousUserIdString)
+    if (anonymousUserIdString != null && parsedAnonymousUserId == null) {
+      Log.e("Purchasely", "`anonymousUserId` must be a canonical UUID string, for example " +
+        "\"3f2504e0-4f89-11d3-9a0c-0305e82c3301\". Received \"$anonymousUserIdString\". " +
+        "The anonymous user id is not applied.")
+    }
+    val anonymousUserIdOverride = if (
+      startOptions.hasKey("anonymousUserIdOverride") && !startOptions.isNull("anonymousUserIdOverride")
+    ) {
+      startOptions.getBoolean("anonymousUserIdOverride")
+    } else false
 
     Purchasely.Builder(reactApplicationContext.applicationContext)
       .apiKey(apiKey)
@@ -225,6 +270,15 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
         allowDeeplink?.let { this.allowDeeplink(it) }
         allowCampaigns?.let { this.allowCampaigns(it) }
         automaticDeeplinkHandling?.let { this.automaticDeeplinkHandling(it) }
+        proxyApi?.let { this.proxy(it) }
+        parsedAnonymousUserId?.let { this.anonymousUserId(it, anonymousUserIdOverride) }
+        // Registered unconditionally: the native SDK has no runtime setter on
+        // purpose, because a redemption can settle during `start()` (a cold
+        // start that the link itself triggered, or a token left pending by a
+        // previous launch). The bridge emits `WEB_REDEMPTION_LISTENER`, which
+        // reaches no one when JS added no listener, so this is
+        // behaviour-neutral by default.
+        this.webRedemptionListener(handlesRedemptionAlert, bridgeWebRedemptionListener)
       }
       .build()
 
@@ -617,21 +671,7 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
         val subscriptions = Purchasely.userSubscriptions(invalidate)
         val result = ArrayList<ReadableMap?>()
         for (data in subscriptions) {
-          val map = data.data.toMap().toMutableMap().apply {
-            this["subscriptionSource"] = when(data.data.storeType) {
-              StoreType.GOOGLE_PLAY_STORE -> StoreType.GOOGLE_PLAY_STORE.ordinal
-              StoreType.HUAWEI_APP_GALLERY -> StoreType.HUAWEI_APP_GALLERY.ordinal
-              StoreType.AMAZON_APP_STORE -> StoreType.AMAZON_APP_STORE.ordinal
-              StoreType.APPLE_APP_STORE -> StoreType.APPLE_APP_STORE.ordinal
-              else -> null
-            }
-            if(data.data.plan == null) {
-              this["plan"] = transformPlanToMap(data.plan)
-            }
-            this["product"] = data.product.toMap()
-            remove("subscription_status") //Add in a next version
-          }
-          result.add(Arguments.makeNativeMap(map))
+          result.add(Arguments.makeNativeMap(subscriptionToMap(data)))
         }
         promise.resolve(Arguments.makeNativeArray(result))
       } catch (e: Exception) {
@@ -647,21 +687,7 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
         val subscriptions = Purchasely.userSubscriptionsHistory(invalidateCache)
         val result = ArrayList<ReadableMap?>()
         for (data in subscriptions) {
-          val map = data.data.toMap().toMutableMap().apply {
-            this["subscriptionSource"] = when(data.data.storeType) {
-              StoreType.GOOGLE_PLAY_STORE -> StoreType.GOOGLE_PLAY_STORE.ordinal
-              StoreType.HUAWEI_APP_GALLERY -> StoreType.HUAWEI_APP_GALLERY.ordinal
-              StoreType.AMAZON_APP_STORE -> StoreType.AMAZON_APP_STORE.ordinal
-              StoreType.APPLE_APP_STORE -> StoreType.APPLE_APP_STORE.ordinal
-              else -> null
-            }
-            if(data.data.plan == null) {
-              this["plan"] = transformPlanToMap(data.plan)
-            }
-            this["product"] = data.product.toMap()
-            remove("subscription_status") //Add in a next version
-          }
-          result.add(Arguments.makeNativeMap(map))
+          result.add(Arguments.makeNativeMap(subscriptionToMap(data)))
         }
         promise.resolve(Arguments.makeNativeArray(result))
       } catch (e: Exception) {
@@ -1370,6 +1396,30 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
     private val pendingActionInterceptors =
       ConcurrentHashMap<String, CompletableDeferred<PLYInterceptResult>>()
 
+    /**
+     * Map one [PLYSubscriptionData] to the JS `PLYSubscription` shape.
+     *
+     * Shared by `userSubscriptions`, `userSubscriptionsHistory` and the web
+     * redemption listener, whose `context.subscription` is the same type, so
+     * the three report one subscription shape.
+     */
+    fun subscriptionToMap(data: PLYSubscriptionData): Map<String, Any?> {
+      return data.data.toMap().toMutableMap().apply {
+        this["subscriptionSource"] = when(data.data.storeType) {
+          StoreType.GOOGLE_PLAY_STORE -> StoreType.GOOGLE_PLAY_STORE.ordinal
+          StoreType.HUAWEI_APP_GALLERY -> StoreType.HUAWEI_APP_GALLERY.ordinal
+          StoreType.AMAZON_APP_STORE -> StoreType.AMAZON_APP_STORE.ordinal
+          StoreType.APPLE_APP_STORE -> StoreType.APPLE_APP_STORE.ordinal
+          else -> null
+        }
+        if(data.data.plan == null) {
+          this["plan"] = transformPlanToMap(data.plan)
+        }
+        this["product"] = data.product.toMap()
+        remove("subscription_status") //Add in a next version
+      }
+    }
+
     fun transformPlanToMap(plan: PLYPlan?): Map<String, Any?> {
       if(plan == null) return emptyMap()
 
@@ -1491,4 +1541,56 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
 
     return metadata
   }
+}
+
+/**
+ * Parse a canonical UUID string, or return null.
+ *
+ * JS has no UUID type, so an anonymous user id crosses the bridge as a string.
+ * `UUID.fromString` is lenient and accepts a short form such as `"1-2-3-4-5"`
+ * that the iOS `NSUUID` parser refuses. The round-trip check makes both
+ * platforms agree on what "canonical" means, so one id string is accepted, or
+ * refused, on both.
+ *
+ * The caller logs the refusal. This function stays pure so a unit test can
+ * drive it without an Android logger.
+ */
+internal fun parseCanonicalUuid(value: String?): UUID? {
+  if (value == null) return null
+  val parsed = try {
+    UUID.fromString(value)
+  } catch (e: IllegalArgumentException) {
+    return null
+  }
+  return if (parsed.toString().equals(value, ignoreCase = true)) parsed else null
+}
+
+/**
+ * Flatten a [PLYWebRedemptionResult] to the shape the JS listener receives.
+ *
+ * The sealed Kotlin result and the flat iOS `PLYWebRedemptionResult` object
+ * both map to the same 5 keys, so one JS listener drives both platforms. A
+ * `Failure` still reports `replay = false` and `context = null`, which keeps
+ * the JS shape stable.
+ *
+ * `context` and `context.subscription` stay separately nullable: a success can
+ * carry no context at all, and a present context can carry no subscription.
+ */
+internal fun webRedemptionResultToMap(result: PLYWebRedemptionResult): Map<String, Any?> = when (result) {
+  is PLYWebRedemptionResult.Success -> mapOf(
+    Pair("isSuccess", true),
+    Pair("context", result.context?.let { context ->
+      mapOf(Pair("subscription", context.subscription?.let(PurchaselyModule::subscriptionToMap)))
+    }),
+    Pair("replay", result.replay),
+    Pair("errorCode", null),
+    Pair("errorMessage", null),
+  )
+  is PLYWebRedemptionResult.Failure -> mapOf(
+    Pair("isSuccess", false),
+    Pair("context", null),
+    Pair("replay", false),
+    Pair("errorCode", result.errorCode),
+    Pair("errorMessage", result.errorMessage),
+  )
 }

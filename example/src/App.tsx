@@ -19,6 +19,36 @@ const Stack = createNativeStackNavigator()
 function App(): React.JSX.Element {
     async function setupPurchasely() {
         let configured = false
+
+        // 6.1.0, Web2App redemption. Add the listener BEFORE start(): a
+        // redemption can settle during start(), from a cold start that the
+        // `ply/redeem` link itself triggered, or from a token that a previous
+        // launch left pending. A listener added after start() misses it.
+        //
+        // A redemption deeplink is not subject to allowDeeplink: the native
+        // SDK intercepts `ply/redeem` before the routing branch that gate
+        // sits behind.
+        Purchasely.addWebRedemptionListener((result) => {
+            if (result.isSuccess) {
+                console.log(
+                    'Redemption granted. replay=' +
+                        result.replay +
+                        ' subscription=' +
+                        result.context?.subscription?.plan?.vendorId
+                )
+            } else {
+                // On iOS, errorMessage for an expired link can contain a
+                // masked email address. Show it to the user. Do not send it to
+                // an analytics stack or to a crash reporter.
+                console.log(
+                    'Redemption failed. code=' +
+                        result.errorCode +
+                        ' message=' +
+                        result.errorMessage
+                )
+            }
+        })
+
         try {
             // chained builder — the only supported way to start the SDK.
             // `allowDeeplink(true)` replaces the legacy `readyToOpenDeeplink`.
@@ -32,6 +62,28 @@ function App(): React.JSX.Element {
                 .allowCampaigns(true)
                 .storekitVersion('storeKit2') // iOS: 'storeKit2' or 'storeKit1'
                 .stores(['google']) // Android stores
+                // 6.1.0. The anonymous user id this device reports. The
+                // bridge parses the string into a native UUID and rejects a
+                // value that is not canonical. The SDK stores it uppercase,
+                // and applies it only when the device holds no anonymous id
+                // yet, unless the second argument is true.
+                //
+                // Kept inactive here on purpose: a hardcoded id would pin
+                // every install of this demo app to one anonymous user, and
+                // the E2E suite asserts on the generated id.
+                // .anonymousUserId('3f2504e0-4f89-11d3-9a0c-0305e82c3301')
+                //
+                // 6.1.0. Android-only. Route the API traffic through a proxy
+                // for a region where `api.purchasely.io` is unreachable. Only
+                // https is accepted. Ignored on iOS.
+                //
+                // Kept inactive here on purpose: this demo app must keep
+                // talking to production.
+                // .proxy('https://svc.purchasely.io')
+                //
+                // 6.1.0. Keep the SDK's own redemption popin (the default).
+                // Pass true to show your own result screen instead.
+                .appHandlesRedemptionAlert(false)
                 .start()
         } catch (e) {
             console.log('Purchasely SDK configuration error:', e)
