@@ -16,6 +16,7 @@ export const mockConstants = {
     sourcePlayStore: 1,
     sourceHuaweiAppGallery: 2,
     sourceAmazonAppstore: 3,
+    sourceStripe: 5,
     sourceNone: 4,
     firebaseAppInstanceId: 0,
     airshipChannelId: 1,

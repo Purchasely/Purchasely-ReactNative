@@ -13,6 +13,7 @@ export interface Constants {
   sourcePlayStore: number;
   sourceHuaweiAppGallery: number;
   sourceAmazonAppstore: number;
+  sourceStripe: number;
   sourceNone: number;
   firebaseAppInstanceId: number;
   airshipChannelId: number;

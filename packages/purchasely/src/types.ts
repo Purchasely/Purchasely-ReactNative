@@ -126,20 +126,24 @@ export type PLYSubscription = {
    * Android-only. The native iOS `PLYSubscription` has no purchase token
    * property, so the iOS bridge
    * (`PLYSubscription+Hybrid.m asDictionary`) cannot emit this key and never
-   * did. Optional so iOS callers see `undefined` instead of a required field
-   * that is silently absent. Same reasoning as
+   * did.
+   *
+   * Nullable AND optional, because the platforms disagree on how they report
+   * the absence. iOS omits the key, so a caller sees `undefined`. Android's
+   * `PLYSubscription.toMap()` assigns the key unconditionally from a nullable
+   * field, so a caller sees an explicit `null`. Same reasoning as
    * {@link cumulatedRevenuesInUSD}.
    */
-  purchaseToken?: string;
+  purchaseToken?: string | null;
   subscriptionSource: SubscriptionSource;
   /**
    * Absent when the subscription has no renewal date. The iOS bridge omits
-   * the key when the native date is `nil`, so read it as optional rather than
-   * as an empty string.
+   * the key when the native date is `nil`; Android reports an explicit
+   * `null`. Never read it as an empty string.
    */
-  nextRenewalDate?: string;
-  /** Absent when the subscription is not cancelled. See {@link nextRenewalDate}. */
-  cancelledDate?: string;
+  nextRenewalDate?: string | null;
+  /** Absent or null when the subscription is not cancelled. See {@link nextRenewalDate}. */
+  cancelledDate?: string | null;
   plan: PLYPlan;
   product: PLYProduct;
   /**

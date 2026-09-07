@@ -481,6 +481,7 @@ static __weak PurchaselyRN *_sharedEmitter;
 		@"sourcePlayStore": @(PLYSubscriptionSourceGooglePlayStore),
 		@"sourceHuaweiAppGallery": @(PLYSubscriptionSourceHuaweiAppGallery),
 		@"sourceAmazonAppstore": @(PLYSubscriptionSourceAmazonAppstore),
+        @"sourceStripe": @(PLYSubscriptionSourceStripe),
         @"sourceNone": @(PLYSubscriptionSourceNone),
 		@"firebaseAppInstanceId": @(PLYAttributeFirebaseAppInstanceId),
 		@"airshipChannelId": @(PLYAttributeAirshipChannelId),

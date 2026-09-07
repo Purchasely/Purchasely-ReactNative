@@ -139,6 +139,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     constants["sourcePlayStore"] = StoreType.GOOGLE_PLAY_STORE.ordinal
     constants["sourceHuaweiAppGallery"] = StoreType.HUAWEI_APP_GALLERY.ordinal
     constants["sourceAmazonAppstore"] = StoreType.AMAZON_APP_STORE.ordinal
+    constants["sourceStripe"] = StoreType.WEB_CHECKOUT_STRIPE.ordinal
     constants["sourceNone"] = StoreType.NONE.ordinal
     constants["consumable"] = DistributionType.CONSUMABLE.ordinal
     constants["nonConsumable"] = DistributionType.NON_CONSUMABLE.ordinal
@@ -1410,11 +1411,16 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
      */
     fun subscriptionToMap(data: PLYSubscriptionData): Map<String, Any?> {
       return data.data.toMap().toMutableMap().apply {
+        // WEB_CHECKOUT_STRIPE was missing here and fell into `else`, so a
+        // web-checkout subscription reported a null source. Web2App
+        // redemption grants subscriptions from that source, so the new
+        // redemption context surfaced the gap.
         this["subscriptionSource"] = when(data.data.storeType) {
           StoreType.GOOGLE_PLAY_STORE -> StoreType.GOOGLE_PLAY_STORE.ordinal
           StoreType.HUAWEI_APP_GALLERY -> StoreType.HUAWEI_APP_GALLERY.ordinal
           StoreType.AMAZON_APP_STORE -> StoreType.AMAZON_APP_STORE.ordinal
           StoreType.APPLE_APP_STORE -> StoreType.APPLE_APP_STORE.ordinal
+          StoreType.WEB_CHECKOUT_STRIPE -> StoreType.WEB_CHECKOUT_STRIPE.ordinal
           else -> null
         }
         if(data.data.plan == null) {
