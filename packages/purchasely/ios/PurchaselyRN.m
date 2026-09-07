@@ -1401,21 +1401,41 @@ RCT_EXPORT_METHOD(closeAllScreens) {
 - (void)webRedemptionCompletedWithResult:(PLYWebRedemptionResult * _Nonnull)result {
     if (!self.shouldEmit) return;
 
-    id context = [NSNull null];
-    if (result.context != nil) {
-        PLYSubscription *subscription = result.context.subscription;
-        context = @{ @"subscription": subscription != nil ? subscription.asDictionary : [NSNull null] };
-    }
-
-    NSDictionary<NSString *, id> *body = @{
-        @"isSuccess": @(result.isSuccess),
-        @"context": context,
-        @"replay": @(result.replay),
-        @"errorCode": result.errorCode ?: [NSNull null],
-        @"errorMessage": result.errorMessage ?: [NSNull null]
-    };
+    PLYSubscription *subscription = result.context.subscription;
+    NSDictionary<NSString *, id> *body =
+        [PurchaselyRN webRedemptionBodyWithSuccess:result.isSuccess
+                                        hasContext:result.context != nil
+                                      subscription:subscription != nil ? subscription.asDictionary : nil
+                                            replay:result.replay
+                                         errorCode:result.errorCode
+                                      errorMessage:result.errorMessage];
 
     [self sendEventWithName:@"WEB_REDEMPTION_LISTENER" body:body];
+}
+
++ (NSDictionary<NSString *, id> *)webRedemptionBodyWithSuccess:(BOOL)isSuccess
+                                                    hasContext:(BOOL)hasContext
+                                                  subscription:(NSDictionary * _Nullable)subscription
+                                                        replay:(BOOL)replay
+                                                     errorCode:(NSString * _Nullable)errorCode
+                                                  errorMessage:(NSString * _Nullable)errorMessage {
+    // `context` and `context.subscription` are separately nullable, and the
+    // two nulls mean different things: no context at all versus a context
+    // that describes no subscription. Both stay distinguishable in JS.
+    id context = [NSNull null];
+    if (hasContext) {
+        context = @{ @"subscription": subscription ?: [NSNull null] };
+    }
+
+    // The same five keys on every branch, so the JS shape never changes
+    // between a success and a failure.
+    return @{
+        @"isSuccess": @(isSuccess),
+        @"context": context,
+        @"replay": @(replay),
+        @"errorCode": errorCode ?: [NSNull null],
+        @"errorMessage": errorMessage ?: [NSNull null]
+    };
 }
 
 - (void)purchasePerformed {

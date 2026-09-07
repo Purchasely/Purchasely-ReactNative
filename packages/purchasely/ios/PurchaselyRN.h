@@ -11,6 +11,24 @@
 
 @interface PurchaselyRN: RCTEventEmitter <RCTBridgeModule, PLYEventDelegate, PLYUserAttributeDelegate, PLYWebRedemptionDelegate>
 
+/// Build the `WEB_REDEMPTION_LISTENER` event body from the parts of a
+/// `PLYWebRedemptionResult`.
+///
+/// Split out of `webRedemptionCompletedWithResult:` so the payload policy is
+/// testable. `PLYWebRedemptionResult` has no public initializer, so a test
+/// cannot build one, and this is the part worth checking: which key holds
+/// `NSNull`, how a context nests its subscription, and that the same five keys
+/// appear on a success and on a failure alike.
+///
+/// `hasContext` and `subscription` are separate on purpose. A success can
+/// carry no context at all, and a present context can carry no subscription.
++ (nonnull NSDictionary<NSString *, id> *)webRedemptionBodyWithSuccess:(BOOL)isSuccess
+                                                            hasContext:(BOOL)hasContext
+                                                          subscription:(nullable NSDictionary *)subscription
+                                                                replay:(BOOL)replay
+                                                             errorCode:(nullable NSString *)errorCode
+                                                          errorMessage:(nullable NSString *)errorMessage;
+
 @property (nonatomic, retain) UIViewController* presentedPresentationViewController;
 
 @property (class, nonatomic, strong) UIViewController *sharedViewController;
