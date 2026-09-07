@@ -218,7 +218,12 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     ) {
       startOptions.getBoolean("automaticDeeplinkHandling")
     } else null
-    val proxyApi = if (startOptions.hasKey("proxy") && !startOptions.isNull("proxy")) {
+    // Three states, and they are not interchangeable:
+    //   key absent -> leave the SDK's current setting alone
+    //   null       -> clear the proxy, back to api.purchasely.io
+    //   string     -> set it
+    val proxySpecified = startOptions.hasKey("proxy")
+    val proxyApi = if (proxySpecified && !startOptions.isNull("proxy")) {
       startOptions.getString("proxy")
     } else null
     val handlesRedemptionAlert = if (
@@ -270,7 +275,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
         allowDeeplink?.let { this.allowDeeplink(it) }
         allowCampaigns?.let { this.allowCampaigns(it) }
         automaticDeeplinkHandling?.let { this.automaticDeeplinkHandling(it) }
-        proxyApi?.let { this.proxy(it) }
+        if (proxySpecified) this.proxy(proxyApi)
         parsedAnonymousUserId?.let { this.anonymousUserId(it, anonymousUserIdOverride) }
         // Registered unconditionally: the native SDK has no runtime setter on
         // purpose, because a redemption can settle during `start()` (a cold

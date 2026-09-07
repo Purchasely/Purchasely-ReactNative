@@ -591,8 +591,14 @@ RCT_EXPORT_METHOD(start:(NSString * _Nonnull)apiKey
         // Native validates the rest (https, host, no query/fragment) and
         // keeps the production host on a bad value, so the bridge does not
         // re-check those.
+        // Three states, and they are not interchangeable:
+        //   key absent  -> leave the SDK's current setting alone
+        //   NSNull      -> clear the proxy, back to api.purchasely.io
+        //   NSString    -> set it
         id proxyApi = startOptions[@"proxy"];
-        if ([proxyApi isKindOfClass:[NSString class]]) {
+        if (proxyApi == [NSNull null]) {
+            builder = [builder proxyWithApi:nil];
+        } else if ([proxyApi isKindOfClass:[NSString class]]) {
             NSURL *proxyUrl = [NSURL URLWithString:(NSString *)proxyApi];
             if (proxyUrl == nil) {
                 RCTLogError(@"[Purchasely] `proxy` must be an https base URL, "

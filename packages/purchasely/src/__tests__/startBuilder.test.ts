@@ -230,6 +230,50 @@ describe('PurchaselyBuilder', () => {
                 proxy: 'http://insecure.example',
             })
         })
+
+        // The three states are not interchangeable. `null` clears the proxy on
+        // both natives, and an absent key leaves each SDK's current setting
+        // untouched. Forwarding `null` as "absent" would make a clear silently
+        // do nothing.
+        it('forwards an explicit null so the natives clear the proxy', async () => {
+            await PurchaselyBuilder.apiKey('api-key').proxy(null).start()
+
+            const startOptions = mockNative.start.mock.calls[0][7]
+            expect(startOptions).toEqual({ proxy: null })
+            expect('proxy' in startOptions).toBe(true)
+            expect(startOptions.proxy).toBeNull()
+        })
+
+        it('omits the key when the modifier is never called', async () => {
+            await PurchaselyBuilder.apiKey('api-key').start()
+
+            const startOptions = mockNative.start.mock.calls[0][7]
+            expect(startOptions).toEqual({})
+            expect('proxy' in startOptions).toBe(false)
+        })
+
+        it('distinguishes never-called from cleared', async () => {
+            await PurchaselyBuilder.apiKey('api-key').start()
+            const never = mockNative.start.mock.calls[0][7]
+
+            mockNative.start = jest.fn().mockResolvedValue(true)
+            await PurchaselyBuilder.apiKey('api-key').proxy(null).start()
+            const cleared = mockNative.start.mock.calls[0][7]
+
+            expect('proxy' in never).toBe(false)
+            expect('proxy' in cleared).toBe(true)
+            expect(never).not.toEqual(cleared)
+        })
+
+        it('the last call wins, so a proxy can be replaced then cleared', async () => {
+            await PurchaselyBuilder.apiKey('api-key')
+                .proxy('https://first.example')
+                .proxy('https://svc.purchasely.io')
+                .proxy(null)
+                .start()
+
+            expect(mockNative.start.mock.calls[0][7]).toEqual({ proxy: null })
+        })
     })
 
     describe('appHandlesRedemptionAlert() 6.1.0', () => {

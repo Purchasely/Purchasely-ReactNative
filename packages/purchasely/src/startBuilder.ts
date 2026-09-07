@@ -30,6 +30,11 @@ interface StartBuilderState {
     deeplink?: string | null;
     anonymousUserId?: string | null;
     anonymousUserIdOverride?: boolean | null;
+    /**
+     * Tri-state: `undefined` means the modifier was never called, so neither
+     * native SDK touches its current setting. `null` means clear the proxy.
+     * A string means set it.
+     */
     proxyApi?: string | null;
     appHandlesRedemptionAlert?: boolean | null;
     androidStores: AndroidStore[];
@@ -165,9 +170,14 @@ export class PurchaselyBuilder {
      * This is a start-time option. Neither native SDK has a runtime setter
      * for it.
      *
-     * @param api The `https` base URL of the API proxy.
+     * Pass `null` to clear the proxy and return to `api.purchasely.io`. A
+     * chain that never calls this modifier leaves the current setting
+     * untouched on both platforms.
+     *
+     * @param api The `https` base URL of the API proxy, or `null` for no
+     * proxy.
      */
-    proxy(api: string): this {
+    proxy(api: string | null): this {
         this.state.proxyApi = api;
         return this;
     }
@@ -231,7 +241,7 @@ export class PurchaselyBuilder {
         // window where a campaign/deeplink can fire against the wrong default.
         // Omitted options are intentionally absent so native defaults match
         // Flutter v6.
-        const startOptions: Record<string, boolean | string> = {};
+        const startOptions: Record<string, boolean | string | null> = {};
         if (this.state.allowDeeplink !== undefined && this.state.allowDeeplink !== null) {
             startOptions.allowDeeplink = this.state.allowDeeplink;
         }
@@ -250,7 +260,10 @@ export class PurchaselyBuilder {
             startOptions.anonymousUserId = this.state.anonymousUserId;
             startOptions.anonymousUserIdOverride = this.state.anonymousUserIdOverride ?? false;
         }
-        if (this.state.proxyApi !== undefined && this.state.proxyApi !== null) {
+        // `null` is forwarded on purpose: it is the documented way to clear a
+        // proxy on both natives. Only `undefined` (never called) omits the
+        // key, which leaves each SDK's current setting untouched.
+        if (this.state.proxyApi !== undefined) {
             startOptions.proxy = this.state.proxyApi;
         }
         if (

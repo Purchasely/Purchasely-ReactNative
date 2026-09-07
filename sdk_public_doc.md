@@ -267,6 +267,22 @@ always stay on production. `api` must be an `https` base URL with a host, and
 it must carry no query, no fragment and no credentials. The native SDK refuses
 any other value with an error log and keeps the production host.
 
+Pass `null` to clear the proxy and return to `api.purchasely.io`:
+
+```typescript
+await Purchasely.builder('YOUR_API_KEY')
+    .proxy(null)
+    .start();
+```
+
+The three states differ:
+
+| Call | Effect |
+|------|--------|
+| `.proxy('https://...')` | Routes the API host through the proxy |
+| `.proxy(null)` | Clears the proxy, back to `api.purchasely.io` |
+| never called | Leaves the current setting untouched |
+
 This is a start-time option on both platforms. Neither native SDK has a
 runtime setter for it.
 
