@@ -25,9 +25,20 @@ jest.mock('react-native', () => ({
             handleDeeplink: jest.fn().mockResolvedValue(true),
         },
     },
+    NativeEventEmitter: jest.fn().mockImplementation(() => {
+        // Babel wraps the default export, so unwrap it.
+        const mod = require('../__mocks__/emitterSpy')
+        const shared = mod.default ?? mod
+        return {
+            addListener: shared.addListener,
+            removeAllListeners: shared.removeAllListeners,
+        }
+    }),
 }))
 
 import { NativeModules } from 'react-native'
+import emitterSpy from '../__mocks__/emitterSpy'
+import { removeWebRedemptionListener } from '../redemption'
 import { PurchaselyBuilder } from '../startBuilder'
 
 const mockNative = NativeModules.Purchasely as any
@@ -39,7 +50,7 @@ describe('PurchaselyBuilder', () => {
         mockNative.handleDeeplink = jest.fn().mockResolvedValue(true)
         // Static field can leak mutations across tests — reset to the
         // package default before each test.
-        PurchaselyBuilder.bridgeVersion = '6.0.0'
+        PurchaselyBuilder.bridgeVersion = '6.1.0'
     })
 
     describe('apiKey() defaults', () => {
@@ -53,7 +64,7 @@ describe('PurchaselyBuilder', () => {
                 null, // appUserId
                 mockConstants.logLevelError,
                 mockConstants.runningModeObserver,
-                '6.0.0',
+                '6.1.0',
                 {} // no chain-only options set -> empty startOptions map
             )
         })
@@ -173,6 +184,267 @@ describe('PurchaselyBuilder', () => {
         })
     })
 
+    describe('anonymousUserId() 6.1.0', () => {
+        it('forwards the id and the default override=false through startOptions', async () => {
+            await PurchaselyBuilder.apiKey('api-key')
+                .anonymousUserId('3f2504e0-4f89-11d3-9a0c-0305e82c3301')
+                .start()
+
+            expect(mockNative.start.mock.calls[0][7]).toEqual({
+                anonymousUserId: '3f2504e0-4f89-11d3-9a0c-0305e82c3301',
+                anonymousUserIdOverride: false,
+            })
+        })
+
+        it('forwards override=true when asked', async () => {
+            await PurchaselyBuilder.apiKey('api-key')
+                .anonymousUserId('3f2504e0-4f89-11d3-9a0c-0305e82c3301', true)
+                .start()
+
+            expect(mockNative.start.mock.calls[0][7]).toEqual({
+                anonymousUserId: '3f2504e0-4f89-11d3-9a0c-0305e82c3301',
+                anonymousUserIdOverride: true,
+            })
+        })
+
+        it('does not validate the string in JS: the bridge parses it and rejects a bad value', async () => {
+            await expect(
+                PurchaselyBuilder.apiKey('api-key').anonymousUserId('not-a-uuid').start()
+            ).resolves.toBe(true)
+
+            expect(mockNative.start.mock.calls[0][7]).toEqual({
+                anonymousUserId: 'not-a-uuid',
+                anonymousUserIdOverride: false,
+            })
+        })
+
+        it('omits both keys when the modifier is never called', async () => {
+            await PurchaselyBuilder.apiKey('api-key').start()
+            expect(mockNative.start.mock.calls[0][7]).toEqual({})
+        })
+    })
+
+    describe('proxy() 6.1.0', () => {
+        it('forwards the api url through startOptions', async () => {
+            await PurchaselyBuilder.apiKey('api-key')
+                .proxy('https://svc.purchasely.io')
+                .start()
+
+            expect(mockNative.start.mock.calls[0][7]).toEqual({
+                proxy: 'https://svc.purchasely.io',
+            })
+        })
+
+        it('does not validate the scheme in JS: the native SDK refuses a bad value', async () => {
+            await PurchaselyBuilder.apiKey('api-key').proxy('http://insecure.example').start()
+            expect(mockNative.start.mock.calls[0][7]).toEqual({
+                proxy: 'http://insecure.example',
+            })
+        })
+
+        // The three states are not interchangeable. `null` clears the proxy on
+        // both natives, and an absent key leaves each SDK's current setting
+        // untouched. Forwarding `null` as "absent" would make a clear silently
+        // do nothing.
+        it('forwards an explicit null so the natives clear the proxy', async () => {
+            await PurchaselyBuilder.apiKey('api-key').proxy(null).start()
+
+            const startOptions = mockNative.start.mock.calls[0][7]
+            expect(startOptions).toEqual({ proxy: null })
+            expect('proxy' in startOptions).toBe(true)
+            expect(startOptions.proxy).toBeNull()
+        })
+
+        it('omits the key when the modifier is never called', async () => {
+            await PurchaselyBuilder.apiKey('api-key').start()
+
+            const startOptions = mockNative.start.mock.calls[0][7]
+            expect(startOptions).toEqual({})
+            expect('proxy' in startOptions).toBe(false)
+        })
+
+        it('distinguishes never-called from cleared', async () => {
+            await PurchaselyBuilder.apiKey('api-key').start()
+            const never = mockNative.start.mock.calls[0][7]
+
+            mockNative.start = jest.fn().mockResolvedValue(true)
+            await PurchaselyBuilder.apiKey('api-key').proxy(null).start()
+            const cleared = mockNative.start.mock.calls[0][7]
+
+            expect('proxy' in never).toBe(false)
+            expect('proxy' in cleared).toBe(true)
+            expect(never).not.toEqual(cleared)
+        })
+
+        it('the last call wins, so a proxy can be replaced then cleared', async () => {
+            await PurchaselyBuilder.apiKey('api-key')
+                .proxy('https://first.example')
+                .proxy('https://svc.purchasely.io')
+                .proxy(null)
+                .start()
+
+            expect(mockNative.start.mock.calls[0][7]).toEqual({ proxy: null })
+        })
+    })
+
+    describe('webRedemptionListener() 6.1.0', () => {
+        beforeEach(() => emitterSpy.reset())
+
+        it('subscribes the callback on the WEB_REDEMPTION_LISTENER event', async () => {
+            const callback = jest.fn()
+            await PurchaselyBuilder.apiKey('api-key')
+                .webRedemptionListener(callback)
+                .start()
+
+            expect(emitterSpy.addListener).toHaveBeenCalledWith(
+                'WEB_REDEMPTION_LISTENER',
+                callback
+            )
+        })
+
+        // A redemption can settle while start() runs, so the listener has to be
+        // in place before the native call, never after it.
+        it('subscribes before native start() is called', async () => {
+            const order: string[] = []
+            emitterSpy.onAdd(() => order.push('subscribed'))
+            mockNative.start = jest.fn().mockImplementation(async () => {
+                order.push('start')
+                return true
+            })
+
+            await PurchaselyBuilder.apiKey('api-key')
+                .webRedemptionListener(() => {})
+                .start()
+
+            expect(order).toEqual(['subscribed', 'start'])
+        })
+
+        // Reported on the pull request: the modifier used to subscribe on the
+        // spot and drop the handle, so two calls left two live subscriptions
+        // and one redemption invoked both callbacks.
+        it('the last listener replaces the previous one instead of stacking', async () => {
+            const first = jest.fn()
+            const replacement = jest.fn()
+
+            await PurchaselyBuilder.apiKey('api-key')
+                .webRedemptionListener(first)
+                .webRedemptionListener(replacement)
+                .start()
+
+            const subscribed = emitterSpy.addListener.mock.calls
+                .filter((c: unknown[]) => c[0] === 'WEB_REDEMPTION_LISTENER')
+                .map((c: unknown[]) => c[1])
+            expect(subscribed).toEqual([replacement])
+            expect(subscribed).not.toContain(first)
+        })
+
+        it('replaces a listener registered by an earlier chain', async () => {
+            const first = jest.fn()
+            await PurchaselyBuilder.apiKey('api-key')
+                .webRedemptionListener(first)
+                .start()
+            const firstSubscription = emitterSpy.subscriptions[0]
+            expect(firstSubscription).toBeDefined()
+
+            const replacement = jest.fn()
+            mockNative.start = jest.fn().mockResolvedValue(true)
+            await PurchaselyBuilder.apiKey('api-key')
+                .webRedemptionListener(replacement)
+                .start()
+
+            expect(firstSubscription?.remove).toHaveBeenCalled()
+        })
+
+        // Also reported: subscribing at chain time meant an abandoned builder
+        // still received events forever.
+        it('subscribes nothing when the builder is never started', () => {
+            PurchaselyBuilder.apiKey('api-key').webRedemptionListener(jest.fn())
+
+            expect(emitterSpy.addListener).not.toHaveBeenCalled()
+        })
+
+        // Reported on the pull request. React Native's removeAllListeners goes
+        // straight to RCTDeviceEventEmitter and settles the native count
+        // itself, so a stale per-subscription remove() would send a second
+        // removeListeners(1). On iOS that can drive _listenerCount to zero and
+        // trigger stopObserving, which silences every event the module sends.
+        it('drops the chain handle when the listener is removed, so no stale remove fires', async () => {
+            await PurchaselyBuilder.apiKey('api-key')
+                .webRedemptionListener(jest.fn())
+                .start()
+            const firstSubscription = emitterSpy.subscriptions[0]
+            expect(firstSubscription).toBeDefined()
+
+            removeWebRedemptionListener()
+
+            mockNative.start = jest.fn().mockResolvedValue(true)
+            await PurchaselyBuilder.apiKey('api-key')
+                .webRedemptionListener(jest.fn())
+                .start()
+
+            expect(firstSubscription?.remove).not.toHaveBeenCalled()
+        })
+
+        it('sets appHandlesRedemptionAlert from the optional second argument', async () => {
+            await PurchaselyBuilder.apiKey('api-key')
+                .webRedemptionListener(() => {}, true)
+                .start()
+
+            expect(mockNative.start.mock.calls[0][7]).toEqual({
+                appHandlesRedemptionAlert: true,
+            })
+        })
+
+        it('leaves appHandlesRedemptionAlert unset when the second argument is omitted', async () => {
+            await PurchaselyBuilder.apiKey('api-key')
+                .webRedemptionListener(() => {})
+                .start()
+
+            expect(mockNative.start.mock.calls[0][7]).toEqual({})
+        })
+    })
+
+    describe('appHandlesRedemptionAlert() 6.1.0', () => {
+        it('forwards true through startOptions', async () => {
+            await PurchaselyBuilder.apiKey('api-key').appHandlesRedemptionAlert(true).start()
+            expect(mockNative.start.mock.calls[0][7]).toEqual({
+                appHandlesRedemptionAlert: true,
+            })
+        })
+
+        it('forwards an explicit false through startOptions', async () => {
+            await PurchaselyBuilder.apiKey('api-key').appHandlesRedemptionAlert(false).start()
+            expect(mockNative.start.mock.calls[0][7]).toEqual({
+                appHandlesRedemptionAlert: false,
+            })
+        })
+
+        it('omits the key when the modifier is never called', async () => {
+            await PurchaselyBuilder.apiKey('api-key').start()
+            expect(mockNative.start.mock.calls[0][7]).toEqual({})
+        })
+    })
+
+    describe('the 6.1.0 options travel in the same atomic startOptions map', () => {
+        it('carries every modifier in one start() call', async () => {
+            await PurchaselyBuilder.apiKey('api-key')
+                .allowDeeplink(false)
+                .anonymousUserId('3f2504e0-4f89-11d3-9a0c-0305e82c3301', true)
+                .proxy('https://svc.purchasely.io')
+                .appHandlesRedemptionAlert(true)
+                .start()
+
+            expect(mockNative.start).toHaveBeenCalledTimes(1)
+            expect(mockNative.start.mock.calls[0][7]).toEqual({
+                allowDeeplink: false,
+                anonymousUserId: '3f2504e0-4f89-11d3-9a0c-0305e82c3301',
+                anonymousUserIdOverride: true,
+                proxy: 'https://svc.purchasely.io',
+                appHandlesRedemptionAlert: true,
+            })
+        })
+    })
+
     describe('handleDeeplink() — cold-start replay', () => {
         it('replays the deeplink through native.handleDeeplink after start() resolves', async () => {
             const callOrder: string[] = []
@@ -212,7 +484,7 @@ describe('PurchaselyBuilder', () => {
 
         it('uses the static bridgeVersion by default', async () => {
             await PurchaselyBuilder.apiKey('api-key').start()
-            expect(mockNative.start.mock.calls[0][6]).toBe('6.0.0')
+            expect(mockNative.start.mock.calls[0][6]).toBe('6.1.0')
         })
 
         it('overrides the bridge version with the sdkVersion argument when provided', async () => {

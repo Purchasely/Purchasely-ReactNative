@@ -19,6 +19,7 @@ const Stack = createNativeStackNavigator()
 function App(): React.JSX.Element {
     async function setupPurchasely() {
         let configured = false
+
         try {
             // chained builder — the only supported way to start the SDK.
             // `allowDeeplink(true)` replaces the legacy `readyToOpenDeeplink`.
@@ -32,6 +33,31 @@ function App(): React.JSX.Element {
                 .allowCampaigns(true)
                 .storekitVersion('storeKit2') // iOS: 'storeKit2' or 'storeKit1'
                 .stores(['google']) // Android stores
+                // 6.1.0, Web2App redemption. On the chain, so the listener
+                // exists before start() runs: a redemption can settle during
+                // start(), from a cold start the `ply/redeem` link triggered
+                // or a token a previous launch left pending.
+                .webRedemptionListener((result) => {
+                    if (result.isSuccess) {
+                        console.log(
+                            'Redemption granted. replay=' +
+                                result.replay +
+                                ' subscription=' +
+                                result.context?.subscription?.plan?.vendorId
+                        )
+                    } else {
+                        // On BOTH platforms, errorMessage for an expired link
+                        // can carry a masked email address. Show it to the
+                        // user. Do not send it to analytics or to a crash
+                        // reporter.
+                        console.log(
+                            'Redemption failed. code=' +
+                                result.errorCode +
+                                ' message=' +
+                                result.errorMessage
+                        )
+                    }
+                })
                 .start()
         } catch (e) {
             console.log('Purchasely SDK configuration error:', e)

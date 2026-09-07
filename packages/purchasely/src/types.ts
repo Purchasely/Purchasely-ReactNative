@@ -122,10 +122,28 @@ export type PLYUserAttribute = {
 };
 
 export type PLYSubscription = {
-  purchaseToken: string;
+  /**
+   * Android-only. The native iOS `PLYSubscription` has no purchase token
+   * property, so the iOS bridge
+   * (`PLYSubscription+Hybrid.m asDictionary`) cannot emit this key and never
+   * did.
+   *
+   * Nullable AND optional, because the platforms disagree on how they report
+   * the absence. iOS omits the key, so a caller sees `undefined`. Android's
+   * `PLYSubscription.toMap()` assigns the key unconditionally from a nullable
+   * field, so a caller sees an explicit `null`. Same reasoning as
+   * {@link cumulatedRevenuesInUSD}.
+   */
+  purchaseToken?: string | null;
   subscriptionSource: SubscriptionSource;
-  nextRenewalDate: string;
-  cancelledDate: string;
+  /**
+   * Absent when the subscription has no renewal date. The iOS bridge omits
+   * the key when the native date is `nil`; Android reports an explicit
+   * `null`. Never read it as an empty string.
+   */
+  nextRenewalDate?: string | null;
+  /** Absent or null when the subscription is not cancelled. See {@link nextRenewalDate}. */
+  cancelledDate?: string | null;
   plan: PLYPlan;
   product: PLYProduct;
   /**
@@ -199,7 +217,20 @@ export type PLYEventName =
   | 'WEB_CHECKOUT_OPENED_IN_WEB_BROWSER'
   | 'WEB_CHECKOUT_ERROR'
   | 'WEB_CHECKOUT_TAPPED'
-  | 'WEB_CHECKOUT_TIMED_OUT';
+  | 'WEB_CHECKOUT_TIMED_OUT'
+  /**
+   * A Web2App redemption granted its content. New in 6.1.0 on both native
+   * platforms. A replayed link reports this event too. Read
+   * `properties.redemption.purchase_context.replay` to tell a first
+   * redemption from a repeat.
+   */
+  | 'REDEMPTION_CONSUMED'
+  /**
+   * A Web2App redemption failed. New in 6.1.0 on both native platforms.
+   * Read `properties.redemption.error_code` and
+   * `properties.error_message`.
+   */
+  | 'REDEMPTION_FAILED';
 
 export type PLYEventPropertyPlan = {
   type?: string;
@@ -234,6 +265,77 @@ export type PLYEventPropertyCarousel = {
 export type PLYEventPropertySubscription = {
   plan?: string;
   product?: string;
+};
+
+/** The receipt a redemption validated. */
+export type PLYEventPropertyRedemptionReceipt = {
+  id?: string;
+  /** Uppercase, e.g. `'COMPLETED'`. */
+  validation_status?: string;
+};
+
+/**
+ * One subscription a redemption transferred, as `REDEMPTION_CONSUMED` reports
+ * it. The SDK reports active subscriptions and non-consumables only. An
+ * expired subscription is absent: a redemption grants, it does not report
+ * history.
+ */
+export type PLYEventPropertyRedemptionSubscription = {
+  public_id?: string;
+  plan_id?: string;
+  store_type?: string;
+  subscription_status?: string;
+  environment?: string;
+};
+
+/**
+ * One attribute a redemption restored. `value` stays the JSON the backend
+ * sent, so the event reports it exactly as `type` declares it.
+ */
+export type PLYEventPropertyRedemptionAttribute = {
+  key?: string;
+  type?: string;
+  value?: any;
+};
+
+/**
+ * The web journey behind a redemption. The SDK reports what it applied, not
+ * the raw response: a block the SDK does not consume is absent here too.
+ */
+export type PLYEventPropertyRedemptionPurchaseContext = {
+  version?: number;
+  source?: string;
+  sandbox?: boolean;
+  /** `true` when the same redemption link is consumed again. */
+  replay?: boolean;
+  built_in_attributes?: PLYEventPropertyRedemptionAttribute[];
+  custom_attributes?: PLYEventPropertyRedemptionAttribute[];
+};
+
+/**
+ * What a Web2App redemption reports. `REDEMPTION_CONSUMED` carries `token`,
+ * `receipt`, `subscriptions` and `purchase_context`. `REDEMPTION_FAILED`
+ * carries `token` and `error_code`, with the reason in the top-level
+ * `error_message`.
+ *
+ * The masked email hint of an expired link never reaches this event, on
+ * either platform. The SDK gives that hint to the web redemption listener
+ * only. See `Purchasely.addWebRedemptionListener`.
+ *
+ * Every field is optional: the SDK omits a key it has no value for.
+ */
+export type PLYEventPropertyRedemption = {
+  /** The redemption link token this event reports on. */
+  token?: string;
+  receipt?: PLYEventPropertyRedemptionReceipt;
+  subscriptions?: PLYEventPropertyRedemptionSubscription[];
+  purchase_context?: PLYEventPropertyRedemptionPurchaseContext;
+  /**
+   * Backend error code, on `REDEMPTION_FAILED` only. Known values:
+   * `'EXPIRED_REDEMPTION_TOKEN'`, `'INVALID_REDEMPTION_TOKEN'`. A transport
+   * failure or a parsing failure carries no code.
+   */
+  error_code?: string;
 };
 
 export type PLYEvent = {
@@ -321,6 +423,63 @@ export type PLYEventProperties = {
   client_reference_id?: string;
   stripe_checkout_session_id?: string;
   stripe_purchase_id?: string;
+  /** Set on `REDEMPTION_CONSUMED` and `REDEMPTION_FAILED`. New in 6.1.0. */
+  redemption?: PLYEventPropertyRedemption;
+};
+
+/**
+ * What a Web2App redemption granted.
+ *
+ * Both levels are nullable. `context` is null when the server's 200 response
+ * carried nothing to describe. A present `context` can still hold a null
+ * `subscription`: the receipt validated and the SDK refreshed the
+ * entitlements, but the response carried no subscription, or the products
+ * behind it are not loaded yet. Both cases stay a success. Call
+ * `Purchasely.userSubscriptions()` from the listener for the full picture.
+ */
+export type PLYWebRedemptionContext = {
+  subscription: PLYSubscription | null;
+};
+
+/**
+ * Outcome of one Web2App redemption, delivered to the listener you add with
+ * `Purchasely.addWebRedemptionListener`.
+ *
+ * Read `isSuccess` first: it decides which fields hold a value. The shape is
+ * flat because it mirrors the native iOS `PLYWebRedemptionResult` and the
+ * Android `PLYWebRedemptionResult` sealed class through one bridge event.
+ */
+export type PLYWebRedemptionResult = {
+  /** `true` for a granted redemption, `false` for a failed one. */
+  isSuccess: boolean;
+  /** Null on failure, and nullable on success. See {@link PLYWebRedemptionContext}. */
+  context: PLYWebRedemptionContext | null;
+  /**
+   * `true` when the server reports that the token was redeemed before. The
+   * SDK keeps no cache and calls the server on every attempt, so this is a
+   * verdict about the token, not an observation of the user. Always `false`
+   * on failure.
+   */
+  replay: boolean;
+  /**
+   * Backend error code. Null on success, and null on a failure that never
+   * reached the server. Known values: `'EXPIRED_REDEMPTION_TOKEN'`,
+   * `'INVALID_REDEMPTION_TOKEN'`.
+   */
+  errorCode: string | null;
+  /**
+   * Human-readable reason, in English. Null on success. It never contains the
+   * token.
+   *
+   * **On both platforms**, an expired link puts the backend's masked email
+   * hint here, for example `'A new link was sent to j***@example.com.'`, so
+   * the app can tell the user where the fresh link went. That hint is
+   * personal data. The `REDEMPTION_FAILED` event drops it on purpose, on iOS
+   * and on Android alike. Show this text to the user. Do not send it to an
+   * analytics stack or to a crash reporter, and do not gate that rule on the
+   * platform.
+   */
+  errorMessage: string | null;
 };
 
 /**

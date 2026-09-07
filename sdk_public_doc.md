@@ -222,6 +222,150 @@ try {
 }
 ```
 
+### Anonymous user id (6.1.0)
+
+Set the anonymous user id that the SDK reports for this device.
+
+```typescript
+await Purchasely.builder('YOUR_API_KEY')
+    .anonymousUserId('3f2504e0-4f89-11d3-9a0c-0305e82c3301')
+    .start();
+```
+
+`id` must be a canonical UUID string. JavaScript has no UUID type, so the
+native bridge parses the string. The bridge logs an error and skips the option
+when the string is not a canonical UUID. The SDK still starts.
+
+The SDK stores the id in uppercase. The SDK applies the id only when the device
+holds no anonymous id yet. Pass `true` as the second argument to replace an
+existing id:
+
+```typescript
+.anonymousUserId('3f2504e0-4f89-11d3-9a0c-0305e82c3301', true)
+```
+
+**`override: true` splits the user history.** The backend keeps every event and
+every purchase under the previous id. Use `true` only when your app owns the
+anonymous identity, for example after a cross-device restore.
+
+### API proxy (6.1.0)
+
+Route Purchasely API traffic through a proxy instead of `api.purchasely.io`,
+for a region where that host is unreachable, such as mainland China.
+
+```typescript
+await Purchasely.builder('YOUR_API_KEY')
+    .proxy('https://svc.purchasely.io')
+    .start();
+```
+
+Purchasely operates a proxy at `https://svc.purchasely.io`. You can also host
+your own.
+
+The SDK overrides the API host only. The paywall host and the tracking host
+always stay on production. `api` must be an `https` base URL with a host, and
+it must carry no query, no fragment and no credentials. The native SDK refuses
+any other value with an error log and keeps the production host.
+
+Pass `null` to clear the proxy and return to `api.purchasely.io`:
+
+```typescript
+await Purchasely.builder('YOUR_API_KEY')
+    .proxy(null)
+    .start();
+```
+
+The three states differ:
+
+| Call | Effect |
+|------|--------|
+| `.proxy('https://...')` | Routes the API host through the proxy |
+| `.proxy(null)` | Clears the proxy, back to `api.purchasely.io` |
+| never called | Leaves the current setting untouched |
+
+This is a start-time option on both platforms. Neither native SDK has a
+runtime setter for it.
+
+### Web2App redemption (6.1.0)
+
+Listen to the outcome of a Web2App redemption
+(`{scheme}://ply/redeem/{token}`).
+
+Set the listener on the start chain, the same way the native SDKs do:
+
+```typescript
+import Purchasely from 'react-native-purchasely';
+
+await Purchasely.builder('YOUR_API_KEY')
+    .webRedemptionListener((result) => {
+        if (result.isSuccess) {
+            console.log('Redemption granted', result.context?.subscription);
+            if (result.replay) {
+                console.log('The server reports this token was redeemed before');
+            }
+        } else {
+            console.log('Redemption failed', result.errorCode, result.errorMessage);
+        }
+    })
+    .start();
+```
+
+The second argument is a shorthand for `appHandlesRedemptionAlert`:
+
+```typescript
+.webRedemptionListener(onRedemption, true) // the app shows the result screen
+```
+
+**Set the listener on the chain, not after `start()`.** A redemption can
+settle during `start()`, from a cold start that the link itself triggered, or
+from a token that a previous launch left pending. The chain form subscribes
+the callback before `start()` runs, so that case cannot be missed.
+
+`Purchasely.addWebRedemptionListener(cb)` and
+`Purchasely.removeWebRedemptionListener()` remain available for an app that
+must add or replace the listener while the SDK is already running. A
+redemption that settles during `start()` is then missed.
+
+The SDK calls the listener on the main thread, exactly once per settled
+redemption, on success and on failure alike.
+
+`appHandlesRedemptionAlert` decides *when* the SDK calls the listener:
+
+| Value | The SDK shows | The SDK calls the listener |
+|-------|---------------|----------------------------|
+| `false` (default) | its own result popin | after the user acknowledges the popin |
+| `true` | nothing | as soon as the redemption settles |
+
+Use `true` when your app shows its own result screen.
+
+The result has five fields:
+
+| Field | Description |
+|-------|-------------|
+| `isSuccess` | `true` for a granted redemption, `false` for a failed one |
+| `context` | What the redemption granted, or `null`. `context.subscription` is separately nullable |
+| `replay` | `true` when the server reports the token was redeemed before |
+| `errorCode` | `'EXPIRED_REDEMPTION_TOKEN'`, `'INVALID_REDEMPTION_TOKEN'`, or `null` |
+| `errorMessage` | Human-readable reason, or `null` |
+
+Three behaviours to know:
+
+- `replay` is a verdict about the **token**, not an observation of the user.
+  The SDK keeps no cache and calls the server on every attempt.
+- A redemption deeplink is **not** subject to `allowDeeplink`. The native SDK
+  intercepts `ply/redeem` out of band, so a redemption still completes with
+  `allowDeeplink(false)`.
+- **On both platforms**, `errorMessage` for an expired link can contain a
+  masked email address, so you can tell the user where the fresh link went.
+  That hint is personal data. Show it to the user. Do not send it to an
+  analytics stack or to a crash reporter, and do not make that rule
+  platform-specific. The `REDEMPTION_FAILED` event drops the hint on iOS and
+  on Android alike.
+
+The SDK also emits two analytics events for a redemption,
+`REDEMPTION_CONSUMED` and `REDEMPTION_FAILED`. Read them with
+`Purchasely.addEventListener`.
+
 ### API Key
 
 You can find your API Key in the Purchasely Console under **App settings > Backend & SDK configuration**.
@@ -521,6 +665,33 @@ try {
     console.log(e);
 }
 ```
+
+#### Nullable fields (6.1.0)
+
+`purchaseToken`, `nextRenewalDate` and `cancelledDate` are optional **and**
+nullable. Guard them before use:
+
+```typescript
+const token = subscriptions[0]?.purchaseToken ?? null;
+```
+
+The two platforms report an absent value differently. iOS omits the key, so you
+read `undefined`. Android assigns the key from a nullable field, so you read an
+explicit `null`. Never treat any of the three as an empty string.
+
+`purchaseToken` is Android-only: the native iOS `PLYSubscription` has no
+purchase token property, so the iOS bridge cannot report one.
+
+#### `subscriptionSource` values
+
+| Value | Meaning |
+|-------|---------|
+| `APPLE_APP_STORE` | Bought on the App Store |
+| `GOOGLE_PLAY_STORE` | Bought on Google Play |
+| `HUAWEI_APP_GALLERY` | Bought on Huawei AppGallery |
+| `AMAZON_APPSTORE` | Bought on the Amazon Appstore |
+| `WEB_CHECKOUT_STRIPE` | Bought through web checkout. **New in 6.1.0.** A subscription granted by a Web2App redemption reports this source |
+| `NONE` | No source |
 
 > **Note**: There is a **few seconds delay** for `Purchasely.userSubscriptions()` to be updated after a purchase or restoration. If you rely on this method to get the current subscription status right after a purchase, you should **wait for 3 seconds** before calling this method.
 

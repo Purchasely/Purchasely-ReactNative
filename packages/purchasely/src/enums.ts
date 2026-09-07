@@ -21,6 +21,11 @@ export enum SubscriptionSource {
   GOOGLE_PLAY_STORE = constants.sourcePlayStore,
   HUAWEI_APP_GALLERY = constants.sourceHuaweiAppGallery,
   AMAZON_APPSTORE = constants.sourceAmazonAppstore,
+  /**
+   * A subscription bought through web checkout. Web2App redemption grants
+   * subscriptions from this source, so a redeemed subscription reports it.
+   */
+  WEB_CHECKOUT_STRIPE = constants.sourceStripe,
   NONE = constants.sourceNone,
 }
 

@@ -31,6 +31,10 @@ import {
 } from './presentation';
 import { PurchaselyBuilder } from './startBuilder';
 import {
+  addWebRedemptionListener,
+  removeWebRedemptionListener,
+} from './redemption';
+import {
   interceptAction,
   removeActionInterceptor,
   removeAllActionInterceptors,
@@ -40,7 +44,7 @@ import type {
   PLYPresentationActionKind,
 } from './presentationTypes';
 
-const purchaselyVersion = '6.0.0';
+const purchaselyVersion = '6.1.0';
 
 const PurchaselyEventEmitter = new NativeEventEmitter(NativeModules.Purchasely);
 
@@ -543,6 +547,8 @@ const Purchasely = {
   removeUserAttributeRemovedListener,
   setUserAttributeListener,
   clearUserAttributeListener,
+  addWebRedemptionListener,
+  removeWebRedemptionListener,
   purchaseWithPlanVendorId,
   setUserAttributeWithDate,
   signPromotionalOffer,
@@ -617,6 +623,11 @@ export {
   removeAllActionInterceptors,
 } from './interceptor';
 export { PurchaselyBuilder } from './startBuilder';
+export {
+  addWebRedemptionListener,
+  removeWebRedemptionListener,
+} from './redemption';
+export type { WebRedemptionListenerCallback } from './redemption';
 export { PLYPresentationView };
 
 export default Purchasely;

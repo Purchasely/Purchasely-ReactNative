@@ -3,7 +3,7 @@ PODS:
   - hermes-engine (250829098.0.14):
     - hermes-engine/Pre-built (= 250829098.0.14)
   - hermes-engine/Pre-built (250829098.0.14)
-  - Purchasely (6.0.0)
+  - Purchasely (6.1.0)
   - RCTDeprecation (0.86.0)
   - RCTRequired (0.86.0)
   - RCTSwiftUI (0.86.0)
@@ -1450,11 +1450,11 @@ PODS:
     - ReactNativeDependencies
     - SwiftUIIntrospect (~> 1.0)
     - Yoga
-  - react-native-purchasely (6.0.0):
-    - Purchasely (= 6.0.0)
+  - react-native-purchasely (6.1.0):
+    - Purchasely (= 6.1.0)
     - React-Core
-  - react-native-purchasely/Tests (6.0.0):
-    - Purchasely (= 6.0.0)
+  - react-native-purchasely/Tests (6.1.0):
+    - Purchasely (= 6.1.0)
     - React-Core
   - react-native-safe-area-context (5.5.2):
     - hermes-engine
@@ -2229,7 +2229,7 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   FBLazyVector: b3e7ad108f0d882e30445c5527d774e3fd432f3d
   hermes-engine: 7fa7794edc84e91e759bb4fe5095fe8bc63f8ceb
-  Purchasely: 4309bcf9d139c40dcad8ebe3d93751c8d6ae02cd
+  Purchasely: c80ea99b186314d8980ff6a6c57de6c0ea626920
   RCTDeprecation: 2a74a2c57675e64419bd89078efde81f7c1de90b
   RCTRequired: 30451112e6fef4e6f31b4e7eee0845156e35e4b0
   RCTSwiftUI: 5aaf0b07e747ba749dc6acc94d8bd41eea4b570f
@@ -2268,7 +2268,7 @@ SPEC CHECKSUMS:
   React-microtasksnativemodule: 2eb3f49d0d8e77b5343455eccd057010b8d38b6b
   React-mutationobservernativemodule: f0a0d5ae9b51caf7becbeabf836d716cfedb6bf2
   react-native-pager-view: e91b5624568fda9e4c0fb0c44ed9669c2335e212
-  react-native-purchasely: 662d42a2c30aac229d9eb5c0a902be86e768d8a9
+  react-native-purchasely: eb3a758ca2d76ea404d369206e5f8b40b85dd9c4
   react-native-safe-area-context: 3836dc43241ba89903508a442029e57f7491539f
   React-NativeModulesApple: a092d89b58f635ebfab88048b0eda9fb516819fd
   React-networking: 968bbbe73590149feb1e72b2af4f6a68e4796ece

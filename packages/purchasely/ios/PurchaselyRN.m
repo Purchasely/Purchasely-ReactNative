@@ -481,6 +481,7 @@ static __weak PurchaselyRN *_sharedEmitter;
 		@"sourcePlayStore": @(PLYSubscriptionSourceGooglePlayStore),
 		@"sourceHuaweiAppGallery": @(PLYSubscriptionSourceHuaweiAppGallery),
 		@"sourceAmazonAppstore": @(PLYSubscriptionSourceAmazonAppstore),
+        @"sourceStripe": @(PLYSubscriptionSourceStripe),
         @"sourceNone": @(PLYSubscriptionSourceNone),
 		@"firebaseAppInstanceId": @(PLYAttributeFirebaseAppInstanceId),
 		@"airshipChannelId": @(PLYAttributeAirshipChannelId),
@@ -556,6 +557,7 @@ RCT_EXPORT_METHOD(start:(NSString * _Nonnull)apiKey
     // separate post-start call would leave open for an early campaign/deeplink
     // to fire against the wrong default. `automaticDeeplinkHandling` has no
     // iOS builder equivalent (Android-only) and is ignored here.
+    BOOL appHandlesRedemptionAlert = NO;
     if ([startOptions isKindOfClass:[NSDictionary class]]) {
         id allowDeeplink = startOptions[@"allowDeeplink"];
         if ([allowDeeplink isKindOfClass:[NSNumber class]]) {
@@ -565,7 +567,60 @@ RCT_EXPORT_METHOD(start:(NSString * _Nonnull)apiKey
         if ([allowCampaigns isKindOfClass:[NSNumber class]]) {
             builder = [builder allowCampaigns:[allowCampaigns boolValue]];
         }
+        // JS has no UUID type, so the id crosses the bridge as a string and is
+        // parsed here. The native builder takes a `UUID?`, which is where the
+        // guarantee used to live; a string-typed bridge is the only place left
+        // to catch a bad value. Reject it loudly and skip the modifier. The
+        // SDK still starts, matching how native treats an unusable proxy url.
+        id anonymousUserId = startOptions[@"anonymousUserId"];
+        if ([anonymousUserId isKindOfClass:[NSString class]]) {
+            NSUUID *parsed = [[NSUUID alloc] initWithUUIDString:(NSString *)anonymousUserId];
+            if (parsed == nil) {
+                RCTLogWarn(@"[Purchasely] `anonymousUserId` must be a canonical UUID string, "
+                             "for example \"3f2504e0-4f89-11d3-9a0c-0305e82c3301\". Received \"%@\". "
+                             "The anonymous user id is not applied.", anonymousUserId);
+            } else {
+                id override = startOptions[@"anonymousUserIdOverride"];
+                BOOL shouldOverride = [override isKindOfClass:[NSNumber class]] ? [override boolValue] : NO;
+                builder = [builder appAnonymousUserId:parsed override:shouldOverride];
+            }
+        }
+        // The native modifier takes an `NSURL?`, and a `nil` there means
+        // "turn the proxy off", not "ignore this value". So a string that
+        // `NSURL` cannot parse must skip the modifier entirely rather than
+        // pass nil, which would silently disable a proxy the app asked for.
+        // Native validates the rest (https, host, no query/fragment) and
+        // keeps the production host on a bad value, so the bridge does not
+        // re-check those.
+        // Three states, and they are not interchangeable:
+        //   key absent  -> leave the SDK's current setting alone
+        //   NSNull      -> clear the proxy, back to api.purchasely.io
+        //   NSString    -> set it
+        id proxyApi = startOptions[@"proxy"];
+        if (proxyApi == [NSNull null]) {
+            builder = [builder proxyWithApi:nil];
+        } else if ([proxyApi isKindOfClass:[NSString class]]) {
+            NSURL *proxyUrl = [NSURL URLWithString:(NSString *)proxyApi];
+            if (proxyUrl == nil) {
+                RCTLogWarn(@"[Purchasely] `proxy` must be an https base URL, "
+                             "for example \"https://svc.purchasely.io\". Received \"%@\". "
+                             "The proxy is not applied.", proxyApi);
+            } else {
+                builder = [builder proxyWithApi:proxyUrl];
+            }
+        }
+        id handlesAlert = startOptions[@"appHandlesRedemptionAlert"];
+        if ([handlesAlert isKindOfClass:[NSNumber class]]) {
+            appHandlesRedemptionAlert = [handlesAlert boolValue];
+        }
     }
+
+    // Registered unconditionally: the native SDK has no runtime setter on
+    // purpose, because a redemption can settle during `start()` (a cold start
+    // that the link itself triggered, or a token left pending by a previous
+    // launch). The bridge emits `WEB_REDEMPTION_LISTENER`, which reaches no one
+    // when JS added no listener, so this is behaviour-neutral by default.
+    builder = [builder webRedemptionDelegate:self appHandlesRedemptionAlert:appHandlesRedemptionAlert];
 
     [builder startWithInitialized:^(NSError * _Nullable error) {
         if (error != nil) {
@@ -1246,6 +1301,7 @@ RCT_EXPORT_METHOD(closeAllScreens) {
     @"PURCHASE_LISTENER",
     @"USER_ATTRIBUTE_SET_LISTENER",
     @"USER_ATTRIBUTE_REMOVED_LISTENER",
+    @"WEB_REDEMPTION_LISTENER",
     // cross-platform bridge events. Names mirror the Android bridge so the
     // same JS layer drives both platforms. See the presentation section below.
     @"PURCHASELY_PRESENTATION_LOADED",
@@ -1331,6 +1387,57 @@ RCT_EXPORT_METHOD(closeAllScreens) {
     [self sendEventWithName:@"USER_ATTRIBUTE_REMOVED_LISTENER" body:body];
 }
 
+
+/// `PLYWebRedemptionDelegate`. The SDK calls this on the main thread, once per
+/// settled redemption. Mapped to the flat 5-field shape the Android bridge
+/// emits, so one JS listener drives both platforms.
+///
+/// `context` and `context.subscription` are separately nullable, and both stay
+/// nullable in the emitted body: a success can carry no context at all, and a
+/// present context can carry no subscription.
+///
+/// `errorMessage` can hold the backend's masked email hint for an expired
+/// link. The `REDEMPTION_FAILED` event drops that hint on purpose; this
+/// channel keeps it, so the app can tell the user where the fresh link went.
+- (void)webRedemptionCompletedWithResult:(PLYWebRedemptionResult * _Nonnull)result {
+    if (!self.shouldEmit) return;
+
+    PLYSubscription *subscription = result.context.subscription;
+    NSDictionary<NSString *, id> *body =
+        [PurchaselyRN webRedemptionBodyWithSuccess:result.isSuccess
+                                        hasContext:result.context != nil
+                                      subscription:subscription != nil ? subscription.asDictionary : nil
+                                            replay:result.replay
+                                         errorCode:result.errorCode
+                                      errorMessage:result.errorMessage];
+
+    [self sendEventWithName:@"WEB_REDEMPTION_LISTENER" body:body];
+}
+
++ (NSDictionary<NSString *, id> *)webRedemptionBodyWithSuccess:(BOOL)isSuccess
+                                                    hasContext:(BOOL)hasContext
+                                                  subscription:(NSDictionary * _Nullable)subscription
+                                                        replay:(BOOL)replay
+                                                     errorCode:(NSString * _Nullable)errorCode
+                                                  errorMessage:(NSString * _Nullable)errorMessage {
+    // `context` and `context.subscription` are separately nullable, and the
+    // two nulls mean different things: no context at all versus a context
+    // that describes no subscription. Both stay distinguishable in JS.
+    id context = [NSNull null];
+    if (hasContext) {
+        context = @{ @"subscription": subscription ?: [NSNull null] };
+    }
+
+    // The same five keys on every branch, so the JS shape never changes
+    // between a success and a failure.
+    return @{
+        @"isSuccess": @(isSuccess),
+        @"context": context,
+        @"replay": @(replay),
+        @"errorCode": errorCode ?: [NSNull null],
+        @"errorMessage": errorMessage ?: [NSNull null]
+    };
+}
 
 - (void)purchasePerformed {
   if (!self.shouldEmit) return;

@@ -348,6 +348,128 @@
                   @"closePresentation: should be exported to the bridge");
 }
 
+#pragma mark - Web2App redemption (6.1.0)
+
+- (void)testSupportedEventsIncludesWebRedemptionListener {
+    NSArray<NSString *> *events = [self.purchaselyModule supportedEvents];
+    XCTAssertTrue([events containsObject:@"WEB_REDEMPTION_LISTENER"],
+                  @"supportedEvents should expose the web redemption event");
+}
+
+- (void)testModuleConformsToWebRedemptionDelegate {
+    // The bridge registers itself on the start chain
+    // (`webRedemptionDelegate:appHandlesRedemptionAlert:`), so it must conform.
+    XCTAssertTrue([self.purchaselyModule conformsToProtocol:@protocol(PLYWebRedemptionDelegate)],
+                  @"PurchaselyRN should conform to PLYWebRedemptionDelegate");
+}
+
+- (void)testWebRedemptionCompletedIsImplemented {
+    // Swift `webRedemptionCompleted(result:)` bridges to this selector.
+    XCTAssertTrue([self.purchaselyModule respondsToSelector:@selector(webRedemptionCompletedWithResult:)],
+                  @"the web redemption delegate callback should be implemented");
+}
+
+/// The five keys must be present on every branch. A JS listener reads the same
+/// shape whether the redemption succeeded or failed.
+- (void)assertWebRedemptionShape:(NSDictionary *)body {
+    XCTAssertEqual(body.count, 5, @"the body must always carry exactly five keys");
+    for (NSString *key in @[@"isSuccess", @"context", @"replay", @"errorCode", @"errorMessage"]) {
+        XCTAssertNotNil(body[key], @"%@ must be present", key);
+    }
+}
+
+- (void)testWebRedemptionBodySuccessWithNoContext {
+    NSDictionary *body = [PurchaselyRN webRedemptionBodyWithSuccess:YES
+                                                         hasContext:NO
+                                                       subscription:nil
+                                                             replay:NO
+                                                          errorCode:nil
+                                                       errorMessage:nil];
+
+    [self assertWebRedemptionShape:body];
+    XCTAssertEqualObjects(body[@"isSuccess"], @YES);
+    XCTAssertEqualObjects(body[@"context"], [NSNull null],
+                          @"no context at all must be NSNull, not an empty dictionary");
+    XCTAssertEqualObjects(body[@"replay"], @NO);
+    XCTAssertEqualObjects(body[@"errorCode"], [NSNull null]);
+    XCTAssertEqualObjects(body[@"errorMessage"], [NSNull null]);
+}
+
+/// A present context with no subscription is NOT the same as no context. Both
+/// levels stay separately nullable, matching the Android bridge.
+- (void)testWebRedemptionBodyKeepsAPresentContextWithNoSubscription {
+    NSDictionary *body = [PurchaselyRN webRedemptionBodyWithSuccess:YES
+                                                         hasContext:YES
+                                                       subscription:nil
+                                                             replay:NO
+                                                          errorCode:nil
+                                                       errorMessage:nil];
+
+    [self assertWebRedemptionShape:body];
+    XCTAssertTrue([body[@"context"] isKindOfClass:[NSDictionary class]],
+                  @"a present context must stay a dictionary");
+    NSDictionary *context = body[@"context"];
+    XCTAssertEqualObjects(context[@"subscription"], [NSNull null]);
+}
+
+- (void)testWebRedemptionBodyNestsTheSubscription {
+    NSDictionary *subscription = @{@"purchaseToken": @"token-123"};
+    NSDictionary *body = [PurchaselyRN webRedemptionBodyWithSuccess:YES
+                                                         hasContext:YES
+                                                       subscription:subscription
+                                                             replay:NO
+                                                          errorCode:nil
+                                                       errorMessage:nil];
+
+    [self assertWebRedemptionShape:body];
+    NSDictionary *context = body[@"context"];
+    XCTAssertEqualObjects(context[@"subscription"], subscription);
+}
+
+- (void)testWebRedemptionBodyReportsAReplayedToken {
+    NSDictionary *body = [PurchaselyRN webRedemptionBodyWithSuccess:YES
+                                                         hasContext:YES
+                                                       subscription:nil
+                                                             replay:YES
+                                                          errorCode:nil
+                                                       errorMessage:nil];
+
+    XCTAssertEqualObjects(body[@"replay"], @YES);
+    XCTAssertEqualObjects(body[@"isSuccess"], @YES,
+                          @"a replay is still a success");
+}
+
+- (void)testWebRedemptionBodyFailureKeepsTheShapeStable {
+    NSDictionary *body = [PurchaselyRN webRedemptionBodyWithSuccess:NO
+                                                         hasContext:NO
+                                                       subscription:nil
+                                                             replay:NO
+                                                          errorCode:@"EXPIRED_REDEMPTION_TOKEN"
+                                                       errorMessage:@"Redemption link has expired."];
+
+    [self assertWebRedemptionShape:body];
+    XCTAssertEqualObjects(body[@"isSuccess"], @NO);
+    XCTAssertEqualObjects(body[@"context"], [NSNull null]);
+    XCTAssertEqualObjects(body[@"replay"], @NO,
+                          @"a failure still reports replay, so the shape never changes");
+    XCTAssertEqualObjects(body[@"errorCode"], @"EXPIRED_REDEMPTION_TOKEN");
+    XCTAssertEqualObjects(body[@"errorMessage"], @"Redemption link has expired.");
+}
+
+/// A transport or parsing failure never reached the server, so it carries no code.
+- (void)testWebRedemptionBodyFailureWithNoErrorCode {
+    NSDictionary *body = [PurchaselyRN webRedemptionBodyWithSuccess:NO
+                                                         hasContext:NO
+                                                       subscription:nil
+                                                             replay:NO
+                                                          errorCode:nil
+                                                       errorMessage:@"Redemption could not be completed."];
+
+    [self assertWebRedemptionShape:body];
+    XCTAssertEqualObjects(body[@"errorCode"], [NSNull null]);
+    XCTAssertEqualObjects(body[@"errorMessage"], @"Redemption could not be completed.");
+}
+
 - (void)testSupportedEventsIncludesCloseRequested {
     NSArray<NSString *> *events = [self.purchaselyModule supportedEvents];
     XCTAssertTrue([events containsObject:@"PURCHASELY_PRESENTATION_CLOSE_REQUESTED"],

@@ -30,6 +30,22 @@ import {
 } from '../enums'
 import * as EnumsModule from '../enums'
 
+// Web2App redemption grants web-checkout subscriptions, and both natives
+// expose that source (Android StoreType.WEB_CHECKOUT_STRIPE, iOS
+// PLYSubscriptionSource.stripe). The enum had no member for it, so a redeemed
+// subscription reported a source the JS side could not name.
+describe('SubscriptionSource web checkout', () => {
+    it('exposes WEB_CHECKOUT_STRIPE', () => {
+        expect(SubscriptionSource.WEB_CHECKOUT_STRIPE).toBeDefined()
+    })
+
+    it('keeps WEB_CHECKOUT_STRIPE distinct from NONE', () => {
+        expect(SubscriptionSource.WEB_CHECKOUT_STRIPE).not.toBe(
+            SubscriptionSource.NONE
+        )
+    })
+})
+
 describe('Purchasely Enums', () => {
     describe('ProductResult', () => {
         it('should have correct enum values from constants', () => {
@@ -83,8 +99,10 @@ describe('Purchasely Enums', () => {
             expect(members).toContain('GOOGLE_PLAY_STORE')
             expect(members).toContain('HUAWEI_APP_GALLERY')
             expect(members).toContain('AMAZON_APPSTORE')
+            // Both natives expose a web-checkout source, added in the 6.1.0 work.
+            expect(members).toContain('WEB_CHECKOUT_STRIPE')
             expect(members).toContain('NONE')
-            expect(members).toHaveLength(5)
+            expect(members).toHaveLength(6)
         })
     })
 

@@ -11,13 +11,13 @@
 
 | Property | Value |
 |----------|-------|
-| Current Version | 6.0.0 |
+| Current Version | 6.1.0 |
 | React Native | 0.86.0 |
 | TypeScript | 5.8.3 (strict mode) |
 | Node.js | v22 (see `.nvmrc`) |
 | Package Manager | Yarn 3.6.1 (workspaces) |
-| Native iOS SDK | 6.0.0 |
-| Native Android SDK | 6.0.1 |
+| Native iOS SDK | 6.1.0 |
+| Native Android SDK | 6.1.0 |
 
 ### Supported App Stores
 - Apple App Store (iOS)
@@ -404,11 +404,11 @@ Android and iOS jobs invoke Gradle and `xcodebuild` directly.
 ### Native Dependencies
 
 **iOS (CocoaPods):**
-- Purchasely SDK v6.0.0
+- Purchasely SDK v6.1.0
 - Deployment target: iOS 15.1
 
 **Android (Gradle):**
-- io.purchasely:core:6.0.1
+- io.purchasely:core:6.1.0
 - Min SDK: 23
 - Kotlin: 2.3.21+
 - Java: 11
@@ -478,19 +478,28 @@ yarn test                    # All tests
 yarn test --coverage         # With coverage
 yarn test --watch           # Watch mode
 
-# iOS tests (XCTest) - Run locally or in example app context
-# Native tests require React Native dependencies from the example app
-cd packages/purchasely/ios
-xcodebuild test -workspace Purchasely.xcworkspace -scheme Purchasely -destination 'platform=iOS Simulator,name=iPhone 15'
+# iOS tests (XCTest) - CI-enabled, via the example workspace
+cd example/ios
+UDID=$(xcrun simctl list devices booted -j | jq -r '[.devices[][]][0].udid')
+xcodebuild test -workspace example.xcworkspace \
+  -scheme react-native-purchasely-Unit-Tests \
+  -destination "id=$UDID" CODE_SIGNING_ALLOWED=NO
 
-# Android tests (JUnit) - Run locally or in example app context
-# Native tests require React Native dependencies from the example app
-cd packages/purchasely/android
-./gradlew test              # Run unit tests
-./gradlew testDebugUnitTest # Run debug variant tests
+# Android tests (JUnit) - CI-enabled, via the example project
+cd example/android
+./gradlew :react-native-purchasely:testDebugUnitTest
 ```
 
-**Note:** Native tests (iOS XCTest and Android JUnit) require React Native dependencies and should be run locally or within the example app context. They cannot run in CI as standalone jobs. TypeScript tests run in CI automatically.
+**Native tests run in CI.** Both suites need the React Native dependencies, so
+neither runs from its own package directory: `cd packages/purchasely/android &&
+./gradlew test` fails with `Could not find any matches for
+com.facebook.react:react-native:+`. Drive them through the example project
+instead, which is exactly what CI does:
+
+- Android JUnit runs in the `build-android` job, step "Run Purchasely Android
+  native unit tests" (`:react-native-purchasely:testDebugUnitTest`).
+- iOS XCTest runs in its own `iOS Unit Tests (bridge)` job, on the
+  `react-native-purchasely-Unit-Tests` scheme against a booted simulator.
 
 ### Test Guidelines
 
@@ -531,10 +540,20 @@ When adding new features:
 
 1. **lint** (ubuntu-latest) - TypeScript + ESLint checks, type checking
 2. **test** (ubuntu-latest) - TypeScript/Jest unit tests with coverage
-3. **build-android** (ubuntu-latest) - Build Android example app with Gradle caching
-4. **build-ios** (macos-latest) - Build iOS example app with CocoaPods caching
+3. **build-android** (ubuntu-latest) - Build the Android example app, then run the
+   Android JUnit suite (`:react-native-purchasely:testDebugUnitTest`)
+4. **build-rn-0-86-android** (ubuntu-latest) - Build against the supported RN version
+5. **build-ios** (macos-latest) - Build iOS example app with CocoaPods caching
+6. **build-rn-0-86-ios** (macos-latest) - Build against the supported RN version
+7. **iOS Build (use_frameworks!)** (macos-latest) - Build the bridge pod under
+   `use_frameworks!`
+8. **iOS Unit Tests (bridge)** (macos-latest) - Run the XCTest bundle on a simulator
 
-**Note:** Native tests (Android JUnit and iOS XCTest) are not included in CI as they require React Native dependencies from the example app context. Run these tests locally during development.
+**Native tests are part of CI**, both platforms. They run through the example
+project rather than from their own package directory, because they need the
+React Native dependencies. E2E (`e2e-android.yml`, `e2e-ios.yml`) runs nightly
+and on a pull request that touches the bridge paths, and must never gate
+`publish.yml`.
 
 ### Publish (publish.yml)
 
@@ -646,6 +665,8 @@ See `VERSIONS.md` for native SDK version mapping:
 
 | React Native SDK | iOS SDK | Android SDK |
 |------------------|---------|-------------|
+| 6.1.0 | 6.1.0 | 6.1.0 |
+| 6.0.0 | 6.0.0 | 6.0.1 |
 | 5.7.3 | 5.7.4 | 5.7.4 |
 | 5.7.2 | 5.7.2 | 5.7.3 |
 | 5.7.1 | 5.7.1 | 5.7.1 |

@@ -1,6 +1,10 @@
 import { NativeModules } from 'react-native';
 
 import { LogLevels, RunningMode } from './enums';
+import {
+    setBuilderWebRedemptionListener,
+    type WebRedemptionListenerCallback,
+} from './redemption';
 
 type LogLevelString = 'debug' | 'info' | 'warn' | 'error';
 type RunningModeString = 'observer' | 'full';
@@ -28,6 +32,16 @@ interface StartBuilderState {
     allowCampaigns?: boolean | null;
     automaticDeeplinkHandling?: boolean | null;
     deeplink?: string | null;
+    anonymousUserId?: string | null;
+    anonymousUserIdOverride?: boolean | null;
+    /**
+     * Tri-state: `undefined` means the modifier was never called, so neither
+     * native SDK touches its current setting. `null` means clear the proxy.
+     * A string means set it.
+     */
+    proxyApi?: string | null;
+    appHandlesRedemptionAlert?: boolean | null;
+    webRedemptionCallback?: WebRedemptionListenerCallback;
     androidStores: AndroidStore[];
     storekitVersion: StorekitVersion;
 }
@@ -51,7 +65,7 @@ export class PurchaselyBuilder {
      *
      * @internal
      */
-    static bridgeVersion = '6.0.0';
+    static bridgeVersion = '6.1.0';
 
     private constructor(private readonly state: StartBuilderState) {}
 
@@ -113,6 +127,132 @@ export class PurchaselyBuilder {
         return this;
     }
 
+    /**
+     * Set the anonymous user id that the SDK reports for this device.
+     *
+     * `id` must be a canonical UUID string, for example
+     * `'3f2504e0-4f89-11d3-9a0c-0305e82c3301'`. JavaScript has no UUID type,
+     * so the native bridge parses the string. The bridge logs an error and
+     * skips the modifier when the string is not a canonical UUID. The SDK
+     * still starts.
+     *
+     * The SDK stores the id in **uppercase**, on iOS and on Android.
+     *
+     * The SDK applies the id at `start()`, before it sends a network request
+     * or an event. The SDK applies the id only when the device holds no
+     * anonymous id yet, unless `override` is `true`.
+     *
+     * **`override: true` splits the user history.** The backend keeps every
+     * event and every purchase under the previous id. Use `override: true`
+     * only when the app owns the anonymous identity, for example after a
+     * cross-device restore.
+     *
+     * @param id A canonical UUID string.
+     * @param override `false` (the default) keeps an id that the SDK
+     * established before. `true` replaces it.
+     */
+    anonymousUserId(id: string, override: boolean = false): this {
+        this.state.anonymousUserId = id;
+        this.state.anonymousUserIdOverride = override;
+        return this;
+    }
+
+    /**
+     * Route Purchasely API traffic through a proxy instead of
+     * `api.purchasely.io`, for a region where that host is unreachable, such
+     * as mainland China. The SDK overrides the API host only: the paywall
+     * host and the tracking host always stay on production.
+     *
+     * Purchasely operates a proxy at `https://svc.purchasely.io`. You can
+     * also host your own.
+     *
+     * `api` must be an `https` base URL with a host, and it must carry no
+     * query, no fragment and no credentials. The native SDK refuses any
+     * other value with an error log and keeps the production host, so the
+     * bridge does not validate the value again. Each native SDK drops a
+     * trailing slash.
+     *
+     * This is a start-time option. Neither native SDK has a runtime setter
+     * for it.
+     *
+     * Pass `null` to clear the proxy and return to `api.purchasely.io`. A
+     * chain that never calls this modifier leaves the current setting
+     * untouched on both platforms.
+     *
+     * @param api The `https` base URL of the API proxy, or `null` for no
+     * proxy.
+     */
+    proxy(api: string | null): this {
+        this.state.proxyApi = api;
+        return this;
+    }
+
+    /**
+     * Set the listener notified when a Web2App redemption
+     * (`{scheme}://ply/redeem/{token}`) settles.
+     *
+     * This mirrors the native chains, `webRedemptionDelegate(_:)` on iOS and
+     * `webRedemptionListener(_)` on Android. The callback stays in
+     * JavaScript: the native bridge registers itself as the delegate and
+     * forwards each outcome as an event, so nothing has to cross the bridge
+     * as a function.
+     *
+     * Prefer this over `Purchasely.addWebRedemptionListener`. Subscribing
+     * from the chain guarantees the listener exists before `start()` runs,
+     * which is the one ordering an app cannot get wrong here: a redemption
+     * can settle during `start()`, from a cold start that the link itself
+     * triggered, or from a token that a previous launch left pending.
+     *
+     * ```ts
+     * await Purchasely.builder('API_KEY')
+     *     .webRedemptionListener((result) => {
+     *         if (result.isSuccess) unlock(result.context?.subscription)
+     *     }, true)
+     *     .start()
+     * ```
+     *
+     * @param callback Called on the main thread, exactly once per settled
+     * redemption, on success and on failure alike.
+     * @param appHandlesRedemptionAlert Optional shorthand for
+     * {@link appHandlesRedemptionAlert}. Omit it to keep the SDK popin.
+     */
+    webRedemptionListener(
+        callback: WebRedemptionListenerCallback,
+        appHandlesRedemptionAlert?: boolean
+    ): this {
+        // Stored, not subscribed here. Subscribing on the spot would leak a
+        // live subscription from a builder that is never started, and would
+        // stack a second listener when the modifier is called twice. The
+        // subscription happens in start(), immediately before the native
+        // call, which still guarantees the listener exists for a redemption
+        // that settles while start() runs.
+        this.state.webRedemptionCallback = callback;
+        if (appHandlesRedemptionAlert !== undefined) {
+            this.state.appHandlesRedemptionAlert = appHandlesRedemptionAlert;
+        }
+        return this;
+    }
+
+    /**
+     * Hand the Web2App redemption result screen to the app.
+     *
+     * This flag decides who shows the outcome of a redemption, and with it
+     * when the SDK calls the listener that you add with
+     * `Purchasely.addWebRedemptionListener`:
+     *
+     * - `false` (the default): the SDK shows its own popin and calls the
+     *   listener after the user acknowledges the popin.
+     * - `true`: the SDK shows nothing and calls the listener as soon as the
+     *   redemption settles. The app must then show its own result screen.
+     *
+     * This is a start-time option because it changes what the native SDK
+     * presents. Set it before `start()`.
+     */
+    appHandlesRedemptionAlert(handles: boolean): this {
+        this.state.appHandlesRedemptionAlert = handles;
+        return this;
+    }
+
     /** Android-only. */
     stores(stores: AndroidStore[]): this {
         this.state.androidStores = stores;
@@ -152,7 +292,7 @@ export class PurchaselyBuilder {
         // window where a campaign/deeplink can fire against the wrong default.
         // Omitted options are intentionally absent so native defaults match
         // Flutter v6.
-        const startOptions: Record<string, boolean> = {};
+        const startOptions: Record<string, boolean | string | null> = {};
         if (this.state.allowDeeplink !== undefined && this.state.allowDeeplink !== null) {
             startOptions.allowDeeplink = this.state.allowDeeplink;
         }
@@ -164,6 +304,31 @@ export class PurchaselyBuilder {
             this.state.automaticDeeplinkHandling !== null
         ) {
             startOptions.automaticDeeplinkHandling = this.state.automaticDeeplinkHandling;
+        }
+        // The bridge parses `anonymousUserId` into a native UUID. An invalid
+        // string is rejected there, with a log, and start() still succeeds.
+        if (this.state.anonymousUserId !== undefined && this.state.anonymousUserId !== null) {
+            startOptions.anonymousUserId = this.state.anonymousUserId;
+            startOptions.anonymousUserIdOverride = this.state.anonymousUserIdOverride ?? false;
+        }
+        // `null` is forwarded on purpose: it is the documented way to clear a
+        // proxy on both natives. Only `undefined` (never called) omits the
+        // key, which leaves each SDK's current setting untouched.
+        if (this.state.proxyApi !== undefined) {
+            startOptions.proxy = this.state.proxyApi;
+        }
+        if (
+            this.state.appHandlesRedemptionAlert !== undefined &&
+            this.state.appHandlesRedemptionAlert !== null
+        ) {
+            startOptions.appHandlesRedemptionAlert = this.state.appHandlesRedemptionAlert;
+        }
+
+        // Subscribed before the native start() call, never after: a redemption
+        // can settle during start(), and this is the last point at which the
+        // listener is guaranteed to be in place for it.
+        if (this.state.webRedemptionCallback !== undefined) {
+            setBuilderWebRedemptionListener(this.state.webRedemptionCallback);
         }
 
         const configured: boolean = await NativeModules.Purchasely.start(
