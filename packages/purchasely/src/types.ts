@@ -122,10 +122,24 @@ export type PLYUserAttribute = {
 };
 
 export type PLYSubscription = {
-  purchaseToken: string;
+  /**
+   * Android-only. The native iOS `PLYSubscription` has no purchase token
+   * property, so the iOS bridge
+   * (`PLYSubscription+Hybrid.m asDictionary`) cannot emit this key and never
+   * did. Optional so iOS callers see `undefined` instead of a required field
+   * that is silently absent. Same reasoning as
+   * {@link cumulatedRevenuesInUSD}.
+   */
+  purchaseToken?: string;
   subscriptionSource: SubscriptionSource;
-  nextRenewalDate: string;
-  cancelledDate: string;
+  /**
+   * Absent when the subscription has no renewal date. The iOS bridge omits
+   * the key when the native date is `nil`, so read it as optional rather than
+   * as an empty string.
+   */
+  nextRenewalDate?: string;
+  /** Absent when the subscription is not cancelled. See {@link nextRenewalDate}. */
+  cancelledDate?: string;
   plan: PLYPlan;
   product: PLYProduct;
   /**
