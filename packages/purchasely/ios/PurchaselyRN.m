@@ -576,7 +576,7 @@ RCT_EXPORT_METHOD(start:(NSString * _Nonnull)apiKey
         if ([anonymousUserId isKindOfClass:[NSString class]]) {
             NSUUID *parsed = [[NSUUID alloc] initWithUUIDString:(NSString *)anonymousUserId];
             if (parsed == nil) {
-                RCTLogError(@"[Purchasely] `anonymousUserId` must be a canonical UUID string, "
+                RCTLogWarn(@"[Purchasely] `anonymousUserId` must be a canonical UUID string, "
                              "for example \"3f2504e0-4f89-11d3-9a0c-0305e82c3301\". Received \"%@\". "
                              "The anonymous user id is not applied.", anonymousUserId);
             } else {
@@ -602,7 +602,7 @@ RCT_EXPORT_METHOD(start:(NSString * _Nonnull)apiKey
         } else if ([proxyApi isKindOfClass:[NSString class]]) {
             NSURL *proxyUrl = [NSURL URLWithString:(NSString *)proxyApi];
             if (proxyUrl == nil) {
-                RCTLogError(@"[Purchasely] `proxy` must be an https base URL, "
+                RCTLogWarn(@"[Purchasely] `proxy` must be an https base URL, "
                              "for example \"https://svc.purchasely.io\". Received \"%@\". "
                              "The proxy is not applied.", proxyApi);
             } else {

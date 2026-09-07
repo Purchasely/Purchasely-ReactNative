@@ -630,7 +630,9 @@ describe('Purchasely Types', () => {
                         purchaseToken: 'token-123',
                         subscriptionSource: SubscriptionSource.APPLE_APP_STORE,
                         nextRenewalDate: '2024-02-15T12:00:00Z',
-                        cancelledDate: '',
+                        // Android reports an explicit null here, iOS omits the
+                        // key. Never an empty string.
+                        cancelledDate: null,
                         plan: {
                             vendorId: 'monthly-plan',
                             productId: 'premium-product',
