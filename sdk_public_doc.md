@@ -666,6 +666,33 @@ try {
 }
 ```
 
+#### Nullable fields (6.1.0)
+
+`purchaseToken`, `nextRenewalDate` and `cancelledDate` are optional **and**
+nullable. Guard them before use:
+
+```typescript
+const token = subscriptions[0]?.purchaseToken ?? null;
+```
+
+The two platforms report an absent value differently. iOS omits the key, so you
+read `undefined`. Android assigns the key from a nullable field, so you read an
+explicit `null`. Never treat any of the three as an empty string.
+
+`purchaseToken` is Android-only: the native iOS `PLYSubscription` has no
+purchase token property, so the iOS bridge cannot report one.
+
+#### `subscriptionSource` values
+
+| Value | Meaning |
+|-------|---------|
+| `APPLE_APP_STORE` | Bought on the App Store |
+| `GOOGLE_PLAY_STORE` | Bought on Google Play |
+| `HUAWEI_APP_GALLERY` | Bought on Huawei AppGallery |
+| `AMAZON_APPSTORE` | Bought on the Amazon Appstore |
+| `WEB_CHECKOUT_STRIPE` | Bought through web checkout. **New in 6.1.0.** A subscription granted by a Web2App redemption reports this source |
+| `NONE` | No source |
+
 > **Note**: There is a **few seconds delay** for `Purchasely.userSubscriptions()` to be updated after a purchase or restoration. If you rely on this method to get the current subscription status right after a purchase, you should **wait for 3 seconds** before calling this method.
 
 ---
