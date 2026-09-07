@@ -2,7 +2,7 @@ import { NativeModules } from 'react-native';
 
 import { LogLevels, RunningMode } from './enums';
 import {
-    addWebRedemptionListener,
+    setBuilderWebRedemptionListener,
     type WebRedemptionListenerCallback,
 } from './redemption';
 
@@ -41,6 +41,7 @@ interface StartBuilderState {
      */
     proxyApi?: string | null;
     appHandlesRedemptionAlert?: boolean | null;
+    webRedemptionCallback?: WebRedemptionListenerCallback;
     androidStores: AndroidStore[];
     storekitVersion: StorekitVersion;
 }
@@ -219,9 +220,13 @@ export class PurchaselyBuilder {
         callback: WebRedemptionListenerCallback,
         appHandlesRedemptionAlert?: boolean
     ): this {
-        // Subscribed now, not at start(), so the listener is already in place
-        // for a redemption that settles while start() runs.
-        addWebRedemptionListener(callback);
+        // Stored, not subscribed here. Subscribing on the spot would leak a
+        // live subscription from a builder that is never started, and would
+        // stack a second listener when the modifier is called twice. The
+        // subscription happens in start(), immediately before the native
+        // call, which still guarantees the listener exists for a redemption
+        // that settles while start() runs.
+        this.state.webRedemptionCallback = callback;
         if (appHandlesRedemptionAlert !== undefined) {
             this.state.appHandlesRedemptionAlert = appHandlesRedemptionAlert;
         }
@@ -317,6 +322,13 @@ export class PurchaselyBuilder {
             this.state.appHandlesRedemptionAlert !== null
         ) {
             startOptions.appHandlesRedemptionAlert = this.state.appHandlesRedemptionAlert;
+        }
+
+        // Subscribed before the native start() call, never after: a redemption
+        // can settle during start(), and this is the last point at which the
+        // listener is guaranteed to be in place for it.
+        if (this.state.webRedemptionCallback !== undefined) {
+            setBuilderWebRedemptionListener(this.state.webRedemptionCallback);
         }
 
         const configured: boolean = await NativeModules.Purchasely.start(

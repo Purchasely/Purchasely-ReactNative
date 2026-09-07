@@ -25,13 +25,19 @@ jest.mock('react-native', () => ({
             handleDeeplink: jest.fn().mockResolvedValue(true),
         },
     },
-    NativeEventEmitter: jest.fn().mockImplementation(() => ({
-        addListener: jest.fn(() => ({ remove: jest.fn() })),
-        removeAllListeners: jest.fn(),
-    })),
+    NativeEventEmitter: jest.fn().mockImplementation(() => {
+        // Babel wraps the default export, so unwrap it.
+        const mod = require('../__mocks__/emitterSpy')
+        const shared = mod.default ?? mod
+        return {
+            addListener: shared.addListener,
+            removeAllListeners: shared.removeAllListeners,
+        }
+    }),
 }))
 
-import { NativeEventEmitter, NativeModules } from 'react-native'
+import { NativeModules } from 'react-native'
+import emitterSpy from '../__mocks__/emitterSpy'
 import { PurchaselyBuilder } from '../startBuilder'
 
 const mockNative = NativeModules.Purchasely as any
@@ -281,38 +287,78 @@ describe('PurchaselyBuilder', () => {
     })
 
     describe('webRedemptionListener() 6.1.0', () => {
+        beforeEach(() => emitterSpy.reset())
+
         it('subscribes the callback on the WEB_REDEMPTION_LISTENER event', async () => {
             const callback = jest.fn()
             await PurchaselyBuilder.apiKey('api-key')
                 .webRedemptionListener(callback)
                 .start()
 
-            const emitterMock = NativeEventEmitter as unknown as jest.Mock
-            const instance = emitterMock.mock.results[0]?.value
-            expect(instance).toBeDefined()
-            expect(instance.addListener).toHaveBeenCalledWith(
+            expect(emitterSpy.addListener).toHaveBeenCalledWith(
                 'WEB_REDEMPTION_LISTENER',
                 callback
             )
         })
 
-        // The whole point of putting this on the chain: a redemption can
-        // settle while start() runs, so the listener must already exist by
-        // then. Subscribing at chain time, not inside start(), is what
-        // guarantees it.
+        // A redemption can settle while start() runs, so the listener has to be
+        // in place before the native call, never after it.
         it('subscribes before native start() is called', async () => {
             const order: string[] = []
+            emitterSpy.onAdd(() => order.push('subscribed'))
             mockNative.start = jest.fn().mockImplementation(async () => {
                 order.push('start')
                 return true
             })
 
-            const builder = PurchaselyBuilder.apiKey('api-key')
-            builder.webRedemptionListener(() => {})
-            order.push('subscribed')
-            await builder.start()
+            await PurchaselyBuilder.apiKey('api-key')
+                .webRedemptionListener(() => {})
+                .start()
 
             expect(order).toEqual(['subscribed', 'start'])
+        })
+
+        // Reported on the pull request: the modifier used to subscribe on the
+        // spot and drop the handle, so two calls left two live subscriptions
+        // and one redemption invoked both callbacks.
+        it('the last listener replaces the previous one instead of stacking', async () => {
+            const first = jest.fn()
+            const replacement = jest.fn()
+
+            await PurchaselyBuilder.apiKey('api-key')
+                .webRedemptionListener(first)
+                .webRedemptionListener(replacement)
+                .start()
+
+            const subscribed = emitterSpy.addListener.mock.calls
+                .filter((c: unknown[]) => c[0] === 'WEB_REDEMPTION_LISTENER')
+                .map((c: unknown[]) => c[1])
+            expect(subscribed).toEqual([replacement])
+            expect(subscribed).not.toContain(first)
+        })
+
+        it('replaces a listener registered by an earlier chain', async () => {
+            const first = jest.fn()
+            await PurchaselyBuilder.apiKey('api-key')
+                .webRedemptionListener(first)
+                .start()
+            const firstSubscription = emitterSpy.subscriptions[0]
+
+            const replacement = jest.fn()
+            mockNative.start = jest.fn().mockResolvedValue(true)
+            await PurchaselyBuilder.apiKey('api-key')
+                .webRedemptionListener(replacement)
+                .start()
+
+            expect(firstSubscription.remove).toHaveBeenCalled()
+        })
+
+        // Also reported: subscribing at chain time meant an abandoned builder
+        // still received events forever.
+        it('subscribes nothing when the builder is never started', () => {
+            PurchaselyBuilder.apiKey('api-key').webRedemptionListener(jest.fn())
+
+            expect(emitterSpy.addListener).not.toHaveBeenCalled()
         })
 
         it('sets appHandlesRedemptionAlert from the optional second argument', async () => {
