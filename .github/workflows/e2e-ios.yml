@@ -31,8 +31,10 @@ on:
       - 'example/ios/**'
 
 concurrency:
-  group: e2e-ios
-  cancel-in-progress: true
+  # Keyed by ref: a global group made every PR cancel the other PRs' runs.
+  group: e2e-ios-${{ github.ref }}
+  # Cancel superseded PR runs only; a nightly or dispatched run must finish.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   e2e-ios:

@@ -9,7 +9,7 @@
 #import <React/RCTEventEmitter.h>
 @import Purchasely;
 
-@interface PurchaselyRN: RCTEventEmitter <RCTBridgeModule, PLYEventDelegate>
+@interface PurchaselyRN: RCTEventEmitter <RCTBridgeModule, PLYEventDelegate, PLYUserAttributeDelegate>
 
 @property (nonatomic, retain) UIViewController* presentedPresentationViewController;
 
