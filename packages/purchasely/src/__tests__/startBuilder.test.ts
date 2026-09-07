@@ -213,7 +213,7 @@ describe('PurchaselyBuilder', () => {
         })
     })
 
-    describe('proxy() Android only, 6.1.0', () => {
+    describe('proxy() 6.1.0', () => {
         it('forwards the api url through startOptions', async () => {
             await PurchaselyBuilder.apiKey('api-key')
                 .proxy('https://svc.purchasely.io')

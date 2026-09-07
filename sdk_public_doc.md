@@ -248,10 +248,10 @@ existing id:
 every purchase under the previous id. Use `true` only when your app owns the
 anonymous identity, for example after a cross-device restore.
 
-### API proxy (6.1.0, Android only)
+### API proxy (6.1.0)
 
 Route Purchasely API traffic through a proxy instead of `api.purchasely.io`,
-for a region where that host is unreachable.
+for a region where that host is unreachable, such as mainland China.
 
 ```typescript
 await Purchasely.builder('YOUR_API_KEY')
@@ -259,11 +259,16 @@ await Purchasely.builder('YOUR_API_KEY')
     .start();
 ```
 
-The SDK overrides the API host only. The paywall host and the tracking host
-always stay on production. `api` must be an `https` base URL. The native SDK
-refuses any other value with an error log and keeps the production host.
+Purchasely operates a proxy at `https://svc.purchasely.io`. You can also host
+your own.
 
-This option is **Android only**. The iOS bridge ignores it.
+The SDK overrides the API host only. The paywall host and the tracking host
+always stay on production. `api` must be an `https` base URL with a host, and
+it must carry no query, no fragment and no credentials. The native SDK refuses
+any other value with an error log and keeps the production host.
+
+This is a start-time option on both platforms. Neither native SDK has a
+runtime setter for it.
 
 ### Web2App redemption (6.1.0)
 

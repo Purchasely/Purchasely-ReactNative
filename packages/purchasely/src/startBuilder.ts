@@ -43,7 +43,6 @@ interface StartBuilderState {
  * - `allowDeeplink` / `allowCampaigns` are optional chain modifiers.
  *   When omitted we keep each native SDK's default/backend-configured value.
  * - `stores(...)` is Android-only.
- * - `proxy(...)` is Android-only.
  * - `storekitVersion(...)` is iOS-only.
  *
  * The default running mode is `'observer'` — the host app keeps full
@@ -149,16 +148,22 @@ export class PurchaselyBuilder {
     }
 
     /**
-     * Android-only.
-     *
      * Route Purchasely API traffic through a proxy instead of
-     * `api.purchasely.io`, for a region where that host is unreachable. The
-     * SDK overrides the API host only: the paywall host and the tracking
-     * host always stay on production.
+     * `api.purchasely.io`, for a region where that host is unreachable, such
+     * as mainland China. The SDK overrides the API host only: the paywall
+     * host and the tracking host always stay on production.
      *
-     * `api` must be an `https` base URL. The native SDK refuses any other
-     * value with an error log and keeps the production host, so the bridge
-     * does not validate the value again.
+     * Purchasely operates a proxy at `https://svc.purchasely.io`. You can
+     * also host your own.
+     *
+     * `api` must be an `https` base URL with a host, and it must carry no
+     * query, no fragment and no credentials. The native SDK refuses any
+     * other value with an error log and keeps the production host, so the
+     * bridge does not validate the value again. Each native SDK drops a
+     * trailing slash.
+     *
+     * This is a start-time option. Neither native SDK has a runtime setter
+     * for it.
      *
      * @param api The `https` base URL of the API proxy.
      */

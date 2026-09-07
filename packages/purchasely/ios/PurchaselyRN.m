@@ -554,9 +554,8 @@ RCT_EXPORT_METHOD(start:(NSString * _Nonnull)apiKey
     // Applied on the builder chain — before `startWithInitialized:` — so these
     // take effect atomically with configuration, closing the race window a
     // separate post-start call would leave open for an early campaign/deeplink
-    // to fire against the wrong default. `automaticDeeplinkHandling` and
-    // `proxy` have no iOS builder equivalent (both Android-only) and are
-    // ignored here.
+    // to fire against the wrong default. `automaticDeeplinkHandling` has no
+    // iOS builder equivalent (Android-only) and is ignored here.
     BOOL appHandlesRedemptionAlert = NO;
     if ([startOptions isKindOfClass:[NSDictionary class]]) {
         id allowDeeplink = startOptions[@"allowDeeplink"];
@@ -583,6 +582,24 @@ RCT_EXPORT_METHOD(start:(NSString * _Nonnull)apiKey
                 id override = startOptions[@"anonymousUserIdOverride"];
                 BOOL shouldOverride = [override isKindOfClass:[NSNumber class]] ? [override boolValue] : NO;
                 builder = [builder appAnonymousUserId:parsed override:shouldOverride];
+            }
+        }
+        // The native modifier takes an `NSURL?`, and a `nil` there means
+        // "turn the proxy off", not "ignore this value". So a string that
+        // `NSURL` cannot parse must skip the modifier entirely rather than
+        // pass nil, which would silently disable a proxy the app asked for.
+        // Native validates the rest (https, host, no query/fragment) and
+        // keeps the production host on a bad value, so the bridge does not
+        // re-check those.
+        id proxyApi = startOptions[@"proxy"];
+        if ([proxyApi isKindOfClass:[NSString class]]) {
+            NSURL *proxyUrl = [NSURL URLWithString:(NSString *)proxyApi];
+            if (proxyUrl == nil) {
+                RCTLogError(@"[Purchasely] `proxy` must be an https base URL, "
+                             "for example \"https://svc.purchasely.io\". Received \"%@\". "
+                             "The proxy is not applied.", proxyApi);
+            } else {
+                builder = [builder proxyWithApi:proxyUrl];
             }
         }
         id handlesAlert = startOptions[@"appHandlesRedemptionAlert"];
