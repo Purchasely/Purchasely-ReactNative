@@ -25,9 +25,13 @@ jest.mock('react-native', () => ({
             handleDeeplink: jest.fn().mockResolvedValue(true),
         },
     },
+    NativeEventEmitter: jest.fn().mockImplementation(() => ({
+        addListener: jest.fn(() => ({ remove: jest.fn() })),
+        removeAllListeners: jest.fn(),
+    })),
 }))
 
-import { NativeModules } from 'react-native'
+import { NativeEventEmitter, NativeModules } from 'react-native'
 import { PurchaselyBuilder } from '../startBuilder'
 
 const mockNative = NativeModules.Purchasely as any
@@ -273,6 +277,60 @@ describe('PurchaselyBuilder', () => {
                 .start()
 
             expect(mockNative.start.mock.calls[0][7]).toEqual({ proxy: null })
+        })
+    })
+
+    describe('webRedemptionListener() 6.1.0', () => {
+        it('subscribes the callback on the WEB_REDEMPTION_LISTENER event', async () => {
+            const callback = jest.fn()
+            await PurchaselyBuilder.apiKey('api-key')
+                .webRedemptionListener(callback)
+                .start()
+
+            const emitterMock = NativeEventEmitter as unknown as jest.Mock
+            const instance = emitterMock.mock.results[0]?.value
+            expect(instance).toBeDefined()
+            expect(instance.addListener).toHaveBeenCalledWith(
+                'WEB_REDEMPTION_LISTENER',
+                callback
+            )
+        })
+
+        // The whole point of putting this on the chain: a redemption can
+        // settle while start() runs, so the listener must already exist by
+        // then. Subscribing at chain time, not inside start(), is what
+        // guarantees it.
+        it('subscribes before native start() is called', async () => {
+            const order: string[] = []
+            mockNative.start = jest.fn().mockImplementation(async () => {
+                order.push('start')
+                return true
+            })
+
+            const builder = PurchaselyBuilder.apiKey('api-key')
+            builder.webRedemptionListener(() => {})
+            order.push('subscribed')
+            await builder.start()
+
+            expect(order).toEqual(['subscribed', 'start'])
+        })
+
+        it('sets appHandlesRedemptionAlert from the optional second argument', async () => {
+            await PurchaselyBuilder.apiKey('api-key')
+                .webRedemptionListener(() => {}, true)
+                .start()
+
+            expect(mockNative.start.mock.calls[0][7]).toEqual({
+                appHandlesRedemptionAlert: true,
+            })
+        })
+
+        it('leaves appHandlesRedemptionAlert unset when the second argument is omitted', async () => {
+            await PurchaselyBuilder.apiKey('api-key')
+                .webRedemptionListener(() => {})
+                .start()
+
+            expect(mockNative.start.mock.calls[0][7]).toEqual({})
         })
     })
 

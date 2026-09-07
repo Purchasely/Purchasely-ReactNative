@@ -291,33 +291,40 @@ runtime setter for it.
 Listen to the outcome of a Web2App redemption
 (`{scheme}://ply/redeem/{token}`).
 
-**Add the listener before `start()`.** A redemption can settle during
-`start()`, from a cold start that the link itself triggered, or from a token
-that a previous launch left pending. A listener that you add after `start()`
-misses exactly the case it is most needed for.
+Set the listener on the start chain, the same way the native SDKs do:
 
 ```typescript
 import Purchasely from 'react-native-purchasely';
 
-// Add the listener FIRST.
-Purchasely.addWebRedemptionListener((result) => {
-    if (result.isSuccess) {
-        console.log('Redemption granted', result.context?.subscription);
-        if (result.replay) {
-            console.log('The server reports this token was redeemed before');
-        }
-    } else {
-        console.log('Redemption failed', result.errorCode, result.errorMessage);
-    }
-});
-
-// Then start the SDK.
 await Purchasely.builder('YOUR_API_KEY')
-    .appHandlesRedemptionAlert(false) // default: the SDK shows its own popin
+    .webRedemptionListener((result) => {
+        if (result.isSuccess) {
+            console.log('Redemption granted', result.context?.subscription);
+            if (result.replay) {
+                console.log('The server reports this token was redeemed before');
+            }
+        } else {
+            console.log('Redemption failed', result.errorCode, result.errorMessage);
+        }
+    })
     .start();
 ```
 
-Call `Purchasely.removeWebRedemptionListener()` to remove it.
+The second argument is a shorthand for `appHandlesRedemptionAlert`:
+
+```typescript
+.webRedemptionListener(onRedemption, true) // the app shows the result screen
+```
+
+**Set the listener on the chain, not after `start()`.** A redemption can
+settle during `start()`, from a cold start that the link itself triggered, or
+from a token that a previous launch left pending. The chain form subscribes
+the callback before `start()` runs, so that case cannot be missed.
+
+`Purchasely.addWebRedemptionListener(cb)` and
+`Purchasely.removeWebRedemptionListener()` remain available for an app that
+must add or replace the listener while the SDK is already running. A
+redemption that settles during `start()` is then missed.
 
 The SDK calls the listener on the main thread, exactly once per settled
 redemption, on success and on failure alike.

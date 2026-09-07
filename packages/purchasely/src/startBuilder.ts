@@ -1,6 +1,10 @@
 import { NativeModules } from 'react-native';
 
 import { LogLevels, RunningMode } from './enums';
+import {
+    addWebRedemptionListener,
+    type WebRedemptionListenerCallback,
+} from './redemption';
 
 type LogLevelString = 'debug' | 'info' | 'warn' | 'error';
 type RunningModeString = 'observer' | 'full';
@@ -179,6 +183,48 @@ export class PurchaselyBuilder {
      */
     proxy(api: string | null): this {
         this.state.proxyApi = api;
+        return this;
+    }
+
+    /**
+     * Set the listener notified when a Web2App redemption
+     * (`{scheme}://ply/redeem/{token}`) settles.
+     *
+     * This mirrors the native chains, `webRedemptionDelegate(_:)` on iOS and
+     * `webRedemptionListener(_)` on Android. The callback stays in
+     * JavaScript: the native bridge registers itself as the delegate and
+     * forwards each outcome as an event, so nothing has to cross the bridge
+     * as a function.
+     *
+     * Prefer this over `Purchasely.addWebRedemptionListener`. Subscribing
+     * from the chain guarantees the listener exists before `start()` runs,
+     * which is the one ordering an app cannot get wrong here: a redemption
+     * can settle during `start()`, from a cold start that the link itself
+     * triggered, or from a token that a previous launch left pending.
+     *
+     * ```ts
+     * await Purchasely.builder('API_KEY')
+     *     .webRedemptionListener((result) => {
+     *         if (result.isSuccess) unlock(result.context?.subscription)
+     *     }, true)
+     *     .start()
+     * ```
+     *
+     * @param callback Called on the main thread, exactly once per settled
+     * redemption, on success and on failure alike.
+     * @param appHandlesRedemptionAlert Optional shorthand for
+     * {@link appHandlesRedemptionAlert}. Omit it to keep the SDK popin.
+     */
+    webRedemptionListener(
+        callback: WebRedemptionListenerCallback,
+        appHandlesRedemptionAlert?: boolean
+    ): this {
+        // Subscribed now, not at start(), so the listener is already in place
+        // for a redemption that settles while start() runs.
+        addWebRedemptionListener(callback);
+        if (appHandlesRedemptionAlert !== undefined) {
+            this.state.appHandlesRedemptionAlert = appHandlesRedemptionAlert;
+        }
         return this;
     }
 
