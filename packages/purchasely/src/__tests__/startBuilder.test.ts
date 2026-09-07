@@ -343,6 +343,7 @@ describe('PurchaselyBuilder', () => {
                 .webRedemptionListener(first)
                 .start()
             const firstSubscription = emitterSpy.subscriptions[0]
+            expect(firstSubscription).toBeDefined()
 
             const replacement = jest.fn()
             mockNative.start = jest.fn().mockResolvedValue(true)
@@ -350,7 +351,7 @@ describe('PurchaselyBuilder', () => {
                 .webRedemptionListener(replacement)
                 .start()
 
-            expect(firstSubscription.remove).toHaveBeenCalled()
+            expect(firstSubscription?.remove).toHaveBeenCalled()
         })
 
         // Also reported: subscribing at chain time meant an abandoned builder
