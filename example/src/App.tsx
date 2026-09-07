@@ -46,9 +46,10 @@ function App(): React.JSX.Element {
                                 result.context?.subscription?.plan?.vendorId
                         )
                     } else {
-                        // On iOS, errorMessage for an expired link can carry a
-                        // masked email address. Show it to the user. Do not
-                        // send it to analytics or to a crash reporter.
+                        // On BOTH platforms, errorMessage for an expired link
+                        // can carry a masked email address. Show it to the
+                        // user. Do not send it to analytics or to a crash
+                        // reporter.
                         console.log(
                             'Redemption failed. code=' +
                                 result.errorCode +

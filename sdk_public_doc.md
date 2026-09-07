@@ -355,10 +355,12 @@ Three behaviours to know:
 - A redemption deeplink is **not** subject to `allowDeeplink`. The native SDK
   intercepts `ply/redeem` out of band, so a redemption still completes with
   `allowDeeplink(false)`.
-- **On iOS only**, `errorMessage` for an expired link can contain a masked
-  email address, so you can tell the user where the fresh link went. Show that
-  text to the user. Do not send it to an analytics stack or to a crash
-  reporter. The `REDEMPTION_FAILED` event drops it.
+- **On both platforms**, `errorMessage` for an expired link can contain a
+  masked email address, so you can tell the user where the fresh link went.
+  That hint is personal data. Show it to the user. Do not send it to an
+  analytics stack or to a crash reporter, and do not make that rule
+  platform-specific. The `REDEMPTION_FAILED` event drops the hint on iOS and
+  on Android alike.
 
 The SDK also emits two analytics events for a redemption,
 `REDEMPTION_CONSUMED` and `REDEMPTION_FAILED`. Read them with

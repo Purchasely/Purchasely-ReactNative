@@ -318,9 +318,9 @@ export type PLYEventPropertyRedemptionPurchaseContext = {
  * carries `token` and `error_code`, with the reason in the top-level
  * `error_message`.
  *
- * The masked email hint of an expired link never reaches this event. The SDK
- * gives that hint to the web redemption listener only, on iOS. See
- * `Purchasely.addWebRedemptionListener`.
+ * The masked email hint of an expired link never reaches this event, on
+ * either platform. The SDK gives that hint to the web redemption listener
+ * only. See `Purchasely.addWebRedemptionListener`.
  *
  * Every field is optional: the SDK omits a key it has no value for.
  */
@@ -471,11 +471,13 @@ export type PLYWebRedemptionResult = {
    * Human-readable reason, in English. Null on success. It never contains the
    * token.
    *
-   * **On iOS only**, an expired link puts the backend's masked email hint
-   * here, for example `'A new link was sent to j***@example.com.'`, so the
-   * app can tell the user where the fresh link went. The
-   * `REDEMPTION_FAILED` event drops that hint on purpose. Show this text to
-   * the user. Do not send it to an analytics stack or to a crash reporter.
+   * **On both platforms**, an expired link puts the backend's masked email
+   * hint here, for example `'A new link was sent to j***@example.com.'`, so
+   * the app can tell the user where the fresh link went. That hint is
+   * personal data. The `REDEMPTION_FAILED` event drops it on purpose, on iOS
+   * and on Android alike. Show this text to the user. Do not send it to an
+   * analytics stack or to a crash reporter, and do not gate that rule on the
+   * platform.
    */
   errorMessage: string | null;
 };

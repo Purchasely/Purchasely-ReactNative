@@ -38,16 +38,6 @@ const emitter = (): NativeEventEmitter => {
  */
 let builderSubscription: EmitterSubscription | undefined;
 
-/**
- * Register the listener that `PurchaselyBuilder.webRedemptionListener(...)`
- * carries, replacing the one a previous chain registered.
- *
- * Only the chain-owned subscription is removed. A listener the app added with
- * {@link addWebRedemptionListener} is left alone, because that is a separate,
- * app-owned registration with its own lifetime.
- *
- * @internal
- */
 /** @internal */
 export const WEB_REDEMPTION_EVENT = 'WEB_REDEMPTION_LISTENER';
 
@@ -84,10 +74,12 @@ export type WebRedemptionListenerCallback = (
  * - A redemption deeplink is **not** subject to `allowDeeplink`. The native
  *   SDK intercepts `ply/redeem` out of band, before the routing branch that
  *   the gate sits behind.
- * - **On iOS only**, `result.errorMessage` for an expired link can contain a
- *   masked email address, so the app can tell the user where the fresh link
- *   went. The `REDEMPTION_FAILED` event drops it. Show that text to the user.
- *   Do not forward it to an analytics stack or to a crash reporter.
+ * - **On both platforms**, `result.errorMessage` for an expired link can
+ *   contain a masked email address, so the app can tell the user where the
+ *   fresh link went. That is personal data. The `REDEMPTION_FAILED` event
+ *   drops it on iOS and on Android alike. Show that text to the user. Do not
+ *   forward it to an analytics stack or to a crash reporter, and do not gate
+ *   that rule on `Platform.OS`.
  */
 export const addWebRedemptionListener = (
     callback: WebRedemptionListenerCallback
@@ -117,6 +109,16 @@ export const removeWebRedemptionListener = () => {
     return emitter().removeAllListeners(WEB_REDEMPTION_EVENT);
 };
 
+/**
+ * Register the listener that `PurchaselyBuilder.webRedemptionListener(...)`
+ * carries, replacing the one a previous chain registered.
+ *
+ * Only the chain-owned subscription is removed. A listener the app added with
+ * {@link addWebRedemptionListener} is left alone, because that is a separate,
+ * app-owned registration with its own lifetime.
+ *
+ * @internal
+ */
 export const setBuilderWebRedemptionListener = (
     callback: WebRedemptionListenerCallback
 ): void => {
