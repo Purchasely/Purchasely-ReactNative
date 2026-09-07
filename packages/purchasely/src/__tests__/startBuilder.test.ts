@@ -38,6 +38,7 @@ jest.mock('react-native', () => ({
 
 import { NativeModules } from 'react-native'
 import emitterSpy from '../__mocks__/emitterSpy'
+import { removeWebRedemptionListener } from '../redemption'
 import { PurchaselyBuilder } from '../startBuilder'
 
 const mockNative = NativeModules.Purchasely as any
@@ -360,6 +361,28 @@ describe('PurchaselyBuilder', () => {
             PurchaselyBuilder.apiKey('api-key').webRedemptionListener(jest.fn())
 
             expect(emitterSpy.addListener).not.toHaveBeenCalled()
+        })
+
+        // Reported on the pull request. React Native's removeAllListeners goes
+        // straight to RCTDeviceEventEmitter and settles the native count
+        // itself, so a stale per-subscription remove() would send a second
+        // removeListeners(1). On iOS that can drive _listenerCount to zero and
+        // trigger stopObserving, which silences every event the module sends.
+        it('drops the chain handle when the listener is removed, so no stale remove fires', async () => {
+            await PurchaselyBuilder.apiKey('api-key')
+                .webRedemptionListener(jest.fn())
+                .start()
+            const firstSubscription = emitterSpy.subscriptions[0]
+            expect(firstSubscription).toBeDefined()
+
+            removeWebRedemptionListener()
+
+            mockNative.start = jest.fn().mockResolvedValue(true)
+            await PurchaselyBuilder.apiKey('api-key')
+                .webRedemptionListener(jest.fn())
+                .start()
+
+            expect(firstSubscription?.remove).not.toHaveBeenCalled()
         })
 
         it('sets appHandlesRedemptionAlert from the optional second argument', async () => {

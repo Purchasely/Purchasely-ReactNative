@@ -27,6 +27,27 @@ const emitter = (): NativeEventEmitter => {
     return redemptionEventEmitter;
 };
 
+/**
+ * The chain-owned subscription, if any.
+ *
+ * The builder owns at most one listener. Keeping its handle here is what lets
+ * a later `webRedemptionListener(...)` replace an earlier one instead of
+ * stacking a second live subscription on the same event.
+ *
+ * @internal
+ */
+let builderSubscription: EmitterSubscription | undefined;
+
+/**
+ * Register the listener that `PurchaselyBuilder.webRedemptionListener(...)`
+ * carries, replacing the one a previous chain registered.
+ *
+ * Only the chain-owned subscription is removed. A listener the app added with
+ * {@link addWebRedemptionListener} is left alone, because that is a separate,
+ * app-owned registration with its own lifetime.
+ *
+ * @internal
+ */
 /** @internal */
 export const WEB_REDEMPTION_EVENT = 'WEB_REDEMPTION_LISTENER';
 
@@ -74,32 +95,28 @@ export const addWebRedemptionListener = (
     return emitter().addListener(WEB_REDEMPTION_EVENT, callback);
 };
 
-/** Remove every listener added with {@link addWebRedemptionListener}. */
+/**
+ * Remove every listener on the redemption event, whoever added it.
+ *
+ * The chain-owned handle is dropped as well. It has to be: React Native's
+ * `removeAllListeners` goes straight to `RCTDeviceEventEmitter` and settles
+ * the native count itself, while the per-subscription `remove()` closure is
+ * left believing it still owns a listener. Calling that stale `remove()`
+ * later would send a second `removeListeners(1)` for a listener already
+ * accounted for.
+ *
+ * On iOS that is not a harmless miscount. `RCTEventEmitter` does
+ * `_listenerCount = MAX(_listenerCount - count, 0)` and calls `stopObserving`
+ * the moment the count reaches zero, and `stopObserving` clears the bridge's
+ * `shouldEmit` flag, which gates EVERY event the module sends. One extra
+ * decrement can therefore silence analytics and the presentation lifecycle
+ * while their listeners are still registered.
+ */
 export const removeWebRedemptionListener = () => {
+    builderSubscription = undefined;
     return emitter().removeAllListeners(WEB_REDEMPTION_EVENT);
 };
 
-/**
- * The chain-owned subscription, if any.
- *
- * The builder owns at most one listener. Keeping its handle here is what lets
- * a later `webRedemptionListener(...)` replace an earlier one instead of
- * stacking a second live subscription on the same event.
- *
- * @internal
- */
-let builderSubscription: EmitterSubscription | undefined;
-
-/**
- * Register the listener that `PurchaselyBuilder.webRedemptionListener(...)`
- * carries, replacing the one a previous chain registered.
- *
- * Only the chain-owned subscription is removed. A listener the app added with
- * {@link addWebRedemptionListener} is left alone, because that is a separate,
- * app-owned registration with its own lifetime.
- *
- * @internal
- */
 export const setBuilderWebRedemptionListener = (
     callback: WebRedemptionListenerCallback
 ): void => {
