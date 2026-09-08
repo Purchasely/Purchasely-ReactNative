@@ -358,21 +358,9 @@ static PLYTransition *plyTransitionFromMap(NSDictionary *map) {
 
 RCT_EXPORT_MODULE(Purchasely);
 
-static UIViewController *_sharedViewController;
 // Weak handle to the active event-emitting module instance, so the embedded
 // `PurchaselyView` (a separate UIView) can surface a PRESENTATION_VIEWED event.
 static __weak PurchaselyRN *_sharedEmitter;
-
-+ (UIViewController *)sharedViewController {
-    if (!_sharedViewController) {
-        _sharedViewController = [UIViewController new];
-    }
-    return _sharedViewController;
-}
-
-+ (void)setSharedViewController:(UIViewController *)viewController {
-    _sharedViewController = viewController;
-}
 
 + (id<PLYPresentation>)loadedPresentationForRequestId:(NSString *)requestId {
     if (requestId == nil) { return nil; }
@@ -460,7 +448,6 @@ static __weak PurchaselyRN *_sharedEmitter;
 - (instancetype)init {
 	self = [super init];
 
-    self.shouldReopenPaywall = NO;
     self.shouldEmit = NO;
 
 	[Purchasely setAppTechnology:PLYAppTechnologyReactNative];
@@ -1688,8 +1675,6 @@ RCT_EXPORT_METHOD(displayPresentation:(NSString *)requestId
         @synchronized (kPresentationStateLock) {
             kPresentationsByRequest[requestId] = presentation;
         }
-        strongSelf.presentedPresentationViewController = presentation.controller;
-
         // v6: by the time this completion fires, `displayWithTransition:
         // completion:` has already triggered the display (handed the
         // presentation off to UIKit) — there is no separate native "visible"
@@ -1806,7 +1791,6 @@ RCT_EXPORT_METHOD(closePresentation:(NSString *)requestId) {
         @synchronized (kPresentationStateLock) {
             presentation = kPresentationsByRequest[requestId];
         }
-        self.presentedPresentationViewController = nil;
         // v6: close the specific presentation when we still hold it; otherwise
         // fall back to closing every Purchasely screen (`closeDisplayedPresentation`
         // was removed in the native v6 SDK).

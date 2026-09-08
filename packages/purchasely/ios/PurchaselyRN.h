@@ -29,12 +29,6 @@
                                                              errorCode:(nullable NSString *)errorCode
                                                           errorMessage:(nullable NSString *)errorMessage;
 
-@property (nonatomic, retain) UIViewController* presentedPresentationViewController;
-
-@property (class, nonatomic, strong) UIViewController *sharedViewController;
-
-@property (nonatomic, assign) Boolean shouldReopenPaywall;
-
 @property (nonatomic, assign) Boolean shouldEmit;
 
 /// Look up a presentation that was preloaded through `preloadPresentation:` by
