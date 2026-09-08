@@ -10,25 +10,84 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-08-ios-bridge-swift-migration-design.md` — read it before Task 1. This plan argues from it and does not repeat its reasoning.
 
+**Revision note (2026-09-08):** two adversarial reviews of the first draft found 12 blocking errors, all of one kind — Swift written from memory for SDK calls instead of read off the SDK's Swift interface. Every SDK symbol in this plan is now verified, and Global Constraint 0 plus the verified-symbol table exist so an executor never has to guess one.
+
 ---
 
 ## Global Constraints
 
-Every task's requirements implicitly include this section. Values are copied verbatim from the spec.
+Every task's requirements implicitly include this section.
 
-1. **The JS contract cannot change.** 63 exported JS method names, 60 `constantsToExport` keys and values, 11 `supportedEvents` names, every serializer dictionary key, and each key's absence policy.
+0. **Never write an SDK symbol you have not read.** The Purchasely SDK is Swift, and its Objective-C surface differs from its Swift surface: names get nested, properties become setters, optionality changes. Before writing any `Purchasely.*`, `PLY*` type, enum case or method, read it:
+
+   ```bash
+   SI=example/ios/Pods/Purchasely/Purchasely/Frameworks/Purchasely.xcframework/ios-arm64_x86_64-simulator/Purchasely.framework/Modules/Purchasely.swiftmodule/arm64-apple-ios-simulator.swiftinterface
+   rg -n 'func userLogin|enum PLYLogLevel' "$SI"          # a symbol
+   awk '/class PLYPlan :/,/^}/' "$SI"                     # a whole type
+   ```
+
+   The SDK source is also on this machine at `/Users/kevin/Purchasely/iOS/Sources/Purchasely/`, which is where the JSON wire keys live (`enum CodingKeys`). A plan snippet is a starting point, not an authority: if it disagrees with the interface, the interface wins and you report the discrepancy.
+
+1. **The JS contract cannot change.** 63 exported JS method names with their argument counts, 60 `constantsToExport` keys **and values**, 11 `supportedEvents` names, every serializer dictionary key, and each key's absence policy.
 2. **New Swift files go under `ios/Classes/`,** never a new top-level `ios/` subdirectory. `react-native-purchasely.podspec:19` is `"ios/*.{h,m,mm,swift}", "ios/Classes/**/*.{h,m,mm,swift}"`. A file outside those two globs is not in the pod.
-3. **Every exported method carries an explicit `@objc(selector:)`** whose first selector segment equals its JS name. `RCT_EXTERN_REMAP_METHOD` is not public in RN 0.86 (`RCTBridgeModule.h:310-323`), so the shim cannot remap.
-4. **Every object-typed parameter of an exported method is Optional** (`String?`, `NSDictionary?`, `[Any]?`). The null check is behind `#if RCT_DEBUG` (`RCTModuleMethod.mm:399-457`), so nil reaches the Swift thunk in a client Release build and traps a non-optional. `NSNumber` parameters stay non-optional and `_Nonnull` in the shim.
-5. **Every enum value written into a dictionary uses `.rawValue`.** A Swift enum in `[String: Any]` bridges to an opaque box that the bridge drops silently.
-6. **Absence policy is per field, never uniform.** Some keys are omitted when nil (`PLYSubscription+Hybrid.m:22-28`, documented in `types.ts:138-141`), some carry `NSNull` (`PurchaselyRN.m:1426`), some coalesce to a value (`:1150`). In Swift, `dict["k"] = nil` **removes** the key.
+3. **Every exported method carries an explicit `@objc(selector:)`** whose first selector segment equals its JS name. `RCT_EXTERN_REMAP_METHOD` is not public in RN 0.86 (`RCTBridgeModule.h:310-323`), so the shim cannot remap. Copy the selector from the annotation into the shim; never retype it.
+4. **Optionality: the shim annotation and the Swift type are two different decisions.**
+   - In the **shim**, copy the existing annotation from `PurchaselyRN.m` exactly, `_Nonnull` and `_Nullable` included. RN reads them only under `#if RCT_DEBUG` (`RCTModuleMethod.mm:399-457`), so they are documentation, not a Release guarantee.
+   - In **Swift**, every object-typed parameter is Optional (`String?`, `NSDictionary?`, `[Any]?`, `NSNumber?`) **regardless of the annotation**, precisely because there is no Release check and nil reaches the thunk. A non-optional Swift parameter traps.
+   - A parameter that is a **C primitive today** (`BOOL`, `NSInteger`, `double`) stays that primitive. It cannot be nil and changing it changes the selector.
+5. **Every enum value written into a dictionary uses `.rawValue`.** A Swift enum in `[String: Any]` bridges to an opaque box that the bridge drops silently — the key arrives `undefined`.
+6. **Absence policy is per field, never uniform.** Read the guard in the Objective-C source for every key. Four policies exist: omitted when nil (`PLYSubscription+Hybrid.m:22-28`, documented to clients in `types.ts:138-141`), explicit `NSNull` (`PurchaselyRN.m:1426`), coalesced to a value (`:1150`), and **omitted when empty** (`PLYPlan+Hybrid.m:120`, `commitmentInfo.count > 0` on a non-optional array — an `if let` there is wrong, it needs `if !isEmpty`). In Swift, `dict["k"] = nil` **removes** the key.
 7. **`NSLock` is not reentrant; `@synchronized` is.** One `withLock { }` per original `@synchronized` block, preserving its exact lexical scope. No SDK call, no callback invocation, and no `await` inside a locked region.
 8. **No blocking primitive in production code.** No `DispatchSemaphore`, no `group.wait()`, no `dispatch_sync`, no `RunLoop.run(until:)`. `XCTestExpectation` waiting in the test target is exempt.
-9. **Preserve closure capture strength per closure.** `weak` only where Objective-C has `__weak` (`PurchaselyRN.m:1535`, `:1604`, `:1762`, `:1916`). Never a blanket `[weak self]`.
+9. **Preserve every dispatch boundary and every capture, exactly as found.**
+   - If the Objective-C body calls the SDK directly, the Swift body calls it directly. **Do not add a `DispatchQueue.main.async`** — `userLogin` (`PurchaselyRN.m:660`) has none, and adding one changes when the call runs.
+   - If it is inside `dispatch_async(dispatch_get_main_queue(), ...)`, keep it there, as `async`, never `sync`, never `await`.
+   - `weak` only where Objective-C has `__weak` (`:1535`, `:1604`, `:1762`, `:1916`). Never a blanket `[weak self]`.
+   - Registration order is a dispatch boundary too: an observer registered after a call returns stays after it, not inside its completion.
 10. **Two promise layers.** `preloadPresentation` and `displayPresentation` resolve their native promise `@(YES)` immediately after triggering (`:1581`, `:1747`); the public JS promise settles later through events. Resolve the native acknowledgement exactly once and never from a later callback.
-11. **`requiresMainQueueSetup` keeps its current value** on both `PurchaselyRN` and `PurchaselyViewManager`. Do not "clean it up" — commit `81c5a65` is the incident.
+11. **`requiresMainQueueSetup` returns `YES` for `PurchaselyRN`** (`PurchaselyRN.m:1447`) **and `false` for `PurchaselyViewManager`** (`PurchaselyViewManager.swift:20`). The two differ on purpose. Do not "align" them — commit `81c5a65` is the incident.
 12. **`ios/react-native-purchasely-Bridging-Header.h` must never be deleted.** CocoaPods compiles the pod's Swift with `-import-underlying-module`, and this file is what puts the React headers into the umbrella. Deleting it breaks every Swift file in the pod with a message pointing elsewhere.
-13. **Commands.** Tests: `cd example/ios && UDID=$(xcrun simctl list devices booted -j | jq -r '[.devices[][]][0].udid') && xcodebuild test -workspace example.xcworkspace -scheme react-native-purchasely-Unit-Tests -destination "id=$UDID" CODE_SIGNING_ALLOWED=NO`. After changing the podspec or adding files: `cd example/ios && pod install`.
+13. **Commands.**
+
+    ```bash
+    # from the repo root
+    UDID=$(xcrun simctl list devices booted -j | jq -r '[.devices[][]][0].udid')
+    cd example/ios && pod install                      # after adding a file or editing the podspec
+    xcodebuild test -workspace example.xcworkspace -scheme react-native-purchasely-Unit-Tests \
+      -destination "id=$UDID" CODE_SIGNING_ALLOWED=NO
+    xcodebuild -workspace example.xcworkspace -scheme example \
+      -destination "id=$UDID" CODE_SIGNING_ALLOWED=NO build
+    # the framework-layout job, which is what catches `@objc internal`
+    USE_FRAMEWORKS=static pod install && xcodebuild -workspace example.xcworkspace \
+      -scheme react-native-purchasely -destination "id=$UDID" CODE_SIGNING_ALLOWED=NO build
+    pod install                                        # restore the default layout
+    ```
+
+---
+
+## Verified symbol table
+
+Read off `arm64-apple-ios-simulator.swiftinterface` and the SDK sources on 2026-09-08. Every one of these was wrong in the first draft of this plan. Use these, not your memory.
+
+| What you need | The real Swift symbol | Trap it replaces |
+|---|---|---|
+| Log level type | `PLYLogger.PLYLogLevel`, cases `.debug .info .warn .error` (`:1458`) | not top-level `PLYLogLevel` |
+| Set the log level | `Purchasely.setLogLevel(_:)` (`:1256`) | not an assignable `Purchasely.logLevel` |
+| Attribute type | `Purchasely.PLYAttribute` (`:1337`) | not top-level |
+| Theme mode | `Purchasely.PLYThemeMode` (`:1368`) | not top-level |
+| Legal basis | `PLYDataProcessingLegalBasis`, cases `.optional .essential` (`:53`) | `PLYLegalBasis` does not exist |
+| Login | `Purchasely.userLogin(with:shouldRefresh:)` (ObjC `userLoginWith:shouldRefresh:`, `PurchaselyRN.m:660`) | not `userLogin(with:completion:)` |
+| Intro-offer eligibility | `PLYPlan.isUserEligibleForIntroductoryOffer(completion:)` (`:653`) | **not** `isEligibleForIntroductoryOffer` — that name recurses |
+| Localized price | `PLYPlan.localizedFullPrice(language:)` (`:691`) | `price(with:)` does not exist |
+| Transition init | `PLYTransition.init(type:height:width:heightPercentage:backgroundColors:dismissible:)` (`:994`), `.drawer(height:)` / `.popin(width:height:)` (`:1009`) | this is what replaces `PLYTransitionFactory` |
+| Dimension | `PLYDimension` enum (`:1150`) | |
+| Purchase result | `PLYPurchaseResult` has **four** cases, `.purchased .cancelled .restored .none` (`:806`) | `.none` maps to **nil**, not to cancelled |
+| Purchase notification | the literal string `"ply_purchasedSubscription"` (`PurchaselyRN.m:638`) | there is no `Notification.Name` constant |
+| App technology | `Purchasely.setAppTechnology(.reactNative)`, called in `-init` (`PurchaselyRN.m:467`) | it is in `init`, not `start` |
+
+**No SDK model type has a no-argument initializer.** `PLYPlan`, `PLYProduct`, `PLYSubscription`, `PLYOfferSignature` and `PLYPresentationPlan` expose only `required init(from decoder:)`. They are `Decodable`, so a test fixture is built with `JSONDecoder` — Task 1 gives the wire keys.
+
+**`- (NSDictionary *)asDictionary` imports into Swift as a method,** `asDictionary()`, not a property: Swift imports only an ObjC `@property` as a property. So the Swift replacement is declared `@objc func asDictionary() -> [String: Any]`, a method, and the call shape is then identical in both languages before and after the port. That is what lets Task 1's test file stay frozen through Tasks 2–4.
 
 ---
 
@@ -36,22 +95,25 @@ Every task's requirements implicitly include this section. Values are copied ver
 
 | File | Responsibility | Task |
 |---|---|---|
+| `ios/PurchaselyTests/SerializationFixtures.swift` | Decodes the 5 model fixtures from JSON, so tests have populated instances | 1 |
 | `ios/PurchaselyTests/SerializationContractTests.swift` | Locks every serializer's key set, value types and absence policy | 1 |
-| `ios/Classes/Serialization/PLYPlan+Bridge.swift` | `PLYPlan` → dictionary, intro-offer eligibility, the 2 billing-plan-type mappers | 2 |
+| `ios/Classes/Serialization/PLYPlan+Bridge.swift` | `PLYPlan` → dictionary, the 2 billing-plan-type mappers | 2 |
 | `ios/Classes/Serialization/PLYProduct+Bridge.swift` | `PLYProduct` → dictionary | 3 |
 | `ios/Classes/Serialization/PLYSubscription+Bridge.swift` | `PLYSubscription` → dictionary | 3 |
 | `ios/Classes/Serialization/PLYOfferSignature+Bridge.swift` | `PLYOfferSignature` → dictionary | 3 |
 | `ios/Classes/Serialization/PLYPresentationPlan+Bridge.swift` | `PLYPresentationPlan` → dictionary | 3 |
 | `ios/Classes/Serialization/UIColor+PLYHex.swift` | Hex string → `UIColor` | 4 |
-| `ios/PurchaselyTests/BridgeExportContractTests.swift` | Locks the 63 JS names, the module name, the 60 constants, the 11 events | 5 |
+| `ios/PurchaselyTests/BridgeExportContractTests.swift` | Locks the 63 JS names, the module name, the 60 constants with values, the 11 events | 5 |
 | `ios/PurchaselyTests/PurchaselyRNTests.swift` | The ported unit tests | 6 |
-| `ios/PurchaselyRN.swift` | The class, state, lock, constants, events, observing, the 3 delegates | 8 |
+| `ios/PurchaselyRN.swift` | The class, state, lock, constants, events, observing, the 3 delegate conformances, `PLYRNLogWarn` use | 8 |
 | `ios/PurchaselyRN+Lifecycle.swift` | start, identity, deeplinks, language, log level, theme, consent, synchronize | 9 |
-| `ios/PurchaselyRN+Attributes.swift` | The 20 attribute methods and the built-in attributes | 10 |
+| `ios/PurchaselyRN+Attributes.swift` | The 21 attribute methods and the legal-basis mapper | 10 |
 | `ios/PurchaselyRN+Products.swift` | Products, plans, subscriptions, purchase, restore, offerings, promo offers | 11 |
-| `ios/PurchaselyRN+Presentations.swift` | Preload, display, close, back, BYOS, transitions, the 5 static members | 12 |
+| `ios/PurchaselyRN+Presentations.swift` | Preload, display, close, back, BYOS, transitions, the 6 static members, the delegate bodies | 12 |
 | `ios/PurchaselyRN+Interceptors.swift` | Register, unregister, complete, the 30-second timeout | 13 |
-| `ios/PurchaselyRN.m` | Export shim + `PLYRNLogWarn` | 14 |
+| `ios/PurchaselyRN.m` | Export shim + `PLYRNLogWarn` definition | 14 |
+
+**Exclusive method ownership.** Every exported method belongs to exactly one task. `synchronize` is Task 9's (it was listed in both 9 and 11 in the first draft, which would produce a duplicate `@objc` declaration). `isEligibleForIntroOffer` is Task 11's, even though it sits inside Task 9's source range. Before writing a method, confirm your task owns it; if two tasks name it, stop and report.
 
 ---
 
@@ -64,27 +126,110 @@ Branch: `feat/ios-swift-serialization`, based on `main`.
 The safety of all of phase 1 is this task. It snapshots the **current Objective-C** output, so it must be written and green before any `.m` is deleted.
 
 **Files:**
+- Create: `packages/purchasely/ios/PurchaselyTests/SerializationFixtures.swift`
 - Create: `packages/purchasely/ios/PurchaselyTests/SerializationContractTests.swift`
 
 **Interfaces:**
 - Consumes: nothing.
-- Produces: `SerializationContractTests`, whose assertions Tasks 2–4 must keep green unchanged. Do not edit this file in Tasks 2–4; if it fails, the port is wrong.
+- Produces: `SerializationFixtures` (5 decoded model instances plus 5 empty-field variants) and `SerializationContractTests`. Tasks 2–4 must keep the tests green **without editing them**. If one fails, the port is wrong.
 
-- [ ] **Step 1: Read the five serializers and write down every key**
-
-Run and keep the output next to you:
+- [ ] **Step 1: Read the five serializers and record every key**
 
 ```bash
 cd packages/purchasely/ios/Classes/Hybrid
-grep -n 'forKey:\|dict\[' PLYPlan+Hybrid.m PLYProduct+Hybrid.m PLYSubscription+Hybrid.m \
+grep -nE 'forKey:|if \(' PLYPlan+Hybrid.m PLYProduct+Hybrid.m PLYSubscription+Hybrid.m \
   PLYOfferSignature+Hybrid.m PLYPresentationPlan+Hybrid.m
 ```
 
-For each key record three things: the key name, the value type Objective-C writes (`NSString`, `NSNumber`, `NSArray`, `NSDictionary`, `NSNull`), and whether the assignment is inside an `if (x != nil)` guard.
+For each key record: the key name, the value type Objective-C writes, and **which of the four absence policies of Global Constraint 6 applies** — read the guard, do not assume. Two traps found in review:
 
-- [ ] **Step 2: Write the failing test**
+- `PLYOfferSignature`'s `nonce` and `timestamp` guards are **dead code**. `nonce` is a non-optional `UUID` and `timestamp` a non-optional `Double` (`.swiftinterface:628-630`), so `[self.nonce UUIDString]` and `[NSNumber numberWithDouble:]` never return nil. Both keys are **always present**.
+- `PLYPlan`'s `commitmentInfo` guard is `count > 0` on a non-optional array, not a nil check. It needs `if !isEmpty`, and an `if let` there would emit `[]` where JS expects `undefined`.
 
-The SDK model types have no public initializer, so the test cannot build a populated `PLYPlan`. It asserts what it *can*: the key set of an empty instance, and that no nullable key appears when its source is nil. That is precisely the regression this task must catch, because Swift's `dict["k"] = nil` removes a key that Objective-C's guarded assignment also omits — the two agree only if the guard is carried over.
+- [ ] **Step 2: Write the fixtures**
+
+No model type has a no-argument initializer — they expose only `required init(from decoder:)` — so `PLYPlan()` does not compile. All five are `Decodable`, so decode them. The wire keys below come from each model's `enum CodingKeys` in `/Users/kevin/Purchasely/iOS/Sources/Purchasely/common/Model/`.
+
+Create `packages/purchasely/ios/PurchaselyTests/SerializationFixtures.swift`:
+
+```swift
+//
+//  SerializationFixtures.swift
+//  Decoded model instances for the serialization contract tests.
+//
+//  The SDK's model types have no public no-argument initializer, only
+//  `init(from decoder:)`. So a fixture is JSON. The wire keys are each type's
+//  `enum CodingKeys` in /Users/kevin/Purchasely/iOS/Sources/Purchasely/.
+//
+//  Each type gets TWO fixtures: `populated`, with every optional field set,
+//  and `sparse`, with only the required fields. The pair is what proves the
+//  per-field absence policy, which is the one thing Swift silently changes.
+//
+
+import Foundation
+import Purchasely
+
+enum SerializationFixtures {
+
+    static func decode<T: Decodable>(_ type: T.Type, _ json: String) throws -> T {
+        try JSONDecoder().decode(type, from: Data(json.utf8))
+    }
+
+    // MARK: - PLYPlan
+    // CodingKeys: vendor_id, public_id, id, distribution_type, level, name,
+    //             store_product_id, is_visible, promo_offers
+
+    static let planPopulatedJSON = """
+    {
+      "vendor_id": "PLAN_MONTHLY",
+      "public_id": "plan_abc",
+      "id": "1",
+      "distribution_type": "renewing_subscription",
+      "name": "Monthly",
+      "store_product_id": "com.example.monthly",
+      "is_visible": true
+    }
+    """
+
+    /// Only what the decoder requires. Every optional stays absent, which is
+    /// what makes the omission assertions meaningful.
+    static let planSparseJSON = """
+    { "vendor_id": "PLAN_MONTHLY", "id": "1" }
+    """
+
+    static func plan(populated: Bool) throws -> PLYPlan {
+        try decode(PLYPlan.self, populated ? planPopulatedJSON : planSparseJSON)
+    }
+
+    // MARK: - the four others
+    //
+    // Write these the same way, reading the CodingKeys from the SDK sources:
+    //   PLYProduct         id, public_id, vendor_id, name, plans, icon
+    //   PLYSubscription    id, plan, store_type, next_renewal_at, cancelled_at,
+    //                      original_purchased_at, purchased_at, offer_type,
+    //                      environment, store_country, is_family_shared,
+    //                      subscription_status, content_id, offer_identifier,
+    //                      cumulated_revenues_in_usd, subscription_duration_in_days,
+    //                      subscription_duration_in_weeks,
+    //                      subscription_duration_in_months, stripe_purchase_id,
+    //                      stripe_checkout_session_id
+    //   PLYOfferSignature  key_identifier, plan_vendor_id, offer_identifier,
+    //                      offer_signature, offer_nonce, offer_timestamp
+    //   PLYPresentationPlan plan_vendor_id, store_product_id, offer_id,
+    //                      offer_vendor_id, default, commitment_billing_type
+    //
+    // PLYSubscription's sparse fixture MUST omit next_renewal_at and
+    // cancelled_at: those two keys are the ones types.ts:138-141 documents to
+    // clients as absent on iOS, and they are the most valuable assertion here.
+    // PLYOfferSignature has NO nullable key — see Step 1.
+}
+```
+
+If a fixture fails to decode, the JSON is wrong, not the model. Read that type's `init(from:)` in the SDK source: some fields are decoded with `decode` (required) and some with `decodeIfPresent` (optional), and only the required ones must appear in the sparse fixture.
+
+- [ ] **Step 3: Write the failing test**
+
+Note `asDictionary()` with parentheses throughout: the Objective-C method imports into Swift as a method, and Task 2 keeps it a method precisely so this file never changes.
 
 Create `packages/purchasely/ios/PurchaselyTests/SerializationContractTests.swift`:
 
@@ -92,9 +237,9 @@ Create `packages/purchasely/ios/PurchaselyTests/SerializationContractTests.swift
 //
 //  SerializationContractTests.swift
 //  Locks the bridge's serialization contract across the Objective-C → Swift
-//  port. Written against the Objective-C categories, kept green by the Swift
-//  extensions that replace them. Do not relax an assertion to make a port
-//  pass: types.ts documents this behaviour to clients.
+//  port. Written against the Objective-C categories, kept green unchanged by
+//  the Swift extensions that replace them. Do not relax an assertion to make a
+//  port pass: types.ts documents this behaviour to clients.
 //
 
 import XCTest
@@ -104,96 +249,102 @@ import Purchasely
 final class SerializationContractTests: XCTestCase {
 
     // MARK: - PLYPlan
+    //
+    // Fill these three sets from Step 1's output. The lists below are the
+    // shape; Step 1 is the authority.
 
-    /// Every key `PLYPlan.asDictionary` emits unconditionally.
-    /// Read off PLYPlan+Hybrid.m. The five `offer*` keys are deliberate safe
-    /// defaults: the iOS SDK's PLYTagHelper is `private` and takes an internal
-    /// type, so no bridge can compute a real promotional-offer price — in
-    /// Objective-C OR in Swift. Do not "fix" them during the port; the comment
-    /// at PLYPlan+Hybrid.m:22-30 explains why, and the spec's goal 3 says Swift
-    /// removes the @objc-only limit, not the public-only one.
-    private static let planAlwaysPresentKeys: Set<String> = [
+    /// Emitted on every plan, populated or sparse. The five `offer*` keys are
+    /// deliberate safe defaults: the SDK's PLYTagHelper is `private` and takes
+    /// an internal type, so no bridge can compute a real promotional-offer
+    /// price — in Objective-C or in Swift. Do not "fix" them during the port.
+    /// See the comment at PLYPlan+Hybrid.m:22-30.
+    private static let planAlwaysPresent: Set<String> = [
         "vendorId", "hasIntroductoryPrice", "type", "hasFreeTrial",
         "hasOfferPrice", "offerPrice", "offerAmount", "offerDuration",
         "offerPeriod",
     ]
 
-    /// Keys `PLYPlan.asDictionary` emits ONLY when the native value is non-nil.
-    /// They must be ABSENT, not NSNull and not an empty string, on an empty plan.
-    private static let planNullableKeys: Set<String> = [
+    /// Present on the populated fixture, ABSENT on the sparse one — not
+    /// NSNull, not an empty string.
+    private static let planNullable: Set<String> = [
         "name", "productId", "price", "amount", "localizedAmount",
         "introAmount", "currencyCode", "currencySymbol", "period",
         "introPrice", "introDuration", "introPeriod", "commitmentInfo",
     ]
 
-    func testPlanEmitsItsUnconditionalKeys() {
-        let dict = PLYPlan().asDictionary
-        for key in Self.planAlwaysPresentKeys {
-            XCTAssertNotNil(dict[key], "PLYPlan.asDictionary lost the key '\(key)'")
+    /// Keys whose value must bridge as an NSNumber. Global Constraint 5: a
+    /// Swift enum written without `.rawValue` becomes an opaque box the RN
+    /// bridge drops, and the key arrives `undefined`.
+    private static let planNumericKeys: Set<String> = [
+        "type", "hasIntroductoryPrice", "hasFreeTrial", "hasOfferPrice",
+        "offerAmount",
+    ]
+
+    func testPlanAlwaysPresentKeysSurviveBothFixtures() throws {
+        for populated in [true, false] {
+            let dict = try SerializationFixtures.plan(populated: populated).asDictionary()
+            for key in Self.planAlwaysPresent {
+                XCTAssertNotNil(dict[key], "plan(populated: \(populated)) lost '\(key)'")
+            }
         }
     }
 
-    func testPlanOmitsItsNullableKeysRatherThanNullingThem() {
-        let dict = PLYPlan().asDictionary
-        for key in Self.planNullableKeys {
+    func testPlanNullableKeysArePresentWhenPopulated() throws {
+        let dict = try SerializationFixtures.plan(populated: true).asDictionary()
+        // Only assert the keys the populated fixture actually sets. A key here
+        // that the fixture does not set belongs in the sparse assertion only —
+        // widen the fixture rather than weakening this test.
+        for key in ["name", "productId"] {
+            XCTAssertNotNil(dict[key], "a populated plan must emit '\(key)'")
+        }
+    }
+
+    func testPlanNullableKeysAreAbsentWhenSparse() throws {
+        let dict = try SerializationFixtures.plan(populated: false).asDictionary()
+        for key in Self.planNullable {
             XCTAssertNil(
                 dict[key],
                 """
-                '\(key)' must be ABSENT when the native value is nil, not NSNull \
-                and not an empty string. types.ts documents the omission and the \
-                JS layer reads `undefined`.
+                '\(key)' must be ABSENT on a sparse plan — not NSNull and not \
+                an empty string. types.ts documents the omission and the JS \
+                layer reads `undefined`.
                 """
             )
         }
     }
 
-    func testPlanTypeIsANumberNotAnOpaqueSwiftEnumBox() {
-        // Global constraint 5. A Swift enum written without .rawValue bridges
-        // to a box the RN bridge drops, so the key would arrive as undefined.
-        let dict = PLYPlan().asDictionary
-        XCTAssertTrue(
-            dict["type"] is NSNumber,
-            "PLYPlan.asDictionary['type'] must be an NSNumber (write .rawValue)"
-        )
-    }
-
-    // MARK: - billing plan type mappers (round trip)
-
-    func testBillingPlanTypeMappersRoundTrip() {
-        for wire in ["unspecified", "upFront", "monthly"] {
-            let parsed = PLYPlan.billingPlanType(fromRNString: wire)
-            XCTAssertEqual(
-                PLYPlan.rnString(fromBillingPlanType: parsed), wire,
-                "billing plan type '\(wire)' did not survive the round trip"
+    func testPlanNumericKeysBridgeAsNumbers() throws {
+        let dict = try SerializationFixtures.plan(populated: true).asDictionary()
+        for key in Self.planNumericKeys {
+            XCTAssertTrue(
+                dict[key] is NSNumber,
+                "plan['\(key)'] is \(type(of: dict[key])), expected NSNumber — write .rawValue"
             )
         }
     }
 
-    func testUnknownBillingPlanTypeFallsBackToUnspecified() {
-        XCTAssertEqual(
-            PLYPlan.rnString(fromBillingPlanType: PLYPlan.billingPlanType(fromRNString: "nope")),
-            "unspecified"
-        )
-        XCTAssertEqual(
-            PLYPlan.rnString(fromBillingPlanType: PLYPlan.billingPlanType(fromRNString: nil)),
-            "unspecified"
-        )
+    func testPlanCommitmentInfoIsOmittedWhenEmptyNotEmittedAsAnEmptyArray() throws {
+        // PLYPlan+Hybrid.m:120 guards on `count > 0`, not on nil. An `if let`
+        // in the Swift port would emit [] and the JS layer would stop reading
+        // the key as absent.
+        let dict = try SerializationFixtures.plan(populated: false).asDictionary()
+        XCTAssertNil(dict["commitmentInfo"])
     }
 }
 ```
 
-Then add, following exactly the same three-test shape (unconditional keys, nullable keys absent, enum keys are `NSNumber`), one section per remaining serializer. The key lists, read off the four `.m` files:
+Then add one section per remaining serializer, following the same four-test shape. The key tables, read off the four `.m` files in review:
 
-| Type | Unconditional | Nullable — must be absent |
-|---|---|---|
-| `PLYProduct` | `vendorId`, `plans` | `name` |
-| `PLYSubscription` | `plan`, `product`, `subscriptionSource` | `nextRenewalDate`, `cancelledDate`, `commitmentProgress` |
-| `PLYOfferSignature` | `planVendorId`, `identifier`, `signature`, `keyIdentifier` | `nonce`, `timestamp` |
-| `PLYPresentationPlan` | `default` | `offerId`, `offerVendorId`, `storeProductId`, `planVendorId` |
+| Type | Always present | Absent on the sparse fixture | Must be `NSNumber` |
+|---|---|---|---|
+| `PLYProduct` | `vendorId`, `plans` | `name` | — |
+| `PLYSubscription` | `plan`, `product`, `subscriptionSource` | `nextRenewalDate`, `cancelledDate`, `commitmentProgress` | `subscriptionSource` |
+| `PLYOfferSignature` | `planVendorId`, `identifier`, `signature`, `keyIdentifier`, `nonce`, `timestamp` | **none** | `timestamp` |
+| `PLYPresentationPlan` | `default` | `offerId`, `offerVendorId`, `storeProductId`, `planVendorId` | `default` |
 
-`PLYSubscription.subscriptionSource` goes in that type's enum-value set: it is `[NSNumber numberWithInt:...]` today (`PLYSubscription+Hybrid.m:18`), so `.rawValue` is mandatory. `PLYProduct["plans"]` is an array of dictionaries and must be `[]`, never absent, when the native array is nil. `nextRenewalDate` and `cancelledDate` are the two keys `types.ts:138-141` documents to clients as omitted on iOS and null on Android — those two assertions are the most valuable in this file.
+`PLYProduct["plans"]` is an array of dictionaries and must be `[]`, never absent, when the native array is empty.
 
-- [ ] **Step 3: Run the test against the Objective-C categories**
+- [ ] **Step 4: Run the test against the Objective-C categories**
 
 ```bash
 cd example/ios && pod install
@@ -203,59 +354,76 @@ xcodebuild test -workspace example.xcworkspace \
   -destination "id=$UDID" CODE_SIGNING_ALLOWED=NO 2>&1 | tail -30
 ```
 
-Expected: the two `billingPlanType` tests FAIL to compile, because `PLYPlan.billingPlanType(fromRNString:)` does not exist yet (Task 2 creates it). Every other test PASSES against the Objective-C categories.
+Expected: every test PASSES. A compile error fails the whole bundle, so there is no "some pass, some fail" state to aim for — get it compiling first.
 
-If a key test fails, **the test is wrong, not the code** — go back to Step 1 and correct the key lists from the `.m` files.
-
-- [ ] **Step 4: Comment out the two mapper tests, confirm all green**
-
-Add `// TODO(task-2): unskip` above them and `throw XCTSkip("Task 2 introduces the Swift mappers")` as the body. Re-run Step 3. Expected: all PASS, 2 skipped.
+If a key assertion fails, **the test is wrong, not the code**: go back to Step 1 and correct the sets from the `.m` files. That is the only acceptable reason to edit this file after this task.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add packages/purchasely/ios/PurchaselyTests/SerializationContractTests.swift
+git add packages/purchasely/ios/PurchaselyTests/SerializationFixtures.swift \
+        packages/purchasely/ios/PurchaselyTests/SerializationContractTests.swift
 git commit -m "test(ios): lock the serialization contract before the Swift port
 
-Snapshots the key sets, the per-field absence policy and the enum value
-types that the Objective-C categories produce today, so the Swift port
-cannot change them silently. The absence policy is the live hazard:
-Swift removes a key assigned nil, and types.ts documents to clients
-which keys the iOS bridge omits."
+Snapshots the key sets, the per-field absence policy and the value types
+the Objective-C categories produce today, on a populated and a sparse
+fixture each, so the Swift port cannot change them silently. The absence
+policy is the live hazard: Swift removes a key assigned nil, and types.ts
+documents to clients which keys the iOS bridge omits.
+
+Fixtures are decoded from JSON because no SDK model type has a
+no-argument initializer."
 ```
 
 ---
 
 ## Task 2: Port `PLYPlan+Hybrid` to Swift
 
-The largest serializer (145 lines) and the only one with free C functions that the surviving Objective-C calls.
+The largest serializer (145 lines) and the only one whose header other Objective-C files import.
 
 **Files:**
 - Create: `packages/purchasely/ios/Classes/Serialization/PLYPlan+Bridge.swift`
 - Delete: `packages/purchasely/ios/Classes/Hybrid/PLYPlan+Hybrid.{h,m}`
-- Modify: `packages/purchasely/ios/PurchaselyRN.m:13-14` (the two `#import` lines), `:1189`, `:1209`
-- Modify: `packages/purchasely/ios/Classes/Hybrid/Purchasely_Hybrid.h` (drop the `PLYPlan+Hybrid.h` import)
-- Test: `packages/purchasely/ios/PurchaselyTests/SerializationContractTests.swift` (unskip only)
+- Modify: `packages/purchasely/ios/PurchaselyRN.m` — the `#import` at `:13`, the calls at `:1189` and `:1209`, and the eligibility call at `:647`
+- Modify: `packages/purchasely/ios/Classes/Hybrid/PLYProduct+Hybrid.m:9` — it imports `PLYPlan+Hybrid.h`
+- Modify: `packages/purchasely/ios/Classes/Hybrid/Purchasely_Hybrid.h:11`
+- Test: none edited. `SerializationContractTests` must pass unchanged.
 
-**Interfaces:**
-- Consumes: `SerializationContractTests` from Task 1.
-- Produces, all callable from Objective-C during phase 1:
-  - `PLYPlan.asDictionary: [String: Any]` (`@objc public var`)
-  - `PLYPlan.isEligibleForIntroductoryOffer(completion: @escaping (Bool) -> Void)` (`@objc public func`)
-  - `PLYPlan.rnString(fromBillingPlanType:) -> String` (`@objc public static func`, selector `rnStringFromBillingPlanType:`)
-  - `PLYPlan.billingPlanType(fromRNString:) -> PLYBillingPlanType` (`@objc public static func`, selector `billingPlanTypeFromRNString:`)
+**Interfaces produced,** all callable from Objective-C during phase 1:
+- `PLYPlan.asDictionary() -> [String: Any]` — `@objc public func`, **a method, not a property**, so the call shape is identical to the Objective-C category's in both languages
+- `PLYPlan.rnString(fromBillingPlanType:) -> String` — `@objc public static func`, selector `rnStringFromBillingPlanType:`
+- `PLYPlan.billingPlanType(fromRNString:) -> PLYBillingPlanType` — `@objc public static func`, selector `billingPlanTypeFromRNString:`
 
-- [ ] **Step 1: Unskip the two mapper tests**
+**Not produced: no eligibility wrapper.** The first draft wrapped `isEligibleForIntroductoryOffer`, which recursed into itself. The SDK method is `isUserEligibleForIntroductoryOffer(completion:)` and it is already `@objc`, so the wrapper has no reason to exist — Step 4 repoints the one caller at the SDK directly.
 
-Remove the `XCTSkip` bodies and the `TODO(task-2)` comments added in Task 1 Step 4.
+- [ ] **Step 1: Confirm the baseline is green**
 
-- [ ] **Step 2: Run to verify they fail**
+Run the test command of Global Constraint 13. Expected: `SerializationContractTests` PASSES against the Objective-C category. This is the baseline the port must not move.
 
-Run the command in Task 1 Step 3. Expected: compile error, `type 'PLYPlan' has no member 'billingPlanType'`.
+- [ ] **Step 2: Find every Objective-C consumer of the header you are about to delete**
+
+```bash
+cd packages/purchasely/ios
+rg -n 'PLYPlan\+Hybrid.h|asDictionary|PLYBillingPlanType(To|From)RNString|isEligibleForIntroductoryOffer' \
+  PurchaselyRN.m Classes/Hybrid/
+```
+
+Expected hits, all of which this task must handle:
+
+| Site | What it needs |
+|---|---|
+| `Classes/Hybrid/Purchasely_Hybrid.h:11` | drop the import |
+| `Classes/Hybrid/PLYProduct+Hybrid.m:9` | drop the import; it calls `plan.asDictionary` on each plan, which keeps working through the generated Swift header |
+| `PurchaselyRN.m:13` | drop the import |
+| `PurchaselyRN.m:1189` | `PLYBillingPlanTypeFromRNString(x)` → `[PLYPlan billingPlanTypeFromRNString:x]` |
+| `PurchaselyRN.m:1209` | `PLYBillingPlanTypeToRNString(x)` → `[PLYPlan rnStringFromBillingPlanType:x]` |
+| `PurchaselyRN.m:647` | `isEligibleForIntroductoryOffer:` → `isUserEligibleForIntroductoryOfferWithCompletion:` |
+
+If `rg` finds a site not in this table, handle it too and note it in the commit.
 
 - [ ] **Step 3: Write `PLYPlan+Bridge.swift`**
 
-Read `ios/Classes/Hybrid/PLYPlan+Hybrid.m` in full first. Translate it key for key. The mandatory shape:
+Read `ios/Classes/Hybrid/PLYPlan+Hybrid.m` in full first, then translate key for key in source order. **Verify every SDK accessor against the interface (Global Constraint 0) before you write it** — the first draft of this plan used `price(with:)`, which does not exist; the real accessor is `localizedFullPrice(language:)` (`.swiftinterface:691`).
 
 ```swift
 //
@@ -263,9 +431,14 @@ Read `ios/Classes/Hybrid/PLYPlan+Hybrid.m` in full first. Translate it key for k
 //  Serializes a PLYPlan for the React Native bridge.
 //  Ported from PLYPlan+Hybrid.m. The key set, the per-key absence policy and
 //  the value types are a client contract — see SerializationContractTests and
-//  types.ts. `@objc public` is temporary: PurchaselyRN.m still calls this
-//  during phase 1, and a framework-layout target's generated header carries
-//  only public declarations. Phase 2 reduces it to `internal`.
+//  types.ts.
+//
+//  `asDictionary()` is a METHOD, matching how the Objective-C category imported
+//  into Swift, so the contract tests read the same before and after the port.
+//
+//  `@objc public` is temporary: PurchaselyRN.m and PLYProduct+Hybrid.m still
+//  call this during phase 1, and a framework-layout target's generated header
+//  carries only public declarations. Task 14 reduces it to `internal`.
 //
 
 import Foundation
@@ -273,41 +446,39 @@ import Purchasely
 
 @objc public extension PLYPlan {
 
-    var asDictionary: [String: Any] {
+    func asDictionary() -> [String: Any] {
         var dict: [String: Any] = [:]
 
-        // Unconditional keys: same order as PLYPlan+Hybrid.m, so a diff of the
-        // two files reads straight down.
+        // Unconditional keys, in PLYPlan+Hybrid.m order so a diff of the two
+        // files reads straight down. `.rawValue` on the enum — Constraint 5.
         dict["vendorId"] = vendorId
-        // Constraint 5: .rawValue, never the enum value itself.
         dict["type"] = type.rawValue
 
         // Guarded keys: Objective-C omitted them when nil, so Swift must too.
-        // Writing `dict["price"] = price` with a nil price also removes the
-        // key, but write the guard explicitly — it documents the policy and it
-        // survives a later refactor that introduces a non-optional default.
-        if let price = price(with: nil) {
-            dict["price"] = price
+        // Write the guard explicitly even though `dict[k] = nil` also removes
+        // the key: it documents the policy and it survives a later edit that
+        // introduces a non-optional default.
+        if let name {
+            dict["name"] = name
+        }
+
+        // commitmentInfo: `count > 0` on a NON-optional array (Constraint 6).
+        // `if let` here would emit [] and break the JS reader.
+        if !commitmentInfo.isEmpty {
+            dict["commitmentInfo"] = commitmentInfo.map { /* per m:97-109 */ }
         }
 
         return dict
-    }
-
-    func isEligibleForIntroductoryOffer(completion: @escaping (Bool) -> Void) {
-        // Same call the Objective-C category made. No blocking wait
-        // (constraint 8): the SDK's completion drives ours.
-        isEligibleForIntroductoryOffer { isEligible in
-            completion(isEligible)
-        }
     }
 
     // MARK: - billing plan type wire values
 
     /// Replaces the C function `PLYBillingPlanTypeToRNString`. A free Swift
     /// function cannot be `@objc`, so this is a static member and
-    /// `PurchaselyRN.m` calls it as `[PLYPlan rnStringFromBillingPlanType:x]`.
+    /// `PurchaselyRN.m` calls `[PLYPlan rnStringFromBillingPlanType:x]`.
     @objc(rnStringFromBillingPlanType:)
     static func rnString(fromBillingPlanType type: PLYBillingPlanType) -> String {
+        // Verify these case names against the interface before compiling.
         switch type {
         case .upFront: return "upFront"
         case .monthly: return "monthly"
@@ -329,26 +500,30 @@ import Purchasely
 }
 ```
 
-Check the real enum case names against the SDK before compiling:
-
 ```bash
-rg -n 'enum PLYBillingPlanType' -A6 \
-  example/ios/Pods/Purchasely/Purchasely/Frameworks/Purchasely.xcframework/ios-arm64_x86_64-simulator/Purchasely.framework/Modules/Purchasely.swiftmodule/arm64-apple-ios-simulator.swiftinterface
+# before compiling, confirm the enum and the accessors
+SI=example/ios/Pods/Purchasely/Purchasely/Frameworks/Purchasely.xcframework/ios-arm64_x86_64-simulator/Purchasely.framework/Modules/Purchasely.swiftmodule/arm64-apple-ios-simulator.swiftinterface
+rg -n -A6 'enum PLYBillingPlanType' "$SI"
+awk '/class PLYPlan :/,/^}/' "$SI"
 ```
 
-- [ ] **Step 4: Update the two Objective-C call sites and the imports**
+- [ ] **Step 4: Update all six Objective-C sites from Step 2's table**
 
-In `packages/purchasely/ios/PurchaselyRN.m`:
+The generated Swift header is already imported at `PurchaselyRN.m:24-28`, so no new import is needed there. `PLYProduct+Hybrid.m` needs that same `#if __has_include` block, copied verbatim from `PurchaselyRN.m:24-28`, in place of its `PLYPlan+Hybrid.h` import.
+
+At `:647` the call becomes:
 
 ```objc
-// line 1189 — was: PLYBillingPlanTypeFromRNString(billingPlanType)
-[PLYPlan billingPlanTypeFromRNString:billingPlanType]
-
-// line 1209 — was: PLYBillingPlanTypeToRNString(offering.billingPlanType)
-[PLYPlan rnStringFromBillingPlanType:offering.billingPlanType]
+[plan isUserEligibleForIntroductoryOfferWithCompletion:^(BOOL isEligible) { ... }];
 ```
 
-The generated Swift header is already imported at `PurchaselyRN.m:24-28`, so no new import is needed. Remove `PLYPlan+Hybrid.h` from `Classes/Hybrid/Purchasely_Hybrid.h`.
+That is the SDK's own `@objc` method. Confirm the exact Objective-C selector before editing:
+
+```bash
+rg -n 'isUserEligibleForIntroductoryOffer' \
+  example/ios/Pods/Headers/Public/Purchasely/Purchasely-Swift.h 2>/dev/null \
+  || rg -n 'isUserEligibleForIntroductoryOffer' "$SI"
+```
 
 - [ ] **Step 5: Delete the Objective-C category and reinstall the pod**
 
@@ -358,22 +533,13 @@ git rm packages/purchasely/ios/Classes/Hybrid/PLYPlan+Hybrid.h \
 cd example/ios && pod install
 ```
 
-- [ ] **Step 6: Run the tests**
+- [ ] **Step 6: Run the tests and both builds**
 
-Run the command in Task 1 Step 3. Expected: all PASS, 0 skipped. If `PurchaselyRN.m` fails to find `rnStringFromBillingPlanType:`, the cause is `@objc internal` instead of `@objc public` — see the file's own header comment.
+Run all four commands in Global Constraint 13. Expected: tests PASS with `SerializationContractTests` unedited, and both builds succeed.
 
-- [ ] **Step 7: Build the example app both ways**
+The framework-layout build is not optional here: it is the one that catches `@objc internal` instead of `@objc public`, and it fails nowhere else.
 
-```bash
-cd example/ios && xcodebuild -workspace example.xcworkspace -scheme example \
-  -destination "id=$UDID" CODE_SIGNING_ALLOWED=NO build 2>&1 | tail -5
-USE_FRAMEWORKS=static pod install && xcodebuild -workspace example.xcworkspace \
-  -scheme react-native-purchasely -destination "id=$UDID" CODE_SIGNING_ALLOWED=NO build 2>&1 | tail -5
-```
-
-Expected: both `BUILD SUCCEEDED`. The second is what the `iOS Build (use_frameworks!)` CI job runs, and it is the one that catches `@objc internal`.
-
-- [ ] **Step 8: Restore the default pod install and commit**
+- [ ] **Step 7: Restore the default pod install and commit**
 
 ```bash
 cd example/ios && pod install
@@ -381,9 +547,15 @@ git add -A packages/purchasely/ios example/ios/Podfile.lock
 git commit -m "refactor(ios): port the PLYPlan serializer to Swift
 
 The two FOUNDATION_EXPORT C mappers become @objc static members, since a
-free Swift function cannot be @objc, and PurchaselyRN.m's two call sites
-move with them. @objc public is temporary: a framework-layout target's
-generated header carries only public declarations."
+free Swift function cannot be @objc, and all six Objective-C call sites
+move with them — PLYProduct+Hybrid.m imported that header too.
+
+asDictionary stays a method, not a property, so its call shape is
+identical in Objective-C and Swift and the contract tests are untouched.
+
+The intro-offer eligibility category method is deleted rather than
+ported: the SDK's own isUserEligibleForIntroductoryOffer is already
+@objc, so the one caller now uses it directly."
 ```
 
 ---
@@ -400,7 +572,7 @@ generated header carries only public declarations."
 
 **Interfaces:**
 - Consumes: the `@objc public extension` pattern established in Task 2.
-- Produces: `asDictionary: [String: Any]` as an `@objc public var` on each of the four types.
+- Produces: `asDictionary() -> [String: Any]` as an `@objc public func` — **a method, not a property** — on each of the four types.
 
 - [ ] **Step 1: Run the tests to confirm the four sections currently pass**
 
@@ -408,11 +580,12 @@ Run the command in Task 1 Step 3. Expected: PASS against the Objective-C categor
 
 - [ ] **Step 2: Port the four files**
 
-One file each, same shape as Task 2 Step 3, same header comment. Translate key for key, in source order, from the matching `.m`. The three rules that decide correctness, all from Global Constraints:
+One file each, same shape as Task 2 Step 3, same header comment. Translate key for key, in source order, from the matching `.m`. The four rules that decide correctness:
 
-- A key assigned inside `if (x != nil)` keeps an explicit `if let` guard (constraint 6).
-- Every enum value gets `.rawValue` (constraint 5). In these four files that is at least `PLYSubscription.subscriptionSource` (`PLYSubscription+Hybrid.m:18`) and `PLYProduct`'s type field.
-- A nil array coalesces to `[]`, it does not vanish: `dict["plans"] = (plans ?? []).map { $0.asDictionary }` (`PurchaselyRN.m:1150` is the precedent).
+- **Read the guard, then choose the Swift form** (Constraint 6). `if (x != nil)` → `if let`. `count > 0` on a non-optional array → `if !isEmpty`. A guard on a non-optional value is dead code and the key is unconditional — `PLYOfferSignature`'s `nonce` and `timestamp` are exactly that, so both keys are always present.
+- **Every enum value gets `.rawValue`** (Constraint 5). In these four files that is `PLYSubscription.subscriptionSource` (`PLYSubscription+Hybrid.m:18`) and `PLYPresentationPlan.default`. `PLYProduct+Hybrid.m` has **no** `type` key — do not add one.
+- **An empty array serializes to `[]`, it does not vanish:** `dict["plans"] = plans.map { $0.asDictionary() }`. Check whether `plans` is optional in the interface before adding a `??`.
+- **`asDictionary()` is a method** on the type you are porting and on every type it calls into.
 
 `PLYSubscription+Bridge.swift` carries the date formatting. Keep the format string byte-identical:
 
@@ -425,10 +598,12 @@ private let ply_bridgeDateFormatter: DateFormatter = {
 }()
 
 @objc public extension PLYSubscription {
-    var asDictionary: [String: Any] {
+    func asDictionary() -> [String: Any] {
         var dict: [String: Any] = [:]
+        dict["plan"] = plan.asDictionary()
         dict["subscriptionSource"] = subscriptionSource.rawValue
-        // Omitted when nil — types.ts:138-141 documents this to clients.
+        // Omitted when nil — types.ts:138-141 documents this to clients as the
+        // one place iOS and Android deliberately differ.
         if let next = nextRenewalDate {
             dict["nextRenewalDate"] = ply_bridgeDateFormatter.string(from: next)
         }
@@ -454,9 +629,9 @@ cd ../../../../../example/ios && pod install
 
 Edit `Purchasely_Hybrid.h` so it imports only what still exists.
 
-- [ ] **Step 4: Run the tests**
+- [ ] **Step 4: Run the tests and both builds**
 
-Run the command in Task 1 Step 3. Expected: all PASS, no assertion edited. A failure on an absence test means a guard was dropped in Step 2.
+Run all four commands in Global Constraint 13. Expected: all PASS with no assertion edited, and both builds succeed. A failure on an absence test means a guard was translated to the wrong Swift form in Step 2.
 
 - [ ] **Step 5: Commit**
 
@@ -515,7 +690,9 @@ Append to `SerializationContractTests.swift`:
         }
 
         for form in ["#FF0000", "FF0000", "  #FF0000  "] {
-            guard let (r, g, b, a) = rgba(form) else {
+            // `guard let (a, b) = optionalTuple` does not compile; the pattern
+            // needs `case let ...?`.
+            guard case let (r, g, b, a)? = rgba(form) else {
                 return XCTFail("'\(form)' must parse")
             }
             XCTAssertEqual(r, 1.0, accuracy: 0.01, form)
@@ -525,29 +702,38 @@ Append to `SerializationContractTests.swift`:
         }
 
         // RRGGBBAA: the alpha byte is last.
-        guard let (_, _, _, alpha) = rgba("#00000080") else {
+        guard case let (_, _, _, alpha)? = rgba("#00000080") else {
             return XCTFail("8-digit form must parse")
         }
         XCTAssertEqual(alpha, 0.5, accuracy: 0.01)
     }
 
     func testHexParserRejectsGarbageInsteadOfTrapping() {
+        // The nil case stays commented out until Step 5: the Objective-C
+        // parameter is non-optional, so it does not compile before then.
         XCTAssertNil(UIColor.ply_fromHex(nil))
         XCTAssertNil(UIColor.ply_fromHex(""))
         XCTAssertNil(UIColor.ply_fromHex("   "))
         XCTAssertNil(UIColor.ply_fromHex("#12"))       // too short
         XCTAssertNil(UIColor.ply_fromHex("#1234567"))  // 7 digits
+        // Behaviour change: the Objective-C version ignored the scanner
+        // result and returned opaque black here. See the Task 4 commit.
         XCTAssertNil(UIColor.ply_fromHex("#GGGGGG"))   // 6 chars, not hex
     }
 ```
 
 Before writing the expectations, read `UIColor+PLYHelper.m:14-66` and add one case per accepted form it handles (3, 6 and 8 digits, with and without `#`, whatever it really supports). Do not invent forms it rejects today.
 
-- [ ] **Step 3: Run to verify it fails**
+- [ ] **Step 3: Run to see exactly how it fails**
 
-Run the command in Task 1 Step 3. Expected: compile error, `UIColor has no member ply_fromHex` — the Objective-C category's selector is `ply_fromHex:` but it is not visible to Swift under that Swift name until it is Swift.
+Run the test command of Global Constraint 13.
 
-If it *does* compile and pass, the Objective-C category is already reachable; then keep the test as the port's baseline and continue.
+The pod's umbrella header already imports `UIColor+PLYHelper.h`, so Swift **can** see the Objective-C `ply_fromHex` today. Two specific failures are expected, and they matter:
+
+1. **Compile error on `ply_fromHex(nil)`.** The Objective-C parameter is non-optional `NSString *`, so the `nil` case cannot be written until the Swift version exists. Comment out that line with `// TODO(step-5)` and re-run.
+2. **`"#GGGGGG"` returns opaque black, not nil.** `UIColor+PLYHelper.m:33-34` calls `scanHexInt:` and casts the result to `(void)`, ignoring failure, so a non-hex 6-character string scans to 0 and produces black.
+
+That second one is a **deliberate behaviour change**, not a port: the Swift version returns nil. It is the right change — a malformed colour should fall back, not silently paint a paywall black — but it must be labelled. Keep the assertion, mark it `// behaviour change, see the commit message`, and expect it red until Step 4.
 
 - [ ] **Step 4: Port the parser**
 
@@ -596,9 +782,9 @@ import UIKit
 }
 ```
 
-- [ ] **Step 5: Run the tests**
+- [ ] **Step 5: Uncomment the nil case and run the tests**
 
-Run the command in Task 1 Step 3. Expected: all PASS.
+Restore the `ply_fromHex(nil)` assertion — the Swift parameter is `String?`, so it compiles now — and delete the `TODO(step-5)` marker. Run all four commands in Global Constraint 13. Expected: all PASS, both builds succeed.
 
 - [ ] **Step 6: Delete the rest of `Classes/Hybrid/`, fix the imports, add `swift_versions`**
 
@@ -647,6 +833,11 @@ The UIViewController (Hybrid) category is deleted, not ported: it has no
 caller ([presentation close] is the PLYPresentation protocol method), and
 a library that adds a -close selector to every view controller in the
 host app is a liability with no user.
+
+One deliberate behaviour change in the hex parser: the Objective-C version
+cast scanHexInt:'s result to (void), so a malformed 6-character string such
+as #GGGGGG scanned to 0 and painted opaque black. The Swift version returns
+nil and the caller falls back. Every well-formed input parses identically.
 
 Adds s.swift_versions to the podspec, now that the pod is Swift-majority."
 git push -u origin feat/ios-swift-serialization
@@ -827,13 +1018,47 @@ final class BridgeExportContractTests: XCTestCase {
     func testEveryConstantIsANumberNotAnOpaqueEnumBox() {
         // Global constraint 5. Every one of the 60 values is a numeric ordinal
         // today. A Swift enum written without .rawValue would arrive undefined.
-        let constants = PurchaselyRN().constantsToExport() as? [String: Any] ?? [:]
-        for (key, value) in constants {
+        for (key, value) in Self.liveConstants() {
             XCTAssertTrue(
                 value is NSNumber,
                 "constant '\(key)' is \(type(of: value)), expected NSNumber — write .rawValue"
             )
         }
+    }
+
+    /// The 60 constants with their exact numeric values, captured from the
+    /// Objective-C module before the port.
+    ///
+    /// The key set alone is not enough: an ordinal can change without any key
+    /// changing, and `enums.ts` maps these numbers straight into the JS enums,
+    /// so a shifted value silently mislabels every event a client receives.
+    /// Generate this dictionary ONCE, in Step 2, by printing the live values,
+    /// then paste it here as a literal and never regenerate it.
+    static let expectedConstants: [String: Int] = [
+        // Paste Step 2's output here. Example shape:
+        //   "logLevelDebug": 0,
+        //   "productResultPurchased": 0,
+    ]
+
+    func testConstantValuesAreUnchanged() {
+        let live = Self.liveConstants().compactMapValues { ($0 as? NSNumber)?.intValue }
+        XCTAssertEqual(
+            live, Self.expectedConstants,
+            "a constant's numeric value changed; enums.ts maps these into the JS enums"
+        )
+    }
+
+    /// `constantsToExport` is an optional protocol requirement, not a member of
+    /// `PurchaselyRN.h`, so reach it through the protocol rather than calling it
+    /// directly on the concrete type.
+    static func liveConstants() -> [String: Any] {
+        let module = PurchaselyRN()
+        guard let bridgeModule = module as? RCTBridgeModule,
+              let constants = type(of: bridgeModule).constantsToExport?() else {
+            XCTFail("PurchaselyRN does not export constants")
+            return [:]
+        }
+        return constants as? [String: Any] ?? [:]
     }
 
     func testSupportedEventsKeepsItsOrderAndContent() {
@@ -852,7 +1077,9 @@ final class BridgeExportContractTests: XCTestCase {
     /// exports addListener: and removeListeners: of its own
     /// (RCTEventEmitter.m:96,115), which would make the count 65.
     static func exportedEntries() -> [(jsName: String, objcName: String)] {
-        var entries: [(String, String)] = []
+        // Labelled, matching the return type: Swift does not convert between
+        // arrays of differently labelled tuples.
+        var entries: [(jsName: String, objcName: String)] = []
         var count: UInt32 = 0
         guard let metaclass = object_getClass(PurchaselyRN.self),
               let methods = class_copyMethodList(metaclass, &count) else {
@@ -890,21 +1117,45 @@ final class BridgeExportContractTests: XCTestCase {
 }
 ```
 
-- [ ] **Step 2: Run it against the Objective-C module**
+- [ ] **Step 2: Capture the 60 constant values, then run the suite**
 
-Run the command in Task 1 Step 3, filtered:
+`expectedConstants` starts empty, so fill it from the live module first. Add a throwaway test that prints them, run it once, paste its output into the literal, then delete the throwaway:
 
-```bash
-xcodebuild test -workspace example.xcworkspace -scheme react-native-purchasely-Unit-Tests \
-  -destination "id=$UDID" CODE_SIGNING_ALLOWED=NO \
-  -only-testing:react-native-purchasely-Unit-Tests/BridgeExportContractTests 2>&1 | tail -30
+```swift
+func testPrintConstantsForTheLiteral() {
+    let live = Self.liveConstants().compactMapValues { ($0 as? NSNumber)?.intValue }
+    for (key, value) in live.sorted(by: { $0.key < $1.key }) {
+        print("        \"\(key)\": \(value),")
+    }
+}
 ```
 
-Expected: all 7 tests PASS. A failure here means one of the three literal lists is wrong — regenerate it with the command in the doc comment and fix the list, not the code.
+Then run the whole class:
+
+```bash
+cd example/ios
+UDID=$(xcrun simctl list devices booted -j | jq -r '[.devices[][]][0].udid')
+xcodebuild test -workspace example.xcworkspace -scheme react-native-purchasely-Unit-Tests \
+  -destination "id=$UDID" CODE_SIGNING_ALLOWED=NO \
+  -only-testing:react-native-purchasely-Unit-Tests/BridgeExportContractTests 2>&1 | tail -40
+```
+
+Expected: every test PASSES against the Objective-C module. A failure means one of the four literals is wrong — fix the literal from the live output, not the code.
 
 - [ ] **Step 3: Prove the gate has teeth**
 
-Comment out `RCT_EXPORT_METHOD(closeAllScreens)` in `PurchaselyRN.m`, re-run Step 2. Expected: `testExportedJSNamesAreExactlyTheContract` FAILS naming `closeAllScreens` as missing, and `testExportedMethodCountMatches` FAILS with 62. Then restore the line and re-run: PASS.
+`RCT_EXPORT_METHOD(closeAllScreens)` at `PurchaselyRN.m:1289` is followed by a `{ ... }` body, so commenting out the macro line alone leaves a dangling block and a **compile error**, not a test failure. Replace the macro with a plain declaration instead, which un-exports the method while keeping the file valid:
+
+```objc
+// RCT_EXPORT_METHOD(closeAllScreens) {
+- (void)closeAllScreens {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [Purchasely closeAllScreens];
+    });
+}
+```
+
+Re-run Step 2. Expected: `testExportedJSNamesAreExactlyTheContract` FAILS naming `closeAllScreens` missing, and `testExportedMethodCountMatches` FAILS with 62. Restore the macro and re-run: PASS.
 
 Do not skip this step. A gate nobody has seen fail is not a gate.
 
@@ -955,9 +1206,23 @@ Translation rules:
 // XCTAssertNil(a)                      →       XCTAssertNil(a)
 // [NSNull null]                        →       NSNull()
 // XCTestExpectation + waitForExpect…   →       unchanged (constraint 8 exempts tests)
+// [PurchaselyRN requiresMainQueueSetup] →      see below: optional requirement
 ```
 
-The web-redemption body tests are the important ones. They assert which key holds `NSNull` on a success and on a failure alike (`PurchaselyRN.h` documents the policy), which is exactly the behaviour Global Constraint 6 protects:
+`constantsToExport`, `requiresMainQueueSetup` and `supportedEvents` are **optional protocol requirements** (`RCTBridgeModule.h:114`, `:340`, `:358`) and are not redeclared in `PurchaselyRN.h`, so a direct call on the concrete Swift type does not compile. Reach them through the protocol, as `BridgeExportContractTests.liveConstants()` does:
+
+```swift
+guard let requires = (PurchaselyRN.self as? RCTBridgeModule.Type)?.requiresMainQueueSetup?() else {
+    return XCTFail("PurchaselyRN does not declare requiresMainQueueSetup")
+}
+XCTAssertTrue(requires)   // PurchaselyRN.m:1447 returns YES
+```
+
+For a method that exists on neither the header nor the protocol, use a runtime lookup (`NSSelectorFromString` plus `perform`) rather than adding it to the header just to satisfy a test.
+
+The web-redemption body tests are the important ones. They assert which keys hold `NSNull` on a success and on a failure alike (`PurchaselyRN.h` documents the policy), which is exactly the behaviour Global Constraint 6 protects.
+
+The five keys are `isSuccess`, `context`, `replay`, `errorCode`, `errorMessage` (`PurchaselyRN.m:1433-1439`). **There is no `error` key** — the first draft of this plan asserted one:
 
 ```swift
 func testWebRedemptionBodyCarriesTheSameFiveKeysOnSuccessAndFailure() {
@@ -969,14 +1234,26 @@ func testWebRedemptionBodyCarriesTheSameFiveKeysOnSuccessAndFailure() {
         withSuccess: false, hasContext: false, subscription: nil,
         replay: false, errorCode: "42", errorMessage: "boom"
     )
+    XCTAssertEqual(Set(success.keys),
+                   ["isSuccess", "context", "replay", "errorCode", "errorMessage"])
     XCTAssertEqual(Set(success.keys), Set(failure.keys))
-    // NSNull, not an absent key — this payload's policy differs from the
-    // subscription serializer's. See spec section 8.4.
-    XCTAssertTrue(success["error"] is NSNull)
+
+    // NSNull, not an absent key: this payload's policy differs from the
+    // subscription serializer's, and the JS shape must not change between a
+    // success and a failure. See spec section 8.4.
+    XCTAssertTrue(success["errorCode"] is NSNull)
+    XCTAssertTrue(success["errorMessage"] is NSNull)
+    XCTAssertTrue(success["context"] is NSNull)
+    XCTAssertEqual(failure["errorCode"] as? String, "42")
 }
 ```
 
-Check the real Swift name of `+webRedemptionBodyWithSuccess:hasContext:subscription:replay:errorCode:errorMessage:` before writing it; the Swift importer decides it, and Task 14 must keep whatever name this test uses.
+Check the real Swift name of `+webRedemptionBodyWithSuccess:hasContext:subscription:replay:errorCode:errorMessage:` before writing it; the Swift importer decides it, and Task 12 must produce whatever name this test uses.
+
+Two more translation notes for this file:
+
+- **The event-recorder subclass.** `PurchaselyRNTests.m:479-506` subclasses `PurchaselyRN` and overrides `sendEventWithName:body:` to capture emissions, which is how `emitPresentationCloseRequestedForId:` is tested. Keep that pattern in Swift: `private final class RecordingBridge: PurchaselyRN { override func sendEvent(withName name: String!, body: Any!) { ... } }`. Task 12 must therefore keep `emitPresentationCloseRequested(forId:)` reachable.
+- **`shouldEmit` is declared `Boolean`,** not `BOOL` (`PurchaselyRN.h:38`). Objective-C's `Boolean` imports into Swift as `UInt8`, so compare it against `0` until Task 8 replaces it with a real Swift `Bool`.
 
 - [ ] **Step 3: Run the ported tests against the Objective-C implementation**
 
@@ -1087,6 +1364,9 @@ setter receives nil) instead of translating it."
   - `static var interceptorCallbacks: [String: (String) -> Void]`
   - `static var interceptorKinds: Set<String>`
   - `static func reject(_ reject: RCTPromiseRejectBlock, with error: Error?)`
+  - `static func purchaseResultOrdinal(_:) -> NSNumber?` — Optional, `.none` → nil
+  - `override init()`, which calls `Purchasely.setAppTechnology(.reactNative)`
+  - the three delegate conformances, with stub bodies until Task 12
   - `override func constantsToExport() -> [AnyHashable: Any]!`
   - `override func supportedEvents() -> [String]!`
   - `override static func requiresMainQueueSetup() -> Bool`
@@ -1118,15 +1398,21 @@ final class BridgeSkeletonTests: XCTestCase {
         XCTAssertEqual(swift, objc)
     }
 
-    func testRequiresMainQueueSetupMatches() {
-        XCTAssertEqual(PurchaselyBridge.requiresMainQueueSetup(),
-                       PurchaselyRN.requiresMainQueueSetup())
+    func testRequiresMainQueueSetupIsTrue() {
+        // PurchaselyRN.m:1447 returns YES. Asserted as a literal, not against
+        // the Objective-C class, because a wrong value in BOTH would pass.
+        XCTAssertTrue(PurchaselyBridge.requiresMainQueueSetup())
     }
 
-    func testWithStateIsNotReentrantButSequentialBlocksAreFine() {
-        // Documents constraint 7. Two sequential locked blocks are the shape
-        // closePresentation uses (PurchaselyRN.m:1807 and :1826); nesting them
-        // would deadlock, and this test is where that gets noticed.
+    func testSequentialLockedBlocksDoNotDeadlock() {
+        // Constraint 7 in one assertion: two sequential withState calls are the
+        // shape closePresentation uses (PurchaselyRN.m:1807 and :1826). If an
+        // executor hoists lock()/defer to the enclosing closure, the second
+        // acquisition deadlocks and this test times out rather than failing
+        // fast — the timeout IS the signal.
+        //
+        // The real reentrancy proof lives in Task 12's closePresentation test;
+        // this one only guards the helper.
         PurchaselyBridge.withState { PurchaselyBridge.interceptorKinds.insert("a") }
         PurchaselyBridge.withState { PurchaselyBridge.interceptorKinds.insert("b") }
         XCTAssertEqual(PurchaselyBridge.withState { PurchaselyBridge.interceptorKinds },
@@ -1170,7 +1456,15 @@ Create `packages/purchasely/ios/PurchaselyRN.swift`. Copy the 60 constants from 
 import Foundation
 import Purchasely
 
-class PurchaselyBridge: RCTEventEmitter {
+class PurchaselyBridge: RCTEventEmitter,
+                        PLYEventDelegate,
+                        PLYUserAttributeDelegate,
+                        PLYWebRedemptionDelegate {
+    // The three conformances are declared HERE, in Task 8, because `start`
+    // (Task 9) passes `self` as all three (PurchaselyRN.m:623, :634, :636).
+    // Their method bodies are Task 12's. Until Task 12 lands, satisfy the
+    // protocols with stubs that call PLYRNLogWarn and nothing else, so the
+    // class compiles at every commit boundary.
 
     // MARK: - shared state
     //
@@ -1204,17 +1498,32 @@ class PurchaselyBridge: RCTEventEmitter {
     /// Mirrors the Android bridge's INTERCEPTOR_TIMEOUT_MS = 30_000L.
     static let interceptorTimeoutSeconds: TimeInterval = 30
 
+    // MARK: - init
+    //
+    // `-init` calls `setAppTechnology:PLYAppTechnologyReactNative`
+    // (PurchaselyRN.m:467) and sets shouldEmit = NO. Both must survive: the app
+    // technology is what tags every event this SDK sends as React Native.
+
+    override init() {
+        super.init()
+        Purchasely.setAppTechnology(.reactNative)
+    }
+
     /// Weak, as `_sharedEmitter` was at PurchaselyRN.m:365.
     static weak var sharedEmitter: PurchaselyBridge?
 
-    /// Gate from PurchaselyRN.m: drop events before startObserving.
+    /// Gate from PurchaselyRN.m: drop events before startObserving. Declared
+    /// `Boolean` in the old header, which imported into Swift as `UInt8`; a
+    /// real `Bool` here is the one type change in the port.
     var shouldEmit = false
 
     // MARK: - RCTEventEmitter
 
     override static func requiresMainQueueSetup() -> Bool {
-        // Keep whatever PurchaselyRN.m:1447 returns. Do not "clean this up".
-        false
+        // PurchaselyRN.m:1447 returns YES. Do NOT "align" this with
+        // PurchaselyViewManager.swift:20, which returns false on purpose for a
+        // different reason — Global Constraint 11, and commit 81c5a65.
+        true
     }
 
     override func supportedEvents() -> [String]! {
@@ -1238,13 +1547,25 @@ class PurchaselyBridge: RCTEventEmitter {
         // 60 keys. enums.ts builds the JS enums from them, so every key and
         // every value is a client contract. `.rawValue` on every enum
         // (constraint 5) — a bare enum value would be dropped by the bridge.
+        // Note the QUALIFIED enum names. `PLYLogLevel` is nested under
+        // `PLYLogger` (.swiftinterface:1458); `PLYAttribute` and `PLYThemeMode`
+        // are nested under `Purchasely` (:1337, :1368). The unqualified names
+        // do not compile. Verify each one — Global Constraint 0.
+        //
+        // `purchaseResultOrdinal` returns NSNumber?, and these three cases are
+        // never `.none`, so force them into the dictionary explicitly rather
+        // than letting a nil silently drop a key.
         [
-            "logLevelDebug": PLYLogLevel.debug.rawValue,
-            "logLevelInfo": PLYLogLevel.info.rawValue,
-            "logLevelWarn": PLYLogLevel.warn.rawValue,
-            "logLevelError": PLYLogLevel.error.rawValue,
-            "productResultPurchased": Self.purchaseResultOrdinal(.purchased),
-            // … the remaining 55, in PurchaselyRN.m:472-533 order.
+            "logLevelDebug": PLYLogger.PLYLogLevel.debug.rawValue,
+            "logLevelInfo": PLYLogger.PLYLogLevel.info.rawValue,
+            "logLevelWarn": PLYLogger.PLYLogLevel.warn.rawValue,
+            "logLevelError": PLYLogger.PLYLogLevel.error.rawValue,
+            "productResultPurchased": Self.purchaseResultOrdinal(.purchased) ?? 0,
+            "productResultCancelled": Self.purchaseResultOrdinal(.cancelled) ?? 1,
+            "productResultRestored": Self.purchaseResultOrdinal(.restored) ?? 2,
+            // … the remaining 53, in PurchaselyRN.m:472-533 order.
+            // BridgeExportContractTests.expectedConstants holds the exact
+            // values; that test is how you know you transcribed them right.
         ]
     }
 
@@ -1277,15 +1598,23 @@ class PurchaselyBridge: RCTEventEmitter {
         reject("\(nsError?.code ?? 0)", nsError?.localizedDescription, error)
     }
 
-    /// Ported from `purchaseResultOrdinal` (PurchaselyRN.m:178).
-    static func purchaseResultOrdinal(_ result: PLYPurchaseResult) -> NSNumber {
-        // Keep the exact ordinals PurchaselyRN.m produced: PurchaselyView.swift
-        // documents that it mirrors them.
+    /// Ported from `purchaseResultOrdinal` (PurchaselyRN.m:178-186).
+    ///
+    /// Returns **nil** for `.none`, exactly as the Objective-C function did.
+    /// `PLYPurchaseResult` has four cases (`.swiftinterface:806`), and a
+    /// dismissal with no purchase is `.none`. Mapping it to a number would put
+    /// `purchaseResult: 1` — cancelled — on the wire for every plain dismissal.
+    /// The call sites rely on `dict[key] = nil` removing the key.
+    ///
+    /// Do not copy the fallback in `PurchaselyView.swift:282`; it answers a
+    /// different question.
+    static func purchaseResultOrdinal(_ result: PLYPurchaseResult) -> NSNumber? {
         switch result {
         case .purchased: return 0
         case .cancelled: return 1
         case .restored: return 2
-        @unknown default: return 1
+        case .none: return nil
+        @unknown default: return nil
         }
     }
 }
@@ -1297,10 +1626,34 @@ Then transcribe the remaining 55 constants. Verify each SDK enum case name again
 
 Run the command in Task 6 Step 3. Expected: all `BridgeSkeletonTests` PASS. `testConstantsMatchTheObjectiveCModuleExactly` is the one that catches a mistyped constant, and it compares against the live Objective-C module, so it cannot be fooled by a typo in a literal list.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Add the log helper now, not in Task 14**
+
+Swift cannot call `RCTLogWarn`: it is a variadic macro (`RCTLog.h:37`) over a variadic C function. Tasks 9–13 need it for the enum fallbacks, so define it here rather than leaving `NSLog` markers to sweep up later.
+
+In `packages/purchasely/ios/PurchaselyRN.m`, above the existing `@implementation`:
+
+```objc
+void PLYRNLogWarn(NSString *message) {
+    RCTLogWarn(@"%@", message);
+}
+```
+
+In `packages/purchasely/ios/react-native-purchasely-Bridging-Header.h`, next to the React imports:
+
+```objc
+/// Non-variadic wrapper around RCTLogWarn, for the Swift side. Defined in
+/// PurchaselyRN.m. RCTLogWarn itself is a variadic macro Swift cannot see.
+FOUNDATION_EXPORT void PLYRNLogWarn(NSString *message);
+```
+
+Confirm it is reachable by calling it once from `PurchaselyRN.swift` and building. Task 14 keeps both pieces; the shim inherits the definition.
+
+- [ ] **Step 6: Commit**
 
 ```bash
 git add packages/purchasely/ios/PurchaselyRN.swift \
+        packages/purchasely/ios/PurchaselyRN.m \
+        packages/purchasely/ios/react-native-purchasely-Bridging-Header.h \
         packages/purchasely/ios/PurchaselyTests/BridgeSkeletonTests.swift
 git commit -m "feat(ios): add the Swift bridge class skeleton, unregistered
 
@@ -1364,56 +1717,89 @@ extension PurchaselyBridge {
 
 **Files:** Create `packages/purchasely/ios/PurchaselyRN+Lifecycle.swift`. Test: `packages/purchasely/ios/PurchaselyTests/BridgeLifecycleTests.swift`.
 
-**Source ranges:** `PurchaselyRN.m:536-705` (`start` and its builder-payload parsing, `runningModeFromOrdinal` at `:259`), `:656-705` (`setLogLevel`, `setThemeMode`), `:668-705` (`userLogin`, `userLogout`, `isAnonymous`, `handleDeeplink`), `:955-1000` (`getAnonymousUserId`, `readyToOpenDeeplink`, `allowDeeplink`, `allowCampaigns`), `:1240-1295` (`revokeDataProcessingConsent` and `mapPurposesFromStrings:`), `:1269` (the `NSNotificationCenter` observer), plus `setLanguage`, `setDebugMode`, `userDidConsumeSubscriptionContent`, `synchronize`.
+**Source ranges:** `PurchaselyRN.m:536-705` (`start` and its builder-payload parsing, `runningModeFromOrdinal` at `:259`), `:656-705` (`setLogLevel`, `setThemeMode`), `:668-705` (`userLogin`, `userLogout`, `isAnonymous`, `handleDeeplink`), `:955-1000` (`getAnonymousUserId`, `readyToOpenDeeplink`, `allowDeeplink`, `allowCampaigns`), `:1240-1295` (`revokeDataProcessingConsent` and `mapPurposesFromStrings:`), `:625-638` (the delegate registrations and the `NSNotificationCenter` observer, all **after** `startWithInitialized:` returns), plus `setLanguage`, `setDebugMode`, `userDidConsumeSubscriptionContent`, `synchronize`.
 
-**Interfaces produced:** 16 `@objc` exported methods, plus `@objc func purchasePerformed()` — that one is **called by selector** from the notification centre at `:638`, so it must keep `@objc` even though nothing calls it in Swift.
+**This task owns 16 exported methods, `synchronize` included.** `isEligibleForIntroOffer` sits inside the range above but belongs to **Task 11** — skip it. Do not port a method your task does not own (see Exclusive method ownership).
 
-**The three traps in this range:**
+**Interfaces produced:** 16 `@objc` exported methods, plus `@objc func purchasePerformed()` — **called by selector** from the notification centre at `:638`, so it keeps `@objc` even though no Swift code calls it.
+
+**Depends on Task 8** for the three delegate conformances: `start` passes `self` as the event, user-attribute and web-redemption delegate (`:623`, `:634`, `:636`). If those conformances are missing from `PurchaselyRN.swift`, stop and report rather than adding them here.
+
+**The three traps in this range.** All three were wrong in the first draft of this plan; these are the verified forms.
 
 ```swift
-// 1. Inbound raw values. setLogLevel:(NSInteger) accepted any integer; the
-//    Swift initializer returns nil (constraint: never force-unwrap an SDK enum).
+// 1. Inbound raw values, and the qualified enum name. `setLogLevel:` takes an
+//    NSInteger today, so the Swift parameter stays a primitive (Constraint 4);
+//    the ordinal may be anything, and PLYLogLevel(rawValue:) returns nil for an
+//    unknown one — never force-unwrap it.
+//
+//    PLYLogLevel is nested under PLYLogger, and the setter is a FUNCTION:
+//    `Purchasely.logLevel = x` does not exist (.swiftinterface:1256, :1458).
 @objc(setLogLevel:)
-func setLogLevel(_ logLevel: NSNumber) {   // NSNumber stays non-optional
-    guard let level = PLYLogLevel(rawValue: logLevel.intValue) else {
+func setLogLevel(_ logLevel: Int) {
+    guard let level = PLYLogger.PLYLogLevel(rawValue: logLevel) else {
         PLYRNLogWarn("Unknown log level \(logLevel), keeping the current one")
         return
     }
-    Purchasely.logLevel = level
+    Purchasely.setLogLevel(level)
 }
 
-// 2. The notification observer must survive the port. Register it exactly
-//    where PurchaselyRN.m:638 did, inside start's completion.
+// 2. The observer is registered AFTER `startWithInitialized:` returns, at
+//    PurchaselyRN.m:638 — OUTSIDE the completion, alongside setEventDelegate:
+//    and setUserAttributeDelegate:. Putting it inside the completion means a
+//    failed start never registers it, and changes the timing (Constraint 9).
+//
+//    The name is the literal string "ply_purchasedSubscription". There is no
+//    Notification.Name constant for it.
 NotificationCenter.default.addObserver(
     self, selector: #selector(purchasePerformed),
-    name: .ply_purchasedSubscription, object: nil
+    name: Notification.Name("ply_purchasedSubscription"), object: nil
 )
 
-// 3. `Int(exactly:)`, never `Int(_:)`. PurchaselyRN.m:740 casts a double after
-//    a fmod test that 1e300 passes: in C that is garbage, in Swift Int(1e300)
-//    is a fatal error.
-if let asInt = Int(exactly: value.doubleValue.rounded()) { … } else { … double path … }
+// 3. `Int(exactly:)` on the value itself, with NO `.rounded()`.
+//    PurchaselyRN.m:735-745 receives a plain `double` and takes the integer
+//    path only when `fmod(value, 1.0) == 0`. Rounding first would store 2.5 as
+//    the integer 3. Int(exactly:) returns nil for a fractional, NaN, infinite
+//    or out-of-range value, which is the fmod behaviour plus the 1e300 fix.
+if let asInt = Int(exactly: value) {
+    // integer path
+} else {
+    // double path, exactly as the Objective-C else branch
+}
 ```
-
-`PLYRNLogWarn` does not exist until Task 14. For Tasks 9–13 use `NSLog("[Purchasely] …")` and add a `// TODO(task-14): PLYRNLogWarn` marker; Task 14 Step 6 replaces them all.
 
 ### Task 10: `PurchaselyRN+Attributes.swift`
 
 **Files:** Create `packages/purchasely/ios/PurchaselyRN+Attributes.swift`. Test: `packages/purchasely/ios/PurchaselyTests/BridgeAttributesTests.swift`.
 
-**Source ranges:** `PurchaselyRN.m:715-955` — the 20 `setUserAttributeWith*` methods, `incrementUserAttribute`, `decrementUserAttribute`, `userAttribute`, `userAttributes`, `clearUserAttribute`, `clearUserAttributes`, `clearBuiltInAttributes`, `getBuiltInAttributes`, `getBuiltInAttribute`, `setAttribute`, and the legal-basis mapper at `:705`.
+**Source ranges:** `PurchaselyRN.m:705-955` — the legal-basis mapper at `:705`, then the `setUserAttributeWith*` methods, `incrementUserAttribute`, `decrementUserAttribute`, `userAttribute`, `userAttributes`, `clearUserAttribute`, `clearUserAttributes`, `clearBuiltInAttributes`, `getBuiltInAttributes`, `getBuiltInAttribute`, `setAttribute`.
 
-**Interfaces produced:** 20 `@objc` exported methods plus `static func legalBasis(fromOrdinal:) -> PLYLegalBasis`.
+**Interfaces produced: 21 `@objc` exported methods** (count them off the `RCT_EXPORT_METHOD` / `RCT_REMAP_METHOD` lines in the range; the first draft said 20) plus the mapper below.
 
-**The traps:** `incrementUserAttribute` uses 32-bit `intValue` at `:857` — keep that width, do not widen it to `Int`. The array setters take `NSArray`; declare them `[Any]?` per constraint 4. `userAttribute` reads back arrays, and the read path is where the Android bridge needed `Arguments.makeNativeArray` — check what the iOS read path returns and keep it.
+**The traps:**
+
+```swift
+// 1. The legal-basis mapper takes a STRING, not an ordinal, and returns
+//    PLYDataProcessingLegalBasis. `PLYLegalBasis` does not exist.
+//    PurchaselyRN.m:707-712 upper-cases the input, matches "ESSENTIAL", and
+//    falls back to .optional for nil, a non-string and anything unknown.
+//    enums.ts:87-90 sends 'ESSENTIAL' and 'OPTIONAL'.
+static func legalBasis(from value: String?) -> PLYDataProcessingLegalBasis {
+    value?.uppercased() == "ESSENTIAL" ? .essential : .optional
+}
+```
+
+`incrementUserAttribute` uses `intValue` at `:857`, which in Objective-C is 32-bit. Swift's `NSNumber.intValue` is native-width `Int`, so write **`Int(number.int32Value)`** to keep the truncation behaviour. The array setters take `NSArray` — declare them `[Any]?` per Constraint 4. `userAttribute` reads arrays back; check what the iOS read path returns and keep it (this is where the Android bridge needed `Arguments.makeNativeArray`, per the T14 fix).
+
+Write a unit test for the mapper: `"ESSENTIAL"`, `"essential"`, `"OPTIONAL"`, `"nonsense"` and `nil`. It is four lines of code guarding the GDPR legal basis of all 21 attribute methods.
 
 ### Task 11: `PurchaselyRN+Products.swift`
 
 **Files:** Create `packages/purchasely/ios/PurchaselyRN+Products.swift`. Test: `packages/purchasely/ios/PurchaselyTests/BridgeProductsTests.swift`.
 
-**Source ranges:** `PurchaselyRN.m:1000-1240` — `purchaseWithPlanVendorId`, `restoreAllProducts`, `silentRestoreAllProducts`, `synchronize`, `allProducts`, `productWithIdentifier`, `planWithIdentifier`, `userSubscriptions`, `userSubscriptionsHistory`, `setDynamicOffering`, `getDynamicOfferings`, `removeDynamicOffering`, `clearDynamicOfferings`, `signPromotionalOffer`, `isEligibleForIntroOffer`.
+**Source ranges:** `PurchaselyRN.m:1000-1240` — `purchaseWithPlanVendorId`, `restoreAllProducts`, `silentRestoreAllProducts`, `allProducts`, `productWithIdentifier`, `planWithIdentifier`, `userSubscriptions`, `userSubscriptionsHistory`, `setDynamicOffering`, `getDynamicOfferings`, `removeDynamicOffering`, `clearDynamicOfferings`, `signPromotionalOffer`, `isEligibleForIntroOffer`.
 
-**Interfaces produced:** 15 `@objc` exported methods.
+**Interfaces produced: 14 `@objc` exported methods.** `synchronize` is **Task 9's**, not this task's — declaring it here too produces an invalid `@objc` redeclaration.
 
 **The traps:**
 
@@ -1436,12 +1822,14 @@ The largest and riskiest extension. **Read the whole range before writing anythi
 
 **Files:** Create `packages/purchasely/ios/PurchaselyRN+Presentations.swift`. Test: `packages/purchasely/ios/PurchaselyTests/BridgePresentationsTests.swift`.
 
-**Source ranges:** `PurchaselyRN.m:76-320` (the presentation helpers: `stringFromPresentationAction`, `presentationActionFromString`, `stringFromWebCheckoutProvider`, `presentationToMap`, `presentationErrorToMap`, `closeReasonToRNString`, `applyPresentationDisplayOptions`, `plyParseDimensionMap`, `plyTransitionFromMap`), `:206` (`presentationBuilderFor`), `:1296-1450` (the 3 delegate methods and the web-redemption body), `:1489-1516` (`extractPresentationTargets`), `:1517-1900` (`preloadPresentation`, `displayPresentation`, the default dismiss handler, `closePresentation`, `goBackToPreviousScreen`, `closeAllScreens`, the BYOS methods and `loadedClientPresentationForMap`).
+**Source ranges:** `PurchaselyRN.m:76-320` and `:378-458` (the presentation helpers and the event emitters — `:455` is `emitPresentationCloseRequestedForId:`, which the first draft's range missed: `stringFromPresentationAction`, `presentationActionFromString`, `stringFromWebCheckoutProvider`, `presentationToMap`, `presentationErrorToMap`, `closeReasonToRNString`, `applyPresentationDisplayOptions`, `plyParseDimensionMap`, `plyTransitionFromMap`), `:206` (`presentationBuilderFor`), `:1296-1450` (the 3 delegate methods and the web-redemption body), `:1489-1516` (`extractPresentationTargets`), `:1517-1900` (`preloadPresentation`, `displayPresentation`, the default dismiss handler, `closePresentation`, `goBackToPreviousScreen`, `closeAllScreens`, the BYOS methods and `loadedClientPresentationForMap`).
 
 **Interfaces produced:**
 - 9 `@objc` exported methods
 - `static func presentationToMap(_ presentation: any PLYPresentation) -> [String: Any]` — **`internal`, not `private`**: Task 13 calls it. Swift's private-in-extension exception is per file.
-- `static func webRedemptionBody(withSuccess:hasContext:subscription:replay:errorCode:errorMessage:) -> [String: Any]` — keep the exact Swift name Task 6's test uses
+- `static func webRedemptionBody(withSuccess:hasContext:subscription:replay:errorCode:errorMessage:) -> [String: Any]` — keep the exact Swift name Task 6's test uses. Five keys: `isSuccess`, `context`, `replay`, `errorCode`, `errorMessage`, with `NSNull` for the absent ones on every branch (`:1426-1440`)
+- `static func emitPresentationCloseRequested(forId:)` (`PurchaselyRN.h:69`, `PurchaselyRN.m:455`) — three ported tests drive it through a `sendEvent`-overriding subclass, so it must stay reachable
+- the bodies of the three delegate conformances Task 8 declared: `eventTriggered(_:properties:)` (`:1345`), the user-attribute methods, and `webRedemptionCompleted(result:)` (`:1402`). Replace Task 8's stubs.
 - The 5 static members `PurchaselyView.swift` calls, with the exact signatures in spec section 6. **Target: zero diff in `PurchaselyView.swift`.**
 - `struct PresentationTargets { var placementId: String?; var presentationId: String?; var contentId: String?; var isDefault: Bool }`, replacing the four `__autoreleasing` out-parameters
 
@@ -1485,6 +1873,24 @@ resolve(true)
 //    PLYTransition.init(type:height:width:heightPercentage:backgroundColors:dismissible:)
 //    at .swiftinterface:994, public and non-@objc. This is what replaces
 //    PLYTransitionFactory, and it is goal 3 of the spec in one line.
+```
+
+**One test this task must write.** `closePresentation` is where a widened lock deadlocks the main thread, so prove the two-block shape survives:
+
+```swift
+func testClosePresentationTakesTheLockTwiceWithoutDeadlocking() {
+    // No SDK presentation is needed: the requestId is absent from the
+    // registry, so this drives the `else` branch — which still acquires the
+    // lock twice, once to look up and once to remove. If an executor hoisted
+    // lock()/defer to the closure, this times out.
+    let bridge = PurchaselyRN()
+    let done = expectation(description: "closePresentation returned")
+    DispatchQueue.main.async {
+        bridge.closePresentation("no-such-request")
+        done.fulfill()
+    }
+    wait(for: [done], timeout: 2.0)
+}
 ```
 
 `PLYTransitionFactory.swift` is **not** deleted in this task — `PurchaselyRN.m` still calls it. Task 14 deletes it.
@@ -1571,7 +1977,9 @@ Then in `PurchaselyRN.swift`, add the export name and drop the temporary-name co
 class PurchaselyRN: RCTEventEmitter {
 ```
 
-At this point the project has two `PurchaselyRN` classes and **will not compile**. That is expected until Step 4.
+The `@objc(PurchaselyRN)` attribute is what creates the collision, so add it in the same edit that deletes the Objective-C `@implementation` (Step 4). Between the two the project does not compile; that is expected and it is why they are one commit.
+
+Note for a future migration of this shape: a Swift class named `PurchaselyRN` **without** `@objc(...)` gets a mangled Objective-C name (`react_native_purchasely.PurchaselyRN`) and cannot collide, so the staging name is only needed for tests that must reference both classes at once — Task 8's cross-implementation constants test is the only one.
 
 - [ ] **Step 3: Fix the tests that compared the two implementations**
 
@@ -1625,11 +2033,22 @@ void PLYRNLogWarn(NSString *message) {
 // and break every JS call. BridgeExportContractTests asserts the name.
 @interface RCT_EXTERN_REMAP_MODULE(Purchasely, PurchaselyRN, RCTEventEmitter)
 
-RCT_EXTERN_METHOD(start:(NSDictionary *)options
-                  resolve:(RCTPromiseResolveBlock)resolve
+// `start` is the reason this file cannot be written from memory: TEN
+// segments, the first is an API key and not an options dictionary, and the
+// resolve segment is named `initialized:`. Copied from the pre-port
+// PurchaselyRN.m:536-545.
+RCT_EXTERN_METHOD(start:(NSString * _Nonnull)apiKey
+                  stores:(NSArray * _Nullable)stores
+                  storeKit1:(BOOL)storeKit1
+                  userId:(NSString * _Nullable)userId
+                  logLevel:(NSInteger)logLevel
+                  runningMode:(NSInteger)runningMode
+                  purchaselySdkVersion:(NSString * _Nullable)purchaselySdkVersion
+                  startOptions:(NSDictionary * _Nullable)startOptions
+                  initialized:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 
-RCT_EXTERN_METHOD(userLogin:(NSString *)userId
+RCT_EXTERN_METHOD(userLogin:(NSString * _Nonnull)userId
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 
@@ -1638,12 +2057,18 @@ RCT_EXTERN_METHOD(userLogin:(NSString *)userId
 @end
 ```
 
-Generate the list rather than typing it. Run this and use its output as the starting point, then align each line with the matching Swift `@objc(...)`:
+**Generate the list; do not type it.** Two sources, and they must agree:
 
 ```bash
 cd packages/purchasely/ios
-rg -o '@objc\(([^)]+)\)' -r '$1' PurchaselyRN.swift PurchaselyRN+*.swift | sort
+# what the Swift side declares
+rg -o '@objc\(([^)]+)\)' -r '$1' PurchaselyRN.swift PurchaselyRN+*.swift | sort > /tmp/swift-selectors.txt
+# what the pre-port Objective-C exported, with its parameter types and annotations
+git show HEAD~1:packages/purchasely/ios/PurchaselyRN.m \
+  | rg -A8 'RCT_(EXPORT|REMAP)_METHOD\(' > /tmp/objc-exports.txt
 ```
+
+Take each shim line's **parameter types and nullability annotations from `/tmp/objc-exports.txt`** (Constraint 4: the annotation is copied, not re-derived) and its **selector from `/tmp/swift-selectors.txt`**. A `BOOL`, `NSInteger` or `double` parameter stays that primitive.
 
 - [ ] **Step 5: Delete the four obsolete files**
 
@@ -1655,19 +2080,18 @@ git rm -r Purchasely.xcodeproj
 
 `PurchaselyRN.h` goes because no host app imports it and the React headers reach Swift through `react-native-purchasely-Bridging-Header.h` (Global Constraint 12 — do **not** delete that file too). `Purchasely.xcodeproj` is read by no CI job and no `pod install`, and it still lists the files this task removes.
 
-- [ ] **Step 6: Replace the `NSLog` markers with `PLYRNLogWarn`**
+- [ ] **Step 6: Reduce the phase 1 serializers from `@objc public` to `internal`**
+
+Task 2 and Task 3 made the five serializers plus the hex parser `@objc public` because `PurchaselyRN.m` and `PLYProduct+Hybrid.m` called them from Objective-C. After Step 4 no Objective-C caller remains, so drop both annotations:
 
 ```bash
-rg -n 'TODO\(task-14\)' packages/purchasely/ios
+cd packages/purchasely/ios/Classes/Serialization
+rg -n '@objc public' .
 ```
 
-Replace each marked `NSLog(...)` with `PLYRNLogWarn("…")` and delete the marker. Swift sees `PLYRNLogWarn` because the shim declares it in a `.m` whose header — none — is not needed: add its declaration to `react-native-purchasely-Bridging-Header.h`:
+Each `@objc public extension PLYX` becomes `extension PLYX`, and each `@objc(selector:)` on a member with no remaining Objective-C caller goes too. Then rebuild **both** layouts (Global Constraint 13): the framework-layout build is what proves nothing still needs the generated header.
 
-```objc
-/// Non-variadic wrapper around RCTLogWarn, for the Swift side. Defined in
-/// PurchaselyRN.m; RCTLogWarn itself is a variadic macro that Swift cannot see.
-FOUNDATION_EXPORT void PLYRNLogWarn(NSString *message);
-```
+`PLYRNLogWarn` stays exactly as Task 8 left it — the definition in this file and the declaration in the bridging header.
 
 - [ ] **Step 7: Add the selector-resolution test**
 
@@ -1769,7 +2193,7 @@ both those and the selector-resolution test."
 ## Task 15: Correct the documentation
 
 **Files:**
-- Modify: `packages/purchasely/CLAUDE.md` (9 lines) — or `CLAUDE.md` at the repo root, whichever holds them
+- Modify: `CLAUDE.md` at the **repo root** (`packages/purchasely/CLAUDE.md` does not exist)
 - Modify: `docs/superpowers/specs/2026-09-08-ios-bridge-swift-migration-design.md` (status line)
 
 **Interfaces:** none.
@@ -1782,7 +2206,12 @@ rg -n 'PurchaselyRN\.m|PurchaselyRN\.h|PurchaselyRNTests\.m|Classes/Hybrid|PLYTr
 
 - [ ] **Step 2: Correct them**
 
-Nine lines name the moved files (75, 76, 99, 441, 591, 604, 623, 711, 724). Also fix the two stale test line counts: `CLAUDE.md` says 330 and 265; the real files were 535 and 785 before this work. And the "Modifying Native Bridge / iOS" section must now say: edit the Swift file for the method, **and** add or update its `RCT_EXTERN_METHOD` line in `PurchaselyRN.m`, copying the selector from the Swift `@objc(...)` annotation.
+Nine lines name the moved files (75, 76, 99, 441, 591, 604, 623, 711, 724). Also fix the stale test line counts, which appear on **four** lines (99, 100, 441, 442): `CLAUDE.md` says 330 and 265; the real files were 535 and 785 before this work.
+
+And the "Modifying Native Bridge / iOS" section must now say: edit the Swift file for the method, **and** add or update its `RCT_EXTERN_METHOD` line in `PurchaselyRN.m`, copying the selector from the Swift `@objc(...)` annotation. Add the two facts a future contributor cannot infer:
+
+- The shim is parsed as text; a mismatch fails at run time, not at build time. `BridgeExportContractTests` is the gate.
+- `react-native-purchasely-Bridging-Header.h` is load-bearing despite its name. Do not delete it.
 
 - [ ] **Step 3: Verify no stale reference remains**
 
@@ -1812,6 +2241,54 @@ Release vehicle: `6.2.0`. Do not ship either phase in a `6.1.x` patch.
 
 ---
 
+## Task 16: CI and E2E acceptance
+
+Phase 1 ends by waiting for CI; phase 2 must too. A green local build and a green XCTest bundle prove nothing about a text-parsed shim reaching JS — only the E2E suite exercises the real path.
+
+**Files:** none. This task inspects CI and fixes whatever it reports.
+
+- [ ] **Step 1: Watch the five gates**
+
+```bash
+gh pr checks --watch
+```
+
+The five that must be green, all named in the spec:
+
+| Check | What a failure here means |
+|---|---|
+| `build-ios` | the pod does not compile under static-library linkage |
+| `build-rn-0-86-ios` | it does not compile against the supported RN version |
+| `iOS Build (use_frameworks!)` | a declaration is not `public` enough for a framework header |
+| `iOS Unit Tests (bridge)` | a contract test failed — read which one, do not re-run hoping |
+| `e2e-ios` T1–T30 | the shim does not actually reach JS. **This is the acceptance criterion.** |
+
+- [ ] **Step 2: Read an E2E failure before touching anything**
+
+```bash
+gh run view --log-failed | rg -i 'T[0-9]+|method not found|unrecognized selector' | head -40
+```
+
+`method not found` or `unrecognized selector` names the JS method whose shim line and Swift `@objc(...)` disagree. Fix that one line; do not regenerate the shim.
+
+A test that fails on a *behaviour* rather than a missing method means a translation changed semantics — go back to the Global Constraint it violates (most often 6, 9 or 10) rather than adjusting the test.
+
+- [ ] **Step 3: Confirm the definition of done**
+
+```bash
+fd -e m -e h . packages/purchasely/ios
+rg -n 'DispatchSemaphore|dispatch_semaphore|\.wait\(|dispatch_sync|RunLoop.run' \
+   packages/purchasely/ios --glob '!PurchaselyTests/*'
+```
+
+Expected: three files (`PurchaselyRN.m`, `PurchaselyViewManager.m`, `react-native-purchasely-Bridging-Header.h`), plus an Objective-C test file only if Task 14 Step 7 needed the fallback. The second command returns nothing.
+
+- [ ] **Step 4: Report, do not merge**
+
+Post the five check results on the pull request and stop. **Merging needs an explicit go from the user**, whatever CI says.
+
+---
+
 ## Appendix: Spec coverage
 
 | Spec section | Task |
@@ -1830,9 +2307,9 @@ Release vehicle: `6.2.0`. Do not ship either phase in a `6.1.x` patch.
 | 8.1 lock scope, capture strength | 8 step 3; 12 trap 1; 13 trap 1 |
 | 8.2 `.rawValue`, inbound fallback, `Int(exactly:)` | 1, 3, 8, 9 trap 3, 10 |
 | 8.3 the 13 static C functions, `internal` not `private` | 9, 12 interfaces |
-| 8.4 per-field absence policy | 1, 3, 6 |
+| 8.4 per-field absence policy, populated **and** absent cases | 1 (both fixtures), 3, 6 |
 | 8.5 exported signatures | Global Constraints 3 and 4 |
-| 9 the contract | 1, 5 |
-| 10 tests and CI | 1, 5, 6; 4 step 7; 14 step 8 |
-| 12 phase 1 `@objc public`, the 2 C functions | 2 |
-| 14 definition of done | 4 step 7; 14 steps 9, 10; 15 step 3 |
+| 9 the contract, including exact constant **values** | 1, 5 (`expectedConstants`) |
+| 10 tests and CI | 1, 5, 6; 4 step 7; 14 step 8; **16** |
+| 12 phase 1 `@objc public`, the 2 C functions | 2; reduced to `internal` in 14 step 6 |
+| 14 definition of done | 4 step 7; 14 steps 9, 10; 15 step 3; 16 step 3 |
