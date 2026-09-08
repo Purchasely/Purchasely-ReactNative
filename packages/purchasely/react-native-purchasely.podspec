@@ -19,7 +19,7 @@ Pod::Spec.new do |s|
   s.source_files = "ios/*.{h,m,mm,swift}", "ios/Classes/**/*.{h,m,mm,swift}"
   s.requires_arc = true
 
-  # The pod is Swift-majority since 6.2.0. CocoaPods warns without this.
+  # 6.2.0 is the intended release that makes this pod Swift-majority. CocoaPods warns without this.
   s.swift_versions = ['5.0']
 
   s.dependency "React-Core"

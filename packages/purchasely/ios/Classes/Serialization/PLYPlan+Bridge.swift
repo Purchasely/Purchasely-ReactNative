@@ -8,9 +8,18 @@
 //  `asDictionary()` is a METHOD, matching how the Objective-C category imported
 //  into Swift, so the contract tests read the same before and after the port.
 //
-//  `@objc public` is temporary: PurchaselyRN.m and PLYProduct+Hybrid.m still
-//  call this during phase 1, and a framework-layout target's generated header
-//  carries only public declarations. Task 14 reduces it to `internal`.
+//  `@objc public` on `asDictionary()` is PERMANENT, not a phase-1 scaffold.
+//  PurchaselyRN.m (not yet ported — Task 14) still calls it today through the
+//  compiler-generated `react_native_purchasely-Swift.h`, which the compiler
+//  DOES check. But `PLYSubscription+Hybrid.m` (permanent per amendment A2)
+//  reaches it through its own hand-written `@interface PLYPlan
+//  (BridgeSerialization)` forward declaration — an Objective-C message send
+//  that is RUNTIME dispatch, never checked against this method at compile or
+//  link time. Task 14 removes PurchaselyRN.m's own binding but must NOT drop
+//  `@objc` here: SerializationContractTests'
+//  testPlanAndProductRespondToAsDictionarySelector is the only thing left
+//  that would catch it. (PLYProduct+Hybrid.m, the other stale caller this
+//  comment used to name, was deleted in Task 3.)
 //
 
 import Foundation
@@ -73,8 +82,14 @@ import Purchasely
             dict["currencySymbol"] = currencySymbol
         }
 
-        if let period = localizedPeriod(language: nil) {
-            dict["period"] = period
+        // `period` is the accessor name, but PLYPlan also has a real `period`
+        // property with a different value (Global Constraint 0 shadow trap:
+        // verified via awk '/class PLYPlan :/,/^}/' against the .swiftinterface
+        // extension block). A local named `period` here would silently ship
+        // the wrong string if a later edit hoists this write out of the
+        // if-let, so the local is named localizedPeriodValue instead.
+        if let localizedPeriodValue = localizedPeriod(language: nil) {
+            dict["period"] = localizedPeriodValue
         }
 
         if let introPrice = localizedFullIntroductoryPrice(language: nil) {
