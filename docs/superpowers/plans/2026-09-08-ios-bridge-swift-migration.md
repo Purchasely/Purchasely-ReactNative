@@ -117,6 +117,47 @@ Read off `arm64-apple-ios-simulator.swiftinterface` and the SDK sources on 2026-
 
 ---
 
+## Orchestrator amendments (2026-09-08, after the Task 1 review)
+
+Binding on every task, at the same level as the Global Constraints. Read this block with lines 1-119.
+
+**A1. One branch, one pull request.** Every task commits to `feat/ios-swift-bridge-spec`, which is pull
+request #298. Ignore each phase's `Branch:` line and Task 15's `git push` / `gh pr create` block: the
+orchestrator pushes, and no task creates a branch or a pull request.
+
+**A2. `PLYSubscription` is NOT ported. It stays Objective-C.**
+`packages/purchasely/ios/Classes/Hybrid/PLYSubscription+Hybrid.{h,m}` survives phase 1 unchanged, and
+Task 3 does **not** create `PLYSubscription+Bridge.swift`.
+
+Why: `PLYSubscription.init(from:)` resolves `.product` through `ProductRepository.shared`, which is
+`internal` to the Purchasely module with no injection seam — the SDK's own source carries
+`#warning("This decoding depends on ProductRepository, which cannot be injected")`, the interface marks the
+class `@_hasMissingDesignatedInitializers`, and its only other initializer is `internal`. So no fixture can
+be built, and `integration_test/` never calls `userSubscriptions` either. A port would therefore be the only
+change in this migration with **no automated coverage at any level**, on the one serializer whose per-field
+absence policy is documented to clients in `types.ts:138-141`, and whose `subscriptionSource` is the single
+remaining Global-Constraint-5 `.rawValue` hazard among the five.
+
+Keeping it in Objective-C trades that silent runtime risk for a compile-time one: after Tasks 2-3, its
+`self.plan.asDictionary` and `self.product.asDictionary` calls resolve to **Swift** extension methods, so
+`PLYSubscription+Hybrid.m` must import the pod's generated Swift header. Get that wrong and the three iOS
+build jobs fail loudly, which is the outcome we want. Task 4 keeps `Purchasely_Hybrid.h` alive with only the
+declarations that remain.
+
+Upgrade path: port it when the SDK gives `ProductRepository` an injection seam (the SDK already carries that
+as a TODO). Until then a follow-up ticket tracks it.
+
+**A3. Two gate limitations that no task may paper over.** The Task 1 gate structurally cannot cover:
+- `PLYPlan`'s ten StoreKit-resolved keys (`price`, `amount`, `localizedAmount`, `introAmount`,
+  `currencyCode`, `currencySymbol`, `period`, `introPrice`, `introDuration`, `introPeriod`) — they need a
+  loaded `SKProduct`, so they are only ever asserted *absent*. **Task 2's reviewer hand-diffs those ten emit
+  blocks** against `PLYPlan+Hybrid.m:75-123`.
+- `PLYPlan.commitmentInfo`'s six sub-keys — `commitmentInfo` is populated only by `ProductRepository` after
+  an SK2 load and is explicitly not `Codable`.
+Neither may be "fixed" by relaxing an assertion.
+
+---
+
 # PHASE 1 — Serialization (Pull Request 1)
 
 Branch: `feat/ios-swift-serialization`, based on `main`.
