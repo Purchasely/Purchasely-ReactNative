@@ -10,8 +10,16 @@
 
 // PLYPlan+Hybrid.{h,m} and PLYProduct+Hybrid.{h,m} are gone — `asDictionary`
 // now lives in PLYPlan+Bridge.swift / PLYProduct+Bridge.swift as `@objc
-// public` extension methods. Objective-C only needs the declaration to
-// compile these calls; the Swift extensions supply the bodies at link time.
+// public` extension methods. Objective-C only needs the declaration below to
+// compile these calls; the send itself is Objective-C RUNTIME dispatch to
+// whatever responds to the selector at call time — it creates no link-time
+// reference to the Swift methods, and this forward declaration is never
+// checked against their real signature. So `@objc` on those two methods is
+// PERMANENT: if it were ever dropped, this file would keep compiling and
+// linking, and the crash (`unrecognized selector`) would only surface the
+// first time a real `userSubscriptions` call reaches it. The only thing that
+// catches that ahead of time is
+// SerializationContractTests.testPlanAndProductRespondToAsDictionarySelector.
 // Do NOT import the pod's generated react_native_purchasely-Swift.h here: it
 // is compiled with -import-underlying-module, so importing it from a header
 // inside the umbrella is a cycle, and a .m-only import would differ between

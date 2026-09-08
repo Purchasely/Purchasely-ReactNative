@@ -7,7 +7,6 @@
 //
 
 import XCTest
-import Purchasely
 @testable import react_native_purchasely
 
 final class UIColorPLYHexTests: XCTestCase {
@@ -43,6 +42,17 @@ final class UIColorPLYHexTests: XCTestCase {
             return XCTFail("8-digit form must parse")
         }
         XCTAssertEqual(alpha, 0.5, accuracy: 0.01)
+
+        // #00000080's r/g/b are all zero, so it alone would pass even with
+        // the red and blue shifts transposed. This fixture has three
+        // distinct non-zero channels plus full alpha, so it catches that.
+        guard case let (r8, g8, b8, a8)? = rgba("#112233FF") else {
+            return XCTFail("8-digit form with distinct channels must parse")
+        }
+        XCTAssertEqual(r8, CGFloat(0x11) / 0xff, accuracy: 0.01)
+        XCTAssertEqual(g8, CGFloat(0x22) / 0xff, accuracy: 0.01)
+        XCTAssertEqual(b8, CGFloat(0x33) / 0xff, accuracy: 0.01)
+        XCTAssertEqual(a8, 1.0, accuracy: 0.01)
     }
 
     func testHexParserRejectsGarbageInsteadOfTrapping() {
@@ -55,5 +65,12 @@ final class UIColorPLYHexTests: XCTestCase {
         // Behaviour change: the Objective-C version ignored the scanner
         // result and returned opaque black here. See the Task 4 commit.
         XCTAssertNil(UIColor.ply_fromHex("#GGGGGG"))   // 6 chars, not hex
+
+        // UInt32(_:radix:) accepts a leading sign, which the Objective-C
+        // NSScanner-based parser did not — this is the one semantic change
+        // in the port not forced by the language, and it must be rejected
+        // just like the Objective-C version rejected it (falling back, not
+        // producing opaque black).
+        XCTAssertNil(UIColor.ply_fromHex("+12345"))
     }
 }

@@ -327,4 +327,30 @@ final class SerializationContractTests: XCTestCase {
     // `PLYSubscriptionError.couldntFindProduct` for every JSON payload,
     // populated or sparse. See this task's report for the observed failure
     // text and the consequence for Task 3.
+
+    // MARK: - Objective-C → Swift seam gate
+    //
+    // PLYSubscription+Hybrid.m (Objective-C, permanent per amendment A2) sends
+    // `asDictionary` to `self.plan` and `self.product` through a hand-written
+    // `@interface ... (BridgeSerialization)` forward declaration. That send is
+    // Objective-C RUNTIME dispatch — it creates no link-time reference to the
+    // Swift `@objc` extension methods in PLYPlan+Bridge.swift /
+    // PLYProduct+Bridge.swift, and the compiler never checks the forward
+    // declaration against the real Swift symbol. So if a later change drops
+    // `@objc` from either method, every build stays green and the first
+    // `userSubscriptions` call from JS crashes at runtime with
+    // "unrecognized selector sent to instance". This test is the only thing
+    // that catches that — see the Task 2 review / A2 correction.
+    func testPlanAndProductRespondToAsDictionarySelector() {
+        XCTAssertTrue(
+            PLYPlan.instancesRespond(to: NSSelectorFromString("asDictionary")),
+            "PLYPlan must keep @objc on asDictionary() — PLYSubscription+Hybrid.m " +
+            "sends it via Objective-C runtime dispatch with no link-time check"
+        )
+        XCTAssertTrue(
+            PLYProduct.instancesRespond(to: NSSelectorFromString("asDictionary")),
+            "PLYProduct must keep @objc on asDictionary() — PLYSubscription+Hybrid.m " +
+            "sends it via Objective-C runtime dispatch with no link-time check"
+        )
+    }
 }

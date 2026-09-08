@@ -21,7 +21,14 @@ import UIKit
         // UIColor+PLYHelper.m accepts RRGGBB and RRGGBBAA only. It does NOT
         // accept the 3-digit short form — do not add it here, that would be a
         // behaviour change dressed up as a port.
+        //
+        // UInt32(_:radix:) accepts a leading sign (e.g. "+12345"), which the
+        // Objective-C NSScanner-based parser did not — that string scanned to
+        // 0 and fell back to opaque black. A hex-digit guard, applied to the
+        // string after the '#' prefix is stripped, keeps this port no more
+        // permissive than the code it replaces.
         guard string.count == 6 || string.count == 8,
+              string.allSatisfy(\.isHexDigit),
               let code = UInt32(string, radix: 16) else { return nil }
 
         // The Objective-C version used NSScanner and ignored its result, so a
