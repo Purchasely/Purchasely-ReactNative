@@ -11,7 +11,6 @@
 #import <Purchasely/Purchasely-Swift.h>
 #import "PurchaselyRN.h"
 #import "Purchasely_Hybrid.h"
-#import "UIColor+PLYHelper.h"
 // Compiler-generated Swift interface header for *this* pod (not the native
 // Purchasely SDK's own `Purchasely-Swift.h` above) — exposes `PLYTransitionFactory`
 // (PLYTransitionFactory.swift) to this Objective-C file. CocoaPods derives
