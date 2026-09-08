@@ -20,6 +20,9 @@ Pod::Spec.new do |s|
   s.source_files = "ios/*.{h,m,mm,swift}", "ios/Classes/**/*.{h,m,mm,swift}"
   s.requires_arc = true
 
+  # The pod is Swift-majority since 6.2.0. CocoaPods warns without this.
+  s.swift_versions = ['5.0']
+
   s.dependency "React-Core"
   # The Purchasely iOS SDK comes from Swift Package Manager (ios/PurchaselySPM, added by ios/purchasely_spm.rb).
 

@@ -9,6 +9,5 @@
 #define Purchasely_Hybrid_h
 
 #import "PLYSubscription+Hybrid.h"
-#import "UIViewController+Hybrid.h"
 
 #endif /* Purchasely_Hybrid_h */
