@@ -8,15 +8,19 @@
 #import "PLYSubscription+Hybrid.h"
 #import "Purchasely_Hybrid.h"
 
-// PLYPlan+Hybrid.{h,m} is gone — `asDictionary` now lives in
-// PLYPlan+Bridge.swift as an `@objc public` extension method. Objective-C
-// only needs the declaration to compile this call; the Swift extension
-// supplies the body at link time. Do NOT import the pod's generated
-// react_native_purchasely-Swift.h here: it is compiled with
-// -import-underlying-module, so importing it from a header inside the
-// umbrella is a cycle, and a .m-only import would differ between the
-// static-library and use_frameworks! layouts (CI builds both).
+// PLYPlan+Hybrid.{h,m} and PLYProduct+Hybrid.{h,m} are gone — `asDictionary`
+// now lives in PLYPlan+Bridge.swift / PLYProduct+Bridge.swift as `@objc
+// public` extension methods. Objective-C only needs the declaration to
+// compile these calls; the Swift extensions supply the bodies at link time.
+// Do NOT import the pod's generated react_native_purchasely-Swift.h here: it
+// is compiled with -import-underlying-module, so importing it from a header
+// inside the umbrella is a cycle, and a .m-only import would differ between
+// the static-library and use_frameworks! layouts (CI builds both).
 @interface PLYPlan (BridgeSerialization)
+- (NSDictionary *)asDictionary;
+@end
+
+@interface PLYProduct (BridgeSerialization)
 - (NSDictionary *)asDictionary;
 @end
 
