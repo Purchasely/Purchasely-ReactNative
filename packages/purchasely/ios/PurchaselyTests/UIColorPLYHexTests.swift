@@ -71,10 +71,19 @@ final class UIColorPLYHexTests: XCTestCase {
         // reject "+12345" either — it fed the sign-stripped scan result
         // through regardless and produced opaque black. Rejecting it here
         // is the Swift version deliberately being STRICTER than the
-        // Objective-C one, not matching it. That is safe: no caller can
-        // reach this value today — PurchaselyRN.m only ever feeds this
-        // parser hex strings taken directly from a paywall's backend JSON
-        // colour payload (PurchaselyRN.m:333-334), never a leading '+'.
+        // Objective-C one, not matching it.
+        //
+        // This divergence IS client-reachable, for "+12345" and for every
+        // other malformed input this parser now rejects. The sole caller is
+        // `plyTransitionFromMap` (PurchaselyRN.m:334-335), which reads
+        // `map["backgroundColors"]["light"/"dark"]` out of the `transition`
+        // dictionary a JS caller passes to `displayPresentation` /
+        // `preloadPresentation` — not backend paywall JSON. The Objective-C
+        // NSScanner-based parser returned a colour (often opaque black) for
+        // malformed input such as "FF00ZZ", "0xFFFF" or "FF 000", where
+        // `UInt32(_:radix:)` returns nil; the guard here exists to make that
+        // divergence UNIFORM and predictable across all such input, not to
+        // hide it.
         XCTAssertNil(UIColor.ply_fromHex("+12345"))
     }
 }
