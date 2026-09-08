@@ -23,13 +23,15 @@ Make the iOS half of the React Native bridge Swift.
 3. **Remove the `@objc`-only limit on the SDK API.** Precisely: the Objective-C
    bridge sees the SDK through its generated `Purchasely-Swift.h`, so it sees
    only the `@objc` surface. Swift removes that limit. It does **not** remove the
-   `public`-only limit: the SDK's `.swiftinterface` keeps `PLYPromoOffer.publicId`
-   internal (`.swiftinterface:847`) and `PLYPlan` exposes no public non-`@objc`
-   member, so the two gaps the bridge documents at `PurchaselyRN.m:1992` and
-   `PLYPlan+Hybrid.m:52-60` stay closed. What Swift genuinely unlocks:
-   `PLYTransition.init(type:height:width:...)`, `PLYDimension`, and
-   `PLYPresentationBuilder.from(screenId:)`. The first of those is the entire
-   reason `PLYTransitionFactory.swift` exists.
+   `public`-only limit. Verified against the framework's plain
+   `arm64-apple-ios-simulator.swiftinterface`: `PLYPromoOffer` exposes only
+   `vendorId` and `storeOfferId`, so the two gaps the bridge documents at
+   `PurchaselyRN.m:1992` and `PLYPlan+Hybrid.m:52-60` stay closed in Swift too.
+   What Swift genuinely unlocks, all `public` and non-`@objc` in that file:
+   `PLYTransition.init(type:height:width:...)` (line 994), its `drawer(height:)`
+   and `popin(width:height:)` factories (1009-1010), the `PLYDimension` enum
+   (1150), and `PLYPresentationBuilder.from(screenId:)` (756). The first is the
+   entire reason `PLYTransitionFactory.swift` exists.
 
 ### Non-goals
 
@@ -55,7 +57,7 @@ Every number here was re-counted after review. The first draft had six wrong.
 | Delegates | `PLYEventDelegate`, `PLYUserAttributeDelegate`, `PLYWebRedemptionDelegate` | `PurchaselyRN.h` |
 | Serialization | **15 files**, 540 lines, 7 categories plus one aggregate header | `ios/Classes/Hybrid/` |
 | File-scope state | 3 collections, 1 lock object, plus `_sharedViewController` and `_sharedEmitter` | lines 43–53, 362–365 |
-| Static C functions | 13, two of them `FOUNDATION_EXPORT` in a Hybrid header | `PLYPlan+Hybrid.h:15-17` |
+| Static C functions | 13 in `PurchaselyRN.m`, plus 2 `FOUNDATION_EXPORT` free functions in a Hybrid header | `rg '^static [a-zA-Z].*\(.*\) \{'`; `PLYPlan+Hybrid.h:15-17` |
 | `dispatch_async(main)` | **34** | `rg -c 'dispatch_async'` |
 | Blocking primitives | none | no `dispatch_semaphore`, no `group_wait`, no `dispatch_sync` |
 | Architecture | legacy bridge on the New Architecture interop layer | `codegenConfig: null`; `React/Fabric/.../LegacyViewManagerInterop/` present in RN 0.86 |
@@ -106,7 +108,10 @@ Verified in `example/node_modules/react-native` at 0.86.0.
    `_RCT_EXTERN_REMAP_METHOD`, private by its underscore. So the 7
    `RCT_REMAP_METHOD` sites cannot be transcribed as remaps. **Design rule:** every
    exported Swift method carries an explicit `@objc(selector:)` whose first
-   segment equals its JS name. Two selectors therefore change —
+   segment equals its JS name. Verified on the 7 sites: 5 already satisfy that
+   (`isAnonymous` 694, `userAttribute` 869, `getBuiltInAttribute` 935,
+   `getAnonymousUserId` 955, `productWithIdentifier` 1111), so exactly two
+   selectors change —
    `restoreAllProducts` becomes `restoreAllProducts:reject:` (today
    `resolve:reject:`, line 1052) and `silentRestoreAllProducts` becomes
    `silentRestoreAllProducts:reject:` (today `silentRestoreWithResolve:reject:`,
@@ -299,10 +304,14 @@ proposed.
 
 `_sharedEmitter` is weak (`:365`) and stays weak static storage.
 
-The reason the capture question is small: the only instance member those strongly
-capturing closures use is the `reject:with:` helper (`:1454-1456`), which reads
-no instance state. **Make it a `static func`.** The closures then capture nothing
-and the whole class of hang disappears.
+The reason the capture question is small, verified: the only instance member the
+strongly capturing blocks use is the `reject:with:` helper, at 18 sites (627,
+651, 679, 989, 992, 1025, 1033, 1042, 1047, 1061, 1074, 1086, 1106, 1123, 1139,
+1157, 1176), and it reads no instance state (`:1454-1456`). The `self.shouldEmit`
+and `sendEventWithName` uses are all in delegate methods, not in blocks.
+**Make `reject:with:` a `static func`.** Those closures then capture nothing and
+the whole class of hang disappears. The per-closure rule above still governs, in
+case a block is found that does touch instance state.
 
 ### 8.2 Enums
 
