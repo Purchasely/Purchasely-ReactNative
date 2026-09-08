@@ -6,7 +6,14 @@
 //
 
 #import "PLYProduct+Hybrid.h"
-#import "PLYPlan+Hybrid.h"
+// Compiler-generated Swift interface header for *this* pod, needed here for
+// `PLYPlan.asDictionary()` (PLYPlan+Bridge.swift). Copied verbatim from
+// PurchaselyRN.m:24-28 — see that file for why the #if is needed.
+#if __has_include(<react_native_purchasely/react_native_purchasely-Swift.h>)
+#import <react_native_purchasely/react_native_purchasely-Swift.h>
+#else
+#import "react_native_purchasely-Swift.h"
+#endif
 
 @implementation PLYProduct (Hybrid)
 

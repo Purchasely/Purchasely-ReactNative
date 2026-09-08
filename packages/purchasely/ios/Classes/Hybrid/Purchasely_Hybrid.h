@@ -8,7 +8,6 @@
 #ifndef Purchasely_Hybrid_h
 #define Purchasely_Hybrid_h
 
-#import "PLYPlan+Hybrid.h"
 #import "PLYProduct+Hybrid.h"
 #import "PLYSubscription+Hybrid.h"
 #import "PLYOfferSignature+Hybrid.h"
