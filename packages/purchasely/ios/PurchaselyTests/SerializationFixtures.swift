@@ -6,9 +6,13 @@
 //  `init(from decoder:)`. So a fixture is JSON. The wire keys are each type's
 //  `enum CodingKeys` in /Users/kevin/Purchasely/iOS/Sources/Purchasely/.
 //
-//  Each type gets TWO fixtures: `populated`, with every optional field set,
-//  and `sparse`, with only the required fields. The pair is what proves the
-//  per-field absence policy, which is the one thing Swift silently changes.
+//  Each type gets TWO fixtures: `populated`, with the fields this contract
+//  gate actually needs set, and `sparse`, with only the required fields. The
+//  pair is what proves the per-field absence policy, which is the one thing
+//  Swift silently changes. "Populated" is NOT "every optional field": plan
+//  omits `level` and `promo_offers`, product omits `icon`, presentationPlan
+//  omits `commitment_billing_type` — none of those three are read by any
+//  serializer assertion here, so leaving them out does not weaken the gate.
 //
 //  PLYSubscription is NOT included here. Its `init(from:)` resolves `.product`
 //  via the SDK-internal `ProductRepository.shared.getProduct(containingPlan:)`
