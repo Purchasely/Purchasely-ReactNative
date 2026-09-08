@@ -354,6 +354,14 @@ static PLYTransition *plyTransitionFromMap(NSDictionary *map) {
                                    dismissible:dismissible];
 }
 
+/// Non-variadic wrapper around RCTLogWarn, for the Swift side. RCTLogWarn is a
+/// variadic macro (RCTLog.h:37) over a variadic C function, so Swift cannot
+/// call it directly. Declared in the bridging header; Task 14 keeps both
+/// pieces, the shim inherits this definition.
+void PLYRNLogWarn(NSString *message) {
+    RCTLogWarn(@"%@", message);
+}
+
 @implementation PurchaselyRN
 
 RCT_EXPORT_MODULE(Purchasely);
