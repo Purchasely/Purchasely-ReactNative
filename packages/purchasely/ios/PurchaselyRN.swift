@@ -18,14 +18,14 @@ class PurchaselyBridge: RCTEventEmitter,
                         PLYUserAttributeDelegate,
                         PLYWebRedemptionDelegate {
     // The three conformances are declared HERE, in Task 8, because `start`
-    // (Task 9) passes `self` as all three (PurchaselyRN.m:623, :634, :636).
+    // (Task 9) passes `self` as all three (PurchaselyRN.m:617, :628, :630).
     // Their method bodies are Task 12's. Until Task 12 lands, satisfy the
     // protocols with stubs that call PLYRNLogWarn and nothing else, so the
     // class compiles at every commit boundary.
 
     // MARK: - shared state
     //
-    // Ported from the file-scope statics at PurchaselyRN.m:43-53. Swift
+    // Ported from the file-scope statics at PurchaselyRN.m:41-50. Swift
     // initializes a static lazily and exactly once, thread-safely, so
     // ensurePresentationState() and its dispatch_once are gone.
 
@@ -58,7 +58,7 @@ class PurchaselyBridge: RCTEventEmitter,
     // MARK: - init
     //
     // `-init` calls `setAppTechnology:PLYAppTechnologyReactNative`
-    // (PurchaselyRN.m:467) and sets shouldEmit = NO. Both must survive: the app
+    // (PurchaselyRN.m:461) and sets shouldEmit = NO. Both must survive: the app
     // technology is what tags every event this SDK sends as React Native.
 
     override init() {
@@ -66,7 +66,7 @@ class PurchaselyBridge: RCTEventEmitter,
         Purchasely.setAppTechnology(.reactNative)
     }
 
-    /// Weak, as `_sharedEmitter` was at PurchaselyRN.m:365.
+    /// Weak, as `_sharedEmitter` was at PurchaselyRN.m:371.
     static weak var sharedEmitter: PurchaselyBridge?
 
     /// Gate from PurchaselyRN.m: drop events before startObserving. Declared
@@ -77,7 +77,7 @@ class PurchaselyBridge: RCTEventEmitter,
     // MARK: - RCTEventEmitter
 
     override static func requiresMainQueueSetup() -> Bool {
-        // PurchaselyRN.m:1447 returns YES. Do NOT "align" this with
+        // PurchaselyRN.m:1441 returns YES. Do NOT "align" this with
         // PurchaselyViewManager.swift:20, which returns false on purpose for a
         // different reason — Global Constraint 11, and commit 81c5a65.
         true
@@ -200,11 +200,11 @@ class PurchaselyBridge: RCTEventEmitter,
 
     // MARK: - errors
 
-    /// Ported from `-reject:with:` (PurchaselyRN.m:1454-1456), made `static`
+    /// Ported from `-reject:with:` (PurchaselyRN.m:1448-1450), made `static`
     /// on purpose: it reads no instance state, so the 18 closures that called
     /// it capture nothing and the whole [weak self] question disappears.
     ///
-    /// The error stays Optional: `PurchaselyRN.m:1455` messages a nil error and
+    /// The error stays Optional: `PurchaselyRN.m:1449` messages a nil error and
     /// gets code "0" with a nil message. Reproduce that, do not force-unwrap
     /// and do not return early.
     static func reject(_ reject: RCTPromiseRejectBlock, with error: Error?) {
@@ -212,7 +212,7 @@ class PurchaselyBridge: RCTEventEmitter,
         reject("\(nsError?.code ?? 0)", nsError?.localizedDescription, error)
     }
 
-    /// Ported from `purchaseResultOrdinal` (PurchaselyRN.m:177-186).
+    /// Ported from `purchaseResultOrdinal` (PurchaselyRN.m:177-185).
     ///
     /// Returns **nil** for `.none`, exactly as the Objective-C function did.
     /// `PLYPurchaseResult` has four cases (`.swiftinterface:806`), and a
@@ -241,12 +241,20 @@ class PurchaselyBridge: RCTEventEmitter,
     // requirements; `onUserAttributeSet`/`onUserAttributeRemoved` are
     // `@objc optional` on PLYUserAttributeDelegate, so no stub is required for
     // them to conform — implemented anyway to keep Task 12's diff additive.
+    //
+    // PLYUserAttributeDelegate declares TWO onUserAttributeSet overloads (4-arg
+    // and 5-arg — .swiftinterface, awk '/protocol PLYUserAttributeDelegate/,/^}/').
+    // The Objective-C module implements ONLY the 5-argument one
+    // (PurchaselyRN.m:1351-1355) and puts processingLegalBasis into the
+    // USER_ATTRIBUTE_SET_LISTENER body (:1367). Implementing the 4-arg
+    // overload here instead would silently drop processingLegalBasis from
+    // that event, so only the 5-arg overload is implemented — never both.
 
     func eventTriggered(_ event: PLYEvent, properties: [String: Any]?) {
         PLYRNLogWarn("PurchaselyBridge.eventTriggered stub — implemented in Task 12")
     }
 
-    func onUserAttributeSet(key: String, type: PLYUserAttributeType, value: Any?, source: PLYUserAttributeSource) {
+    func onUserAttributeSet(key: String, type: PLYUserAttributeType, value: Any?, source: PLYUserAttributeSource, processingLegalBasis: PLYDataProcessingLegalBasis) {
         PLYRNLogWarn("PurchaselyBridge.onUserAttributeSet stub — implemented in Task 12")
     }
 

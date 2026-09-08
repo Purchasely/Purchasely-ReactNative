@@ -47,6 +47,34 @@ final class BridgeSkeletonTests: XCTestCase {
         PurchaselyBridge.withState { PurchaselyBridge.interceptorKinds.removeAll() }
     }
 
+    func testImplementsOnlyTheFiveArgumentUserAttributeSetOverload() {
+        // PLYUserAttributeDelegate declares two onUserAttributeSet overloads
+        // (.swiftinterface, protocol PLYUserAttributeDelegate). The
+        // Objective-C module implements only the 5-argument one
+        // (PurchaselyRN.m:1351-1355), which carries processingLegalBasis into
+        // the USER_ATTRIBUTE_SET_LISTENER body (:1367). Implementing the
+        // 4-argument overload instead would silently drop
+        // processingLegalBasis from that event, so pin both: responds to the
+        // 5-arg selector, does not respond to the 4-arg one.
+        let bridge = PurchaselyBridge()
+        let fiveArg = NSSelectorFromString("onUserAttributeSetWithKey:type:value:source:processingLegalBasis:")
+        let fourArg = NSSelectorFromString("onUserAttributeSetWithKey:type:value:source:")
+        XCTAssertTrue(bridge.responds(to: fiveArg))
+        XCTAssertFalse(bridge.responds(to: fourArg))
+    }
+
+    func testPurchaseResultOrdinalCoversEveryCase() {
+        // PLYPurchaseResult has four cases (.swiftinterface, enum
+        // PLYPurchaseResult): .purchased .cancelled .restored .none.
+        // `.none` maps to nil, not to cancelled, so the constants gate
+        // (which falls back with `?? 1`) cannot catch a regression here —
+        // this test pins the ordinals directly.
+        XCTAssertEqual(PurchaselyBridge.purchaseResultOrdinal(.purchased), 0)
+        XCTAssertEqual(PurchaselyBridge.purchaseResultOrdinal(.cancelled), 1)
+        XCTAssertEqual(PurchaselyBridge.purchaseResultOrdinal(.restored), 2)
+        XCTAssertNil(PurchaselyBridge.purchaseResultOrdinal(.none))
+    }
+
     func testRejectWithNilErrorProducesCodeZeroAndNoMessage() {
         // PurchaselyRN.m:1455 messages a nil error and gets code "0" with a nil
         // message. Swift must not force-unwrap or return early here.
