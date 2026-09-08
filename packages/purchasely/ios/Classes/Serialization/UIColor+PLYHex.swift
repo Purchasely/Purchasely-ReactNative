@@ -1,7 +1,15 @@
 //
 //  UIColor+PLYHex.swift
 //  Ported from UIColor+PLYHelper.m. Parses the colour forms a paywall's
-//  backend JSON carries. `@objc public` is temporary — see PLYPlan+Bridge.swift.
+//  backend JSON carries.
+//
+//  `@objc public` here is temporary, UNLIKE PLYPlan+Bridge.swift and
+//  PLYProduct+Bridge.swift, whose `@objc` is now permanent because
+//  PLYSubscription+Hybrid.m (permanent per amendment A2) reaches them through
+//  a hand-written forward declaration. Nothing under Hybrid/ calls
+//  `ply_fromHex`; only `PurchaselyRN.m` does, directly and compiler-checked
+//  via the generated Swift header. Once Task 14 replaces that call site with
+//  Swift, this can drop to `internal`.
 //
 
 import UIKit

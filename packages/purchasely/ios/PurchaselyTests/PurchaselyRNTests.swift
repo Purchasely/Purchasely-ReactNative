@@ -9,12 +9,13 @@
 //  later Swift port (Tasks 8-14) shows up as a test failure instead of being
 //  masked by the language change happening at the same time as the port.
 //
-//  Three tests were dropped, not ported: testSharedViewControllerInitialization,
+//  Four tests were dropped, not ported: testSharedViewControllerInitialization,
 //  testSharedViewControllerSingleton and testSetSharedViewController exercised
 //  `+sharedViewController`, and testShouldReopenPaywallDefault exercised
 //  `shouldReopenPaywall` — Task 7 deletes both members (along with
-//  presentedPresentationViewController), so a test for either would not
-//  compile against the surface Task 7 leaves behind.
+//  presentedPresentationViewController, which had no dedicated test), so a
+//  test for either would not compile against the surface Task 7 leaves
+//  behind.
 //
 
 import XCTest
@@ -100,8 +101,16 @@ final class PurchaselyRNTests: XCTestCase {
     // MARK: - Constants Export Tests
 
     func testConstantsExport() {
+        // Ported from testConstantsExport in PurchaselyRNTests.m, which
+        // asserted both "not nil" and "is a dictionary". `constants()`
+        // already returns a non-Optional `[String: Any]`, so an
+        // XCTAssertNotNil on it can never fail — the Swift type system
+        // proves both of those for free. The one thing it does NOT prove is
+        // that constantsToExport() actually populated the dictionary rather
+        // than silently falling back to the helper's `[:]` default, so
+        // assert that instead.
         let constants = constants()
-        XCTAssertNotNil(constants, "Constants should not be nil")
+        XCTAssertFalse(constants.isEmpty, "Constants should not be empty")
     }
 
     func testLogLevelConstants() {
@@ -497,6 +506,16 @@ final class PurchaselyRNTests: XCTestCase {
         // (the JS-programmatic close path) must never itself emit CLOSE_REQUESTED —
         // that event is reserved for the native SDK asking to close on its own via
         // the onCloseRequested hook wired at preload/display time.
+        // `startObserving` sets the class-wide `_sharedEmitter` static to
+        // `self` (PurchaselyRN.m:1305), so the recorder observes whichever
+        // instance last started observing — not necessarily the instance a
+        // caller invokes a method on. The original Objective-C test
+        // exercised that: it called closePresentation: on a PLAIN
+        // `self.purchaselyModule`, a different instance from the recorder,
+        // to prove the emission path routes through the shared emitter
+        // rather than through `self`. Match that here instead of invoking
+        // on the recorder itself, which would trivially pass regardless of
+        // whether the shared-emitter routing is right.
         let recorder = RecordingBridge()
         recorder.startObserving()
 
@@ -505,9 +524,9 @@ final class PurchaselyRNTests: XCTestCase {
         // send won't compile — invoke it via its IMP instead.
         typealias ClosePresentationFn = @convention(c) (AnyObject, Selector, NSString) -> Void
         let selector = NSSelectorFromString("closePresentation:")
-        let imp = recorder.method(for: selector)
+        let imp = purchaselyModule.method(for: selector)
         let closePresentation = unsafeBitCast(imp, to: ClosePresentationFn.self)
-        closePresentation(recorder, selector, "req-programmatic-close")
+        closePresentation(purchaselyModule, selector, "req-programmatic-close")
 
         // closePresentation: dispatches its work onto the main queue; enqueue a
         // second block after it to drain the queue in order before asserting.

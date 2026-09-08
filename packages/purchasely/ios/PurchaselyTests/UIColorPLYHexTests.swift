@@ -67,10 +67,14 @@ final class UIColorPLYHexTests: XCTestCase {
         XCTAssertNil(UIColor.ply_fromHex("#GGGGGG"))   // 6 chars, not hex
 
         // UInt32(_:radix:) accepts a leading sign, which the Objective-C
-        // NSScanner-based parser did not — this is the one semantic change
-        // in the port not forced by the language, and it must be rejected
-        // just like the Objective-C version rejected it (falling back, not
-        // producing opaque black).
+        // NSScanner-based parser did not. The Objective-C version did NOT
+        // reject "+12345" either — it fed the sign-stripped scan result
+        // through regardless and produced opaque black. Rejecting it here
+        // is the Swift version deliberately being STRICTER than the
+        // Objective-C one, not matching it. That is safe: no caller can
+        // reach this value today — PurchaselyRN.m only ever feeds this
+        // parser hex strings taken directly from a paywall's backend JSON
+        // colour payload (PurchaselyRN.m:333-334), never a leading '+'.
         XCTAssertNil(UIColor.ply_fromHex("+12345"))
     }
 }
