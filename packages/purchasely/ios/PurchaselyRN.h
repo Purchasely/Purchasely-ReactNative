@@ -35,13 +35,6 @@
 + (nonnull NSDictionary<NSString *, id> *)userSubscriptionStatusBodyWithIsActive:(BOOL)isActive
                                                                           reason:(PLYUserSubscriptionStatusReason)reason
                                                                     subscription:(nullable NSDictionary *)subscription;
-
-@property (nonatomic, retain) UIViewController* presentedPresentationViewController;
-
-@property (class, nonatomic, strong) UIViewController *sharedViewController;
-
-@property (nonatomic, assign) Boolean shouldReopenPaywall;
-
 @property (nonatomic, assign) Boolean shouldEmit;
 
 /// Look up a presentation that was preloaded through `preloadPresentation:` by
