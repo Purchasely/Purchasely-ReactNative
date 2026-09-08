@@ -644,7 +644,7 @@ RCT_EXPORT_METHOD(isEligibleForIntroOffer:(NSString * _Nonnull)planVendorId
     dispatch_async(dispatch_get_main_queue(), ^{
         [Purchasely planWith:planVendorId
                      success:^(PLYPlan * _Nonnull plan) {
-            [plan isEligibleForIntroductoryOffer:^(BOOL isEligible) {
+            [plan isUserEligibleForIntroductoryOfferWithCompletion:^(BOOL isEligible) {
                 resolve(@(isEligible));
             }];
         } failure:^(NSError * _Nullable error) {
@@ -1186,7 +1186,7 @@ RCT_EXPORT_METHOD(setDynamicOffering:(NSString *)reference
                   reject:(RCTPromiseRejectBlock)reject)
 {
     dispatch_async(dispatch_get_main_queue(), ^{
-      [Purchasely setDynamicOfferingWithReference:reference planVendorId:planVendorId offerVendorId:offerId billingPlanType:PLYBillingPlanTypeFromRNString(billingPlanType) completion:^(BOOL result) {
+      [Purchasely setDynamicOfferingWithReference:reference planVendorId:planVendorId offerVendorId:offerId billingPlanType:[PLYPlan billingPlanTypeFromRNString:billingPlanType] completion:^(BOOL result) {
         resolve(@(result));
       }];
     });
@@ -1206,7 +1206,7 @@ RCT_EXPORT_METHOD(getDynamicOfferings:(RCTPromiseResolveBlock)resolve
                 if (offering.offerId != nil) {
                     map[@"offerVendorId"] = offering.offerId;
                 }
-                map[@"billingPlanType"] = PLYBillingPlanTypeToRNString(offering.billingPlanType);
+                map[@"billingPlanType"] = [PLYPlan rnStringFromBillingPlanType:offering.billingPlanType];
                 [result addObject:map];
             }
             resolve(result);
