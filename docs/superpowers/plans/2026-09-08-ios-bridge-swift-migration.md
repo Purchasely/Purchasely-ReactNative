@@ -138,11 +138,23 @@ change in this migration with **no automated coverage at any level**, on the one
 absence policy is documented to clients in `types.ts:138-141`, and whose `subscriptionSource` is the single
 remaining Global-Constraint-5 `.rawValue` hazard among the five.
 
-Keeping it in Objective-C trades that silent runtime risk for a compile-time one: after Tasks 2-3, its
-`self.plan.asDictionary` and `self.product.asDictionary` calls resolve to **Swift** extension methods, so
-`PLYSubscription+Hybrid.m` must import the pod's generated Swift header. Get that wrong and the three iOS
-build jobs fail loudly, which is the outcome we want. Task 4 keeps `Purchasely_Hybrid.h` alive with only the
-declarations that remain.
+After Tasks 2-3, its `self.plan.asDictionary` and `self.product.asDictionary` calls resolve to **Swift**
+`@objc` extension methods, reached through a hand-written `@interface PLYPlan (BridgeSerialization)`
+forward declaration in the `.m`. Task 4 keeps `Purchasely_Hybrid.h` alive with only the declarations that
+remain.
+
+**A2 correction (after the Task 2 review).** An earlier draft of this block claimed that getting that seam
+wrong would fail the iOS build jobs. **That is false.** An Objective-C message send to a Swift `@objc`
+extension method is Objective-C *runtime* dispatch and creates no link-time reference, and the forward
+declaration is never checked against the Swift symbol. So if a later task drops `@objc` from
+`PLYPlan.asDictionary` or `PLYProduct.asDictionary`, every build stays green and the first
+`userSubscriptions` call from JS crashes with `unrecognized selector sent to instance`.
+
+The tie is therefore a **test**, not the compiler: `SerializationContractTests` asserts
+`PLYPlan.instancesRespond(to: NSSelectorFromString("asDictionary"))` and the same for `PLYProduct`. That is
+what makes the seam fail loudly in CI. Consequently **`@objc` on those two `asDictionary` methods is
+permanent, not a phase-1 scaffold** — Task 14 must NOT reduce them to `internal` while
+`PLYSubscription+Hybrid.m` exists.
 
 Upgrade path: port it when the SDK gives `ProductRepository` an injection seam (the SDK already carries that
 as a TODO). Until then a follow-up ticket tracks it.
