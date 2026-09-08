@@ -156,6 +156,19 @@ what makes the seam fail loudly in CI. Consequently **`@objc` on those two `asDi
 permanent, not a phase-1 scaffold** — Task 14 must NOT reduce them to `internal` while
 `PLYSubscription+Hybrid.m` exists.
 
+**Timing of that hazard — it is not live yet.** The fix lot tried to demonstrate it and could not, which is
+the useful result. Today `PurchaselyRN.m` still calls `asDictionary` at **15 sites** and imports the pod's
+generated `react_native_purchasely-Swift.h`, so the compiler *does* check those two selectors: dropping
+`@objc` right now fails the build with 8 errors, it does not produce a green build. The runtime-only,
+uncompiler-checked seam goes live **only after Task 14** strips `PurchaselyRN.m` to the export shim and
+removes those 15 call sites. From that commit onward `PLYSubscription+Hybrid.m`'s hand-written
+`@interface PLYPlan (BridgeSerialization)` forward declaration is the sole consumer, nothing checks it, and
+the selector test is the only guard.
+
+So **Task 14 owns the mutation proof that was unreachable earlier**: after the swap, drop `@objc` from
+`PLYPlan.asDictionary`, and observe the selector test go **red while the build stays green**. That
+observation is the acceptance criterion for this seam, and it is only possible once Task 14 has landed.
+
 Upgrade path: port it when the SDK gives `ProductRepository` an injection seam (the SDK already carries that
 as a TODO). Until then a follow-up ticket tracks it.
 
