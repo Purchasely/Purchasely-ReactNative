@@ -99,6 +99,54 @@ final class SerializationContractTests: XCTestCase {
         XCTAssertNil(dict["commitmentInfo"])
     }
 
+    /// Exact key sets, read off PLYPlan+Hybrid.m: the 9 unconditional keys
+    /// (planAlwaysPresent), plus name/productId on the populated fixture
+    /// (the ten StoreKit-resolved keys and commitmentInfo stay absent even
+    /// when "populated" — no SKProduct is loaded in a unit test, Amendment
+    /// A3). A port that ADDS a key must fail this, not just widen silently.
+    func testPlanPopulatedKeySetIsExact() throws {
+        let dict = try SerializationFixtures.plan(populated: true).asDictionary()
+        let expected = Self.planAlwaysPresent.union(["name", "productId"])
+        XCTAssertEqual(Set(dict.keys), expected)
+    }
+
+    func testPlanSparseKeySetIsExact() throws {
+        let dict = try SerializationFixtures.plan(populated: false).asDictionary()
+        XCTAssertEqual(Set(dict.keys), Self.planAlwaysPresent)
+    }
+
+    /// [Hole 3] PLYPlan+Hybrid.m:10-23's two billing-plan-type mappers are
+    /// Task 2's named deliverable and had zero coverage. Pure functions over
+    /// an enum, pinned in both directions for every case plus the fallback.
+    /// Cases read off the SDK interface (Global Constraint 0):
+    /// `awk '/enum PLYBillingPlanType/,/^}/' "$SI"` → .unspecified .upFront .monthly.
+    func testBillingPlanTypeToRNStringForEveryCase() {
+        XCTAssertEqual(PLYBillingPlanTypeToRNString(.upFront), "upFront")
+        XCTAssertEqual(PLYBillingPlanTypeToRNString(.monthly), "monthly")
+        XCTAssertEqual(PLYBillingPlanTypeToRNString(.unspecified), "unspecified")
+    }
+
+    func testBillingPlanTypeFromRNStringForEveryCaseAndFallback() {
+        XCTAssertEqual(PLYBillingPlanTypeFromRNString("upFront"), .upFront)
+        XCTAssertEqual(PLYBillingPlanTypeFromRNString("monthly"), .monthly)
+        XCTAssertEqual(PLYBillingPlanTypeFromRNString("unspecified"), .unspecified)
+        // Unknown / nil input falls back to .unspecified (PLYPlan+Hybrid.h:17).
+        XCTAssertEqual(PLYBillingPlanTypeFromRNString("garbage"), .unspecified)
+        XCTAssertEqual(PLYBillingPlanTypeFromRNString(nil), .unspecified)
+    }
+
+    /// [Hole 4] The five coalesced offer* defaults (PLYPlan+Hybrid.m:52-56):
+    /// @(NO), @"", @0, @"", @"" — the VALUE is the contract here (Global
+    /// Constraint 6's coalesced-to-a-value policy), not just presence.
+    func testPlanOfferDefaultsHaveTheExactCoalescedValues() throws {
+        let dict = try SerializationFixtures.plan(populated: true).asDictionary()
+        XCTAssertEqual(dict["hasOfferPrice"] as? Bool, false)
+        XCTAssertEqual(dict["offerPrice"] as? String, "")
+        XCTAssertEqual(dict["offerAmount"] as? Int, 0)
+        XCTAssertEqual(dict["offerDuration"] as? String, "")
+        XCTAssertEqual(dict["offerPeriod"] as? String, "")
+    }
+
     // MARK: - PLYProduct
     //
     // Filled from PLYProduct+Hybrid.m: vendorId and plans are unconditional;
@@ -140,6 +188,33 @@ final class SerializationContractTests: XCTestCase {
         XCTAssertEqual(plans.count, 0)
     }
 
+    /// [Hole 1, CRITICAL] PLYProduct+Hybrid.m:18-23 maps each nested plan
+    /// through `plan.asDictionary`, not the raw PLYPlan object. A port that
+    /// writes `dict["plans"] = product.plans` stays green on the sparse
+    /// fixture's count==0 check above but drops every field in JS (Global
+    /// Constraint 5's silent-drop hazard, one level down). Pin the populated
+    /// fixture's one plan as a real dictionary with a real vendorId.
+    func testProductPlansAreSerializedAsDictionariesNotRawPLYPlanObjects() throws {
+        let dict = try SerializationFixtures.product(populated: true).asDictionary()
+        guard let plans = dict["plans"] as? [[String: Any]] else {
+            return XCTFail("'plans' must bridge as [[String: Any]], got \(type(of: dict["plans"]))")
+        }
+        XCTAssertEqual(plans.count, 1)
+        XCTAssertEqual(plans.first?["vendorId"] as? String, "PLAN_MONTHLY")
+    }
+
+    /// [Hole 2] Exact key sets, read off PLYProduct+Hybrid.m: vendorId and
+    /// plans unconditional, name guarded by `if (self.name != nil)`.
+    func testProductPopulatedKeySetIsExact() throws {
+        let dict = try SerializationFixtures.product(populated: true).asDictionary()
+        XCTAssertEqual(Set(dict.keys), Self.productAlwaysPresent.union(Self.productNullable))
+    }
+
+    func testProductSparseKeySetIsExact() throws {
+        let dict = try SerializationFixtures.product(populated: false).asDictionary()
+        XCTAssertEqual(Set(dict.keys), Self.productAlwaysPresent)
+    }
+
     // MARK: - PLYOfferSignature
     //
     // Filled from PLYOfferSignature+Hybrid.m. Step 1 found both guards
@@ -168,6 +243,13 @@ final class SerializationContractTests: XCTestCase {
                 "offerSignature['\(key)'] is \(type(of: dict[key])), expected NSNumber"
             )
         }
+    }
+
+    /// [Hole 2] Exact key set: all six keys are unconditional (Step 1's
+    /// dead-code-guard finding), so there is only one set for this type.
+    func testOfferSignatureKeySetIsExact() throws {
+        let dict = try SerializationFixtures.offerSignature().asDictionary()
+        XCTAssertEqual(Set(dict.keys), Self.offerSignatureAlwaysPresent)
     }
 
     // MARK: - PLYPresentationPlan
@@ -219,6 +301,20 @@ final class SerializationContractTests: XCTestCase {
                 "presentationPlan['\(key)'] is \(type(of: dict[key])), expected NSNumber"
             )
         }
+    }
+
+    /// [Hole 2] Exact key sets, read off PLYPresentationPlan+Hybrid.m: default
+    /// and planVendorId unconditional (planVendorId's guard is dead code —
+    /// see the comment above), offerId/offerVendorId/storeProductId guarded.
+    func testPresentationPlanPopulatedKeySetIsExact() throws {
+        let dict = try SerializationFixtures.presentationPlan(populated: true).asDictionary()
+        let expected = Self.presentationPlanAlwaysPresent.union(Self.presentationPlanNullable)
+        XCTAssertEqual(Set(dict.keys), expected)
+    }
+
+    func testPresentationPlanSparseKeySetIsExact() throws {
+        let dict = try SerializationFixtures.presentationPlan(populated: false).asDictionary()
+        XCTAssertEqual(Set(dict.keys), Self.presentationPlanAlwaysPresent)
     }
 
     // MARK: - PLYSubscription
