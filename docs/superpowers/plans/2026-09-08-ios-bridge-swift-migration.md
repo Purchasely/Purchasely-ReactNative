@@ -1809,7 +1809,7 @@ Write a unit test for the mapper: `"ESSENTIAL"`, `"essential"`, `"OPTIONAL"`, `"
 @objc(silentRestoreAllProducts:reject:)    // was silentRestoreWithResolve:reject:
 
 // 2. A nil array coalesces to [], it does not vanish (PurchaselyRN.m:1150).
-resolve((subscriptions ?? []).map { $0.asDictionary })
+resolve((subscriptions ?? []).map { $0.asDictionary() })
 
 // 3. The billing-plan-type mappers are now on PLYPlan, from phase 1 Task 2.
 //    In Swift call them by their Swift names, not the @objc selectors:
