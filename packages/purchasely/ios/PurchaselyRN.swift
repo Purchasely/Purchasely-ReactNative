@@ -232,37 +232,18 @@ class PurchaselyBridge: RCTEventEmitter,
         }
     }
 
-    // MARK: - PLYEventDelegate / PLYUserAttributeDelegate / PLYWebRedemptionDelegate stubs
+    // MARK: - PLYEventDelegate / PLYUserAttributeDelegate / PLYWebRedemptionDelegate
     //
-    // Bodies are Task 12's. These exist only so `start` (Task 9) can pass
-    // `self` as all three delegates and the class keeps compiling at every
-    // commit boundary. Signatures copied verbatim from the .swiftinterface:
-    // `eventTriggered` and `webRedemptionCompleted` are the two non-optional
-    // requirements; `onUserAttributeSet`/`onUserAttributeRemoved` are
-    // `@objc optional` on PLYUserAttributeDelegate, so no stub is required for
-    // them to conform — implemented anyway to keep Task 12's diff additive.
+    // Bodies live in PurchaselyRN+Presentations.swift (Task 12), which
+    // replaces the stubs Task 8 put here so `start` (Task 9) could pass
+    // `self` as all three delegates while the class kept compiling at every
+    // commit boundary in between.
     //
     // PLYUserAttributeDelegate declares TWO onUserAttributeSet overloads (4-arg
     // and 5-arg — .swiftinterface, awk '/protocol PLYUserAttributeDelegate/,/^}/').
     // The Objective-C module implements ONLY the 5-argument one
     // (PurchaselyRN.m:1351-1355) and puts processingLegalBasis into the
     // USER_ATTRIBUTE_SET_LISTENER body (:1367). Implementing the 4-arg
-    // overload here instead would silently drop processingLegalBasis from
-    // that event, so only the 5-arg overload is implemented — never both.
-
-    func eventTriggered(_ event: PLYEvent, properties: [String: Any]?) {
-        PLYRNLogWarn("PurchaselyBridge.eventTriggered stub — implemented in Task 12")
-    }
-
-    func onUserAttributeSet(key: String, type: PLYUserAttributeType, value: Any?, source: PLYUserAttributeSource, processingLegalBasis: PLYDataProcessingLegalBasis) {
-        PLYRNLogWarn("PurchaselyBridge.onUserAttributeSet stub — implemented in Task 12")
-    }
-
-    func onUserAttributeRemoved(key: String, source: PLYUserAttributeSource) {
-        PLYRNLogWarn("PurchaselyBridge.onUserAttributeRemoved stub — implemented in Task 12")
-    }
-
-    func webRedemptionCompleted(result: PLYWebRedemptionResult) {
-        PLYRNLogWarn("PurchaselyBridge.webRedemptionCompleted stub — implemented in Task 12")
-    }
+    // overload instead would silently drop processingLegalBasis from that
+    // event, so only the 5-arg overload is implemented — never both.
 }
