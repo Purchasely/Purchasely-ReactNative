@@ -18,7 +18,10 @@ extension PurchaselyBridge {
     @objc(registerActionInterceptor:)
     func registerActionInterceptor(_ kind: String?) {
         guard let kind, let nativeAction = Self.presentationAction(from: kind) else {
-            PLYRNLogWarn("unknown interceptor kind: \(kind ?? "nil")")
+            // Fix 4: PurchaselyRN.m:1898 is `RCTLogWarn(@"[Purchasely] unknown
+            // interceptor kind: %@", kind)` — restore the exact message text,
+            // prefix included.
+            PLYRNLogWarn("[Purchasely] unknown interceptor kind: \(kind ?? "nil")")
             return
         }
 
@@ -132,7 +135,10 @@ extension PurchaselyBridge {
     @objc(unregisterActionInterceptor:)
     func unregisterActionInterceptor(_ kind: String?) {
         guard let kind, let nativeAction = Self.presentationAction(from: kind) else {
-            PLYRNLogWarn("unknown interceptor kind: \(kind ?? "nil")")
+            // Fix 4: PurchaselyRN.m:2048 is `RCTLogWarn(@"[Purchasely] unknown
+            // interceptor kind: %@", kind)` — restore the exact message text,
+            // prefix included.
+            PLYRNLogWarn("[Purchasely] unknown interceptor kind: \(kind ?? "nil")")
             return
         }
 
@@ -172,7 +178,11 @@ extension PurchaselyBridge {
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
             let stale = Self.withState { Self.interceptorCallbacks.removeValue(forKey: callbackId) }
             if let stale {
-                PLYRNLogWarn("interceptor callback \(callbackId) timed out after \(Int(delay))s; falling back to notHandled")
+                // Fix 4: PurchaselyRN.m:1947 is `RCTLogWarn(@"[Purchasely]
+                // interceptor callback %@ timed out after %llds; falling back
+                // to notHandled", ...)` — restore the exact message text,
+                // prefix included.
+                PLYRNLogWarn("[Purchasely] interceptor callback \(callbackId) timed out after \(Int(delay))s; falling back to notHandled")
                 stale("notHandled")
             }
         }

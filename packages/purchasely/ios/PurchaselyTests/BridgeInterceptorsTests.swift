@@ -8,11 +8,28 @@
 
 import XCTest
 @testable import react_native_purchasely
+import Purchasely
 
 final class BridgeInterceptorsTests: XCTestCase {
 
     override func tearDown() {
-        // Every test seeds state directly; leave none of it for the next one.
+        // Fix 5: `testRegisterActionInterceptorWithAKnownKindRecordsIt`
+        // drives `registerActionInterceptor`, which installs a REAL SDK
+        // interceptor via `Purchasely.interceptAction(...)` on the main
+        // queue. Undoing only `interceptorKinds` left that SDK-side
+        // registration alive to leak into a later test. Unregister every
+        // kind this test run recorded — via the SDK's own
+        // `removeActionInterceptor`, on the same queue `registerActionInterceptor`
+        // used, which preserves FIFO ordering against that still-pending
+        // registration — before clearing the local state.
+        let kinds = PurchaselyBridge.withState { PurchaselyBridge.interceptorKinds }
+        for kind in kinds {
+            if let action = PurchaselyBridge.presentationAction(from: kind) {
+                DispatchQueue.main.async {
+                    Purchasely.removeActionInterceptor(action)
+                }
+            }
+        }
         PurchaselyBridge.withState {
             PurchaselyBridge.interceptorCallbacks.removeAll()
             PurchaselyBridge.interceptorKinds.removeAll()

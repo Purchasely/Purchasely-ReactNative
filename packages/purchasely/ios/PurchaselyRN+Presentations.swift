@@ -318,15 +318,26 @@ extension PurchaselyBridge {
         _ = withState { presentationsByRequest.removeValue(forKey: requestId) }
     }
 
-    static func emitPresentationDismissed(forId routingId: String, outcome: PLYPresentationOutcome) {
+    // Fix 2: `routingId` is Optional (Constraint 4) so a nil requestId omits
+    // the `"requestId"` key from the emitted body — Swift's
+    // `dict["k"] = nil` removes the key, the same as the Objective-C mutable
+    // dictionary's `body[@"requestId"] = routingId;` at PurchaselyRN.m:416.
+    // `storageKey` is the separate, never-optional key used only for the
+    // `presentationsByRequest` lookup/removal (Swift dictionary keys cannot
+    // be optional; the Objective-C original never actually reaches this
+    // call with a nil requestId either, since `kPresentationsByRequest[requestId] = presentation`
+    // upstream would itself throw on a nil key).
+    static func emitPresentationDismissed(forId routingId: String?, outcome: PLYPresentationOutcome) {
         guard let emitter = sharedEmitter, emitter.shouldEmit else { return }
+        let storageKey = routingId ?? ""
 
         var presentation = outcome.presentation
         if presentation == nil {
-            presentation = withState { presentationsByRequest[routingId] }
+            presentation = withState { presentationsByRequest[storageKey] }
         }
 
-        var body: [String: Any] = ["requestId": routingId]
+        var body: [String: Any] = [:]
+        body["requestId"] = routingId
         if let presentation {
             body["presentation"] = presentationToMap(presentation)
         }
@@ -342,7 +353,7 @@ extension PurchaselyBridge {
             body["closeReason"] = closeReason
         }
         emitter.sendEvent(withName: PresentationEventName.dismissed, body: body)
-        _ = withState { presentationsByRequest.removeValue(forKey: routingId) }
+        _ = withState { presentationsByRequest.removeValue(forKey: storageKey) }
     }
 
     static func emitPresentationCloseRequested(forId requestId: String) {
@@ -396,16 +407,23 @@ extension PurchaselyBridge {
         resolve: @escaping RCTPromiseResolveBlock,
         reject: @escaping RCTPromiseRejectBlock
     ) {
-        let requestId = requestId ?? ""
+        // Fix 2: `requestId` stays Optional for every emitted event body — a
+        // nil requestId must omit the key (PurchaselyRN.m:1536 is a mutable
+        // dict assignment, which omits on nil), not send "". `storageKey` is
+        // the coalesced, never-optional key used only for the
+        // `presentationsByRequest` dictionary, which cannot take an
+        // Optional key.
+        let storageKey = requestId ?? ""
         let targets = Self.extractPresentationTargets(payload)
 
         // Constraint 9, __weak site (PurchaselyRN.m:~1535).
         let onFetchCompletion: ((any PLYPresentation)?, Error?) -> Void = { [weak self] presentation, error in
             guard let self else { return }
-            var event: [String: Any] = ["requestId": requestId]
+            var event: [String: Any] = [:]
+            event["requestId"] = requestId
             if let presentation {
                 event["presentation"] = Self.presentationToMap(presentation)
-                Self.withState { Self.presentationsByRequest[requestId] = presentation }
+                Self.withState { Self.presentationsByRequest[storageKey] = presentation }
             }
             if let error {
                 event["error"] = Self.presentationErrorToMap(error)
@@ -433,7 +451,7 @@ extension PurchaselyBridge {
                 Self.emitPresentationDismissed(forId: requestId, outcome: outcome)
             }
             builder.onCloseRequested {
-                Self.emitPresentationCloseRequested(forId: requestId)
+                Self.emitPresentationCloseRequested(forId: storageKey)
             }
             let request = builder.build()
             request.preload(completion: onFetchCompletion)
@@ -453,7 +471,13 @@ extension PurchaselyBridge {
         resolve: @escaping RCTPromiseResolveBlock,
         reject: @escaping RCTPromiseRejectBlock
     ) {
-        let requestId = requestId ?? ""
+        // Fix 2: `requestId` stays Optional for every emitted event body — a
+        // nil requestId must omit the key (PurchaselyRN.m:1612/1648/1661/
+        // 1674/1692 are all mutable-dict subscript assignments, which omit
+        // on nil), not send "". `storageKey` is the coalesced,
+        // never-optional key used only for the `presentationsByRequest`
+        // dictionary, which cannot take an Optional key.
+        let storageKey = requestId ?? ""
         let targets = Self.extractPresentationTargets(payload)
 
         // Captured for the close-flow: lets the dismissal handler send the
@@ -469,7 +493,8 @@ extension PurchaselyBridge {
         // __weak site (PurchaselyRN.m:~1604).
         let emitDismissed: (Error?) -> Void = { [weak self] error in
             guard let self else { return }
-            var body: [String: Any] = ["requestId": requestId]
+            var body: [String: Any] = [:]
+            body["requestId"] = requestId
             if let capturedPresentation {
                 body["presentation"] = Self.presentationToMap(capturedPresentation)
             }
@@ -488,13 +513,14 @@ extension PurchaselyBridge {
                 body["closeReason"] = closeReason
             }
             self.emitPresentationEvent(PresentationEventName.dismissed, body: body)
-            _ = Self.withState { Self.presentationsByRequest.removeValue(forKey: requestId) }
+            _ = Self.withState { Self.presentationsByRequest.removeValue(forKey: storageKey) }
         }
 
         let onFetchCompletion: ((any PLYPresentation)?, Error?) -> Void = { [weak self] presentation, error in
             guard let self else { return }
 
-            var loaded: [String: Any] = ["requestId": requestId]
+            var loaded: [String: Any] = [:]
+            loaded["requestId"] = requestId
             if let presentation {
                 loaded["presentation"] = Self.presentationToMap(presentation)
             }
@@ -506,9 +532,10 @@ extension PurchaselyBridge {
             if let error {
                 // P0.4: synthesize onPresented(null, error) since the native
                 // pipeline failed before the controller was shown.
-                self.emitPresentationEvent(PresentationEventName.presented,
-                                            body: ["requestId": requestId,
-                                                   "error": Self.presentationErrorToMap(error) as Any])
+                var presented: [String: Any] = [:]
+                presented["requestId"] = requestId
+                presented["error"] = Self.presentationErrorToMap(error)
+                self.emitPresentationEvent(PresentationEventName.presented, body: presented)
                 emitDismissed(error)
                 return
             }
@@ -516,22 +543,24 @@ extension PurchaselyBridge {
             guard let presentation else {
                 let missing = NSError(domain: "io.purchasely.presentation", code: 404,
                                        userInfo: [NSLocalizedDescriptionKey: "Presentation not found"])
-                self.emitPresentationEvent(PresentationEventName.presented,
-                                            body: ["requestId": requestId,
-                                                   "error": Self.presentationErrorToMap(missing) as Any])
+                var presented: [String: Any] = [:]
+                presented["requestId"] = requestId
+                presented["error"] = Self.presentationErrorToMap(missing)
+                self.emitPresentationEvent(PresentationEventName.presented, body: presented)
                 emitDismissed(missing)
                 return
             }
 
             capturedPresentation = presentation
-            Self.withState { Self.presentationsByRequest[requestId] = presentation }
+            Self.withState { Self.presentationsByRequest[storageKey] = presentation }
             // v6: by the time this completion fires, `display(transition:
             // completion:)` has already triggered the display — there is no
             // separate native "visible" callback wired at this layer, so
             // onPresented is emitted here, mirroring the Android contract.
-            self.emitPresentationEvent(PresentationEventName.presented,
-                                        body: ["requestId": requestId,
-                                               "presentation": Self.presentationToMap(presentation)])
+            var presented: [String: Any] = [:]
+            presented["requestId"] = requestId
+            presented["presentation"] = Self.presentationToMap(presentation)
+            self.emitPresentationEvent(PresentationEventName.presented, body: presented)
         }
 
         // v6: the dismiss outcome is delivered through the builder's
@@ -564,7 +593,7 @@ extension PurchaselyBridge {
             // See emitPresentationCloseRequested(forId:) — notification only,
             // does not gate the dismissal handled by onDismissed above.
             builder.onCloseRequested {
-                Self.emitPresentationCloseRequested(forId: requestId)
+                Self.emitPresentationCloseRequested(forId: storageKey)
             }
             let request = builder.build()
             // v6: display through the SDK's own path, which owns triggering

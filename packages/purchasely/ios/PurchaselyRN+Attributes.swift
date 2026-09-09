@@ -113,84 +113,142 @@ extension PurchaselyBridge {
         Purchasely.setUserAttribute(withDateValue: date, forKey: key ?? "", processingLegalBasis: Self.legalBasis(from: legalBasis))
     }
 
-    // Constraint 4: the JS array crosses as `NSArray * _Nonnull` in the ObjC
-    // annotation, but is Optional here regardless, same as `key`.
+    // ORCHESTRATOR RULING (array element handling): the Objective-C treated
+    // the five array setters two different ways and this file must keep
+    // both, not flatten them into one `compactMap` that silently sets a
+    // PARTIAL array — user attributes drive audience targeting, so a
+    // partial array shows a client the wrong paywall.
     //
-    // Finding 10 — verified, not matched exactly; see the file-level note
-    // above `setUserAttributeWithIntArray` for why. Kept as `compactMap`
-    // (drop), the pre-existing reviewed baseline.
+    // Group (b) below — StringArray, IntArray, DoubleArray — forwarded
+    // `value` VERBATIM to a Swift-typed SDK setter (`[String]`/`[Int]`/
+    // `[Double]`). Objective-C generics are erased so the compiler never
+    // checked element type; the ACTUAL conversion happened in the
+    // Objective-C↔Swift array-bridging thunk, and that thunk is all-or-
+    // nothing. Verified empirically (`NSArray as? [Int]` / `[Double]` /
+    // `[String]`, Foundation, outside the SDK):
+    //   - [String]: any non-String element fails the WHOLE bridge.
+    //   - [Int]: any element that is not an NSNumber, OR an NSNumber with a
+    //     fractional part (e.g. 2.7), fails the WHOLE bridge.
+    //   - [Double]: any non-NSNumber element fails the WHOLE bridge; a
+    //     fractional NSNumber is fine.
+    // So the Objective-C's OBSERVABLE outcome for these three is: the
+    // attribute is NOT set at all. This file reproduces that outcome
+    // WITHOUT reproducing the bridge's trap — deliberately shipping a crash
+    // is not acceptable. `exactStringArray`/`exactIntArray`/
+    // `exactDoubleArray` below return nil (bail, NSLog, do not set) instead
+    // of force-casting. Do NOT "simplify" these back to a `compactMap` that
+    // drops the bad element and sets a partial array — that changes the
+    // observable outcome from "attribute not set" to "attribute set wrong".
+
+    /// (b) `setUserAttributeWithStringArray`, PurchaselyRN.m:778-784: the
+    /// verbatim-forward case. Returns nil, having NSLog'd the offending
+    /// index, the moment an element is not exactly a `String`.
+    static func exactStringArray(_ value: [Any]?, forKey key: String) -> [String]? {
+        var result: [String] = []
+        for (index, element) in (value ?? []).enumerated() {
+            guard let string = element as? String else {
+                NSLog("[Purchasely] setUserAttributeWithStringArray: attribute \"%@\" not set, element at index %ld is not a string", key, index)
+                return nil
+            }
+            result.append(string)
+        }
+        return result
+    }
+
     @objc(setUserAttributeWithStringArray:value:legalBasis:)
     func setUserAttributeWithStringArray(_ key: String?, value: [Any]?, legalBasis: String?) {
-        let strings = (value ?? []).compactMap { $0 as? String }
+        guard let strings = Self.exactStringArray(value, forKey: key ?? "") else { return }
         Purchasely.setUserAttribute(withStringArray: strings, forKey: key ?? "", processingLegalBasis: Self.legalBasis(from: legalBasis))
     }
 
-    // PurchaselyRN.m:787-797: normalizes every element to a pure BOOL to
-    // avoid NSDecimalNumber surprises from JS.
+    /// (a) `setUserAttributeWithBooleanArray`, PurchaselyRN.m:787-797: the
+    /// coercing case. The Objective-C LOOPED and sent `-boolValue` to every
+    /// element, so a non-NSNumber element message-sent `.boolValue` and
+    /// became `false` rather than dropping out — reproduced here with
+    /// `?? false` instead of a message-send-to-nil.
+    static func coercedBoolArray(_ value: [Any]?) -> [Bool] {
+        (value ?? []).map { ($0 as? NSNumber)?.boolValue ?? false }
+    }
+
     @objc(setUserAttributeWithBooleanArray:value:legalBasis:)
     func setUserAttributeWithBooleanArray(_ key: String?, value: [Any]?, legalBasis: String?) {
-        let bools = (value ?? []).compactMap { ($0 as? NSNumber)?.boolValue }
+        let bools = Self.coercedBoolArray(value)
         Purchasely.setUserAttribute(withBoolArray: bools, forKey: key ?? "", processingLegalBasis: Self.legalBasis(from: legalBasis))
     }
 
-    // PurchaselyRN.m:800-827: splits into an int array and a double array by
-    // the same fractional test as setUserAttributeWithNumber, and calls each
-    // SDK setter only when its array is non-empty.
-    @objc(setUserAttributeWithNumberArray:value:legalBasis:)
-    func setUserAttributeWithNumberArray(_ key: String?, value: [Any]?, legalBasis: String?) {
-        let lb = Self.legalBasis(from: legalBasis)
+    /// (a) `setUserAttributeWithNumberArray`, PurchaselyRN.m:800-827: the
+    /// other coercing case. Every element is coerced through
+    /// `-doubleValue` (a non-NSNumber element becomes 0) and kept, then
+    /// split into an int array and a double array by the same fractional
+    /// test as `setUserAttributeWithNumber`; each SDK setter fires only
+    /// when its array is non-empty, exactly as the Objective-C did.
+    static func splitNumberArray(_ value: [Any]?) -> (ints: [Int], doubles: [Double]) {
         var intArray: [Int] = []
         var doubleArray: [Double] = []
         for element in value ?? [] {
-            guard let number = element as? NSNumber else { continue }
-            let double = number.doubleValue
+            let double = (element as? NSNumber)?.doubleValue ?? 0
             if let asInt = Self.wholeNumberAttributeValue(double) {
                 intArray.append(asInt)
             } else {
                 doubleArray.append(double)
             }
         }
-        if !intArray.isEmpty {
-            Purchasely.setUserAttribute(withIntArray: intArray, forKey: key ?? "", processingLegalBasis: lb)
+        return (intArray, doubleArray)
+    }
+
+    @objc(setUserAttributeWithNumberArray:value:legalBasis:)
+    func setUserAttributeWithNumberArray(_ key: String?, value: [Any]?, legalBasis: String?) {
+        let lb = Self.legalBasis(from: legalBasis)
+        let split = Self.splitNumberArray(value)
+        if !split.ints.isEmpty {
+            Purchasely.setUserAttribute(withIntArray: split.ints, forKey: key ?? "", processingLegalBasis: lb)
         }
-        if !doubleArray.isEmpty {
-            Purchasely.setUserAttribute(withDoubleArray: doubleArray, forKey: key ?? "", processingLegalBasis: lb)
+        if !split.doubles.isEmpty {
+            Purchasely.setUserAttribute(withDoubleArray: split.doubles, forKey: key ?? "", processingLegalBasis: lb)
         }
     }
 
-    // Finding 10 (IntArray/DoubleArray/StringArray, all three): PurchaselyRN.m
-    // has NO per-element loop for these three — it forwards `value` verbatim
-    // to the matching `+setUserAttributeWith*Array:forKey:...`, whose Swift
-    // signature takes a typed array (`[Int]`/`[Double]`/`[String]`).
-    // Objective-C generics are erased, so the compiler does not check element
-    // type; the ACTUAL conversion happens in the Objective-C↔Swift
-    // array-bridging thunk. Verified empirically (`NSArray as? [Int]`/
-    // `[String]`, Foundation, outside the SDK):
-    //   - a non-conforming element (e.g. a string in an int array) -> the
-    //     WHOLE bridge fails (`nil`), which force-casting (`as!`) would turn
-    //     into a trap;
-    //   - critically, a FRACTIONAL NSNumber (e.g. 2.7) in an int/double-typed
-    //     bridge to `[Int]` ALSO fails the same way — the bridge requires an
-    //     exact per-element type match, not a coercible one.
-    // So the verbatim-forward's real failure mode is: the entire array is
-    // rejected by ANY element that isn't already exactly the target type —
-    // not "drop the bad one" and not "truncate the bad one". Reproducing
-    // that exactly would mean trapping the whole call on a single fractional
-    // number sent from JS (where numbers have no int/double distinction),
-    // which no other setter in this file does and which the orchestrator
-    // has not asked for. `compactMap` (drop per-element) is kept as the
-    // pre-existing, already-reviewed behaviour instead of introducing a new
-    // whole-array trap — this is reported, not silently decided; see
-    // `deviations`.
+    /// (b) `setUserAttributeWithIntArray`, PurchaselyRN.m:830-836: the
+    /// verbatim-forward case. A fractional NSNumber (e.g. 2.7) fails the
+    /// same way a non-numeric element does — verified empirically, see the
+    /// group comment above — so both bail out here too.
+    static func exactIntArray(_ value: [Any]?, forKey key: String) -> [Int]? {
+        var result: [Int] = []
+        for (index, element) in (value ?? []).enumerated() {
+            guard let number = element as? NSNumber, let asInt = Self.wholeNumberAttributeValue(number.doubleValue) else {
+                NSLog("[Purchasely] setUserAttributeWithIntArray: attribute \"%@\" not set, element at index %ld is not an integer", key, index)
+                return nil
+            }
+            result.append(asInt)
+        }
+        return result
+    }
+
     @objc(setUserAttributeWithIntArray:value:legalBasis:)
     func setUserAttributeWithIntArray(_ key: String?, value: [Any]?, legalBasis: String?) {
-        let ints = (value ?? []).compactMap { ($0 as? NSNumber)?.intValue }
+        guard let ints = Self.exactIntArray(value, forKey: key ?? "") else { return }
         Purchasely.setUserAttribute(withIntArray: ints, forKey: key ?? "", processingLegalBasis: Self.legalBasis(from: legalBasis))
+    }
+
+    /// (b) `setUserAttributeWithDoubleArray`, PurchaselyRN.m:839-845: the
+    /// verbatim-forward case. Unlike Int, a fractional NSNumber is fine
+    /// here — only a non-NSNumber element bails out (verified empirically,
+    /// see the group comment above).
+    static func exactDoubleArray(_ value: [Any]?, forKey key: String) -> [Double]? {
+        var result: [Double] = []
+        for (index, element) in (value ?? []).enumerated() {
+            guard let number = element as? NSNumber else {
+                NSLog("[Purchasely] setUserAttributeWithDoubleArray: attribute \"%@\" not set, element at index %ld is not a number", key, index)
+                return nil
+            }
+            result.append(number.doubleValue)
+        }
+        return result
     }
 
     @objc(setUserAttributeWithDoubleArray:value:legalBasis:)
     func setUserAttributeWithDoubleArray(_ key: String?, value: [Any]?, legalBasis: String?) {
-        let doubles = (value ?? []).compactMap { ($0 as? NSNumber)?.doubleValue }
+        guard let doubles = Self.exactDoubleArray(value, forKey: key ?? "") else { return }
         Purchasely.setUserAttribute(withDoubleArray: doubles, forKey: key ?? "", processingLegalBasis: Self.legalBasis(from: legalBasis))
     }
 

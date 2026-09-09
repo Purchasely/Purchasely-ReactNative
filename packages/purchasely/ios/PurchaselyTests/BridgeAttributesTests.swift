@@ -97,4 +97,64 @@ final class BridgeAttributesTests: XCTestCase {
         // returns 0 (message-to-nil yields a zeroed scalar).
         XCTAssertEqual(PurchaselyBridge.truncatedToInt32(nil), 0)
     }
+
+    // MARK: - the RULING: array element handling (group a — coerce, group b — bail)
+
+    // (a) setUserAttributeWithBooleanArray coerces: a non-NSNumber element
+    // becomes `false`, and every element is kept — never dropped.
+    func testCoercedBoolArrayCoercesANonNumericElementToFalse() {
+        let mixed: [Any] = [true, "not a bool", false]
+        XCTAssertEqual(PurchaselyBridge.coercedBoolArray(mixed), [true, false, false])
+    }
+
+    // (a) setUserAttributeWithNumberArray coerces: a non-NSNumber element
+    // becomes 0 (which lands in the int bucket), and every element is kept.
+    func testSplitNumberArrayCoercesANonNumericElementToZero() {
+        let mixed: [Any] = [1, "not a number", 2.5]
+        let split = PurchaselyBridge.splitNumberArray(mixed)
+        XCTAssertEqual(split.ints, [1, 0])
+        XCTAssertEqual(split.doubles, [2.5])
+    }
+
+    // (b) setUserAttributeWithStringArray rejects the WHOLE array if any
+    // element is not exactly a String — it must not silently drop the bad
+    // element and set a partial array.
+    func testExactStringArrayBailsOutOnAnyNonStringElement() {
+        let mixed: [Any] = ["a", 42, "b"]
+        XCTAssertNil(PurchaselyBridge.exactStringArray(mixed, forKey: "k"))
+    }
+
+    func testExactStringArrayReturnsEveryElementWhenAllAreStrings() {
+        XCTAssertEqual(PurchaselyBridge.exactStringArray(["a", "b"], forKey: "k"), ["a", "b"])
+    }
+
+    // (b) setUserAttributeWithIntArray rejects the WHOLE array if any element
+    // is not an integral NSNumber — a fractional NSNumber (e.g. 2.7) fails
+    // the same way a non-numeric element does, matching the empirically
+    // verified `NSArray as? [Int]` bridging behaviour.
+    func testExactIntArrayBailsOutOnAFractionalElement() {
+        let mixed: [Any] = [1, 2.7, 3]
+        XCTAssertNil(PurchaselyBridge.exactIntArray(mixed, forKey: "k"))
+    }
+
+    func testExactIntArrayBailsOutOnANonNumericElement() {
+        let mixed: [Any] = [1, "not a number"]
+        XCTAssertNil(PurchaselyBridge.exactIntArray(mixed, forKey: "k"))
+    }
+
+    func testExactIntArrayReturnsEveryElementWhenAllAreIntegral() {
+        XCTAssertEqual(PurchaselyBridge.exactIntArray([1, 2, 3], forKey: "k"), [1, 2, 3])
+    }
+
+    // (b) setUserAttributeWithDoubleArray rejects the WHOLE array if any
+    // element is not an NSNumber at all — unlike Int, a fractional NSNumber
+    // is fine here (verified: `NSArray as? [Double]` accepts any NSNumber).
+    func testExactDoubleArrayBailsOutOnANonNumericElement() {
+        let mixed: [Any] = [1.5, "not a number"]
+        XCTAssertNil(PurchaselyBridge.exactDoubleArray(mixed, forKey: "k"))
+    }
+
+    func testExactDoubleArrayReturnsEveryElementWhenAllAreNumeric() {
+        XCTAssertEqual(PurchaselyBridge.exactDoubleArray([1, 2.5], forKey: "k"), [1.0, 2.5])
+    }
 }
