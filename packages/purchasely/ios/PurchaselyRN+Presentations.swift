@@ -176,8 +176,8 @@ extension PurchaselyRN {
     // Swift designated initializer
     // `PLYTransition.init(type:height:width:heightPercentage:backgroundColors:dismissible:)`
     // (.swiftinterface: `final public class PLYTransition`) — this is what
-    // replaces `PLYTransitionFactory` (kept alive for the ObjC .m; Task 14
-    // deletes it, not this task).
+    // replaced `PLYTransitionFactory`, which Task 14 deleted once the
+    // Objective-C `.m` that needed it was gone.
 
     private static func dimension(type: String?, value: NSNumber?) -> PLYDimension? {
         guard let value else { return nil }
@@ -238,10 +238,11 @@ extension PurchaselyRN {
                               dismissible: dismissible)
     }
 
-    // MARK: - webRedemptionBodyWithSuccess:... (PurchaselyRN.h / PurchaselyRN.m:1402-1424)
+    // MARK: - webRedemptionBodyWithSuccess:... (ported from the pre-swap
+    // PurchaselyRN.h / PurchaselyRN.m:1402-1424; PurchaselyRN.h no longer exists)
     //
-    // The exact Swift name Task 6's frozen ObjC-contract test uses for the
-    // still-live PurchaselyRN. `context` and `context.subscription` are
+    // The exact Swift name Task 6's frozen ObjC-contract test uses for
+    // PurchaselyRN. `context` and `context.subscription` are
     // separately nullable: a success can carry no context at all, and a
     // present context can carry no subscription. Same five keys on every
     // branch, NSNull for the absent ones.
@@ -290,11 +291,12 @@ extension PurchaselyRN {
         )
     }
 
-    // MARK: - static members PurchaselyView.swift calls (PurchaselyRN.h)
+    // MARK: - static members PurchaselyView.swift calls (declared in the
+    // now-deleted PurchaselyRN.h)
     //
     // Target: zero diff in PurchaselyView.swift. Signatures copied from
-    // PurchaselyRN.h's nonnull/nullable annotations exactly, since Task 14's
-    // rename must make these resolve unchanged at PurchaselyView.swift's
+    // PurchaselyRN.h's nonnull/nullable annotations exactly; Task 14's
+    // rename kept these resolving unchanged at PurchaselyView.swift's
     // existing call sites.
 
     static func loadedPresentation(forRequestId requestId: String) -> (any PLYPresentation)? {

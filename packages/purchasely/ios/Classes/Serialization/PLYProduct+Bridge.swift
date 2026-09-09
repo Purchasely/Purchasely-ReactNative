@@ -23,9 +23,9 @@
 import Foundation
 import Purchasely
 
-@objc public extension PLYProduct {
+extension PLYProduct {
 
-    func asDictionary() -> [String: Any] {
+    @objc public func asDictionary() -> [String: Any] {
         var dict: [String: Any] = [:]
 
         dict["vendorId"] = vendorId
