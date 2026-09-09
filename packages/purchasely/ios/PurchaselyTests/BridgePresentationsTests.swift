@@ -284,6 +284,192 @@ final class BridgePresentationsTests: XCTestCase {
         XCTAssertNil(recorder.lastEventName)
     }
 
+    // MARK: - emitPresentationDismissed(forId:outcome:) — every key, its
+    // value type, and its per-field absence policy read from
+    // PurchaselyRN.m:405-436.
+
+    func testEmitPresentationDismissedOmitsRequestIdKeyWhenIdIsNil() {
+        // Fix 2: PurchaselyRN.m:416 is a mutable-dict subscript assignment
+        // (`body[@"requestId"] = routingId;`), which OMITS the key on nil —
+        // it must not become "".
+        let recorder = RecordingBridge()
+        recorder.startObserving()
+        let outcome = PLYPresentationOutcome(purchaseResult: .none, plan: nil, presentation: nil, closeReason: .none, error: nil)
+
+        PurchaselyBridge.emitPresentationDismissed(forId: nil, outcome: outcome)
+
+        XCTAssertNil(recorder.lastEventBody?["requestId"], "a nil requestId must be an absent key, not \"\"")
+        recorder.stopObserving()
+    }
+
+    func testEmitPresentationDismissedCarriesRequestIdWhenPresent() {
+        let recorder = RecordingBridge()
+        recorder.startObserving()
+        let outcome = PLYPresentationOutcome(purchaseResult: .none, plan: nil, presentation: nil, closeReason: .none, error: nil)
+
+        PurchaselyBridge.emitPresentationDismissed(forId: "req-1", outcome: outcome)
+
+        XCTAssertEqual(recorder.lastEventName, "PURCHASELY_PRESENTATION_DISMISSED")
+        XCTAssertEqual(recorder.lastEventBody?["requestId"] as? String, "req-1")
+        recorder.stopObserving()
+    }
+
+    func testEmitPresentationDismissedOmitsPresentationWhenBothOutcomeAndRegistryAreNil() {
+        let recorder = RecordingBridge()
+        recorder.startObserving()
+        let outcome = PLYPresentationOutcome(purchaseResult: .none, plan: nil, presentation: nil, closeReason: .none, error: nil)
+
+        PurchaselyBridge.emitPresentationDismissed(forId: "req-no-presentation", outcome: outcome)
+
+        XCTAssertNil(recorder.lastEventBody?["presentation"])
+        recorder.stopObserving()
+    }
+
+    func testEmitPresentationDismissedFallsBackToTheRegistryWhenOutcomeHasNoPresentation() {
+        // PurchaselyRN.m:409-413: if the outcome carries no presentation,
+        // look it up in `kPresentationsByRequest` by the same request id.
+        let recorder = RecordingBridge()
+        recorder.startObserving()
+        let presentation = FakePresentation()
+        presentation.screenId = "screen-registry"
+        PurchaselyBridge.withState { PurchaselyBridge.presentationsByRequest["req-registry"] = presentation }
+        let outcome = PLYPresentationOutcome(purchaseResult: .none, plan: nil, presentation: nil, closeReason: .none, error: nil)
+
+        PurchaselyBridge.emitPresentationDismissed(forId: "req-registry", outcome: outcome)
+
+        let body = (recorder.lastEventBody?["presentation"] as? NSDictionary)
+        XCTAssertEqual(body?["screenId"] as? String, "screen-registry")
+        recorder.stopObserving()
+    }
+
+    func testEmitPresentationDismissedRemovesTheRequestFromTheRegistry() {
+        let recorder = RecordingBridge()
+        recorder.startObserving()
+        let presentation = FakePresentation()
+        PurchaselyBridge.withState { PurchaselyBridge.presentationsByRequest["req-evict-2"] = presentation }
+        let outcome = PLYPresentationOutcome(purchaseResult: .none, plan: nil, presentation: nil, closeReason: .none, error: nil)
+
+        PurchaselyBridge.emitPresentationDismissed(forId: "req-evict-2", outcome: outcome)
+
+        XCTAssertNil(PurchaselyBridge.loadedPresentation(forRequestId: "req-evict-2"))
+        recorder.stopObserving()
+    }
+
+    func testEmitPresentationDismissedOmitsPurchaseResultForNoneOutcome() {
+        // PLYPurchaseResult.none maps to nil (purchaseResultOrdinal), so the
+        // key must be absent, never a "none" ordinal.
+        let recorder = RecordingBridge()
+        recorder.startObserving()
+        let outcome = PLYPresentationOutcome(purchaseResult: .none, plan: nil, presentation: nil, closeReason: .none, error: nil)
+
+        PurchaselyBridge.emitPresentationDismissed(forId: "req-2", outcome: outcome)
+
+        XCTAssertNil(recorder.lastEventBody?["purchaseResult"])
+        recorder.stopObserving()
+    }
+
+    func testEmitPresentationDismissedCarriesThePurchasedOrdinalAndPlan() {
+        let recorder = RecordingBridge()
+        recorder.startObserving()
+        let plan = try! SerializationFixtures.plan(populated: true)
+        let outcome = PLYPresentationOutcome(purchaseResult: .purchased, plan: plan, presentation: nil, closeReason: .none, error: nil)
+
+        PurchaselyBridge.emitPresentationDismissed(forId: "req-3", outcome: outcome)
+
+        XCTAssertEqual(recorder.lastEventBody?["purchaseResult"] as? Int, 0)
+        XCTAssertNotNil(recorder.lastEventBody?["plan"])
+        recorder.stopObserving()
+    }
+
+    func testEmitPresentationDismissedCarriesErrorAndOmitsCloseReasonWhenErrorPresent() {
+        // Exclusion rule (PurchaselyRN.m:427-434): closeReason is surfaced
+        // only when there is no error.
+        let recorder = RecordingBridge()
+        recorder.startObserving()
+        let error = NSError(domain: "io.purchasely.test", code: 1, userInfo: [NSLocalizedDescriptionKey: "boom"])
+        let outcome = PLYPresentationOutcome(purchaseResult: .none, plan: nil, presentation: nil, closeReason: .button, error: error)
+
+        PurchaselyBridge.emitPresentationDismissed(forId: "req-4", outcome: outcome)
+
+        XCTAssertNotNil(recorder.lastEventBody?["error"])
+        XCTAssertNil(recorder.lastEventBody?["closeReason"])
+        recorder.stopObserving()
+    }
+
+    func testEmitPresentationDismissedCarriesCloseReasonWhenNoError() {
+        let recorder = RecordingBridge()
+        recorder.startObserving()
+        let outcome = PLYPresentationOutcome(purchaseResult: .none, plan: nil, presentation: nil, closeReason: .button, error: nil)
+
+        PurchaselyBridge.emitPresentationDismissed(forId: "req-5", outcome: outcome)
+
+        XCTAssertEqual(recorder.lastEventBody?["closeReason"] as? String, "button")
+        XCTAssertNil(recorder.lastEventBody?["error"])
+        recorder.stopObserving()
+    }
+
+    func testEmitPresentationDismissedOmitsCloseReasonForNoneReasonAndNoError() {
+        let recorder = RecordingBridge()
+        recorder.startObserving()
+        let outcome = PLYPresentationOutcome(purchaseResult: .none, plan: nil, presentation: nil, closeReason: .none, error: nil)
+
+        PurchaselyBridge.emitPresentationDismissed(forId: "req-6", outcome: outcome)
+
+        XCTAssertNil(recorder.lastEventBody?["closeReason"])
+        XCTAssertNil(recorder.lastEventBody?["error"])
+        recorder.stopObserving()
+    }
+
+    func testEmitPresentationDismissedIsNoopWhenNotObserving() {
+        let recorder = RecordingBridge()
+        recorder.startObserving()
+        recorder.stopObserving()
+        let outcome = PLYPresentationOutcome(purchaseResult: .none, plan: nil, presentation: nil, closeReason: .none, error: nil)
+
+        PurchaselyBridge.emitPresentationDismissed(forId: "req-7", outcome: outcome)
+
+        XCTAssertNil(recorder.lastEventName)
+        recorder.stopObserving()
+    }
+
+    // MARK: - eventTriggered(_:properties:) — PurchaselyRN.m:1332-1341
+
+    func testEventTriggeredOmitsPropertiesKeyWhenNil() {
+        // The Objective-C guard forwards `nil` properties by building a
+        // one-key dictionary literal, never `properties: NSNull`.
+        let recorder = RecordingBridge()
+        recorder.startObserving()
+
+        recorder.eventTriggered(.appStarted, properties: nil)
+
+        XCTAssertEqual(recorder.lastEventName, "PURCHASELY_EVENTS")
+        XCTAssertEqual(recorder.lastEventBody?["name"] as? String, NSString.fromPLYEvent(.appStarted))
+        XCTAssertNil(recorder.lastEventBody?["properties"])
+        recorder.stopObserving()
+    }
+
+    func testEventTriggeredCarriesPropertiesWhenPresent() {
+        let recorder = RecordingBridge()
+        recorder.startObserving()
+
+        recorder.eventTriggered(.planSelected, properties: ["plan_id": "PLAN1"])
+
+        XCTAssertEqual(recorder.lastEventBody?["name"] as? String, NSString.fromPLYEvent(.planSelected))
+        let properties = recorder.lastEventBody?["properties"] as? NSDictionary
+        XCTAssertEqual(properties?["plan_id"] as? String, "PLAN1")
+        recorder.stopObserving()
+    }
+
+    func testEventTriggeredIsNoopWhenNotObserving() {
+        let recorder = RecordingBridge()
+        recorder.startObserving()
+        recorder.stopObserving()
+
+        recorder.eventTriggered(.appStarted, properties: nil)
+
+        XCTAssertNil(recorder.lastEventName)
+    }
+
     // MARK: - closePresentation: proves the two-block lock shape does not deadlock
 
     func testClosePresentationTakesTheLockTwiceWithoutDeadlocking() {

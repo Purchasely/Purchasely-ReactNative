@@ -72,7 +72,12 @@ final class BridgeProductsTests: XCTestCase {
         XCTAssertEqual(dict["reference"] as? String, "ref-1")
         XCTAssertEqual(dict["planVendorId"] as? String, "plan-1")
         XCTAssertEqual(dict["offerVendorId"] as? String, "offer-1")
-        XCTAssertEqual(dict["billingPlanType"] as? String, PLYPlan.rnString(fromBillingPlanType: .monthly))
+        // Fix 6: assert the literal wire string (PLYPlan+Bridge.swift's
+        // `rnString(fromBillingPlanType:)`, `.monthly` -> "monthly"), not the
+        // same mapper call the implementation uses — that comparison can
+        // never catch a wrong wire string, only a mapper that disagrees with
+        // itself.
+        XCTAssertEqual(dict["billingPlanType"] as? String, "monthly")
     }
 
     func testOfferingDictionaryOmitsOfferVendorIdWhenNil() {
