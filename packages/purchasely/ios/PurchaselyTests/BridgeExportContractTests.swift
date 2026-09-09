@@ -132,13 +132,26 @@ final class BridgeExportContractTests: XCTestCase {
     /// snapshotted from `PurchaselyRN.m` while it is still the live
     /// Objective-C module. The colon count still equals the argument count,
     /// which is what Global Constraint 1 protects, but the value no longer
-    /// carries the macro's parameter types or names, so it survives Task 14's
-    /// rewrite to `RCT_EXTERN_METHOD` lines without going red for a
-    /// legitimate, non-breaking reason (a `RCTMethodInfo.objcName` whose text
-    /// differs only in how the same selector is spelled across the two
-    /// macros). `bareSelector(from:)` below is what produces this from the
-    /// raw `objcName` at comparison time; these values are already in that
-    /// normalised form.
+    /// carries the macro's parameter types or names, so 61 of these 63
+    /// survive Task 14's rewrite to `RCT_EXTERN_METHOD` lines without going
+    /// red for a legitimate, non-breaking reason (a `RCTMethodInfo.objcName`
+    /// whose text differs only in how the same selector is spelled across
+    /// the two macros). `bareSelector(from:)` below is what produces this
+    /// from the raw `objcName` at comparison time; these values are already
+    /// in that normalised form.
+    ///
+    /// The other two, `restoreAllProducts` and `silentRestoreAllProducts`,
+    /// are the ONLY entries allowed to change at Task 14. Both use
+    /// `RCT_REMAP_METHOD` today, so their selector's first segment
+    /// (`resolve:reject:` / `silentRestoreWithResolve:reject:`) does not
+    /// start with the JS name — but `RCT_EXTERN_REMAP_METHOD` is not public
+    /// in RN 0.86 (`RCTBridgeModule.h:310-323`), so Task 14 cannot preserve
+    /// that remap in the shim and must give both a selector whose first
+    /// segment IS the JS name. Per the plan's Task 11 trap 1, the expected
+    /// post-swap selectors are `restoreAllProducts:reject:` and
+    /// `silentRestoreAllProducts:reject:` — see the two inline comments
+    /// below. Neither change is JS-visible: the JS name and argument count
+    /// are unchanged, only the Objective-C spelling.
     ///
     /// This is a before-image, not Task 14's BridgeSelectorResolutionTests:
     /// it snapshots what the Objective-C module exports today so a later
@@ -180,6 +193,8 @@ final class BridgeExportContractTests: XCTestCase {
         "registerActionInterceptor": "registerActionInterceptor:",
         "removeDefaultPresentationDismissHandler": "removeDefaultPresentationDismissHandler",
         "removeDynamicOffering": "removeDynamicOffering:",
+        // ONLY-ALLOWED-TO-CHANGE-AT-TASK-14 (RCT_REMAP_METHOD today; expected
+        // post-swap selector is "restoreAllProducts:reject:").
         "restoreAllProducts": "resolve:reject:",
         "revokeDataProcessingConsent": "revokeDataProcessingConsent:",
         "setAttribute": "setAttribute:value:",
@@ -201,6 +216,8 @@ final class BridgeExportContractTests: XCTestCase {
         "setUserAttributeWithString": "setUserAttributeWithString:value:legalBasis:",
         "setUserAttributeWithStringArray": "setUserAttributeWithStringArray:value:legalBasis:",
         "signPromotionalOffer": "signPromotionalOffer:storeOfferId:resolve:reject:",
+        // ONLY-ALLOWED-TO-CHANGE-AT-TASK-14 (RCT_REMAP_METHOD today; expected
+        // post-swap selector is "silentRestoreAllProducts:reject:").
         "silentRestoreAllProducts": "silentRestoreWithResolve:reject:",
         "start": "start:stores:storeKit1:userId:logLevel:runningMode:purchaselySdkVersion:startOptions:initialized:reject:",
         "synchronize": "synchronize:reject:",

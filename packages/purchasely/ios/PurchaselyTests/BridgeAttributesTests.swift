@@ -52,4 +52,49 @@ final class BridgeAttributesTests: XCTestCase {
     func testRnValuePassesThroughNil() {
         XCTAssertNil(PurchaselyBridge.rnValue(for: nil))
     }
+
+    // MARK: - wholeNumberAttributeValue(_:) — the Int(exactly:) split
+
+    func testWholeNumberAttributeValueIntegerReturnsInt() {
+        XCTAssertEqual(PurchaselyBridge.wholeNumberAttributeValue(42.0), 42)
+    }
+
+    func testWholeNumberAttributeValueFractionalReturnsNil() {
+        // The boundary that makes this trap matter: 2.5 must take the
+        // double path, not round to 3 (that was the first-draft bug this
+        // trap replaces, per PurchaselyRN.m:729-742's fmod check).
+        XCTAssertNil(PurchaselyBridge.wholeNumberAttributeValue(2.5))
+    }
+
+    func testWholeNumberAttributeValueOutOfRangeReturnsNil() {
+        // PurchaselyRN.m's fmod-based check has no fractional remainder for
+        // a value this large, but it does not fit in Int — the "1e300 fix"
+        // the plan attributes to Int(exactly:).
+        XCTAssertNil(PurchaselyBridge.wholeNumberAttributeValue(1e300))
+    }
+
+    func testWholeNumberAttributeValueNaNReturnsNil() {
+        XCTAssertNil(PurchaselyBridge.wholeNumberAttributeValue(Double.nan))
+    }
+
+    // MARK: - truncatedToInt32(_:) — the 32-bit NSNumber.intValue trap
+
+    func testTruncatedToInt32PassesThroughAnInRangeValue() {
+        XCTAssertEqual(PurchaselyBridge.truncatedToInt32(NSNumber(value: 42)), 42)
+    }
+
+    func testTruncatedToInt32WrapsAtTheInt32Boundary() {
+        // The boundary that makes this trap matter: Int32.max + 1 wraps to
+        // Int32.min, reproducing Objective-C's 32-bit `NSNumber.intValue`
+        // truncation (PurchaselyRN.m:847-861) instead of Swift's
+        // native-width `Int`.
+        let overflowing = NSNumber(value: Int64(Int32.max) + 1)
+        XCTAssertEqual(PurchaselyBridge.truncatedToInt32(overflowing), Int(Int32.min))
+    }
+
+    func testTruncatedToInt32OfNilNumberIsZero() {
+        // Objective-C: an `.intValue` message sent to a nil `NSNumber *`
+        // returns 0 (message-to-nil yields a zeroed scalar).
+        XCTAssertEqual(PurchaselyBridge.truncatedToInt32(nil), 0)
+    }
 }

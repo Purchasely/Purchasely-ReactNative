@@ -77,9 +77,12 @@ final class UIColorPLYHexTests: XCTestCase {
         // other malformed input this parser now rejects. The sole caller is
         // `plyTransitionFromMap` (PurchaselyRN.m:334-335), which reads
         // `map["backgroundColors"]["light"/"dark"]` out of the `transition`
-        // dictionary a JS caller passes to `displayPresentation` /
-        // `preloadPresentation` — not backend paywall JSON. The Objective-C
-        // NSScanner-based parser returned a colour (often opaque black) for
+        // dictionary a JS caller passes to `displayPresentation` —
+        // `displayPresentation:payload:transition:resolve:reject:` is the
+        // only exported method with a `transition` parameter.
+        // `preloadPresentation:payload:resolve:reject:` (PurchaselyRN.m:1513)
+        // has no transition parameter at all — not backend paywall JSON. The
+        // Objective-C NSScanner-based parser returned a colour (often opaque black) for
         // malformed input such as "FF00ZZ", "0xFFFF" or "FF 000", where
         // `UInt32(_:radix:)` returns nil; the guard here exists to make that
         // divergence UNIFORM and predictable across all such input, not to
