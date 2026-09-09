@@ -3,7 +3,7 @@
 **Created:** 2026-09-08
 **Reviewed:** 2026-09-08 (adversarial review by two models; every count and claim
 below was re-verified against the code after that review)
-**Status:** design, waiting for approval
+**Status:** implemented (`feat/ios-swift-bridge-spec`, PR #298)
 **Scope:** `packages/purchasely/ios/` only. No JavaScript API change, no Android
 change.
 

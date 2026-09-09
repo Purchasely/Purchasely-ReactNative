@@ -72,10 +72,24 @@ ReactNative_SDK/
 
 | File | Purpose |
 |------|---------|
-| `packages/purchasely/ios/PurchaselyRN.h` | Native module header |
-| `packages/purchasely/ios/PurchaselyRN.m` | Main iOS bridge implementation (~1500 lines) |
+| `packages/purchasely/ios/PurchaselyRN.swift` | The module class: state, lock, constants, events, the delegate conformances |
+| `packages/purchasely/ios/PurchaselyRN+Lifecycle.swift` | Start, identity, deeplinks, language, log level, theme, consent, synchronize |
+| `packages/purchasely/ios/PurchaselyRN+Attributes.swift` | User attribute methods and the legal-basis mapper |
+| `packages/purchasely/ios/PurchaselyRN+Products.swift` | Products, plans, subscriptions, purchase, restore, offerings |
+| `packages/purchasely/ios/PurchaselyRN+Presentations.swift` | Preload, display, close, back, transitions, the presentation delegate |
+| `packages/purchasely/ios/PurchaselyRN+Interceptors.swift` | Register, unregister, complete, the interceptor timeout |
+| `packages/purchasely/ios/PurchaselyRN.m` | Export shim only: `RCT_EXTERN_REMAP_MODULE` + `RCT_EXTERN_METHOD` lines |
+| `packages/purchasely/ios/Classes/Serialization/` | `PLYPlan`/`PLYProduct`/`PLYOfferSignature`/`PLYPresentationPlan` → dictionary, `UIColor+PLYHex` |
 | `packages/purchasely/ios/PurchaselyView.swift` | Embedded presentation view |
 | `packages/purchasely/ios/PurchaselyViewManager.swift` | View lifecycle manager |
+
+`packages/purchasely/ios/Classes/Hybrid/PLYSubscription+Hybrid.h/.m` stays
+Objective-C on purpose. `PLYSubscription.init(from:)` resolves through the
+SDK's internal `ProductRepository`, which has no injection seam, so no test
+fixture can exist for it. For this reason, `@objc` on `PLYPlan.asDictionary`
+and `PLYProduct.asDictionary` is permanent — it is the runtime bridge that
+file calls into. `SerializationContractTests.testPlanAndProductRespondToAsDictionarySelector`
+is the guard; do not remove either `@objc`.
 
 ### Native Android Bridge
 
@@ -96,8 +110,8 @@ ReactNative_SDK/
 | `packages/purchasely/src/__tests__/enums.test.ts` | Enumeration tests | ~306 |
 | `packages/purchasely/src/__tests__/PLYPresentationView.test.tsx` | Component tests | ~266 |
 | `packages/purchasely/src/__mocks__/testUtils.ts` | Shared test utilities | - |
-| `packages/purchasely/ios/PurchaselyTests/PurchaselyRNTests.m` | iOS bridge tests | ~330 |
-| `packages/purchasely/ios/PurchaselyTests/PurchaselyViewTests.swift` | iOS view tests | ~265 |
+| `packages/purchasely/ios/PurchaselyTests/PurchaselyRNTests.swift` | iOS bridge tests | ~544 |
+| `packages/purchasely/ios/PurchaselyTests/PurchaselyViewTests.swift` | iOS view tests | ~785 |
 | `packages/purchasely/android/src/test/.../PurchaselyModuleTest.kt` | Android module tests | ~508 |
 
 ### Configuration Files
@@ -438,8 +452,11 @@ The SDK includes comprehensive test coverage across TypeScript, iOS, and Android
 
 | Test File | Purpose | Lines | Language |
 |-----------|---------|-------|----------|
-| `PurchaselyRNTests.m` | Bridge module integration tests | ~330 | Objective-C |
-| `PurchaselyViewTests.swift` | View component tests | ~265 | Swift |
+| `PurchaselyRNTests.swift` | Bridge module integration tests | ~544 | Swift |
+| `PurchaselyViewTests.swift` | View component tests | ~785 | Swift |
+| `BridgeExportContractTests.swift` | Locks the 63 JS method names, module name, 60 constants, 11 events | ~465 | Swift |
+| `SerializationContractTests.swift` | Locks every serializer's key set, value types, absence policy | ~356 | Swift |
+| `BridgeSelectorResolutionTests.swift` | Proves each of the shim's 63 exported selectors resolves on `PurchaselyRN` | ~41 | Swift |
 
 - **Framework:** XCTest (built-in iOS testing framework)
 - **Test Target:** Configured in `Info.plist`
@@ -588,7 +605,7 @@ yarn prepare
 1. Add TypeScript interface in `packages/purchasely/src/interfaces.ts`
 2. Add return type in `packages/purchasely/src/types.ts`
 3. Implement in `packages/purchasely/src/index.ts`
-4. Implement iOS native method in `packages/purchasely/ios/PurchaselyRN.m`
+4. Implement iOS native method in the matching `PurchaselyRN+*.swift` file, then add its `RCT_EXTERN_METHOD` line in `packages/purchasely/ios/PurchaselyRN.m`
 5. Implement Android native method in `packages/purchasely/android/.../PurchaselyModule.kt`
 6. Export from index if needed
 
@@ -601,9 +618,19 @@ yarn prepare
 ### Modifying Native Bridge
 
 **iOS:**
-- Edit `PurchaselyRN.m` for methods
-- Use `RCT_EXPORT_METHOD` macro
+- Edit the Swift file for the method (`PurchaselyRN.swift` or the matching
+  `PurchaselyRN+*.swift` extension), **and** add or update its
+  `RCT_EXTERN_METHOD` line in `PurchaselyRN.m`, copying the selector from the
+  Swift `@objc(...)` annotation rather than retyping it.
 - Use `RCTPromiseResolveBlock` for async
+- The shim is parsed as **text**, not checked by the compiler: a selector
+  mismatch fails at run time, in a client app, with "method not found" — not
+  at build time. `BridgeExportContractTests` and
+  `BridgeSelectorResolutionTests` are the gates that catch this in CI.
+- `react-native-purchasely-Bridging-Header.h` is load-bearing despite its
+  name: CocoaPods compiles the pod's Swift with `-import-underlying-module`,
+  and this file is what puts the React headers into the umbrella. Deleting it
+  breaks every Swift file in the pod, with an error pointing elsewhere.
 
 **Android:**
 - Edit `PurchaselyModule.kt`
@@ -620,7 +647,7 @@ yarn prepare
 5. Run `yarn test` to verify
 
 **iOS Tests (XCTest):**
-1. Add test methods to `PurchaselyRNTests.m` or `PurchaselyViewTests.swift`
+1. Add test methods to `PurchaselyRNTests.swift` or `PurchaselyViewTests.swift`
 2. Use XCTestCase and XCTestExpectation for async tests
 3. Test native bridge methods and view lifecycle
 4. Run tests from Xcode or via xcodebuild
@@ -708,6 +735,7 @@ packages/purchasely/src/enums.ts
 packages/purchasely/src/interfaces.ts
 
 # iOS native
+packages/purchasely/ios/PurchaselyRN.swift
 packages/purchasely/ios/PurchaselyRN.m
 
 # Android native
@@ -721,8 +749,10 @@ packages/purchasely/src/__tests__/PLYPresentationView.test.tsx
 packages/purchasely/src/__mocks__/testUtils.ts
 
 # iOS tests
-packages/purchasely/ios/PurchaselyTests/PurchaselyRNTests.m
+packages/purchasely/ios/PurchaselyTests/PurchaselyRNTests.swift
 packages/purchasely/ios/PurchaselyTests/PurchaselyViewTests.swift
+packages/purchasely/ios/PurchaselyTests/BridgeExportContractTests.swift
+packages/purchasely/ios/PurchaselyTests/SerializationContractTests.swift
 
 # Android tests
 packages/purchasely/android/src/test/java/com/reactnativepurchasely/PurchaselyModuleTest.kt
