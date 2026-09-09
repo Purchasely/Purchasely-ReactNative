@@ -46,11 +46,16 @@ private final class RecordingBridge: PurchaselyRN {
     var lastEventName: String?
     var lastEventBody: NSDictionary?
     var sendEventCallCount = 0
+    // Accumulates every event, in order — needed for preloadPresentation /
+    // displayPresentation, which can emit more than one event (loaded,
+    // presented, dismissed) from a single call.
+    var recordedEvents: [(name: String, body: NSDictionary?)] = []
 
     override func sendEvent(withName name: String!, body: Any!) {
         sendEventCallCount += 1
         lastEventName = name
         lastEventBody = body as? NSDictionary
+        recordedEvents.append((name, body as? NSDictionary))
     }
 }
 
@@ -377,7 +382,25 @@ final class BridgePresentationsTests: XCTestCase {
         PurchaselyRN.emitPresentationDismissed(forId: "req-3", outcome: outcome)
 
         XCTAssertEqual(recorder.lastEventBody?["purchaseResult"] as? Int, 0)
-        XCTAssertNotNil(recorder.lastEventBody?["plan"])
+        // Value type: "plan" is `[outcome.plan asDictionary]`, an NSDictionary
+        // (PurchaselyRN.m:424), never a boxed PLYPlan.
+        let planBody = recorder.lastEventBody?["plan"] as? NSDictionary
+        XCTAssertNotNil(planBody, "\"plan\" must be a dictionary")
+        XCTAssertEqual(planBody?["vendorId"] as? String, "PLAN_MONTHLY")
+        recorder.stopObserving()
+    }
+
+    func testEmitPresentationDismissedOmitsPlanWhenOutcomeHasNone() {
+        // PurchaselyRN.m:421-423: `if (outcome.plan != nil) { body[@"plan"]
+        // = ...; }` — no assignment at all when nil, so the key is absent,
+        // never NSNull.
+        let recorder = RecordingBridge()
+        recorder.startObserving()
+        let outcome = PLYPresentationOutcome(purchaseResult: .purchased, plan: nil, presentation: nil, closeReason: .none, error: nil)
+
+        PurchaselyRN.emitPresentationDismissed(forId: "req-3-no-plan", outcome: outcome)
+
+        XCTAssertNil(recorder.lastEventBody?["plan"])
         recorder.stopObserving()
     }
 
@@ -391,7 +414,13 @@ final class BridgePresentationsTests: XCTestCase {
 
         PurchaselyRN.emitPresentationDismissed(forId: "req-4", outcome: outcome)
 
-        XCTAssertNotNil(recorder.lastEventBody?["error"])
+        // Value type: "error" is presentationErrorToMap(error), an
+        // NSDictionary with code/domain/message, never the boxed NSError.
+        let errorBody = recorder.lastEventBody?["error"] as? NSDictionary
+        XCTAssertNotNil(errorBody, "\"error\" must be a dictionary")
+        XCTAssertEqual(errorBody?["code"] as? Int, 1)
+        XCTAssertEqual(errorBody?["domain"] as? String, "io.purchasely.test")
+        XCTAssertEqual(errorBody?["message"] as? String, "boom")
         XCTAssertNil(recorder.lastEventBody?["closeReason"])
         recorder.stopObserving()
     }
@@ -468,6 +497,69 @@ final class BridgePresentationsTests: XCTestCase {
         recorder.eventTriggered(.appStarted, properties: nil)
 
         XCTAssertNil(recorder.lastEventName)
+    }
+
+    // MARK: - requestId omission, the display/preload paths (PurchaselyRN+
+    // Presentations.swift:423,497,523,536,547,561) — the static
+    // emitPresentationDismissed above is the preload-completion dismiss
+    // path; these are the six other event bodies the same fix touched.
+    //
+    // A missing placementId/presentationId/isDefault makes
+    // presentationBuilder(...) return nil without reaching the SDK, so the
+    // "no placementId or screenId provided" error path runs synchronously
+    // and needs no live SDK — that is what every test below drives.
+    //
+    // Two bodies are NOT covered here and cannot be without a live SDK:
+    // the "missing presentation" onFetchCompletion branch (:547, reached
+    // only when presentationBuilder succeeds but the SDK's own fetch then
+    // returns a nil presentation) and the success onFetchCompletion branch
+    // (:561, reached only with a real presentation from the SDK). Both
+    // require presentationBuilder to return a non-nil builder, which means
+    // a real `Purchasely.presentation.placement(...)` call into the
+    // started SDK — there is no seam here to fake that without one.
+
+    func testPreloadPresentationLoadedEventOmitsRequestIdWhenNil() {
+        // Covers PurchaselyRN+Presentations.swift:423 (preloadPresentation's
+        // onFetchCompletion, the "loaded" event on the preload path).
+        let recorder = RecordingBridge()
+        recorder.startObserving()
+        let done = expectation(description: "preloadPresentation resolved")
+
+        recorder.preloadPresentation(nil, payload: nil, resolve: { _ in done.fulfill() }, reject: { _, _, _ in
+            XCTFail("reject should not be called")
+        })
+
+        wait(for: [done], timeout: 2.0)
+        XCTAssertEqual(recorder.recordedEvents.map(\.name), ["PURCHASELY_PRESENTATION_LOADED"])
+        XCTAssertNil(recorder.recordedEvents.first?.body?["requestId"], "a nil requestId must be an absent key, not \"\"")
+        XCTAssertNotNil(recorder.recordedEvents.first?.body?["error"])
+        recorder.stopObserving()
+    }
+
+    func testDisplayPresentationLoadedPresentedAndDismissedEventsOmitRequestIdWhenNil() {
+        // Covers PurchaselyRN+Presentations.swift:523 (onFetchCompletion's
+        // "loaded" event), :536 (the same closure's synthesized "presented"
+        // event for the error branch) and :497 (emitDismissed, called right
+        // after with that same error) — all three fire from this one call,
+        // in that order.
+        let recorder = RecordingBridge()
+        recorder.startObserving()
+        let done = expectation(description: "displayPresentation resolved")
+
+        recorder.displayPresentation(nil, payload: nil, transition: nil, resolve: { _ in done.fulfill() }, reject: { _, _, _ in
+            XCTFail("reject should not be called")
+        })
+
+        wait(for: [done], timeout: 2.0)
+        XCTAssertEqual(recorder.recordedEvents.map(\.name), [
+            "PURCHASELY_PRESENTATION_LOADED",
+            "PURCHASELY_PRESENTATION_PRESENTED",
+            "PURCHASELY_PRESENTATION_DISMISSED",
+        ])
+        for event in recorder.recordedEvents {
+            XCTAssertNil(event.body?["requestId"], "\(event.name) must omit requestId, not send \"\"")
+        }
+        recorder.stopObserving()
     }
 
     // MARK: - closePresentation: proves the two-block lock shape does not deadlock

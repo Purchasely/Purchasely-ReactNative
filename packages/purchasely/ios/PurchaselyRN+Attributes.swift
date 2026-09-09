@@ -182,6 +182,12 @@ extension PurchaselyRN {
     /// split into an int array and a double array by the same fractional
     /// test as `setUserAttributeWithNumber`; each SDK setter fires only
     /// when its array is non-empty, exactly as the Objective-C did.
+    ///
+    /// This diverges from the Objective-C `-doubleValue` message send: an
+    /// NSString element (e.g. "42") would have parsed its leading digits
+    /// there, where Swift's `as? NSNumber` cast simply fails and falls back
+    /// to 0. Deliberate, matching `coercedBoolArray` above — do not "fix"
+    /// this back to a message send.
     static func splitNumberArray(_ value: [Any]?) -> (ints: [Int], doubles: [Double]) {
         var intArray: [Int] = []
         var doubleArray: [Double] = []
