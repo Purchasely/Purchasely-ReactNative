@@ -26,14 +26,14 @@ final class BridgeSkeletonTests: XCTestCase {
     }
 
     func testRequiresMainQueueSetupIsTrue() {
-        // PurchaselyRN.m:1447 returns YES. Asserted as a literal, not against
+        // PurchaselyRN.m:1441 returns YES. Asserted as a literal, not against
         // the Objective-C class, because a wrong value in BOTH would pass.
         XCTAssertTrue(PurchaselyBridge.requiresMainQueueSetup())
     }
 
     func testSequentialLockedBlocksDoNotDeadlock() {
         // Constraint 7 in one assertion: two sequential withState calls are the
-        // shape closePresentation uses (PurchaselyRN.m:1807 and :1826). If an
+        // shape closePresentation uses (PurchaselyRN.m:1799 and :1817). If an
         // executor hoists lock()/defer to the enclosing closure, the second
         // acquisition deadlocks and this test times out rather than failing
         // fast — the timeout IS the signal.
@@ -76,7 +76,7 @@ final class BridgeSkeletonTests: XCTestCase {
     }
 
     func testRejectWithNilErrorProducesCodeZeroAndNoMessage() {
-        // PurchaselyRN.m:1455 messages a nil error and gets code "0" with a nil
+        // PurchaselyRN.m:1448 messages a nil error and gets code "0" with a nil
         // message. Swift must not force-unwrap or return early here.
         var code: String?
         var message: String?

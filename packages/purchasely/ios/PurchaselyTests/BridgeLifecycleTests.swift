@@ -91,20 +91,49 @@ final class BridgeLifecycleTests: XCTestCase {
         // PurchaselyRN.m:663-676: a nil deeplink is rejected before the
         // dispatch_async to the SDK call, so this branch is fully testable
         // without a live SDK.
+        //
+        // Deliberately no XCTestExpectation/wait(for:) here: waiting would
+        // also pass if the guard were (wrongly) moved inside
+        // DispatchQueue.main.async, since the run loop would still fire the
+        // reject before the timeout elapses. Asserting immediately, with no
+        // run-loop pump in between, is what actually proves the rejection
+        // happened on the calling thread before handleDeeplink returned.
         let bridge = PurchaselyBridge()
-        let rejected = expectation(description: "reject called")
+        var resolveCalled = false
         var rejectedCode: String?
         var rejectedMessage: String?
         bridge.handleDeeplink(nil, resolve: { _ in
-            XCTFail("resolve must not be called for a nil deeplink")
+            resolveCalled = true
         }, reject: { code, message, _ in
             rejectedCode = code
             rejectedMessage = message
-            rejected.fulfill()
         })
-        wait(for: [rejected], timeout: 1.0)
+        XCTAssertFalse(resolveCalled)
         XCTAssertEqual(rejectedCode, "-1")
         XCTAssertEqual(rejectedMessage, "Deeplink must not be null")
+    }
+
+    func testHandleDeeplinkWithMalformedURLResolvesFalseWithoutCallingTheSDK() {
+        // Lifecycle.swift:215 — this is the port's only genuinely new code
+        // path: `URL(string:)` returns nil for a malformed string, so a
+        // non-optional Swift `URL` parameter has no nil to forward the way
+        // the Objective-C original forwarded `NSURL URLWithString:`'s nil
+        // straight into a `_Nonnull` SDK parameter. Instead of crashing, it
+        // resolves `false`. An empty string is a value `URL(string:)` is
+        // documented to reject — self-verified below so this test cannot
+        // pass for the wrong reason on a Foundation where that changes.
+        XCTAssertNil(URL(string: ""), "precondition: URL(string:) must reject an empty string")
+        let bridge = PurchaselyBridge()
+        let resolved = expectation(description: "resolve called")
+        var resolvedValue: Bool?
+        bridge.handleDeeplink("", resolve: { value in
+            resolvedValue = value as? Bool
+            resolved.fulfill()
+        }, reject: { _, _, _ in
+            XCTFail("reject must not be called for a malformed deeplink")
+        })
+        wait(for: [resolved], timeout: 1.0)
+        XCTAssertEqual(resolvedValue, false)
     }
 
     // MARK: - purchasePerformed: the shouldEmit gate

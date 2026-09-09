@@ -301,7 +301,12 @@ extension PurchaselyBridge {
         if !mapped.isEmpty {
             Purchasely.revokeDataProcessingConsent(for: mapped)
         } else {
-            PLYRNLogWarn("[Purchasely] revokeDataProcessingConsent called with no valid purposes: \(purposes)")
+            // PurchaselyRN.m:1269 logs this with NSLog, not RCTLogWarn/
+            // PLYRNLogWarn — restore that destination (a Release build
+            // filters RCTLogWarn out). Unwrap `purposes` before formatting;
+            // interpolating the Optional directly (`\(purposes)`) printed
+            // "Optional([...])" instead of the array's own description.
+            NSLog("[Purchasely] revokeDataProcessingConsent called with no valid purposes: %@", (purposes ?? []) as NSArray)
         }
     }
 
