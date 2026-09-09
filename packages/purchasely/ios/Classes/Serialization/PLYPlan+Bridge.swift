@@ -9,25 +9,24 @@
 //  into Swift, so the contract tests read the same before and after the port.
 //
 //  `@objc public` on `asDictionary()` is PERMANENT, not a phase-1 scaffold.
-//  PurchaselyRN.m (not yet ported — Task 14) still calls it today through the
-//  compiler-generated `react_native_purchasely-Swift.h`, which the compiler
-//  DOES check. But `PLYSubscription+Hybrid.m` (permanent per amendment A2)
-//  reaches it through its own hand-written `@interface PLYPlan
+//  Since Task 14, PurchaselyRN.m no longer calls it — the shim's only
+//  consumer is `PLYSubscription+Hybrid.m` (permanent per amendment A2),
+//  which reaches it through its own hand-written `@interface PLYPlan
 //  (BridgeSerialization)` forward declaration — an Objective-C message send
 //  that is RUNTIME dispatch, never checked against this method at compile or
-//  link time. Task 14 removes PurchaselyRN.m's own binding but must NOT drop
-//  `@objc` here: SerializationContractTests'
-//  testPlanAndProductRespondToAsDictionarySelector is the only thing left
-//  that would catch it. (PLYProduct+Hybrid.m, the other stale caller this
-//  comment used to name, was deleted in Task 3.)
+//  link time. Dropping `@objc` here compiles and links fine and crashes only
+//  the first time a real `userSubscriptions` call reaches it;
+//  SerializationContractTests' testPlanAndProductRespondToAsDictionarySelector
+//  is the only thing left that would catch it. (PLYProduct+Hybrid.m, the
+//  other stale caller this comment used to name, was deleted in Task 3.)
 //
 
 import Foundation
 import Purchasely
 
-@objc public extension PLYPlan {
+extension PLYPlan {
 
-    func asDictionary() -> [String: Any] {
+    @objc public func asDictionary() -> [String: Any] {
         var dict: [String: Any] = [:]
 
         dict["vendorId"] = vendorId
@@ -125,10 +124,9 @@ import Purchasely
 
     // MARK: - billing plan type wire values
 
-    /// Replaces the C function `PLYBillingPlanTypeToRNString`. A free Swift
-    /// function cannot be `@objc`, so this is a static member and
-    /// `PurchaselyRN.m` calls `[PLYPlan rnStringFromBillingPlanType:x]`.
-    @objc(rnStringFromBillingPlanType:)
+    /// Replaces the C function `PLYBillingPlanTypeToRNString`. Since Task 14
+    /// this is called only from Swift (`PurchaselyRN+Products.swift`), by its
+    /// Swift name, so it no longer needs `@objc`.
     static func rnString(fromBillingPlanType type: PLYBillingPlanType) -> String {
         switch type {
         case .upFront: return "upFront"
@@ -140,7 +138,6 @@ import Purchasely
 
     /// Replaces `PLYBillingPlanTypeFromRNString`. Unknown and nil map to
     /// `.unspecified`, as the C function did.
-    @objc(billingPlanTypeFromRNString:)
     static func billingPlanType(fromRNString value: String?) -> PLYBillingPlanType {
         switch value {
         case "upFront": return .upFront

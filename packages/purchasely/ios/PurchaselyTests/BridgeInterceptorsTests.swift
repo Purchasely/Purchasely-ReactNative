@@ -22,17 +22,17 @@ final class BridgeInterceptorsTests: XCTestCase {
         // `removeActionInterceptor`, on the same queue `registerActionInterceptor`
         // used, which preserves FIFO ordering against that still-pending
         // registration — before clearing the local state.
-        let kinds = PurchaselyBridge.withState { PurchaselyBridge.interceptorKinds }
+        let kinds = PurchaselyRN.withState { PurchaselyRN.interceptorKinds }
         for kind in kinds {
-            if let action = PurchaselyBridge.presentationAction(from: kind) {
+            if let action = PurchaselyRN.presentationAction(from: kind) {
                 DispatchQueue.main.async {
                     Purchasely.removeActionInterceptor(action)
                 }
             }
         }
-        PurchaselyBridge.withState {
-            PurchaselyBridge.interceptorCallbacks.removeAll()
-            PurchaselyBridge.interceptorKinds.removeAll()
+        PurchaselyRN.withState {
+            PurchaselyRN.interceptorCallbacks.removeAll()
+            PurchaselyRN.interceptorKinds.removeAll()
         }
         super.tearDown()
     }
@@ -41,9 +41,9 @@ final class BridgeInterceptorsTests: XCTestCase {
 
     func testAStaleInterceptorCallbackIsCompletedWithNotHandled() {
         let done = expectation(description: "notHandled delivered")
-        let bridge = PurchaselyBridge()
-        PurchaselyBridge.withState {
-            PurchaselyBridge.interceptorCallbacks["cb-1"] = { result in
+        let bridge = PurchaselyRN()
+        PurchaselyRN.withState {
+            PurchaselyRN.interceptorCallbacks["cb-1"] = { result in
                 XCTAssertEqual(result, "notHandled")
                 done.fulfill()
             }
@@ -54,21 +54,21 @@ final class BridgeInterceptorsTests: XCTestCase {
 
     func testATimedOutCallbackIsRemovedFromTheRegistry() {
         let done = expectation(description: "notHandled delivered")
-        let bridge = PurchaselyBridge()
-        PurchaselyBridge.withState {
-            PurchaselyBridge.interceptorCallbacks["cb-2"] = { _ in done.fulfill() }
+        let bridge = PurchaselyRN()
+        PurchaselyRN.withState {
+            PurchaselyRN.interceptorCallbacks["cb-2"] = { _ in done.fulfill() }
         }
         bridge.scheduleInterceptorTimeout(callbackId: "cb-2", after: 0.05)
         wait(for: [done], timeout: 1.0)
-        XCTAssertNil(PurchaselyBridge.withState { PurchaselyBridge.interceptorCallbacks["cb-2"] })
+        XCTAssertNil(PurchaselyRN.withState { PurchaselyRN.interceptorCallbacks["cb-2"] })
     }
 
     func testATimedOutCallbackThatWasAlreadyCompletedIsNotFiredTwice() {
         // Whoever removes the entry first wins; the loser reads nil and no-ops.
         var fireCount = 0
-        let bridge = PurchaselyBridge()
-        PurchaselyBridge.withState {
-            PurchaselyBridge.interceptorCallbacks["cb-3"] = { _ in fireCount += 1 }
+        let bridge = PurchaselyRN()
+        PurchaselyRN.withState {
+            PurchaselyRN.interceptorCallbacks["cb-3"] = { _ in fireCount += 1 }
         }
         bridge.scheduleInterceptorTimeout(callbackId: "cb-3", after: 0.05)
         // completeActionInterceptor races the timeout and wins.
@@ -84,34 +84,34 @@ final class BridgeInterceptorsTests: XCTestCase {
     // MARK: - registerActionInterceptor
 
     func testRegisterActionInterceptorWithUnknownKindDoesNotRegisterIt() {
-        let bridge = PurchaselyBridge()
+        let bridge = PurchaselyRN()
         bridge.registerActionInterceptor("not-a-real-kind")
-        XCTAssertFalse(PurchaselyBridge.withState { PurchaselyBridge.interceptorKinds.contains("not-a-real-kind") })
+        XCTAssertFalse(PurchaselyRN.withState { PurchaselyRN.interceptorKinds.contains("not-a-real-kind") })
     }
 
     func testRegisterActionInterceptorWithNilKindDoesNotCrash() {
-        let bridge = PurchaselyBridge()
+        let bridge = PurchaselyRN()
         bridge.registerActionInterceptor(nil)
-        XCTAssertTrue(PurchaselyBridge.withState { PurchaselyBridge.interceptorKinds }.isEmpty)
+        XCTAssertTrue(PurchaselyRN.withState { PurchaselyRN.interceptorKinds }.isEmpty)
     }
 
     func testRegisterActionInterceptorWithAKnownKindRecordsIt() {
-        let bridge = PurchaselyBridge()
+        let bridge = PurchaselyRN()
         bridge.registerActionInterceptor("purchase")
-        XCTAssertTrue(PurchaselyBridge.withState { PurchaselyBridge.interceptorKinds.contains("purchase") })
+        XCTAssertTrue(PurchaselyRN.withState { PurchaselyRN.interceptorKinds.contains("purchase") })
     }
 
     // MARK: - unregisterActionInterceptor
 
     func testUnregisterActionInterceptorRemovesAKnownKind() {
-        let bridge = PurchaselyBridge()
-        PurchaselyBridge.withState { PurchaselyBridge.interceptorKinds.insert("purchase") }
+        let bridge = PurchaselyRN()
+        PurchaselyRN.withState { PurchaselyRN.interceptorKinds.insert("purchase") }
         bridge.unregisterActionInterceptor("purchase")
-        XCTAssertFalse(PurchaselyBridge.withState { PurchaselyBridge.interceptorKinds.contains("purchase") })
+        XCTAssertFalse(PurchaselyRN.withState { PurchaselyRN.interceptorKinds.contains("purchase") })
     }
 
     func testUnregisterActionInterceptorWithUnknownKindDoesNotCrash() {
-        let bridge = PurchaselyBridge()
+        let bridge = PurchaselyRN()
         bridge.unregisterActionInterceptor("not-a-real-kind")
         // no crash is the assertion
     }
@@ -119,14 +119,14 @@ final class BridgeInterceptorsTests: XCTestCase {
     // MARK: - completeActionInterceptor
 
     func testCompleteActionInterceptorInvokesAndRemovesTheStoredCallback() {
-        let bridge = PurchaselyBridge()
+        let bridge = PurchaselyRN()
         var received: String?
-        PurchaselyBridge.withState {
-            PurchaselyBridge.interceptorCallbacks["cb-4"] = { result in received = result }
+        PurchaselyRN.withState {
+            PurchaselyRN.interceptorCallbacks["cb-4"] = { result in received = result }
         }
         bridge.completeActionInterceptor("cb-4", result: "success")
         XCTAssertEqual(received, "success")
-        XCTAssertNil(PurchaselyBridge.withState { PurchaselyBridge.interceptorCallbacks["cb-4"] })
+        XCTAssertNil(PurchaselyRN.withState { PurchaselyRN.interceptorCallbacks["cb-4"] })
     }
 
     func testCompleteActionInterceptorWithNilResultFallsBackToNotHandled() {
@@ -134,23 +134,23 @@ final class BridgeInterceptorsTests: XCTestCase {
         // to nil, which returns false for both comparisons and falls to the
         // `notHandled` default. The Swift callback takes a non-optional String
         // (Task 8), so the nil-to-notHandled fallback happens at the call site.
-        let bridge = PurchaselyBridge()
+        let bridge = PurchaselyRN()
         var received: String?
-        PurchaselyBridge.withState {
-            PurchaselyBridge.interceptorCallbacks["cb-5"] = { result in received = result }
+        PurchaselyRN.withState {
+            PurchaselyRN.interceptorCallbacks["cb-5"] = { result in received = result }
         }
         bridge.completeActionInterceptor("cb-5", result: nil)
         XCTAssertEqual(received, "notHandled")
     }
 
     func testCompleteActionInterceptorWithUnknownCallbackIdDoesNotCrash() {
-        let bridge = PurchaselyBridge()
+        let bridge = PurchaselyRN()
         bridge.completeActionInterceptor("no-such-callback", result: "success")
         // no crash is the assertion
     }
 
     func testCompleteActionInterceptorWithNilCallbackIdDoesNotCrash() {
-        let bridge = PurchaselyBridge()
+        let bridge = PurchaselyRN()
         bridge.completeActionInterceptor(nil, result: "success")
         // no crash is the assertion
     }

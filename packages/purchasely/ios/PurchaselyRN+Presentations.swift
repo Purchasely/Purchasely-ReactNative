@@ -23,7 +23,7 @@ private enum PresentationEventName {
     static let defaultDismissed = "PURCHASELY_DEFAULT_PRESENTATION_DISMISSED"
 }
 
-extension PurchaselyBridge {
+extension PurchaselyRN {
 
     // MARK: - PLYPresentationAction <-> wire string (PurchaselyRN.m:73-96)
     //
@@ -121,7 +121,7 @@ extension PurchaselyBridge {
 
     // MARK: - PLYPurchaseResult / PLYCloseReason
     //
-    // `purchaseResultOrdinal` already exists on PurchaselyBridge (Task 8's
+    // `purchaseResultOrdinal` already exists on PurchaselyRN (Task 8's
     // skeleton) — reused here, not redefined.
 
     static func closeReasonToRNString(_ reason: PLYCloseReason) -> String? {

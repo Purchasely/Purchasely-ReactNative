@@ -1,8 +1,10 @@
 //
 //  BridgeSkeletonTests.swift
-//  Locks the Swift bridge class skeleton against the Objective-C module it
-//  will replace. PurchaselyBridge carries no export macro yet (Task 8), so
-//  this reaches it only through @testable import.
+//  Locks the Swift bridge class skeleton. Before Task 14 this compared the
+//  Swift PurchaselyBridge against the Objective-C PurchaselyRN it would
+//  replace; after the swap both names are the same class, so those two
+//  comparisons are replaced with assertions against the literal lists
+//  BridgeExportContractTests already locks.
 //
 
 import XCTest
@@ -10,25 +12,20 @@ import XCTest
 
 final class BridgeSkeletonTests: XCTestCase {
 
-    func testConstantsMatchTheObjectiveCModuleExactly() {
-        // The Swift class must produce the same 60 keys and the same values as
-        // the module it replaces. Comparing the two directly is stronger than
-        // comparing either to a literal list.
-        let objc = PurchaselyRN().constantsToExport() as? [String: NSNumber] ?? [:]
-        let swift = PurchaselyBridge().constantsToExport() as? [String: NSNumber] ?? [:]
-        XCTAssertEqual(swift, objc)
+    func testConstantsKeepAllSixtyKeys() {
+        let constants = PurchaselyRN().constantsToExport() as? [String: Any] ?? [:]
+        XCTAssertEqual(Set(constants.keys), BridgeExportContractTests.expectedConstantKeys)
     }
 
-    func testSupportedEventsMatchTheObjectiveCModuleExactly() {
-        let objc = PurchaselyRN().supportedEvents() as? [String] ?? []
-        let swift = PurchaselyBridge().supportedEvents() as? [String] ?? []
-        XCTAssertEqual(swift, objc)
+    func testSupportedEventsKeepTheirOrder() {
+        XCTAssertEqual(PurchaselyRN().supportedEvents() as? [String] ?? [],
+                       BridgeExportContractTests.expectedEvents)
     }
 
     func testRequiresMainQueueSetupIsTrue() {
         // PurchaselyRN.m:1441 returns YES. Asserted as a literal, not against
         // the Objective-C class, because a wrong value in BOTH would pass.
-        XCTAssertTrue(PurchaselyBridge.requiresMainQueueSetup())
+        XCTAssertTrue(PurchaselyRN.requiresMainQueueSetup())
     }
 
     func testSequentialLockedBlocksDoNotDeadlock() {
@@ -40,11 +37,11 @@ final class BridgeSkeletonTests: XCTestCase {
         //
         // The real reentrancy proof lives in Task 12's closePresentation test;
         // this one only guards the helper.
-        PurchaselyBridge.withState { PurchaselyBridge.interceptorKinds.insert("a") }
-        PurchaselyBridge.withState { PurchaselyBridge.interceptorKinds.insert("b") }
-        XCTAssertEqual(PurchaselyBridge.withState { PurchaselyBridge.interceptorKinds },
+        PurchaselyRN.withState { PurchaselyRN.interceptorKinds.insert("a") }
+        PurchaselyRN.withState { PurchaselyRN.interceptorKinds.insert("b") }
+        XCTAssertEqual(PurchaselyRN.withState { PurchaselyRN.interceptorKinds },
                        Set(["a", "b"]))
-        PurchaselyBridge.withState { PurchaselyBridge.interceptorKinds.removeAll() }
+        PurchaselyRN.withState { PurchaselyRN.interceptorKinds.removeAll() }
     }
 
     func testImplementsOnlyTheFiveArgumentUserAttributeSetOverload() {
@@ -56,7 +53,7 @@ final class BridgeSkeletonTests: XCTestCase {
         // 4-argument overload instead would silently drop
         // processingLegalBasis from that event, so pin both: responds to the
         // 5-arg selector, does not respond to the 4-arg one.
-        let bridge = PurchaselyBridge()
+        let bridge = PurchaselyRN()
         let fiveArg = NSSelectorFromString("onUserAttributeSetWithKey:type:value:source:processingLegalBasis:")
         let fourArg = NSSelectorFromString("onUserAttributeSetWithKey:type:value:source:")
         XCTAssertTrue(bridge.responds(to: fiveArg))
@@ -69,10 +66,10 @@ final class BridgeSkeletonTests: XCTestCase {
         // `.none` maps to nil, not to cancelled, so the constants gate
         // (which falls back with `?? 1`) cannot catch a regression here —
         // this test pins the ordinals directly.
-        XCTAssertEqual(PurchaselyBridge.purchaseResultOrdinal(.purchased), 0)
-        XCTAssertEqual(PurchaselyBridge.purchaseResultOrdinal(.cancelled), 1)
-        XCTAssertEqual(PurchaselyBridge.purchaseResultOrdinal(.restored), 2)
-        XCTAssertNil(PurchaselyBridge.purchaseResultOrdinal(.none))
+        XCTAssertEqual(PurchaselyRN.purchaseResultOrdinal(.purchased), 0)
+        XCTAssertEqual(PurchaselyRN.purchaseResultOrdinal(.cancelled), 1)
+        XCTAssertEqual(PurchaselyRN.purchaseResultOrdinal(.restored), 2)
+        XCTAssertNil(PurchaselyRN.purchaseResultOrdinal(.none))
     }
 
     func testRejectWithNilErrorProducesCodeZeroAndNoMessage() {
@@ -80,7 +77,7 @@ final class BridgeSkeletonTests: XCTestCase {
         // message. Swift must not force-unwrap or return early here.
         var code: String?
         var message: String?
-        PurchaselyBridge.reject({ c, m, _ in code = c; message = m }, with: nil)
+        PurchaselyRN.reject({ c, m, _ in code = c; message = m }, with: nil)
         XCTAssertEqual(code, "0")
         XCTAssertNil(message)
     }

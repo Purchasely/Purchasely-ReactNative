@@ -9,16 +9,15 @@
 //  into Swift, so the contract tests read the same before and after the port.
 //
 //  `@objc public` on `asDictionary()` is PERMANENT, not a phase-1 scaffold.
-//  PurchaselyRN.m (not yet ported — Task 14) still calls it today through the
-//  compiler-generated `react_native_purchasely-Swift.h`, which the compiler
-//  DOES check. But `PLYSubscription+Hybrid.m` (permanent per amendment A2)
-//  reaches it through its own hand-written `@interface PLYProduct
+//  Since Task 14, PurchaselyRN.m no longer calls it — the shim's only
+//  consumer is `PLYSubscription+Hybrid.m` (permanent per amendment A2),
+//  which reaches it through its own hand-written `@interface PLYProduct
 //  (BridgeSerialization)` forward declaration — an Objective-C message send
 //  that is RUNTIME dispatch, never checked against this method at compile or
-//  link time. Task 14 removes PurchaselyRN.m's own binding but must NOT drop
-//  `@objc` here: SerializationContractTests'
-//  testPlanAndProductRespondToAsDictionarySelector is the only thing left
-//  that would catch it.
+//  link time. Dropping `@objc` here compiles and links fine and crashes only
+//  the first time a real `userSubscriptions` call reaches it;
+//  SerializationContractTests' testPlanAndProductRespondToAsDictionarySelector
+//  is the only thing left that would catch it.
 //
 
 import Foundation

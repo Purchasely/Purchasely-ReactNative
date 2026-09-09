@@ -12,7 +12,7 @@
 import Foundation
 import Purchasely
 
-extension PurchaselyBridge {
+extension PurchaselyRN {
 
     // MARK: - promo offer lookup (purchaseWithPlanVendorId helper)
 
