@@ -13,7 +13,7 @@ import XCTest
 // PurchaselyRNTests.swift's RecordingBridge but over the Swift skeleton, so
 // `purchasePerformed`'s shouldEmit gate can be asserted without a full
 // PLYPresentation double.
-private final class RecordingBridge: PurchaselyBridge {
+private final class RecordingBridge: PurchaselyRN {
     var lastEventName: String?
     var lastEventBody: NSDictionary?
     var sendEventCallCount = 0
@@ -30,7 +30,7 @@ final class BridgeLifecycleTests: XCTestCase {
     // MARK: - mapPurposesFromStrings
 
     func testMapPurposesFromStringsMapsEachKebabPurpose() {
-        let mapped = PurchaselyBridge.mapPurposesFromStrings([
+        let mapped = PurchaselyRN.mapPurposesFromStrings([
             "analytics", "identified-analytics", "campaigns", "personalization", "third-party-integration",
         ])
         XCTAssertEqual(mapped, [
@@ -47,8 +47,8 @@ final class BridgeLifecycleTests: XCTestCase {
         // SCREAMING_SNAKE_CASE plural ("THIRD_PARTY_INTEGRATIONS"); this
         // bridge's own wire strings are kebab-case singular. Both must map to
         // the same purpose.
-        let kebab = PurchaselyBridge.mapPurposesFromStrings(["third-party-integration"])
-        let screamingSnakePlural = PurchaselyBridge.mapPurposesFromStrings(["THIRD_PARTY_INTEGRATIONS"])
+        let kebab = PurchaselyRN.mapPurposesFromStrings(["third-party-integration"])
+        let screamingSnakePlural = PurchaselyRN.mapPurposesFromStrings(["THIRD_PARTY_INTEGRATIONS"])
         XCTAssertEqual(kebab, [PLYDataProcessingPurpose.thirdPartyIntegrations])
         XCTAssertEqual(screamingSnakePlural, [PLYDataProcessingPurpose.thirdPartyIntegrations])
     }
@@ -56,17 +56,17 @@ final class BridgeLifecycleTests: XCTestCase {
     func testMapPurposesFromStringsAllNonEssentialsShortCircuitsToOnlyThatPurpose() {
         // PurchaselyRN.m:1241-1243: "all-non-essentials" returns immediately
         // with a single-element set, ignoring any other purpose in the array.
-        let mapped = PurchaselyBridge.mapPurposesFromStrings(["analytics", "all-non-essentials", "campaigns"])
+        let mapped = PurchaselyRN.mapPurposesFromStrings(["analytics", "all-non-essentials", "campaigns"])
         XCTAssertEqual(mapped, [PLYDataProcessingPurpose.allNonEssentials])
     }
 
     func testMapPurposesFromStringsIgnoresUnknownPurposes() {
-        let mapped = PurchaselyBridge.mapPurposesFromStrings(["not-a-real-purpose"])
+        let mapped = PurchaselyRN.mapPurposesFromStrings(["not-a-real-purpose"])
         XCTAssertTrue(mapped.isEmpty)
     }
 
     func testMapPurposesFromStringsOfEmptyArrayIsEmpty() {
-        XCTAssertTrue(PurchaselyBridge.mapPurposesFromStrings([]).isEmpty)
+        XCTAssertTrue(PurchaselyRN.mapPurposesFromStrings([]).isEmpty)
     }
 
     // MARK: - setLogLevel / setThemeMode: the unknown-ordinal guard
@@ -76,12 +76,12 @@ final class BridgeLifecycleTests: XCTestCase {
         // (Constraint 4); the guard-else logs and returns without touching
         // the SDK. Reaching this line without a live SDK started is itself
         // the proof the guard, not a force-unwrap, is what runs.
-        let bridge = PurchaselyBridge()
+        let bridge = PurchaselyRN()
         bridge.setLogLevel(9999)
     }
 
     func testSetThemeModeWithUnknownOrdinalDoesNotCrash() {
-        let bridge = PurchaselyBridge()
+        let bridge = PurchaselyRN()
         bridge.setThemeMode(9999)
     }
 
@@ -98,7 +98,7 @@ final class BridgeLifecycleTests: XCTestCase {
         // reject before the timeout elapses. Asserting immediately, with no
         // run-loop pump in between, is what actually proves the rejection
         // happened on the calling thread before handleDeeplink returned.
-        let bridge = PurchaselyBridge()
+        let bridge = PurchaselyRN()
         var resolveCalled = false
         var rejectedCode: String?
         var rejectedMessage: String?
@@ -123,7 +123,7 @@ final class BridgeLifecycleTests: XCTestCase {
         // documented to reject — self-verified below so this test cannot
         // pass for the wrong reason on a Foundation where that changes.
         XCTAssertNil(URL(string: ""), "precondition: URL(string:) must reject an empty string")
-        let bridge = PurchaselyBridge()
+        let bridge = PurchaselyRN()
         let resolved = expectation(description: "resolve called")
         var resolvedValue: Bool?
         bridge.handleDeeplink("", resolve: { value in

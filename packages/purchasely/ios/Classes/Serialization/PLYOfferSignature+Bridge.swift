@@ -9,13 +9,14 @@
 //  imported into Swift, so the contract tests read the same before and
 //  after the port.
 //
-//  `@objc public` is temporary: Task 14 reduces it to `internal`.
+//  `@objc public` was temporary scaffolding for Objective-C callers that no
+//  longer exist as of Task 14 — reduced to `internal`.
 //
 
 import Foundation
 import Purchasely
 
-@objc public extension PLYOfferSignature {
+extension PLYOfferSignature {
 
     func asDictionary() -> [String: Any] {
         var dict: [String: Any] = [:]

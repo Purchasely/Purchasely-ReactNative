@@ -3,22 +3,20 @@
 //  Ported from UIColor+PLYHelper.m. Parses the colour forms a paywall's
 //  backend JSON carries.
 //
-//  `@objc public` here is temporary, UNLIKE PLYPlan+Bridge.swift and
-//  PLYProduct+Bridge.swift, whose `@objc` is now permanent because
+//  `@objc public` was temporary, UNLIKE PLYPlan+Bridge.swift and
+//  PLYProduct+Bridge.swift, whose `@objc` is permanent because
 //  PLYSubscription+Hybrid.m (permanent per amendment A2) reaches them through
 //  a hand-written forward declaration. Nothing under Hybrid/ calls
-//  `ply_fromHex`; only `PurchaselyRN.m` does, directly and compiler-checked
-//  via the generated Swift header. Once Task 14 replaces that call site with
-//  Swift, this can drop to `internal`.
+//  `ply_fromHex`, and PurchaselyRN+Presentations.swift's call is Swift-to-
+//  Swift since Task 14 — reduced to `internal`.
 //
 
 import UIKit
 
-@objc public extension UIColor {
+extension UIColor {
 
     /// Returns nil for any string it cannot parse. Never traps: the input is
     /// backend data, not a local constant.
-    @objc(ply_fromHex:)
     static func ply_fromHex(_ hex: String?) -> UIColor? {
         guard var string = hex?.trimmingCharacters(in: .whitespacesAndNewlines),
               !string.isEmpty else { return nil }

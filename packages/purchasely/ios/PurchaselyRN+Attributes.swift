@@ -10,7 +10,7 @@
 import Foundation
 import Purchasely
 
-extension PurchaselyBridge {
+extension PurchaselyRN {
 
     // MARK: - legal basis
 

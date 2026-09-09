@@ -4,16 +4,16 @@
 //  domain; this file holds the class, its shared state and the RCTEventEmitter
 //  overrides.
 //
-//  NAMED `PurchaselyBridge` UNTIL THE SWAP COMMIT. A Swift @objc(PurchaselyRN)
-//  class cannot coexist with the Objective-C PurchaselyRN, and two classes
-//  claiming the JS module name `Purchasely` must never both be registered.
-//  This class carries no export macro, so React Native does not see it yet.
+//  Exported to JS as `Purchasely` via the RCT_EXTERN_REMAP_MODULE shim in
+//  PurchaselyRN.m. @objc(PurchaselyRN) is what the Objective-C shim's
+//  forward declaration binds to at runtime.
 //
 
 import Foundation
 import Purchasely
 
-class PurchaselyBridge: RCTEventEmitter,
+@objc(PurchaselyRN)
+class PurchaselyRN: RCTEventEmitter,
                         PLYEventDelegate,
                         PLYUserAttributeDelegate,
                         PLYWebRedemptionDelegate {
@@ -67,7 +67,7 @@ class PurchaselyBridge: RCTEventEmitter,
     }
 
     /// Weak, as `_sharedEmitter` was at PurchaselyRN.m:371.
-    static weak var sharedEmitter: PurchaselyBridge?
+    static weak var sharedEmitter: PurchaselyRN?
 
     /// Gate from PurchaselyRN.m: drop events before startObserving. Declared
     /// `Boolean` in the old header, which imported into Swift as `UInt8`; a

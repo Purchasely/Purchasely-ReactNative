@@ -42,7 +42,7 @@ private final class FakePresentation: NSObject, PLYPresentation {
     func preload(completion: @escaping ((any PLYPresentation)?, Error?) -> Void) {}
 }
 
-private final class RecordingBridge: PurchaselyBridge {
+private final class RecordingBridge: PurchaselyRN {
     var lastEventName: String?
     var lastEventBody: NSDictionary?
     var sendEventCallCount = 0
@@ -59,51 +59,51 @@ final class BridgePresentationsTests: XCTestCase {
     // MARK: - stringFromPresentationAction / presentationAction(from:)
 
     func testStringFromPresentationActionMapsEveryCase() {
-        XCTAssertEqual(PurchaselyBridge.stringFromPresentationAction(.login), "login")
-        XCTAssertEqual(PurchaselyBridge.stringFromPresentationAction(.purchase), "purchase")
-        XCTAssertEqual(PurchaselyBridge.stringFromPresentationAction(.close), "close")
-        XCTAssertEqual(PurchaselyBridge.stringFromPresentationAction(.closeAll), "closeAll")
-        XCTAssertEqual(PurchaselyBridge.stringFromPresentationAction(.restore), "restore")
-        XCTAssertEqual(PurchaselyBridge.stringFromPresentationAction(.navigate), "navigate")
-        XCTAssertEqual(PurchaselyBridge.stringFromPresentationAction(.promoCode), "promoCode")
-        XCTAssertEqual(PurchaselyBridge.stringFromPresentationAction(.openPresentation), "openPresentation")
-        XCTAssertEqual(PurchaselyBridge.stringFromPresentationAction(.openPlacement), "openPlacement")
-        XCTAssertEqual(PurchaselyBridge.stringFromPresentationAction(.webCheckout), "webCheckout")
+        XCTAssertEqual(PurchaselyRN.stringFromPresentationAction(.login), "login")
+        XCTAssertEqual(PurchaselyRN.stringFromPresentationAction(.purchase), "purchase")
+        XCTAssertEqual(PurchaselyRN.stringFromPresentationAction(.close), "close")
+        XCTAssertEqual(PurchaselyRN.stringFromPresentationAction(.closeAll), "closeAll")
+        XCTAssertEqual(PurchaselyRN.stringFromPresentationAction(.restore), "restore")
+        XCTAssertEqual(PurchaselyRN.stringFromPresentationAction(.navigate), "navigate")
+        XCTAssertEqual(PurchaselyRN.stringFromPresentationAction(.promoCode), "promoCode")
+        XCTAssertEqual(PurchaselyRN.stringFromPresentationAction(.openPresentation), "openPresentation")
+        XCTAssertEqual(PurchaselyRN.stringFromPresentationAction(.openPlacement), "openPlacement")
+        XCTAssertEqual(PurchaselyRN.stringFromPresentationAction(.webCheckout), "webCheckout")
     }
 
     func testPresentationActionFromStringRoundTripsAndRejectsUnknown() {
-        XCTAssertEqual(PurchaselyBridge.presentationAction(from: "purchase"), .purchase)
-        XCTAssertNil(PurchaselyBridge.presentationAction(from: "nonsense"))
-        XCTAssertNil(PurchaselyBridge.presentationAction(from: nil))
+        XCTAssertEqual(PurchaselyRN.presentationAction(from: "purchase"), .purchase)
+        XCTAssertNil(PurchaselyRN.presentationAction(from: "nonsense"))
+        XCTAssertNil(PurchaselyRN.presentationAction(from: nil))
     }
 
     // MARK: - stringFromWebCheckoutProvider
 
     func testStringFromWebCheckoutProviderMapsKnownAndFallsBackToUnknown() {
-        XCTAssertEqual(PurchaselyBridge.stringFromWebCheckoutProvider(.stripe), "stripe")
-        XCTAssertEqual(PurchaselyBridge.stringFromWebCheckoutProvider(.other), "other")
-        XCTAssertEqual(PurchaselyBridge.stringFromWebCheckoutProvider(.none), "unknown")
+        XCTAssertEqual(PurchaselyRN.stringFromWebCheckoutProvider(.stripe), "stripe")
+        XCTAssertEqual(PurchaselyRN.stringFromWebCheckoutProvider(.other), "other")
+        XCTAssertEqual(PurchaselyRN.stringFromWebCheckoutProvider(.none), "unknown")
     }
 
     // MARK: - closeReasonToRNString
 
     func testCloseReasonToRNStringMapsThreeReasonsAndNoneToNil() {
-        XCTAssertEqual(PurchaselyBridge.closeReasonToRNString(.button), "button")
-        XCTAssertEqual(PurchaselyBridge.closeReasonToRNString(.interactiveDismiss), "backSystem")
-        XCTAssertEqual(PurchaselyBridge.closeReasonToRNString(.programmatic), "programmatic")
-        XCTAssertNil(PurchaselyBridge.closeReasonToRNString(.none))
+        XCTAssertEqual(PurchaselyRN.closeReasonToRNString(.button), "button")
+        XCTAssertEqual(PurchaselyRN.closeReasonToRNString(.interactiveDismiss), "backSystem")
+        XCTAssertEqual(PurchaselyRN.closeReasonToRNString(.programmatic), "programmatic")
+        XCTAssertNil(PurchaselyRN.closeReasonToRNString(.none))
     }
 
     // MARK: - presentationErrorToMap
 
     func testPresentationErrorToMapIsNilForNilError() {
-        XCTAssertNil(PurchaselyBridge.presentationErrorToMap(nil))
+        XCTAssertNil(PurchaselyRN.presentationErrorToMap(nil))
     }
 
     func testPresentationErrorToMapCarriesCodeDomainAndMessage() {
         let error = NSError(domain: "io.purchasely.test", code: 42,
                              userInfo: [NSLocalizedDescriptionKey: "boom"])
-        let map = PurchaselyBridge.presentationErrorToMap(error)
+        let map = PurchaselyRN.presentationErrorToMap(error)
         XCTAssertEqual(map?["code"] as? Int, 42)
         XCTAssertEqual(map?["domain"] as? String, "io.purchasely.test")
         XCTAssertEqual(map?["message"] as? String, "boom")
@@ -116,7 +116,7 @@ final class BridgePresentationsTests: XCTestCase {
         presentation.screenId = "screen-42"
         presentation.language = "fr"
 
-        let map = PurchaselyBridge.presentationToMap(presentation)
+        let map = PurchaselyRN.presentationToMap(presentation)
 
         XCTAssertEqual(map["screenId"] as? String, "screen-42")
         XCTAssertEqual(map["id"] as? String, "screen-42")
@@ -134,7 +134,7 @@ final class BridgePresentationsTests: XCTestCase {
         presentation.placementId = "PLACEMENT"
         presentation.campaignId = "CAMPAIGN"
 
-        let map = PurchaselyBridge.presentationToMap(presentation)
+        let map = PurchaselyRN.presentationToMap(presentation)
 
         XCTAssertEqual(map["placementId"] as? String, "PLACEMENT")
         XCTAssertEqual(map["campaignId"] as? String, "CAMPAIGN")
@@ -143,7 +143,7 @@ final class BridgePresentationsTests: XCTestCase {
     // MARK: - webRedemptionBody (exact shape asserted, same five keys as PurchaselyRNTests)
 
     func testWebRedemptionBodySuccessWithNoContextIsNSNull() {
-        let body = PurchaselyBridge.webRedemptionBody(
+        let body = PurchaselyRN.webRedemptionBody(
             withSuccess: true, hasContext: false, subscription: nil,
             replay: false, errorCode: nil, errorMessage: nil
         )
@@ -155,7 +155,7 @@ final class BridgePresentationsTests: XCTestCase {
     }
 
     func testWebRedemptionBodyKeepsAPresentContextWithNoSubscriptionDistinctFromNoContext() {
-        let body = PurchaselyBridge.webRedemptionBody(
+        let body = PurchaselyRN.webRedemptionBody(
             withSuccess: true, hasContext: true, subscription: nil,
             replay: false, errorCode: nil, errorMessage: nil
         )
@@ -166,7 +166,7 @@ final class BridgePresentationsTests: XCTestCase {
 
     func testWebRedemptionBodyNestsTheSubscription() {
         let subscription: [String: String] = ["purchaseToken": "token-123"]
-        let body = PurchaselyBridge.webRedemptionBody(
+        let body = PurchaselyRN.webRedemptionBody(
             withSuccess: true, hasContext: true, subscription: subscription,
             replay: false, errorCode: nil, errorMessage: nil
         )
@@ -175,7 +175,7 @@ final class BridgePresentationsTests: XCTestCase {
     }
 
     func testWebRedemptionBodyFailureCarriesErrorCodeAndMessage() {
-        let body = PurchaselyBridge.webRedemptionBody(
+        let body = PurchaselyRN.webRedemptionBody(
             withSuccess: false, hasContext: false, subscription: nil,
             replay: false, errorCode: "EXPIRED_REDEMPTION_TOKEN", errorMessage: "Redemption link has expired."
         )
@@ -187,7 +187,7 @@ final class BridgePresentationsTests: XCTestCase {
     // MARK: - extractPresentationTargets
 
     func testExtractPresentationTargetsReadsAllFourFields() {
-        let targets = PurchaselyBridge.extractPresentationTargets([
+        let targets = PurchaselyRN.extractPresentationTargets([
             "placementId": "P1", "presentationId": "S1", "contentId": "C1", "isDefault": true,
         ])
         XCTAssertEqual(targets.placementId, "P1")
@@ -199,7 +199,7 @@ final class BridgePresentationsTests: XCTestCase {
     func testExtractPresentationTargetsTreatsNSNullAsAbsent() {
         // The bridge sends explicit NSNull for an unset JS field; it must not
         // be mistaken for a real value (mirrors payload[@"x"] != [NSNull null]).
-        let targets = PurchaselyBridge.extractPresentationTargets([
+        let targets = PurchaselyRN.extractPresentationTargets([
             "placementId": NSNull(), "isDefault": NSNull(),
         ])
         XCTAssertNil(targets.placementId)
@@ -207,7 +207,7 @@ final class BridgePresentationsTests: XCTestCase {
     }
 
     func testExtractPresentationTargetsOfNilPayloadIsAllAbsent() {
-        let targets = PurchaselyBridge.extractPresentationTargets(nil)
+        let targets = PurchaselyRN.extractPresentationTargets(nil)
         XCTAssertNil(targets.placementId)
         XCTAssertNil(targets.presentationId)
         XCTAssertNil(targets.contentId)
@@ -217,11 +217,11 @@ final class BridgePresentationsTests: XCTestCase {
     // MARK: - transition(from:)
 
     func testTransitionFromNilMapIsNil() {
-        XCTAssertNil(PurchaselyBridge.transition(from: nil))
+        XCTAssertNil(PurchaselyRN.transition(from: nil))
     }
 
     func testTransitionFromMapParsesTypeAndPixelHeight() {
-        let transition = PurchaselyBridge.transition(from: [
+        let transition = PurchaselyRN.transition(from: [
             "type": "drawer",
             "height": ["type": "pixel", "value": 320],
         ])
@@ -230,7 +230,7 @@ final class BridgePresentationsTests: XCTestCase {
     }
 
     func testTransitionFromMapParsesPercentageWidthAndDismissible() {
-        let transition = PurchaselyBridge.transition(from: [
+        let transition = PurchaselyRN.transition(from: [
             "width": ["type": "percentage", "value": 0.5],
             "dismissible": false,
         ])
@@ -239,26 +239,26 @@ final class BridgePresentationsTests: XCTestCase {
     }
 
     func testTransitionFromMapDefaultsToFullScreenForUnknownType() {
-        let transition = PurchaselyBridge.transition(from: ["type": "not-a-real-type"])
+        let transition = PurchaselyRN.transition(from: ["type": "not-a-real-type"])
         XCTAssertEqual(transition?.type, .fullScreen)
     }
 
     // MARK: - presentationAction / registry helpers
 
     func testLoadedPresentationForRequestIdIsNilWhenUnregistered() {
-        XCTAssertNil(PurchaselyBridge.loadedPresentation(forRequestId: "no-such-request"))
+        XCTAssertNil(PurchaselyRN.loadedPresentation(forRequestId: "no-such-request"))
     }
 
     func testEvictPresentationRequestOfNilIsANoop() {
         // Must not crash — mirrors evictPresentationRequestId:(nullable ...).
-        PurchaselyBridge.evictPresentationRequest(nil)
+        PurchaselyRN.evictPresentationRequest(nil)
     }
 
     func testEvictPresentationRequestRemovesTheEntry() {
         let presentation = FakePresentation()
-        PurchaselyBridge.withState { PurchaselyBridge.presentationsByRequest["req-evict"] = presentation }
-        PurchaselyBridge.evictPresentationRequest("req-evict")
-        XCTAssertNil(PurchaselyBridge.loadedPresentation(forRequestId: "req-evict"))
+        PurchaselyRN.withState { PurchaselyRN.presentationsByRequest["req-evict"] = presentation }
+        PurchaselyRN.evictPresentationRequest("req-evict")
+        XCTAssertNil(PurchaselyRN.loadedPresentation(forRequestId: "req-evict"))
     }
 
     // MARK: - emitPresentationCloseRequested
@@ -267,7 +267,7 @@ final class BridgePresentationsTests: XCTestCase {
         let recorder = RecordingBridge()
         recorder.startObserving()
 
-        PurchaselyBridge.emitPresentationCloseRequested(forId: "req-close-1")
+        PurchaselyRN.emitPresentationCloseRequested(forId: "req-close-1")
 
         XCTAssertEqual(recorder.lastEventName, "PURCHASELY_PRESENTATION_CLOSE_REQUESTED")
         XCTAssertEqual(recorder.lastEventBody?["requestId"] as? String, "req-close-1")
@@ -279,7 +279,7 @@ final class BridgePresentationsTests: XCTestCase {
         recorder.startObserving()
         recorder.stopObserving()
 
-        PurchaselyBridge.emitPresentationCloseRequested(forId: "req-close-2")
+        PurchaselyRN.emitPresentationCloseRequested(forId: "req-close-2")
 
         XCTAssertNil(recorder.lastEventName)
     }
@@ -296,7 +296,7 @@ final class BridgePresentationsTests: XCTestCase {
         recorder.startObserving()
         let outcome = PLYPresentationOutcome(purchaseResult: .none, plan: nil, presentation: nil, closeReason: .none, error: nil)
 
-        PurchaselyBridge.emitPresentationDismissed(forId: nil, outcome: outcome)
+        PurchaselyRN.emitPresentationDismissed(forId: nil, outcome: outcome)
 
         XCTAssertNil(recorder.lastEventBody?["requestId"], "a nil requestId must be an absent key, not \"\"")
         recorder.stopObserving()
@@ -307,7 +307,7 @@ final class BridgePresentationsTests: XCTestCase {
         recorder.startObserving()
         let outcome = PLYPresentationOutcome(purchaseResult: .none, plan: nil, presentation: nil, closeReason: .none, error: nil)
 
-        PurchaselyBridge.emitPresentationDismissed(forId: "req-1", outcome: outcome)
+        PurchaselyRN.emitPresentationDismissed(forId: "req-1", outcome: outcome)
 
         XCTAssertEqual(recorder.lastEventName, "PURCHASELY_PRESENTATION_DISMISSED")
         XCTAssertEqual(recorder.lastEventBody?["requestId"] as? String, "req-1")
@@ -319,7 +319,7 @@ final class BridgePresentationsTests: XCTestCase {
         recorder.startObserving()
         let outcome = PLYPresentationOutcome(purchaseResult: .none, plan: nil, presentation: nil, closeReason: .none, error: nil)
 
-        PurchaselyBridge.emitPresentationDismissed(forId: "req-no-presentation", outcome: outcome)
+        PurchaselyRN.emitPresentationDismissed(forId: "req-no-presentation", outcome: outcome)
 
         XCTAssertNil(recorder.lastEventBody?["presentation"])
         recorder.stopObserving()
@@ -332,10 +332,10 @@ final class BridgePresentationsTests: XCTestCase {
         recorder.startObserving()
         let presentation = FakePresentation()
         presentation.screenId = "screen-registry"
-        PurchaselyBridge.withState { PurchaselyBridge.presentationsByRequest["req-registry"] = presentation }
+        PurchaselyRN.withState { PurchaselyRN.presentationsByRequest["req-registry"] = presentation }
         let outcome = PLYPresentationOutcome(purchaseResult: .none, plan: nil, presentation: nil, closeReason: .none, error: nil)
 
-        PurchaselyBridge.emitPresentationDismissed(forId: "req-registry", outcome: outcome)
+        PurchaselyRN.emitPresentationDismissed(forId: "req-registry", outcome: outcome)
 
         let body = (recorder.lastEventBody?["presentation"] as? NSDictionary)
         XCTAssertEqual(body?["screenId"] as? String, "screen-registry")
@@ -346,12 +346,12 @@ final class BridgePresentationsTests: XCTestCase {
         let recorder = RecordingBridge()
         recorder.startObserving()
         let presentation = FakePresentation()
-        PurchaselyBridge.withState { PurchaselyBridge.presentationsByRequest["req-evict-2"] = presentation }
+        PurchaselyRN.withState { PurchaselyRN.presentationsByRequest["req-evict-2"] = presentation }
         let outcome = PLYPresentationOutcome(purchaseResult: .none, plan: nil, presentation: nil, closeReason: .none, error: nil)
 
-        PurchaselyBridge.emitPresentationDismissed(forId: "req-evict-2", outcome: outcome)
+        PurchaselyRN.emitPresentationDismissed(forId: "req-evict-2", outcome: outcome)
 
-        XCTAssertNil(PurchaselyBridge.loadedPresentation(forRequestId: "req-evict-2"))
+        XCTAssertNil(PurchaselyRN.loadedPresentation(forRequestId: "req-evict-2"))
         recorder.stopObserving()
     }
 
@@ -362,7 +362,7 @@ final class BridgePresentationsTests: XCTestCase {
         recorder.startObserving()
         let outcome = PLYPresentationOutcome(purchaseResult: .none, plan: nil, presentation: nil, closeReason: .none, error: nil)
 
-        PurchaselyBridge.emitPresentationDismissed(forId: "req-2", outcome: outcome)
+        PurchaselyRN.emitPresentationDismissed(forId: "req-2", outcome: outcome)
 
         XCTAssertNil(recorder.lastEventBody?["purchaseResult"])
         recorder.stopObserving()
@@ -374,7 +374,7 @@ final class BridgePresentationsTests: XCTestCase {
         let plan = try! SerializationFixtures.plan(populated: true)
         let outcome = PLYPresentationOutcome(purchaseResult: .purchased, plan: plan, presentation: nil, closeReason: .none, error: nil)
 
-        PurchaselyBridge.emitPresentationDismissed(forId: "req-3", outcome: outcome)
+        PurchaselyRN.emitPresentationDismissed(forId: "req-3", outcome: outcome)
 
         XCTAssertEqual(recorder.lastEventBody?["purchaseResult"] as? Int, 0)
         XCTAssertNotNil(recorder.lastEventBody?["plan"])
@@ -389,7 +389,7 @@ final class BridgePresentationsTests: XCTestCase {
         let error = NSError(domain: "io.purchasely.test", code: 1, userInfo: [NSLocalizedDescriptionKey: "boom"])
         let outcome = PLYPresentationOutcome(purchaseResult: .none, plan: nil, presentation: nil, closeReason: .button, error: error)
 
-        PurchaselyBridge.emitPresentationDismissed(forId: "req-4", outcome: outcome)
+        PurchaselyRN.emitPresentationDismissed(forId: "req-4", outcome: outcome)
 
         XCTAssertNotNil(recorder.lastEventBody?["error"])
         XCTAssertNil(recorder.lastEventBody?["closeReason"])
@@ -401,7 +401,7 @@ final class BridgePresentationsTests: XCTestCase {
         recorder.startObserving()
         let outcome = PLYPresentationOutcome(purchaseResult: .none, plan: nil, presentation: nil, closeReason: .button, error: nil)
 
-        PurchaselyBridge.emitPresentationDismissed(forId: "req-5", outcome: outcome)
+        PurchaselyRN.emitPresentationDismissed(forId: "req-5", outcome: outcome)
 
         XCTAssertEqual(recorder.lastEventBody?["closeReason"] as? String, "button")
         XCTAssertNil(recorder.lastEventBody?["error"])
@@ -413,7 +413,7 @@ final class BridgePresentationsTests: XCTestCase {
         recorder.startObserving()
         let outcome = PLYPresentationOutcome(purchaseResult: .none, plan: nil, presentation: nil, closeReason: .none, error: nil)
 
-        PurchaselyBridge.emitPresentationDismissed(forId: "req-6", outcome: outcome)
+        PurchaselyRN.emitPresentationDismissed(forId: "req-6", outcome: outcome)
 
         XCTAssertNil(recorder.lastEventBody?["closeReason"])
         XCTAssertNil(recorder.lastEventBody?["error"])
@@ -426,7 +426,7 @@ final class BridgePresentationsTests: XCTestCase {
         recorder.stopObserving()
         let outcome = PLYPresentationOutcome(purchaseResult: .none, plan: nil, presentation: nil, closeReason: .none, error: nil)
 
-        PurchaselyBridge.emitPresentationDismissed(forId: "req-7", outcome: outcome)
+        PurchaselyRN.emitPresentationDismissed(forId: "req-7", outcome: outcome)
 
         XCTAssertNil(recorder.lastEventName)
         recorder.stopObserving()
@@ -477,7 +477,7 @@ final class BridgePresentationsTests: XCTestCase {
         // drives the `else` branch — which still acquires the lock twice,
         // once to look up and once to remove. If an executor hoisted
         // lock()/defer to the closure, this times out.
-        let bridge = PurchaselyBridge()
+        let bridge = PurchaselyRN()
         let done = expectation(description: "closePresentation returned")
         DispatchQueue.main.async {
             bridge.closePresentation("no-such-request")

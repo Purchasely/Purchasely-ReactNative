@@ -25,7 +25,7 @@ private func runningModeFromOrdinal(_ ordinal: Int) -> PLYRunningMode {
     ordinal == PLYRNRunningMode.full.rawValue ? .full : .observer
 }
 
-extension PurchaselyBridge {
+extension PurchaselyRN {
 
     // MARK: - start
 

@@ -11,7 +11,7 @@
 import Foundation
 import Purchasely
 
-extension PurchaselyBridge {
+extension PurchaselyRN {
 
     // MARK: - registerActionInterceptor (PurchaselyRN.m:1893-1941)
 
@@ -173,7 +173,7 @@ extension PurchaselyBridge {
     /// to `notHandled` without waiting 30 real seconds.
     func scheduleInterceptorTimeout(
         callbackId: String,
-        after delay: TimeInterval = PurchaselyBridge.interceptorTimeoutSeconds
+        after delay: TimeInterval = PurchaselyRN.interceptorTimeoutSeconds
     ) {
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
             let stale = Self.withState { Self.interceptorCallbacks.removeValue(forKey: callbackId) }

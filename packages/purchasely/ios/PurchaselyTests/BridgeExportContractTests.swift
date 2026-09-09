@@ -193,9 +193,11 @@ final class BridgeExportContractTests: XCTestCase {
         "registerActionInterceptor": "registerActionInterceptor:",
         "removeDefaultPresentationDismissHandler": "removeDefaultPresentationDismissHandler",
         "removeDynamicOffering": "removeDynamicOffering:",
-        // ONLY-ALLOWED-TO-CHANGE-AT-TASK-14 (RCT_REMAP_METHOD today; expected
-        // post-swap selector is "restoreAllProducts:reject:").
-        "restoreAllProducts": "resolve:reject:",
+        // CHANGED AT TASK 14 (was "resolve:reject:" via RCT_REMAP_METHOD;
+        // RCT_EXTERN_REMAP_METHOD is not public in RN 0.86, so the shim gives
+        // it a selector whose first segment is the JS name instead). Not
+        // JS-visible: the JS name and argument count are unchanged.
+        "restoreAllProducts": "restoreAllProducts:reject:",
         "revokeDataProcessingConsent": "revokeDataProcessingConsent:",
         "setAttribute": "setAttribute:value:",
         "setDebugMode": "setDebugMode:",
@@ -216,9 +218,12 @@ final class BridgeExportContractTests: XCTestCase {
         "setUserAttributeWithString": "setUserAttributeWithString:value:legalBasis:",
         "setUserAttributeWithStringArray": "setUserAttributeWithStringArray:value:legalBasis:",
         "signPromotionalOffer": "signPromotionalOffer:storeOfferId:resolve:reject:",
-        // ONLY-ALLOWED-TO-CHANGE-AT-TASK-14 (RCT_REMAP_METHOD today; expected
-        // post-swap selector is "silentRestoreAllProducts:reject:").
-        "silentRestoreAllProducts": "silentRestoreWithResolve:reject:",
+        // CHANGED AT TASK 14 (was "silentRestoreWithResolve:reject:" via
+        // RCT_REMAP_METHOD; RCT_EXTERN_REMAP_METHOD is not public in RN 0.86,
+        // so the shim gives it a selector whose first segment is the JS name
+        // instead). Not JS-visible: the JS name and argument count are
+        // unchanged.
+        "silentRestoreAllProducts": "silentRestoreAllProducts:reject:",
         "start": "start:stores:storeKit1:userId:logLevel:runningMode:purchaselySdkVersion:startOptions:initialized:reject:",
         "synchronize": "synchronize:reject:",
         "unregisterActionInterceptor": "unregisterActionInterceptor:",

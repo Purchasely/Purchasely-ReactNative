@@ -46,19 +46,19 @@ final class BridgeProductsTests: XCTestCase {
         // storeOfferId of the one whose vendorId matches offerId.
         let plan = try decodedPlan(promoOffersJSON: "[\(promoOfferJSON(vendorId: "OFFER_A", storeOfferId: "sk_a")), \(promoOfferJSON(vendorId: "OFFER_B", storeOfferId: "sk_b"))]")
 
-        XCTAssertEqual(PurchaselyBridge.storeOfferId(forOfferId: "OFFER_B", in: plan), "sk_b")
+        XCTAssertEqual(PurchaselyRN.storeOfferId(forOfferId: "OFFER_B", in: plan), "sk_b")
     }
 
     func testStoreOfferIdReturnsNilWhenNoPromoOfferMatches() throws {
         let plan = try decodedPlan(promoOffersJSON: "[\(promoOfferJSON(vendorId: "OFFER_A", storeOfferId: "sk_a"))]")
 
-        XCTAssertNil(PurchaselyBridge.storeOfferId(forOfferId: "NO_SUCH_OFFER", in: plan))
+        XCTAssertNil(PurchaselyRN.storeOfferId(forOfferId: "NO_SUCH_OFFER", in: plan))
     }
 
     func testStoreOfferIdReturnsNilWhenThePlanHasNoPromoOffers() throws {
         let plan = try decodedPlan(promoOffersJSON: "[]")
 
-        XCTAssertNil(PurchaselyBridge.storeOfferId(forOfferId: "OFFER_A", in: plan))
+        XCTAssertNil(PurchaselyRN.storeOfferId(forOfferId: "OFFER_A", in: plan))
     }
 
     // MARK: - offeringDictionary(_:)
@@ -67,7 +67,7 @@ final class BridgeProductsTests: XCTestCase {
         // PurchaselyRN.m:1189-1209.
         let offering = PLYOffering(reference: "ref-1", planId: "plan-1", offerId: "offer-1", billingPlanType: .monthly)
 
-        let dict = PurchaselyBridge.offeringDictionary(offering)
+        let dict = PurchaselyRN.offeringDictionary(offering)
 
         XCTAssertEqual(dict["reference"] as? String, "ref-1")
         XCTAssertEqual(dict["planVendorId"] as? String, "plan-1")
@@ -84,7 +84,7 @@ final class BridgeProductsTests: XCTestCase {
         // Constraint 6: omitted when nil, not emitted as NSNull.
         let offering = PLYOffering(reference: "ref-2", planId: "plan-2", offerId: nil, billingPlanType: .unspecified)
 
-        let dict = PurchaselyBridge.offeringDictionary(offering)
+        let dict = PurchaselyRN.offeringDictionary(offering)
 
         XCTAssertNil(dict["offerVendorId"])
         XCTAssertEqual(dict.keys.contains("offerVendorId"), false)
