@@ -76,12 +76,13 @@ ReactNative_SDK/
 | `packages/purchasely/ios/PurchaselyRN+Lifecycle.swift` | Start, identity, deeplinks, language, log level, theme, consent, synchronize |
 | `packages/purchasely/ios/PurchaselyRN+Attributes.swift` | User attribute methods and the legal-basis mapper |
 | `packages/purchasely/ios/PurchaselyRN+Products.swift` | Products, plans, subscriptions, purchase, restore, offerings |
-| `packages/purchasely/ios/PurchaselyRN+Presentations.swift` | Preload, display, close, back, transitions, the presentation delegate |
+| `packages/purchasely/ios/PurchaselyRN+Presentations.swift` | Preload, display, close, back, transitions, plus the `PLYEventDelegate`, `PLYUserAttributeDelegate` and `PLYWebRedemptionDelegate` bodies |
 | `packages/purchasely/ios/PurchaselyRN+Interceptors.swift` | Register, unregister, complete, the interceptor timeout |
-| `packages/purchasely/ios/PurchaselyRN.m` | Export shim only: `RCT_EXTERN_REMAP_MODULE` + `RCT_EXTERN_METHOD` lines |
+| `packages/purchasely/ios/PurchaselyRN.m` | Export shim (`RCT_EXTERN_REMAP_MODULE` + `RCT_EXTERN_METHOD` lines) plus the non-variadic `PLYRNLogWarn` wrapper — `RCTLogWarn` is a variadic macro Swift cannot call, so this one piece of logic has to stay in a `.m` file; declared `FOUNDATION_EXPORT` in the bridging header |
 | `packages/purchasely/ios/Classes/Serialization/` | `PLYPlan`/`PLYProduct`/`PLYOfferSignature`/`PLYPresentationPlan` → dictionary, `UIColor+PLYHex` |
 | `packages/purchasely/ios/PurchaselyView.swift` | Embedded presentation view |
 | `packages/purchasely/ios/PurchaselyViewManager.swift` | View lifecycle manager |
+| `packages/purchasely/ios/PurchaselyViewManager.m` | Second export shim in the pod: `RCT_EXTERN_REMAP_MODULE(PurchaselyView, PurchaselyViewManager, RCTViewManager)` plus its `RCT_EXPORT_VIEW_PROPERTY` lines — same text-parsed, runtime-failure mode as `PurchaselyRN.m` |
 
 `packages/purchasely/ios/Classes/Hybrid/PLYSubscription+Hybrid.h/.m` stays
 Objective-C on purpose. `PLYSubscription.init(from:)` resolves through the
@@ -455,8 +456,15 @@ The SDK includes comprehensive test coverage across TypeScript, iOS, and Android
 | `PurchaselyRNTests.swift` | Bridge module integration tests | ~544 | Swift |
 | `PurchaselyViewTests.swift` | View component tests | ~785 | Swift |
 | `BridgeExportContractTests.swift` | Locks the 63 JS method names, module name, 60 constants, 11 events | ~465 | Swift |
-| `SerializationContractTests.swift` | Locks every serializer's key set, value types, absence policy | ~356 | Swift |
 | `BridgeSelectorResolutionTests.swift` | Proves each of the shim's 63 exported selectors resolves on `PurchaselyRN` | ~41 | Swift |
+| `BridgeLifecycleTests.swift` | Per-domain suite: start, identity, deeplinks, language, log level, theme, consent, synchronize | ~155 | Swift |
+| `BridgeAttributesTests.swift` | Per-domain suite: user attribute methods | ~160 | Swift |
+| `BridgeProductsTests.swift` | Per-domain suite: products, plans, subscriptions, purchase, restore, offerings | ~92 | Swift |
+| `BridgePresentationsTests.swift` | Per-domain suite: preload, display, close, back, transitions | ~582 | Swift |
+| `BridgeInterceptorsTests.swift` | Per-domain suite: register, unregister, complete, interceptor timeout | ~157 | Swift |
+| `BridgeSkeletonTests.swift` | Per-domain suite: module skeleton — constants, supported events, `requiresMainQueueSetup` | ~84 | Swift |
+| `SerializationContractTests.swift` | Locks the key set, value types, and absence policy for 4 of the 5 serializers (`PLYPlan`, `PLYProduct`, `PLYOfferSignature`, `PLYPresentationPlan`); `PLYSubscription` is excluded for the same reason `PLYSubscription+Hybrid.h/.m` stays Objective-C (see the Native iOS Bridge section above) | ~356 | Swift |
+| `UIColorPLYHexTests.swift` | Locks the hex-colour parser (`UIColor+PLYHex`) | ~92 | Swift |
 
 - **Framework:** XCTest (built-in iOS testing framework)
 - **Test Target:** Configured in `Info.plist`
@@ -605,7 +613,7 @@ yarn prepare
 1. Add TypeScript interface in `packages/purchasely/src/interfaces.ts`
 2. Add return type in `packages/purchasely/src/types.ts`
 3. Implement in `packages/purchasely/src/index.ts`
-4. Implement iOS native method in the matching `PurchaselyRN+*.swift` file, then add its `RCT_EXTERN_METHOD` line in `packages/purchasely/ios/PurchaselyRN.m`
+4. Implement iOS native method in the matching `PurchaselyRN+*.swift` file, then add its `RCT_EXTERN_METHOD` line in `packages/purchasely/ios/PurchaselyRN.m` — see the selector rule under "Modifying Native Bridge / iOS" below
 5. Implement Android native method in `packages/purchasely/android/.../PurchaselyModule.kt`
 6. Export from index if needed
 
@@ -618,6 +626,10 @@ yarn prepare
 ### Modifying Native Bridge
 
 **iOS:**
+- The rule that makes the shim work: the Swift method must carry an explicit
+  `@objc(selector:)` annotation, and its FIRST selector segment must equal the
+  JS method name. Without that, the JS name is wrong and the method is
+  unreachable from JavaScript.
 - Edit the Swift file for the method (`PurchaselyRN.swift` or the matching
   `PurchaselyRN+*.swift` extension), **and** add or update its
   `RCT_EXTERN_METHOD` line in `PurchaselyRN.m`, copying the selector from the
@@ -647,7 +659,16 @@ yarn prepare
 5. Run `yarn test` to verify
 
 **iOS Tests (XCTest):**
-1. Add test methods to `PurchaselyRNTests.swift` or `PurchaselyViewTests.swift`
+1. Add the test to the per-domain suite matching what you changed:
+   `BridgeLifecycleTests.swift` (start, identity, deeplinks, language, log
+   level, theme, consent, synchronize), `BridgeAttributesTests.swift` (user
+   attributes), `BridgeProductsTests.swift` (products, plans, subscriptions,
+   purchase, restore, offerings), `BridgePresentationsTests.swift` (preload,
+   display, close, back, transitions), `BridgeInterceptorsTests.swift`
+   (register, unregister, complete, interceptor timeout), or
+   `BridgeSkeletonTests.swift` (module skeleton: constants, events,
+   `requiresMainQueueSetup`). Use `PurchaselyRNTests.swift` or
+   `PurchaselyViewTests.swift` only for tests that don't fit one domain.
 2. Use XCTestCase and XCTestExpectation for async tests
 3. Test native bridge methods and view lifecycle
 4. Run tests from Xcode or via xcodebuild
