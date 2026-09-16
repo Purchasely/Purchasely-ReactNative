@@ -41,8 +41,16 @@ jobs:
     steps:
       # GitHub raises no `labeled` event for a label that is already present, so the label
       # has to go before it can trigger the next run.
+      #
+      # Only where the token can actually write. A `pull_request` from a fork and a
+      # Dependabot PR both run with a read-only token, so this DELETE would 403 and
+      # `continue-on-error` would bury it. On those PRs take the label off by hand to ask
+      # for another run — one click, not a dead end.
       - name: Consume the run-ci label
-        if: github.event.action == 'labeled'
+        if: >-
+          github.event.action == 'labeled' &&
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          github.event.pull_request.user.login != 'dependabot[bot]'
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}

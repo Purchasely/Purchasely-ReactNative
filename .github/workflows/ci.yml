@@ -32,8 +32,16 @@ on:
 
 # A force-push to a PR used to leave the previous run alive: 8 jobs, two of
 # them on macOS runners. e2e-android.yml and e2e-ios.yml already do this.
+# A `labeled` event for any other label must not land in this group: with
+# `cancel-in-progress` it would kill a running job, and the replacement run skips the work,
+# so the check ends up "skipped" and the requested validation is lost. Dependabot makes that
+# concrete — it opens a PR and then applies its own labels to it. Those events get a group
+# of their own and cancel nothing.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: >-
+    ci-${{ github.ref }}-${{
+      (github.event.action == 'labeled' && github.event.label.name != 'run-ci')
+      && format('label-{0}', github.event.label.name) || 'run' }}
   # Cancel superseded PR runs only. A `push: main` run must finish -- it is the
   # one that seeds the shared cache scope -- and a merge_group or release run
   # must never be cancelled either.
@@ -46,8 +54,16 @@ jobs:
     steps:
       # GitHub raises no `labeled` event for a label that is already present, so the label
       # has to go before it can trigger the next run.
+      #
+      # Only where the token can actually write. A `pull_request` from a fork and a
+      # Dependabot PR both run with a read-only token, so this DELETE would 403 and
+      # `continue-on-error` would bury it. On those PRs take the label off by hand to ask
+      # for another run — one click, not a dead end.
       - name: Consume the run-ci label
-        if: github.event.action == 'labeled'
+        if: >-
+          github.event.action == 'labeled' &&
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          github.event.pull_request.user.login != 'dependabot[bot]'
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
