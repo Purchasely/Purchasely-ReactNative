@@ -19,8 +19,14 @@ on:
       - 'example/ios/**'
 
 concurrency:
-  # Keyed by ref: a global group made every PR cancel the other PRs' runs.
-  group: e2e-ios-${{ github.ref }}
+  # Keyed by ref, and a `labeled` event for any label other than `run-ci` gets a group of
+  # its own: sharing this one, `cancel-in-progress` would kill a running suite and the
+  # replacement run skips the job, so the check reads "skipped" and the requested
+  # validation is lost. Dependabot opens a PR and then applies its own labels to it.
+  group: >-
+    e2e-ios-${{ github.ref }}-${{
+      (github.event.action == 'labeled' && github.event.label.name != 'run-ci')
+      && format('label-{0}', github.event.label.name) || 'run' }}
   # Cancel superseded PR runs only; a dispatched run must finish.
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
