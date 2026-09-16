@@ -1,6 +1,8 @@
 # Purchasely React Native — E2E Test Index
 
-Tests exécutés séquentiellement sur émulateur/simulateur via CI nightly.
+Tests exécutés séquentiellement sur émulateur/simulateur. La CI les lance à
+l'ouverture d'une pull request qui touche le bridge, et à la demande via le label
+`run-ci`.
 Déclenchés par le script hôte → composant `E2ETestRunner.tsx` embarqué dans l'APK/app.
 
 | Platform | Script hôte | CI workflow | Statut |
