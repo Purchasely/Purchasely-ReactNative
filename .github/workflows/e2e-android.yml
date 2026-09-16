@@ -2,24 +2,11 @@ name: E2E Android
 
 on:
   workflow_dispatch:
-  schedule:
-    # 5h00 Paris (heure d'été) chaque nuit = 3h00 UTC
-    - cron: '0 3 * * *'
-  push:
-    branches:
-      - feat/sdk-v6-migration
-    paths:
-      # SDK source (shared JS bridge + native): changing the bridge must run E2E.
-      - 'packages/purchasely/src/**'
-      - 'packages/purchasely/ios/**'
-      - 'packages/purchasely/android/src/**'
-      - 'packages/purchasely/android/build.gradle'
-      - 'packages/*/android/build.gradle'
-      - '.github/workflows/e2e-android.yml'
-      - 'integration_test/**'
-      - 'example/src/E2ETestRunner.tsx'
-      - 'example/android/app/build.gradle'
   pull_request:
+    # No `synchronize`: a push to an open pull request does not rebuild. It runs once when
+    # the PR opens and then only on request — add the `run-ci` label (PR sidebar, or
+    # `gh pr edit N --add-label run-ci`).
+    types: [opened, reopened, ready_for_review, labeled]
     paths:
       # SDK source (shared JS bridge + native): changing the bridge must run E2E.
       - 'packages/purchasely/src/**'
@@ -35,18 +22,34 @@ on:
 concurrency:
   # Keyed by ref: a global group made every PR cancel the other PRs' runs.
   group: e2e-android-${{ github.ref }}
-  # Cancel superseded PR runs only; a nightly or dispatched run must finish.
+  # Cancel superseded PR runs only; a dispatched run must finish.
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   e2e-android:
     name: E2E Tests (Android T1-T30)
+    # `labeled` fires for every label; only `run-ci` means "build this".
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.action != 'labeled' ||
+      github.event.label.name == 'run-ci'
     # ubuntu-latest: KVM disponible pour x86_64, requis par reactivecircuit/android-emulator-runner.
     # macOS sera utilisé dans e2e-ios.yml (simulateur iOS).
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
     steps:
+      # GitHub raises no `labeled` event for a label that is already present, so the label
+      # has to go before it can trigger the next run.
+      - name: Consume the run-ci label
+        if: github.event.action == 'labeled'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api -X DELETE \
+            "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels/run-ci"
+
       - name: Checkout
         uses: actions/checkout@v4
 

@@ -16,6 +16,16 @@ on:
       # maintenance branches for older majors (release/5.x, ...). Without this
       # a PR targeting one gets zero checks and stays mergeable unverified.
       - 'release/**'
+    # No `synchronize`: this suite is 8 jobs, four of them on macOS runners, and it ran on
+    # every push to an open PR. It runs once when the PR opens and then only on request —
+    # add the `run-ci` label (PR sidebar, or `gh pr edit N --add-label run-ci`).
+    #
+    # `labeled` fires for every label, so each job carries
+    #   if: github.event.action != 'labeled' || github.event.label.name == 'run-ci'
+    # which filters that one event and leaves every other trigger alone: `push` and
+    # `workflow_dispatch` carry no action, `merge_group` carries `checks_requested`, and
+    # `workflow_call` from publish.yml carries the release's `published`.
+    types: [opened, reopened, ready_for_review, labeled]
   merge_group:
     types:
       - checks_requested
@@ -32,7 +42,19 @@ concurrency:
 jobs:
   lint:
     runs-on: ubuntu-latest
+    if: github.event.action != 'labeled' || github.event.label.name == 'run-ci'
     steps:
+      # GitHub raises no `labeled` event for a label that is already present, so the label
+      # has to go before it can trigger the next run.
+      - name: Consume the run-ci label
+        if: github.event.action == 'labeled'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api -X DELETE \
+            "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels/run-ci"
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -56,6 +78,7 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    if: github.event.action != 'labeled' || github.event.label.name == 'run-ci'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -68,6 +91,7 @@ jobs:
 
   build-android:
     runs-on: ubuntu-latest
+    if: github.event.action != 'labeled' || github.event.label.name == 'run-ci'
     env:
       GRADLE_FLAGS: "--build-cache --parallel --configuration-cache --configuration-cache-problems=warn"
     steps:
@@ -121,6 +145,7 @@ jobs:
 
   build-ios:
     runs-on: macos-latest
+    if: github.event.action != 'labeled' || github.event.label.name == 'run-ci'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -245,6 +270,7 @@ jobs:
   build-ios-frameworks:
     name: iOS Build (use_frameworks!)
     runs-on: macos-latest
+    if: github.event.action != 'labeled' || github.event.label.name == 'run-ci'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -294,6 +320,7 @@ jobs:
   ios-unit-tests:
     name: iOS Unit Tests (bridge)
     runs-on: macos-latest
+    if: github.event.action != 'labeled' || github.event.label.name == 'run-ci'
     # Safety net: fail fast rather than burn the job's full timeout if the
     # simulator boot or test run ever stalls.
     timeout-minutes: 20
@@ -370,6 +397,7 @@ jobs:
 
   build-rn-0-86-android:
     runs-on: ubuntu-latest
+    if: github.event.action != 'labeled' || github.event.label.name == 'run-ci'
     env:
       GRADLE_FLAGS: "--build-cache --parallel --configuration-cache --configuration-cache-problems=warn"
     steps:
@@ -437,6 +465,7 @@ jobs:
 
   build-rn-0-86-ios:
     runs-on: macos-latest
+    if: github.event.action != 'labeled' || github.event.label.name == 'run-ci'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
