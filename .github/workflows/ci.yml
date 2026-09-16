@@ -128,6 +128,11 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # Google removed the legacy `tools` package from the SDK repository, so the
+          # action's default `tools platform-tools` makes sdkmanager exit 1. platform-tools
+          # (adb) is the only half these jobs use.
+          packages: platform-tools
 
       - name: Accept Android SDK licenses
         run: yes | sdkmanager --licenses
@@ -454,6 +459,11 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # Google removed the legacy `tools` package from the SDK repository, so the
+          # action's default `tools platform-tools` makes sdkmanager exit 1. platform-tools
+          # (adb) is the only half these jobs use.
+          packages: platform-tools
 
       - name: Accept Android SDK licenses
         run: yes | sdkmanager --licenses
