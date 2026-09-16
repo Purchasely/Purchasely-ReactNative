@@ -16,14 +16,32 @@ on:
       # maintenance branches for older majors (release/5.x, ...). Without this
       # a PR targeting one gets zero checks and stays mergeable unverified.
       - 'release/**'
+    # No `synchronize`: this suite is 8 jobs, four of them on macOS runners, and it ran on
+    # every push to an open PR. It runs once when the PR opens and then only on request —
+    # add the `run-ci` label (PR sidebar, or `gh pr edit N --add-label run-ci`).
+    #
+    # `labeled` fires for every label, so each job carries
+    #   if: github.event.action != 'labeled' || github.event.label.name == 'run-ci'
+    # which filters that one event and leaves every other trigger alone: `push` and
+    # `workflow_dispatch` carry no action, `merge_group` carries `checks_requested`, and
+    # `workflow_call` from publish.yml carries the release's `published`.
+    types: [opened, reopened, ready_for_review, labeled]
   merge_group:
     types:
       - checks_requested
 
 # A force-push to a PR used to leave the previous run alive: 8 jobs, two of
 # them on macOS runners. e2e-android.yml and e2e-ios.yml already do this.
+# A `labeled` event for any other label must not land in this group: with
+# `cancel-in-progress` it would kill a running job, and the replacement run skips the work,
+# so the check ends up "skipped" and the requested validation is lost. Dependabot makes that
+# concrete — it opens a PR and then applies its own labels to it. Those events get a group
+# of their own and cancel nothing.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: >-
+    ci-${{ github.ref }}-${{
+      (github.event.action == 'labeled' && github.event.label.name != 'run-ci')
+      && format('label-{0}', github.event.label.name) || 'run' }}
   # Cancel superseded PR runs only. A `push: main` run must finish -- it is the
   # one that seeds the shared cache scope -- and a merge_group or release run
   # must never be cancelled either.
@@ -32,7 +50,27 @@ concurrency:
 jobs:
   lint:
     runs-on: ubuntu-latest
+    if: github.event.action != 'labeled' || github.event.label.name == 'run-ci'
     steps:
+      # GitHub raises no `labeled` event for a label that is already present, so the label
+      # has to go before it can trigger the next run.
+      #
+      # Only where the token can actually write. A `pull_request` from a fork and a
+      # Dependabot PR both run with a read-only token, so this DELETE would 403 and
+      # `continue-on-error` would bury it. On those PRs take the label off by hand to ask
+      # for another run — one click, not a dead end.
+      - name: Consume the run-ci label
+        if: >-
+          github.event.action == 'labeled' &&
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          github.event.pull_request.user.login != 'dependabot[bot]'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api -X DELETE \
+            "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels/run-ci"
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -56,6 +94,7 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    if: github.event.action != 'labeled' || github.event.label.name == 'run-ci'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -68,6 +107,7 @@ jobs:
 
   build-android:
     runs-on: ubuntu-latest
+    if: github.event.action != 'labeled' || github.event.label.name == 'run-ci'
     env:
       GRADLE_FLAGS: "--build-cache --parallel --configuration-cache --configuration-cache-problems=warn"
     steps:
@@ -88,6 +128,11 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # Google removed the legacy `tools` package from the SDK repository, so the
+          # action's default `tools platform-tools` makes sdkmanager exit 1. platform-tools
+          # (adb) is the only half these jobs use.
+          packages: platform-tools
 
       - name: Accept Android SDK licenses
         run: yes | sdkmanager --licenses
@@ -121,6 +166,7 @@ jobs:
 
   build-ios:
     runs-on: macos-latest
+    if: github.event.action != 'labeled' || github.event.label.name == 'run-ci'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -245,6 +291,7 @@ jobs:
   build-ios-frameworks:
     name: iOS Build (use_frameworks!)
     runs-on: macos-latest
+    if: github.event.action != 'labeled' || github.event.label.name == 'run-ci'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -294,6 +341,7 @@ jobs:
   ios-unit-tests:
     name: iOS Unit Tests (bridge)
     runs-on: macos-latest
+    if: github.event.action != 'labeled' || github.event.label.name == 'run-ci'
     # Safety net: fail fast rather than burn the job's full timeout if the
     # simulator boot or test run ever stalls.
     timeout-minutes: 20
@@ -370,6 +418,7 @@ jobs:
 
   build-rn-0-86-android:
     runs-on: ubuntu-latest
+    if: github.event.action != 'labeled' || github.event.label.name == 'run-ci'
     env:
       GRADLE_FLAGS: "--build-cache --parallel --configuration-cache --configuration-cache-problems=warn"
     steps:
@@ -410,6 +459,11 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # Google removed the legacy `tools` package from the SDK repository, so the
+          # action's default `tools platform-tools` makes sdkmanager exit 1. platform-tools
+          # (adb) is the only half these jobs use.
+          packages: platform-tools
 
       - name: Accept Android SDK licenses
         run: yes | sdkmanager --licenses
@@ -437,6 +491,7 @@ jobs:
 
   build-rn-0-86-ios:
     runs-on: macos-latest
+    if: github.event.action != 'labeled' || github.event.label.name == 'run-ci'
     steps:
       - name: Checkout
         uses: actions/checkout@v4

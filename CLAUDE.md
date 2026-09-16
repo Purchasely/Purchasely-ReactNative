@@ -533,8 +533,22 @@ When adding new features:
 
 | Workflow | Trigger | Purpose |
 |----------|---------|---------|
-| `.github/workflows/ci.yml` | `pull_request`, `merge_group`, `workflow_call` | Lint, test, build Android & iOS |
+| `.github/workflows/ci.yml` | `pull_request` (open/reopen/ready, and the `run-ci` label), `push` to `main`, `merge_group`, `workflow_call` | Lint, test, build Android & iOS |
+| `.github/workflows/e2e-android.yml` / `e2e-ios.yml` | `pull_request` on bridge paths (open/reopen/ready, and the `run-ci` label), `workflow_dispatch` | Device E2E against the real backend |
 | `.github/workflows/publish.yml` | `release` (published) | Run CI then publish all 5 packages to npm |
+
+**No workflow rebuilds on a push to an open pull request.** All three skip the
+`synchronize` event; they run when the pull request opens, reopens or leaves draft, and on
+demand when the `run-ci` label is added:
+
+```bash
+gh pr edit <number> --add-label run-ci
+```
+
+The label is removed again by the run it starts, so it can be added as often as needed. On a
+fork or Dependabot pull request the token is read-only and the label has to be taken off by
+hand. `push` to `main` still runs `ci.yml` in full — it is the run that seeds the shared
+cache scope every later pull request restores from.
 
 ### CI Jobs (ci.yml)
 
@@ -551,9 +565,9 @@ When adding new features:
 
 **Native tests are part of CI**, both platforms. They run through the example
 project rather than from their own package directory, because they need the
-React Native dependencies. E2E (`e2e-android.yml`, `e2e-ios.yml`) runs nightly
-and on a pull request that touches the bridge paths, and must never gate
-`publish.yml`.
+React Native dependencies. E2E (`e2e-android.yml`, `e2e-ios.yml`) runs on a pull
+request that touches the bridge paths, and on demand through the `run-ci`
+label, and must never gate `publish.yml`.
 
 ### Publish (publish.yml)
 
