@@ -8,6 +8,11 @@
 #import <XCTest/XCTest.h>
 #import "PurchaselyRN.h"
 
+// Exposes the private wire-string mapper implemented in PurchaselyRN.m.
+@interface PurchaselyRN (DataProcessingPurposeTesting)
+- (NSSet<PLYDataProcessingPurpose *> *)mapPurposesFromStrings:(NSArray<NSString *> *)strings;
+@end
+
 // Captures events sent through RCTEventEmitter so
 // `emitPresentationCloseRequestedForId:` (the native onCloseRequested -> JS
 // bridge wired at preload/display time, see PurchaselyRN.m) can be asserted
@@ -530,6 +535,60 @@
                  @"closePresentation: must never emit CLOSE_REQUESTED itself");
 
     [recorder stopObserving];
+}
+
+#pragma mark - revokeDataProcessingConsent wire-string mapping
+
+// Pins `mapPurposesFromStrings:` — the only place the JS enum strings meet
+// the native `PLYDataProcessingPurpose` façade. Both RN's kebab-case tokens
+// and the SCREAMING_SNAKE_CASE convention of the other SDKs must resolve to
+// the same native purpose, and `all-non-essentials` must stay a fixed
+// bundle that never implies `refundHandling`.
+
+- (void)testMapPurposesRefundHandlingBothConventions {
+    NSSet *kebab = [self.purchaselyModule mapPurposesFromStrings:@[@"refund-handling"]];
+    NSSet *snake = [self.purchaselyModule mapPurposesFromStrings:@[@"REFUND_HANDLING"]];
+
+    XCTAssertEqualObjects(kebab, [NSSet setWithObject:PLYDataProcessingPurpose.refundHandling]);
+    XCTAssertEqualObjects(snake, [NSSet setWithObject:PLYDataProcessingPurpose.refundHandling]);
+}
+
+- (void)testMapPurposesRefundHandlingCombinesWithOtherPurposes {
+    NSSet *mapped = [self.purchaselyModule mapPurposesFromStrings:@[@"analytics", @"refund-handling"]];
+
+    NSSet *expected = [NSSet setWithObjects:PLYDataProcessingPurpose.analytics,
+                                            PLYDataProcessingPurpose.refundHandling, nil];
+    XCTAssertEqualObjects(mapped, expected);
+}
+
+- (void)testMapPurposesAllNonEssentialsExcludesRefundHandling {
+    NSSet *mapped = [self.purchaselyModule mapPurposesFromStrings:@[@"all-non-essentials"]];
+
+    XCTAssertEqualObjects(mapped, [NSSet setWithObject:PLYDataProcessingPurpose.allNonEssentials]);
+    XCTAssertFalse([mapped containsObject:PLYDataProcessingPurpose.refundHandling]);
+}
+
+- (void)testMapPurposesEveryKebabToken {
+    NSSet *mapped = [self.purchaselyModule mapPurposesFromStrings:@[@"analytics",
+                                                                    @"identified-analytics",
+                                                                    @"campaigns",
+                                                                    @"personalization",
+                                                                    @"third-party-integration",
+                                                                    @"refund-handling"]];
+
+    NSSet *expected = [NSSet setWithObjects:PLYDataProcessingPurpose.analytics,
+                                            PLYDataProcessingPurpose.identifiedAnalytics,
+                                            PLYDataProcessingPurpose.campaigns,
+                                            PLYDataProcessingPurpose.personalization,
+                                            PLYDataProcessingPurpose.thirdPartyIntegrations,
+                                            PLYDataProcessingPurpose.refundHandling, nil];
+    XCTAssertEqualObjects(mapped, expected);
+}
+
+- (void)testMapPurposesDropsUnknownTokens {
+    NSSet *mapped = [self.purchaselyModule mapPurposesFromStrings:@[@"refund", @"refund_handling_v2"]];
+
+    XCTAssertEqual(mapped.count, 0u);
 }
 
 @end

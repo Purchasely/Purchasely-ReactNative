@@ -752,6 +752,22 @@ describe('Purchasely SDK', () => {
                 'personalization'
             ])
         })
+
+        it('should forward refund-handling as its own wire token', () => {
+            Purchasely.revokeDataProcessingConsent([PLYDataProcessingPurpose.REFUND_HANDLING])
+
+            expect(mockedPurchasely.revokeDataProcessingConsent).toHaveBeenCalledWith(['refund-handling'])
+        })
+
+        it('should forward the full list on every call (replace semantics live natively)', () => {
+            Purchasely.revokeDataProcessingConsent([PLYDataProcessingPurpose.ANALYTICS])
+            Purchasely.revokeDataProcessingConsent([PLYDataProcessingPurpose.REFUND_HANDLING])
+            Purchasely.revokeDataProcessingConsent([])
+
+            expect(mockedPurchasely.revokeDataProcessingConsent).toHaveBeenNthCalledWith(1, ['analytics'])
+            expect(mockedPurchasely.revokeDataProcessingConsent).toHaveBeenNthCalledWith(2, ['refund-handling'])
+            expect(mockedPurchasely.revokeDataProcessingConsent).toHaveBeenNthCalledWith(3, [])
+        })
     })
 
     describe('Event Listeners', () => {
