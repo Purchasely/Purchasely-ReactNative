@@ -220,6 +220,7 @@ describe('Purchasely Enums', () => {
             expect(PLYDataProcessingPurpose.CAMPAIGNS).toBe('campaigns')
             expect(PLYDataProcessingPurpose.PERSONALIZATION).toBe('personalization')
             expect(PLYDataProcessingPurpose.THIRD_PARTY_INTEGRATION).toBe('third-party-integration')
+            expect(PLYDataProcessingPurpose.REFUND_HANDLING).toBe('refund-handling')
             expect(PLYDataProcessingPurpose.ALL_NON_ESSENTIALS).toBe('all-non-essentials')
         })
 
@@ -230,8 +231,14 @@ describe('Purchasely Enums', () => {
             expect(values).toContain('campaigns')
             expect(values).toContain('personalization')
             expect(values).toContain('third-party-integration')
+            expect(values).toContain('refund-handling')
             expect(values).toContain('all-non-essentials')
-            expect(values).toHaveLength(6)
+            expect(values).toHaveLength(7)
+        })
+
+        it('keeps REFUND_HANDLING as its own token, distinct from ALL_NON_ESSENTIALS', () => {
+            expect(PLYDataProcessingPurpose.REFUND_HANDLING).not.toBe(PLYDataProcessingPurpose.ALL_NON_ESSENTIALS)
+            expect(PLYDataProcessingPurpose.ALL_NON_ESSENTIALS).not.toContain('refund')
         })
     })
 

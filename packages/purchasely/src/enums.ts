@@ -95,6 +95,12 @@ export enum PLYDataProcessingPurpose {
   CAMPAIGNS = 'campaigns',
   PERSONALIZATION = 'personalization',
   THIRD_PARTY_INTEGRATION = 'third-party-integration',
+  /**
+   * iOS 6.2.0+. The user refuses processing of the consumption data attached
+   * to a refund request. Carried as a flag only; not part of ALL_NON_ESSENTIALS.
+   * Ignored by the Android bridge.
+   */
+  REFUND_HANDLING = 'refund-handling',
   ALL_NON_ESSENTIALS = 'all-non-essentials'
 }
 

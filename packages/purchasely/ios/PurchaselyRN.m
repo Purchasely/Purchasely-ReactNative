@@ -1260,6 +1260,8 @@ RCT_EXPORT_METHOD(clearDynamicOfferings)
       [result addObject:PLYDataProcessingPurpose.personalization];
     } else if ([p isEqualToString:@"third-party-integration"]) {
       [result addObject:PLYDataProcessingPurpose.thirdPartyIntegrations];
+    } else if ([p isEqualToString:@"refund-handling"]) {
+      [result addObject:PLYDataProcessingPurpose.refundHandling];
     }
   }
 

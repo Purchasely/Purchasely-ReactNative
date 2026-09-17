@@ -21,10 +21,11 @@ This document provides comprehensive documentation for integrating and using the
 7. [User Identification](#user-identification)
 8. [Subscription Status & Entitlements](#subscription-status--entitlements)
 9. [Custom User Attributes](#custom-user-attributes)
-10. [Event Listeners](#event-listeners)
-11. [Pre-fetching Screens](#pre-fetching-screens)
-12. [Deeplinks Management](#deeplinks-management)
-13. [Platform-Specific Features](#platform-specific-features)
+10. [Data Processing Consent](#data-processing-consent)
+11. [Event Listeners](#event-listeners)
+12. [Pre-fetching Screens](#pre-fetching-screens)
+13. [Deeplinks Management](#deeplinks-management)
+14. [Platform-Specific Features](#platform-specific-features)
 
 ---
 
@@ -775,6 +776,56 @@ Purchasely.clearUserAttributes();
 ```
 
 > **Note**: `Purchasely.userLogout()` will automatically clear all custom user attributes unless you call `Purchasely.userLogout(false)`.
+
+---
+
+## Data Processing Consent
+
+Let users opt out of non-essential data processing by revoking consent per purpose with `revokeDataProcessingConsent`.
+
+### Purposes
+
+| `PLYDataProcessingPurpose` | Wire value | Availability |
+|---|---|---|
+| `ANALYTICS` | `analytics` | iOS, Android |
+| `IDENTIFIED_ANALYTICS` | `identified-analytics` | iOS, Android |
+| `CAMPAIGNS` | `campaigns` | iOS, Android |
+| `PERSONALIZATION` | `personalization` | iOS, Android |
+| `THIRD_PARTY_INTEGRATION` | `third-party-integration` | iOS, Android |
+| `REFUND_HANDLING` | `refund-handling` | iOS 6.2.0+ (ignored on Android) |
+| `ALL_NON_ESSENTIALS` | `all-non-essentials` | iOS, Android |
+
+`ALL_NON_ESSENTIALS` expands natively to `ANALYTICS`, `CAMPAIGNS`, `PERSONALIZATION` and `THIRD_PARTY_INTEGRATION`. It does **not** include `IDENTIFIED_ANALYTICS` or `REFUND_HANDLING`: those must be listed explicitly.
+
+`REFUND_HANDLING` states that the user refuses processing of the consumption data attached to a refund request. The SDK only carries this flag to Purchasely; it does not change any local behavior.
+
+### Set Semantics
+
+Each call **replaces** the stored set of revoked purposes; nothing is merged with previous calls. Always pass the complete list of purposes the user currently refuses.
+
+```typescript
+import Purchasely, { PLYDataProcessingPurpose } from 'react-native-purchasely';
+
+// Revoke everything non-essential plus refund handling
+Purchasely.revokeDataProcessingConsent([
+  PLYDataProcessingPurpose.ALL_NON_ESSENTIALS,
+  PLYDataProcessingPurpose.REFUND_HANDLING,
+]);
+
+// Later: the user accepts analytics again but still refuses refund handling.
+// Pass the full remaining set, not just the change.
+Purchasely.revokeDataProcessingConsent([
+  PLYDataProcessingPurpose.CAMPAIGNS,
+  PLYDataProcessingPurpose.PERSONALIZATION,
+  PLYDataProcessingPurpose.THIRD_PARTY_INTEGRATION,
+  PLYDataProcessingPurpose.REFUND_HANDLING,
+]);
+
+// Grant all purposes back
+Purchasely.revokeDataProcessingConsent([]);
+```
+
+Call it before `Purchasely.start()` or as soon as the user's choice changes. Unknown values are ignored by the native SDKs.
 
 ---
 
