@@ -13,4 +13,8 @@
 #import "React/RCTViewManager.h"
 #import "React/RCTComponent.h"
 
+/// Non-variadic wrapper around RCTLogWarn, for the Swift side. Defined in
+/// PurchaselyRN.m. RCTLogWarn itself is a variadic macro Swift cannot see.
+FOUNDATION_EXPORT void PLYRNLogWarn(NSString *message);
+
 #endif /* react_native_purchasely_Bridging_Header_h */

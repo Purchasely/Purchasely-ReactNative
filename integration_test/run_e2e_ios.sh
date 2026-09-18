@@ -95,6 +95,42 @@ start_log_stream() {
   return 1
 }
 
+# ── Diagnostics capture (marker timeout → sample before kill) ───────────────
+# A result marker missing its timeout usually means the on-device main queue
+# stopped draining somewhere upstream -- the log then only says WHICH test
+# never reported, not WHY. This has cost a long CI-artifact investigation
+# twice already (T30 on this branch, a full-suite timeout on main). A 5s
+# `sample` taken here, before the app is killed, names the blocked frames
+# directly. Best-effort only: `sample`/`spindump` ship with macOS and need no
+# extra tooling, but any failure here (process gone, spindump needs root) is
+# logged and swallowed -- it must never change SUITE_RESULT/T27_RESULT or the
+# run's exit code. No pid is tracked for the app itself (LAUNCH_PID is the
+# `simctl launch` wrapper, not the simulated app), so it's found the same way
+# the rest of the script finds things it doesn't track: `pgrep -f` against
+# the same PROCESS_NAME already used for the log stream predicate.
+capture_diagnostics() {
+  local context="$1" pid
+  pid=$(pgrep -f "${PROCESS_NAME}.app/${PROCESS_NAME}" 2>/dev/null | head -1)
+  if [ -z "$pid" ]; then
+    warn "diagnostics ($context): app process not found via pgrep -- skipping sample/spindump"
+    return 0
+  fi
+  log "diagnostics ($context): sampling pid $pid for 5s..."
+  if sample "$pid" 5 -file "$ARTIFACT_DIR/sample_${context}.txt" \
+      >"$ARTIFACT_DIR/diagnostics_${context}.log" 2>&1; then
+    ok "diagnostics ($context): sample saved to sample_${context}.txt"
+  else
+    warn "diagnostics ($context): sample failed -- see diagnostics_${context}.log"
+  fi
+  if spindump "$pid" 5 -file "$ARTIFACT_DIR/spindump_${context}.txt" \
+      >>"$ARTIFACT_DIR/diagnostics_${context}.log" 2>&1; then
+    ok "diagnostics ($context): spindump saved to spindump_${context}.txt"
+  else
+    warn "diagnostics ($context): spindump skipped (needs root, or unavailable -- see diagnostics_${context}.log)"
+  fi
+  return 0
+}
+
 # ── Auto-detect booted simulator ─────────────────────────────────────────────
 if [ -z "$UDID" ]; then
   UDID=$(xcrun simctl list devices booted -j \
@@ -230,6 +266,7 @@ while true; do
   ELAPSED=$(( $(date +%s) - START_TS ))
   if [ "$ELAPSED" -ge "$TIMEOUT_SECS" ]; then
     err "TIMEOUT: suite did not complete within ${TIMEOUT_SECS}s"
+    capture_diagnostics "suite_timeout"
     SUITE_RESULT="FAIL"; break
   fi
 
@@ -283,6 +320,7 @@ while true; do
     SUITE_RESULT="PASS"; break
   fi
   if grep -q '\[E2E:SUITE:FAIL\]' "$LOGFILE" 2>/dev/null; then
+    capture_diagnostics "suite_fail"
     SUITE_RESULT="FAIL"; break
   fi
 
@@ -346,6 +384,7 @@ if [ "$SUITE_RESULT" = "PASS" ]; then
     while true; do
       if [ $(( $(date +%s) - T27_START )) -ge 150 ]; then
         err "T27: timeout waiting for cold-start deeplink result"
+        capture_diagnostics "t27_timeout"
         T27_RESULT="FAIL"; break
       fi
       # Match only PASS/FAIL (the main suite already logged [E2E:T27:SKIP]).
