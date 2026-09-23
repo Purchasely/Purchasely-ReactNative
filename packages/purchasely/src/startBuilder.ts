@@ -65,7 +65,7 @@ export class PurchaselyBuilder {
      *
      * @internal
      */
-    static bridgeVersion = '6.1.2';
+    static bridgeVersion = '6.1.1';
 
     private constructor(private readonly state: StartBuilderState) {}
 

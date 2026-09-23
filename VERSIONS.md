@@ -119,4 +119,4 @@ This file provides the underlying native SDK versions that the React Native SDK 
 | 6.0.0-rc.3   | 6.0.0-rc.3  | 6.0.0-rc.3      |
 | 6.0.0   | 6.0.0       | 6.0.1           |
 | 6.1.0   | 6.1.0       | 6.1.0           |
-| 6.1.2   | 6.1.2       | 6.1.1           |
+| 6.1.1   | 6.1.2       | 6.1.1           |
