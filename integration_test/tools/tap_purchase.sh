@@ -19,19 +19,47 @@ try:
     xml = open('/tmp/uidump_tap.xml', encoding='utf-8').read()
 except Exception:
     sys.exit(0)
-for m in re.finditer(r'<node\b[^>]*>', xml):
-    tag = m.group(0)
-    cd = re.search(r'content-desc="([^"]*)"', tag)
-    if cd and desc in cd.group(1):
-        b = re.search(r'bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', tag)
-        if b:
-            x1, y1, x2, y2 = map(int, b.groups())
-            print((x1 + x2) // 2, (y1 + y2) // 2)
-            break
+def attr(tag, k):
+    m = re.search(k + r'="([^"]*)"', tag)
+    return m.group(1) if m else ''
+
+def bounds(tag):
+    b = re.search(r'bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', tag)
+    return tuple(map(int, b.groups())) if b else None
+
+nodes = [m.group(0) for m in re.finditer(r'<node\b[^>]*>', xml)]
+for tag in nodes:
+    b = bounds(tag)
+    if b and desc in attr(tag, 'content-desc'):
+        print((b[0] + b[2]) // 2, (b[1] + b[3]) // 2)
+        sys.exit(0)
+
+# Android SDK >= 6.1.1 (MOB-471) moved the action metadata out of content-desc
+# into a view tag uiautomator cannot read. Fallback: the first clickable SDK
+# node with no label of its own that holds a price text ("... per ...").
+# The smallest one: a full-screen clickable container also holds the prices.
+prices = [bounds(t) for t in nodes if re.search(r'\bper\b', attr(t, 'text')) and bounds(t)]
+best = None
+for tag in nodes:
+    b = bounds(tag)
+    if not b or attr(tag, 'package') != 'com.purchasely.demo' or attr(tag, 'clickable') != 'true':
+        continue
+    if attr(tag, 'text') or attr(tag, 'content-desc'):
+        continue
+    if any(b[0] <= p[0] and b[1] <= p[1] and p[2] <= b[2] and p[3] <= b[3] for p in prices):
+        area = (b[2] - b[0]) * (b[3] - b[1])
+        if best is None or area < best[0]:
+            best = (area, b)
+if best:
+    b = best[1]
+    sys.stderr.write(f"[tap_purchase] fallback: unlabelled price button {b}\n")
+    print((b[0] + b[2]) // 2, (b[1] + b[3]) // 2)
 PY
 )
   if [ -n "$coords" ]; then
-    echo "[tap_purchase] found '$DESC' at $coords (iter $i)"
+    # Keep the tree the tap was chosen from, for the CI artifacts.
+    cp /tmp/uidump_tap.xml "$(dirname "$0")/../artifacts/e2e_t8_uidump.xml" 2>/dev/null || true
+    echo "[tap_purchase] found a purchase button at $coords (iter $i)"
     adb -s "$DEV" shell input tap $coords
     echo "[tap_purchase] tapped"
     exit 0

@@ -1,5 +1,5 @@
 /**
- * E2E test runner — T1–T30
+ * E2E test runner — T1–T31
  *
  * Renders as the root component when the app is launched with E2E_MODE=true.
  * The main suite (T1–T26) runs sequentially in a single SDK session; T27
@@ -41,6 +41,11 @@
  *                                        tap through the bridge; closeReason is
  *                                        asserted as 'programmatic' on iOS vs 'button'
  *                                        on Android.
+ *   T31: [E2E:READY_FOR_DRAWER:button|outside] — Console drawer displayed; host
+ *                                        taps its close button, then the scrim.
+ *        [E2E:READY_FOR_PROBE_TAP:n]     — drawer closed; host taps the centre of
+ *                                        the screen, where a full-screen RN probe
+ *                                        button waits. iOS only.
  *
  * T21–T24 and T26–T27 are driver-free (programmatic close / analytics events /
  * cold-start); T8, T9 and T25 need the external driver above.
@@ -78,6 +83,8 @@ import BayardReproScreen from './BayardReproScreen'
 // ── Config ───────────────────────────────────────────────────────────────────
 const API_KEY = '0ad0594b-3b3d-4fea-8ee1-4b5df91efe87'
 const PLACEMENT_AUDIENCES = 'integration_test_audiences'
+// T31: a screen the Console itself displays as a 70% drawer, with a close button.
+const PLACEMENT_DRAWER = 'integration_test_drawer'
 const DEEPLINK_AUDIENCES = `ply://ply/placements/${PLACEMENT_AUDIENCES}`
 
 // Dedicated phase (Android): launched by run_e2e.sh with
@@ -89,6 +96,10 @@ const COLDSTART_PHASE = 'deeplink_coldstart'
 // BayardReproScreen.tsx. Never selected by run_e2e.sh / run_e2e_ios.sh, so
 // the existing E2E suite is completely unaffected.
 const BAYARD_PHASE = 'bayard_repro'
+
+// T31 alone, for a quick local check against one native SDK version:
+// `run_e2e_ios.sh --only-t31`.
+const DRAWER_PHASE = 'drawer_only'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 type TestStatus = 'pending' | 'running' | 'pass' | 'fail' | 'skip'
@@ -163,6 +174,7 @@ const INITIAL_TESTS: TestResult[] = [
     { id: 'T28', name: 'embedded view nested in a react-native-screens screen (no VC hierarchy crash)', status: 'pending' },
     { id: 'T29', name: 'two embedded views mounted at once keep their own height', status: 'pending' },
     { id: 'T30', name: 'embedded view unmounted then remounted under another screen', status: 'pending' },
+    { id: 'T31', name: 'Console drawer closed by a real tap: outcome + CLOSED + app still takes taps', status: 'pending' },
 ]
 
 // T29: the two container heights, in density-independent points. They must stay
@@ -194,6 +206,10 @@ function E2ETestRunnerSuite({ phase }: { phase: string }) {
     const [inlineRequest, setInlineRequest] = useState<PLYPresentationRequest | null>(null)
     // T25: last outcome delivered to the embedded view's onPresentationClosed.
     const inlineClosedRef = useRef<PLYPresentationOutcome | null>(null)
+    // T31: full-screen probe button shown after the drawer closed, and how many
+    // OS taps reached it.
+    const [probeVisible, setProbeVisible] = useState(false)
+    const probeTapsRef = useRef(0)
     // T28: the embedded paywall request mounted INSIDE a react-native-screens screen.
     const [nestedRequest, setNestedRequest] = useState<PLYPresentationRequest | null>(null)
     // T29: the two embedded paywall requests mounted side by side, in containers
@@ -257,19 +273,16 @@ function E2ETestRunnerSuite({ phase }: { phase: string }) {
     useEffect(() => {
         if (phase === COLDSTART_PHASE) {
             runColdStartPhase()
+        } else if (phase === DRAWER_PHASE) {
+            runDrawerPhase()
         } else {
             runSuite()
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
-    // ── Suite ─────────────────────────────────────────────────────────────────
-    async function runSuite() {
-        setSuiteStatus('running')
-        console.log('[E2E:SUITE:START]')
-        appendLog('=== Purchasely RN E2E Suite ===')
-
-        // ── SDK init ──────────────────────────────────────────────────────────
+    // ── SDK init (shared by the main suite and the drawer phase) ──────────────
+    async function initSdk(): Promise<boolean> {
         let sdkOk = false
         try {
             // stores() is Android-only; storekitVersion() is iOS-only
@@ -289,9 +302,19 @@ function E2ETestRunnerSuite({ phase }: { phase: string }) {
             setSuiteStatus('fail')
             console.error('[E2E:SUITE:FAIL] SDK init failed')
             appendLog('✗ SDK init failed — aborting suite')
-            return
+            return false
         }
         appendLog('SDK initialized ✓')
+        return true
+    }
+
+    // ── Suite ─────────────────────────────────────────────────────────────────
+    async function runSuite() {
+        setSuiteStatus('running')
+        console.log('[E2E:SUITE:START]')
+        appendLog('=== Purchasely RN E2E Suite ===')
+
+        if (!(await initSdk())) return
 
         let suitePass = true
 
@@ -899,6 +922,26 @@ function E2ETestRunnerSuite({ phase }: { phase: string }) {
             pass('T19', `screen(${screenId}) modal=${modalOutcome.closeReason} popin=${popinOutcome.closeReason}`)
         } catch (e) { fail('T19', e); suitePass = false }
 
+        // ── T31 — Console drawer closed by a real tap (iOS only) ──────────────
+        // Regression guard for Purchasely-iOS#790, fixed in iOS SDK 6.1.2: a
+        // drawer the Console configures (no transition passed to display(), as
+        // a client app does) closed by its own button or by a tap on the scrim
+        // left the SDK window alive, invisible and key above the app, and never
+        // sent PRESENTATION_CLOSED. The app then took no more taps.
+        //
+        // Each pass: display → host taps (button, then scrim) → PRESENTATION_CLOSED
+        // → a full-screen RN probe button appears and the host taps the centre of
+        // the screen. The probe tap is the symptom itself: with a leftover window
+        // on top, the OS tap never reaches React Native.
+        //
+        // Runs BEFORE T20 on purpose: T20 revokes the ANALYTICS consent, and
+        // from then on the iOS SDK sends no PRESENTATION_* event to the app.
+        // On a broken SDK the leftover window also swallows the taps of the
+        // later host-driven test (T25); T31's own message names the cause.
+        if (!(await runT31())) suitePass = false
+
+        await sleep(1000)
+
         // ── T20 — config setters smoke test ───────────────────────────────────
         running('T20')
         try {
@@ -1430,12 +1473,89 @@ function E2ETestRunnerSuite({ phase }: { phase: string }) {
         // ── Final report ──────────────────────────────────────────────────────
         setSuiteStatus(suitePass ? 'pass' : 'fail')
         if (suitePass) {
-            console.log('[E2E:SUITE:PASS] All main-suite tests passed (T1-T26 + T28-T30; T27 in cold-start phase)')
+            console.log('[E2E:SUITE:PASS] All main-suite tests passed (T1-T26 + T28-T31; T27 in cold-start phase)')
             appendLog('=== SUITE PASS ✓ ===')
         } else {
             console.log('[E2E:SUITE:FAIL] One or more tests failed')
             appendLog('=== SUITE FAIL ✗ ===')
         }
+    }
+
+    // ── T31 — Console drawer closed by a real tap (iOS only) ──────────────────
+    // Resolves false on failure. See the comment at its call site in runSuite.
+    async function runT31(): Promise<boolean> {
+        if (Platform.OS !== 'ios') {
+            skip('T31', 'iOS-only regression (Purchasely-iOS#790)')
+        } else {
+            running('T31')
+            try {
+                const reasons: string[] = []
+                for (const [pass31, mode] of (['button', 'outside'] as const).entries()) {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    let viewed31: any = null
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    let closed31: any = null
+                    const listener31 = Purchasely.addEventListener((event: any) => {
+                        console.log(`[E2E:T31] ${mode} event ${event.name} placement_id=${event.properties?.placement_id}`)
+                        if (event.properties?.placement_id !== PLACEMENT_DRAWER) return
+                        if (event.name === 'PRESENTATION_VIEWED') viewed31 = event
+                        if (event.name === 'PRESENTATION_CLOSED') closed31 = event
+                    })
+                    try {
+                        const req31 = Purchasely.presentation.placement(PLACEMENT_DRAWER).build()
+                        await withTimeout(req31.preload(), 30000, `T31 ${mode} preload()`)
+                        // No transition: the Console's drawer display_mode applies.
+                        const outcome31 = req31.display()
+
+                        await waitFor(() => viewed31, 30000, 300)
+                        await sleep(1500) // drawer animation
+
+                        console.log(`[E2E:READY_FOR_DRAWER:${mode}]`)
+                        appendLog(`T31: signaled READY_FOR_DRAWER:${mode}`)
+
+                        const errors: string[] = []
+                        await waitFor(() => closed31, 20000, 300).catch(() =>
+                            errors.push(`${mode}: no PRESENTATION_CLOSED within 20 s`)
+                        )
+
+                        const tapsBefore = probeTapsRef.current
+                        setProbeVisible(true)
+                        await sleep(800)
+                        console.log(`[E2E:READY_FOR_PROBE_TAP:${pass31 + 1}]`)
+                        await waitFor(() => (probeTapsRef.current > tapsBefore ? true : null), 20000, 250).catch(() =>
+                            errors.push(`${mode}: the OS tap did not reach the app after the close (leftover SDK window?)`)
+                        )
+                        setProbeVisible(false)
+
+                        const outcome = await withTimeout(outcome31, 10000, `T31 ${mode} display()`).catch((e) => {
+                            errors.push(`${mode}: ${e instanceof Error ? e.message : String(e)}`)
+                            return null
+                        })
+                        if (outcome && mode === 'button' && outcome.closeReason !== 'button') {
+                            errors.push(`button: closeReason expected 'button', got "${outcome.closeReason}"`)
+                        }
+                        if (errors.length) throw new Error(errors.join('; '))
+                        reasons.push(`${mode}=${outcome?.closeReason ?? 'none'}`)
+                    } finally {
+                        setProbeVisible(false)
+                        listener31.remove()
+                    }
+                    await sleep(1000)
+                }
+                pass('T31', `drawer closed by a real tap, CLOSED sent, app still takes taps (${reasons.join(', ')})`)
+            } catch (e) { fail('T31', e); return false }
+        }
+        return true
+    }
+
+    // ── Drawer phase: SDK init + T31 only (run_e2e_ios.sh --only-t31) ──────────
+    async function runDrawerPhase() {
+        setSuiteStatus('running')
+        console.log('[E2E:SUITE:START] phase=drawer_only')
+        if (!(await initSdk())) return
+        const ok = await runT31()
+        setSuiteStatus(ok ? 'pass' : 'fail')
+        console.log(ok ? '[E2E:SUITE:PASS] T31 phase passed' : '[E2E:SUITE:FAIL] T31 phase failed')
     }
 
     // ── T27 — cold-start deeplink phase (own process) ──────────────────────────
@@ -1621,6 +1741,23 @@ function E2ETestRunnerSuite({ phase }: { phase: string }) {
             </View>
         )}
 
+        {/* T31: full-screen probe. The host taps the centre of the screen by
+            coordinates after the drawer closed; the tap only lands here if no
+            leftover SDK window sits on top of the app. */}
+        {probeVisible && (
+            <Pressable
+                testID="ply-e2e-drawer-probe"
+                accessibilityLabel="E2E drawer probe"
+                onPress={() => {
+                    probeTapsRef.current += 1
+                    console.log(`[E2E:T31] probe tapped (${probeTapsRef.current})`)
+                }}
+                style={styles.probeOverlay}
+            >
+                <Text style={styles.inlineCloseFallbackText}>T31 probe</Text>
+            </Pressable>
+        )}
+
         {/* T28: the embedded paywall inside a REAL react-native-screens screen.
             `ScreenStack` + `ScreenStackItem` put a native RNSScreen — which owns
             its own UIViewController on iOS — between the paywall's host view and
@@ -1714,6 +1851,17 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     inlineCloseFallbackText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+    // T31 probe — covers the whole screen so a centre tap always lands on it.
+    probeOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: '#1a237e',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     // T28 — nested-in-react-native-screens host.
     fill: { flex: 1 },
     nestedScreenBody: { flex: 1, backgroundColor: '#121212', paddingTop: 60 },
