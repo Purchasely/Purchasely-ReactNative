@@ -639,6 +639,26 @@ Nouvelle requête à l'étape 3 : une requête consommée par une vue démontée
 
 ---
 
+## T31 — Drawer Console fermé par un tap réel (iOS)
+
+**Inspiré de :** bug client iOS 6.1.0/6.1.1, corrigé par le SDK iOS 6.1.2 (Purchasely-iOS#790)
+
+**Ce que ça teste :** un écran que la Console affiche en drawer (placement `integration_test_drawer`, drawer 70 %, bouton close), ouvert avec `display()` **sans transition** comme le fait une app cliente, puis fermé par un tap réel. Avant 6.1.2, la fenêtre SDK restait invisible au-dessus de l'app (plus aucun tap) et `PRESENTATION_CLOSED` n'arrivait pas.
+
+| Step | Action | Assert |
+|------|--------|--------|
+| 1 | `preload()` + `display()` sans option | `PRESENTATION_VIEWED` reçu |
+| 2 | Émet `[E2E:READY_FOR_DRAWER:button]` ; le driver tape le bouton close | `PRESENTATION_CLOSED` reçu (20 s) |
+| 3 | Affiche un bouton RN plein écran, émet `[E2E:READY_FOR_PROBE_TAP:1]` ; le driver tape le centre de l'écran | le tap OS atteint le bouton RN (20 s) |
+| 4 | — | `display()` résout, `closeReason === 'button'` |
+| 5 | Même chose avec `[E2E:READY_FOR_DRAWER:outside]` : le driver tape le scrim au-dessus du drawer | `PRESENTATION_CLOSED` + tap sonde + `display()` résout |
+
+Dernier test de la suite : sur un SDK cassé, la fenêtre restante avalerait les taps des tests pilotés suivants. Android : SKIP (bug iOS uniquement).
+
+**Marqueurs :** `[E2E:T31:PASS]` / `[E2E:T31:FAIL]` / `[E2E:T31:SKIP]` — **Driver host :** `tools/tap_drawer_ios.sh` (modes `button`, `outside`, `probe`)
+
+---
+
 ## Architecture du runner
 
 ```
