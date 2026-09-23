@@ -19,15 +19,34 @@ try:
     xml = open('/tmp/uidump_tap.xml', encoding='utf-8').read()
 except Exception:
     sys.exit(0)
-for m in re.finditer(r'<node\b[^>]*>', xml):
-    tag = m.group(0)
-    cd = re.search(r'content-desc="([^"]*)"', tag)
-    if cd and desc in cd.group(1):
-        b = re.search(r'bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', tag)
-        if b:
-            x1, y1, x2, y2 = map(int, b.groups())
-            print((x1 + x2) // 2, (y1 + y2) // 2)
-            break
+def attr(tag, k):
+    m = re.search(k + r'="([^"]*)"', tag)
+    return m.group(1) if m else ''
+
+def bounds(tag):
+    b = re.search(r'bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', tag)
+    return tuple(map(int, b.groups())) if b else None
+
+nodes = [m.group(0) for m in re.finditer(r'<node\b[^>]*>', xml)]
+for tag in nodes:
+    b = bounds(tag)
+    if b and desc in attr(tag, 'content-desc'):
+        print((b[0] + b[2]) // 2, (b[1] + b[3]) // 2)
+        sys.exit(0)
+
+# Android SDK >= 6.1.1 (MOB-471) moved the action metadata out of content-desc
+# into a view tag uiautomator cannot read. Fallback: the first clickable SDK
+# node with no label of its own that holds a price text ("... per ...").
+prices = [bounds(t) for t in nodes if re.search(r'\bper\b', attr(t, 'text')) and bounds(t)]
+for tag in nodes:
+    b = bounds(tag)
+    if not b or attr(tag, 'package') != 'com.purchasely.demo' or attr(tag, 'clickable') != 'true':
+        continue
+    if attr(tag, 'text') or attr(tag, 'content-desc'):
+        continue
+    if any(b[0] <= p[0] and b[1] <= p[1] and p[2] <= b[2] and p[3] <= b[3] for p in prices):
+        print((b[0] + b[2]) // 2, (b[1] + b[3]) // 2)
+        break
 PY
 )
   if [ -n "$coords" ]; then

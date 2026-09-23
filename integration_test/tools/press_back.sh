@@ -11,7 +11,9 @@ DEV="${1:-emulator-5554}"
 for i in $(seq 1 60); do
   adb -s "$DEV" exec-out uiautomator dump /sdcard/uidump.xml >/dev/null 2>&1
   adb -s "$DEV" pull /sdcard/uidump.xml /tmp/uidump_back.xml >/dev/null 2>&1
-  if grep -q 'action:' /tmp/uidump_back.xml 2>/dev/null; then
+  # `action:` in content-desc up to Android SDK 6.1.0; from 6.1.1 (MOB-471)
+  # the metadata is a view tag, so look for the SDK's `button_container` id.
+  if grep -qE 'action:|id/button_container"' /tmp/uidump_back.xml 2>/dev/null; then
     echo "[press_back] paywall detected (iter $i), pressing BACK"
     sleep 1
     adb -s "$DEV" shell input keyevent 4

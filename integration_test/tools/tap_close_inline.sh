@@ -45,7 +45,12 @@ for m in re.finditer(r'<node\b[^>]*>', xml):
     # ';' and comparing each token exactly rules the decoy out: "action:close"
     # is never one of its tokens, only a prefix of "action:close_all".
     tokens = [t.strip() for t in cd.group(1).split(';')]
-    if desc not in tokens:
+    # Android SDK >= 6.1.1 (MOB-471) moved the action metadata out of
+    # content-desc into a view tag uiautomator cannot read. The header close
+    # button now carries its visible label ("Close") on the SDK's own
+    # `button_container` id.
+    is_header_close = cd.group(1) == 'Close' and 'id/button_container"' in tag
+    if desc not in tokens and not is_header_close:
         continue
     b = re.search(r'bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', tag)
     if b:
