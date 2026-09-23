@@ -25,6 +25,8 @@
 # Options:
 #   --skip-build   Re-use the last built .app (avoids the full xcodebuild)
 #   --debug        Build the Debug configuration (requires Metro running)
+#   --only-t31     Run only T31 (drawer closed by a real tap), for a quick local
+#                  check against one iOS SDK version
 #
 # Prerequisites:
 #   - Xcode + xcrun + simctl on PATH
@@ -40,12 +42,14 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 # ── Args ──────────────────────────────────────────────────────────────────────
 SKIP_BUILD=0
 DEBUG_BUILD=0
+ONLY_T31=0
 UDID="${IOS_SIMULATOR_UDID:-}"
 
 for arg in "$@"; do
   case "$arg" in
     --skip-build) SKIP_BUILD=1 ;;
     --debug)      DEBUG_BUILD=1 ;;
+    --only-t31)   ONLY_T31=1 ;;
     *)            UDID="$arg" ;;
   esac
 done
@@ -199,7 +203,9 @@ log "Starting log stream capture..."
 start_log_stream || exit 1
 
 log "Launching E2E runner on $UDID..."
-xcrun simctl launch --console --terminate-running-process \
+MAIN_PHASE=""
+[ "$ONLY_T31" -eq 1 ] && MAIN_PHASE="drawer_only"
+SIMCTL_CHILD_E2E_PHASE="$MAIN_PHASE" xcrun simctl launch --console --terminate-running-process \
   "$UDID" "$APP_BUNDLE" E2E_MODE true >> "$LOGFILE" 2>&1 &
 LAUNCH_PID=$!
 
@@ -342,7 +348,7 @@ done
 # genuine cold start (a user who just installed the app tapping a deeplink),
 # which is what T27 claims to test in the first place.
 T27_RESULT="SKIP"
-if [ "$SUITE_RESULT" = "PASS" ]; then
+if [ "$SUITE_RESULT" = "PASS" ] && [ "$ONLY_T31" -eq 0 ]; then
   log "T27: launching cold-start deeplink phase (E2E_PHASE=deeplink_coldstart)..."
   kill "$STREAM_PID" 2>/dev/null || true
   kill "$LAUNCH_PID"  2>/dev/null || true
@@ -415,7 +421,9 @@ echo "==========================================="
 # reported would still read as a full pass. It is now authoritative -- a
 # missing marker fails the run.
 MISSING_IDS=()
-for id in T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13 T14 T15 T16 T17 T18 T19 T20 T21 T22 T23 T24 T25 T26 T27 T28 T29 T30 T31; do
+TEST_IDS="T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13 T14 T15 T16 T17 T18 T19 T20 T21 T22 T23 T24 T25 T26 T27 T28 T29 T30 T31"
+[ "$ONLY_T31" -eq 1 ] && TEST_IDS="T31"
+for id in $TEST_IDS; do
   PASS_LINE=$(grep "\[E2E:${id}:PASS\]" "$LOGFILE" 2>/dev/null | tail -1)
   FAIL_LINE=$(grep "\[E2E:${id}:FAIL\]" "$LOGFILE" 2>/dev/null | tail -1)
   SKIP_LINE=$(grep "\[E2E:${id}:SKIP\]" "$LOGFILE" 2>/dev/null | tail -1)

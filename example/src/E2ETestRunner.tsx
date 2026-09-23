@@ -97,6 +97,10 @@ const COLDSTART_PHASE = 'deeplink_coldstart'
 // the existing E2E suite is completely unaffected.
 const BAYARD_PHASE = 'bayard_repro'
 
+// T31 alone, for a quick local check against one native SDK version:
+// `run_e2e_ios.sh --only-t31`.
+const DRAWER_PHASE = 'drawer_only'
+
 // ── Types ────────────────────────────────────────────────────────────────────
 type TestStatus = 'pending' | 'running' | 'pass' | 'fail' | 'skip'
 
@@ -269,19 +273,16 @@ function E2ETestRunnerSuite({ phase }: { phase: string }) {
     useEffect(() => {
         if (phase === COLDSTART_PHASE) {
             runColdStartPhase()
+        } else if (phase === DRAWER_PHASE) {
+            runDrawerPhase()
         } else {
             runSuite()
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
-    // ── Suite ─────────────────────────────────────────────────────────────────
-    async function runSuite() {
-        setSuiteStatus('running')
-        console.log('[E2E:SUITE:START]')
-        appendLog('=== Purchasely RN E2E Suite ===')
-
-        // ── SDK init ──────────────────────────────────────────────────────────
+    // ── SDK init (shared by the main suite and the drawer phase) ──────────────
+    async function initSdk(): Promise<boolean> {
         let sdkOk = false
         try {
             // stores() is Android-only; storekitVersion() is iOS-only
@@ -301,9 +302,19 @@ function E2ETestRunnerSuite({ phase }: { phase: string }) {
             setSuiteStatus('fail')
             console.error('[E2E:SUITE:FAIL] SDK init failed')
             appendLog('✗ SDK init failed — aborting suite')
-            return
+            return false
         }
         appendLog('SDK initialized ✓')
+        return true
+    }
+
+    // ── Suite ─────────────────────────────────────────────────────────────────
+    async function runSuite() {
+        setSuiteStatus('running')
+        console.log('[E2E:SUITE:START]')
+        appendLog('=== Purchasely RN E2E Suite ===')
+
+        if (!(await initSdk())) return
 
         let suitePass = true
 
@@ -911,6 +922,26 @@ function E2ETestRunnerSuite({ phase }: { phase: string }) {
             pass('T19', `screen(${screenId}) modal=${modalOutcome.closeReason} popin=${popinOutcome.closeReason}`)
         } catch (e) { fail('T19', e); suitePass = false }
 
+        // ── T31 — Console drawer closed by a real tap (iOS only) ──────────────
+        // Regression guard for Purchasely-iOS#790, fixed in iOS SDK 6.1.2: a
+        // drawer the Console configures (no transition passed to display(), as
+        // a client app does) closed by its own button or by a tap on the scrim
+        // left the SDK window alive, invisible and key above the app, and never
+        // sent PRESENTATION_CLOSED. The app then took no more taps.
+        //
+        // Each pass: display → host taps (button, then scrim) → PRESENTATION_CLOSED
+        // → a full-screen RN probe button appears and the host taps the centre of
+        // the screen. The probe tap is the symptom itself: with a leftover window
+        // on top, the OS tap never reaches React Native.
+        //
+        // Runs BEFORE T20 on purpose: T20 revokes the ANALYTICS consent, and
+        // from then on the iOS SDK sends no PRESENTATION_* event to the app.
+        // On a broken SDK the leftover window also swallows the taps of the
+        // later host-driven test (T25); T31's own message names the cause.
+        if (!(await runT31())) suitePass = false
+
+        await sleep(1000)
+
         // ── T20 — config setters smoke test ───────────────────────────────────
         running('T20')
         try {
@@ -1439,22 +1470,20 @@ function E2ETestRunnerSuite({ phase }: { phase: string }) {
             }
         } catch (e) { fail('T30', e); suitePass = false; setRemountRequest(null) }
 
-        await sleep(1000)
+        // ── Final report ──────────────────────────────────────────────────────
+        setSuiteStatus(suitePass ? 'pass' : 'fail')
+        if (suitePass) {
+            console.log('[E2E:SUITE:PASS] All main-suite tests passed (T1-T26 + T28-T31; T27 in cold-start phase)')
+            appendLog('=== SUITE PASS ✓ ===')
+        } else {
+            console.log('[E2E:SUITE:FAIL] One or more tests failed')
+            appendLog('=== SUITE FAIL ✗ ===')
+        }
+    }
 
-        // ── T31 — Console drawer closed by a real tap (iOS only) ──────────────
-        // Regression guard for Purchasely-iOS#790, fixed in iOS SDK 6.1.2: a
-        // drawer the Console configures (no transition passed to display(), as
-        // a client app does) closed by its own button or by a tap on the scrim
-        // left the SDK window alive, invisible and key above the app, and never
-        // sent PRESENTATION_CLOSED. The app then took no more taps.
-        //
-        // Each pass: display → host taps (button, then scrim) → PRESENTATION_CLOSED
-        // → a full-screen RN probe button appears and the host taps the centre of
-        // the screen. The probe tap is the symptom itself: with a leftover window
-        // on top, the OS tap never reaches React Native.
-        //
-        // Last in the suite on purpose: on a broken SDK the leftover window would
-        // swallow the taps of any host-driven test after it.
+    // ── T31 — Console drawer closed by a real tap (iOS only) ──────────────────
+    // Resolves false on failure. See the comment at its call site in runSuite.
+    async function runT31(): Promise<boolean> {
         if (Platform.OS !== 'ios') {
             skip('T31', 'iOS-only regression (Purchasely-iOS#790)')
         } else {
@@ -1467,6 +1496,7 @@ function E2ETestRunnerSuite({ phase }: { phase: string }) {
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     let closed31: any = null
                     const listener31 = Purchasely.addEventListener((event: any) => {
+                        console.log(`[E2E:T31] ${mode} event ${event.name} placement_id=${event.properties?.placement_id}`)
                         if (event.properties?.placement_id !== PLACEMENT_DRAWER) return
                         if (event.name === 'PRESENTATION_VIEWED') viewed31 = event
                         if (event.name === 'PRESENTATION_CLOSED') closed31 = event
@@ -1513,18 +1543,19 @@ function E2ETestRunnerSuite({ phase }: { phase: string }) {
                     await sleep(1000)
                 }
                 pass('T31', `drawer closed by a real tap, CLOSED sent, app still takes taps (${reasons.join(', ')})`)
-            } catch (e) { fail('T31', e); suitePass = false }
+            } catch (e) { fail('T31', e); return false }
         }
+        return true
+    }
 
-        // ── Final report ──────────────────────────────────────────────────────
-        setSuiteStatus(suitePass ? 'pass' : 'fail')
-        if (suitePass) {
-            console.log('[E2E:SUITE:PASS] All main-suite tests passed (T1-T26 + T28-T31; T27 in cold-start phase)')
-            appendLog('=== SUITE PASS ✓ ===')
-        } else {
-            console.log('[E2E:SUITE:FAIL] One or more tests failed')
-            appendLog('=== SUITE FAIL ✗ ===')
-        }
+    // ── Drawer phase: SDK init + T31 only (run_e2e_ios.sh --only-t31) ──────────
+    async function runDrawerPhase() {
+        setSuiteStatus('running')
+        console.log('[E2E:SUITE:START] phase=drawer_only')
+        if (!(await initSdk())) return
+        const ok = await runT31()
+        setSuiteStatus(ok ? 'pass' : 'fail')
+        console.log(ok ? '[E2E:SUITE:PASS] T31 phase passed' : '[E2E:SUITE:FAIL] T31 phase failed')
     }
 
     // ── T27 — cold-start deeplink phase (own process) ──────────────────────────

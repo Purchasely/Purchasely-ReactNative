@@ -653,7 +653,7 @@ Nouvelle requête à l'étape 3 : une requête consommée par une vue démontée
 | 4 | — | `display()` résout, `closeReason === 'button'` |
 | 5 | Même chose avec `[E2E:READY_FOR_DRAWER:outside]` : le driver tape le scrim au-dessus du drawer | `PRESENTATION_CLOSED` + tap sonde + `display()` résout |
 
-Dernier test de la suite : sur un SDK cassé, la fenêtre restante avalerait les taps des tests pilotés suivants. Android : SKIP (bug iOS uniquement).
+Tourne juste avant T20 : T20 révoque le consentement `ANALYTICS`, et ensuite le SDK iOS n'envoie plus aucun événement `PRESENTATION_*` à l'app. Android : SKIP (bug iOS uniquement). Lancement seul en local : `bash integration_test/run_e2e_ios.sh --only-t31`.
 
 **Marqueurs :** `[E2E:T31:PASS]` / `[E2E:T31:FAIL]` / `[E2E:T31:SKIP]` — **Driver host :** `tools/tap_drawer_ios.sh` (modes `button`, `outside`, `probe`)
 
