@@ -50,7 +50,7 @@ describe('PurchaselyBuilder', () => {
         mockNative.handleDeeplink = jest.fn().mockResolvedValue(true)
         // Static field can leak mutations across tests — reset to the
         // package default before each test.
-        PurchaselyBuilder.bridgeVersion = '6.1.1'
+        PurchaselyBuilder.bridgeVersion = '6.2.0'
     })
 
     describe('apiKey() defaults', () => {
@@ -64,7 +64,7 @@ describe('PurchaselyBuilder', () => {
                 null, // appUserId
                 mockConstants.logLevelError,
                 mockConstants.runningModeObserver,
-                '6.1.1',
+                '6.2.0',
                 {} // no chain-only options set -> empty startOptions map
             )
         })
@@ -484,7 +484,7 @@ describe('PurchaselyBuilder', () => {
 
         it('uses the static bridgeVersion by default', async () => {
             await PurchaselyBuilder.apiKey('api-key').start()
-            expect(mockNative.start.mock.calls[0][6]).toBe('6.1.1')
+            expect(mockNative.start.mock.calls[0][6]).toBe('6.2.0')
         })
 
         it('overrides the bridge version with the sdkVersion argument when provided', async () => {

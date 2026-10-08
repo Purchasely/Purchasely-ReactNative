@@ -139,7 +139,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     constants["sourcePlayStore"] = StoreType.GOOGLE_PLAY_STORE.ordinal
     constants["sourceHuaweiAppGallery"] = StoreType.HUAWEI_APP_GALLERY.ordinal
     constants["sourceAmazonAppstore"] = StoreType.AMAZON_APP_STORE.ordinal
-    constants["sourceStripe"] = StoreType.WEB_CHECKOUT_STRIPE.ordinal
+    constants["sourceStripe"] = StoreType.STRIPE.ordinal
     constants["sourceNone"] = StoreType.NONE.ordinal
     constants["consumable"] = DistributionType.CONSUMABLE.ordinal
     constants["nonConsumable"] = DistributionType.NON_CONSUMABLE.ordinal
@@ -1420,7 +1420,7 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
           StoreType.HUAWEI_APP_GALLERY -> StoreType.HUAWEI_APP_GALLERY.ordinal
           StoreType.AMAZON_APP_STORE -> StoreType.AMAZON_APP_STORE.ordinal
           StoreType.APPLE_APP_STORE -> StoreType.APPLE_APP_STORE.ordinal
-          StoreType.WEB_CHECKOUT_STRIPE -> StoreType.WEB_CHECKOUT_STRIPE.ordinal
+          StoreType.STRIPE -> StoreType.STRIPE.ordinal
           else -> null
         }
         if(data.data.plan == null) {

@@ -44,7 +44,7 @@ import type {
   PLYPresentationActionKind,
 } from './presentationTypes';
 
-const purchaselyVersion = '6.1.1';
+const purchaselyVersion = '6.2.0';
 
 const PurchaselyEventEmitter = new NativeEventEmitter(NativeModules.Purchasely);
 
