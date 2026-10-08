@@ -2,6 +2,7 @@ package com.reactnativepurchasely
 
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.JavaOnlyArray
+import com.facebook.react.bridge.JavaOnlyMap
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReadableArray
@@ -67,6 +68,36 @@ class PurchaselyModuleTest {
         purchaselyModule.signPromotionalOffer("product", "offer", promise)
 
         verify(promise).resolve(null)
+    }
+
+    // endregion
+
+    // region emit
+
+    @Test
+    fun `emit forwards the event name and its properties`() {
+        val purchaselyStatic = mockStatic(Purchasely::class.java)
+        try {
+            purchaselyModule.emit("recipe_viewed", JavaOnlyMap.of("recipe_id", 42.0, "vegan", true))
+
+            purchaselyStatic.verify {
+                Purchasely.emit("recipe_viewed", mapOf("recipe_id" to 42.0, "vegan" to true))
+            }
+        } finally {
+            purchaselyStatic.close()
+        }
+    }
+
+    @Test
+    fun `emit sends an empty map when properties are null`() {
+        val purchaselyStatic = mockStatic(Purchasely::class.java)
+        try {
+            purchaselyModule.emit("recipe_viewed", null)
+
+            purchaselyStatic.verify { Purchasely.emit("recipe_viewed", emptyMap()) }
+        } finally {
+            purchaselyStatic.close()
+        }
     }
 
     // endregion

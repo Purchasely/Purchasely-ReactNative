@@ -43,6 +43,7 @@ jest.mock('react-native', () => ({
                 keyIdentifier: 'key-id',
                 timestamp: Date.now(),
             }),
+            emit: jest.fn(),
             allProducts: jest.fn().mockResolvedValue([]),
             productWithIdentifier: jest.fn().mockResolvedValue({
                 name: 'Test Product',
@@ -618,6 +619,20 @@ describe('Purchasely SDK', () => {
                     storeOfferId: 'offer-123',
                 })
             ).resolves.toBeNull()
+        })
+    })
+
+    describe('emit', () => {
+        it('forwards the event name and its properties', () => {
+            Purchasely.emit('recipe_viewed', { recipe_id: 42 })
+
+            expect(mockedPurchasely.emit).toHaveBeenCalledWith('recipe_viewed', { recipe_id: 42 })
+        })
+
+        it('sends an empty properties object when none is given', () => {
+            Purchasely.emit('recipe_viewed')
+
+            expect(mockedPurchasely.emit).toHaveBeenCalledWith('recipe_viewed', {})
         })
     })
 

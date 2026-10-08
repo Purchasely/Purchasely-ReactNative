@@ -96,6 +96,7 @@ export const createMockPurchaselyModule = () => ({
         keyIdentifier: 'key-id',
         timestamp: Date.now(),
     }),
+    emit: jest.fn(),
     allProducts: jest.fn().mockResolvedValue([]),
     productWithIdentifier: jest.fn().mockResolvedValue({
         name: 'Test Product',

@@ -507,6 +507,11 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
 }
 
 @ReactMethod
+fun emit(name: String, properties: ReadableMap?) {
+  Purchasely.emit(name, properties?.toHashMap() ?: emptyMap())
+}
+
+@ReactMethod
 fun setUserAttributeWithString(key: String, value: String, legalBasis: String?) {
   Purchasely.setUserAttribute(key, value, legalBasisFromString(legalBasis))
 }

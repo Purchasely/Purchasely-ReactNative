@@ -716,6 +716,11 @@ RCT_EXPORT_METHOD(setAttribute:(NSInteger)attribute value:(NSString * _Nonnull)v
 	[Purchasely setAttribute:attribute value:value];
 }
 
+RCT_EXPORT_METHOD(emit:(NSString * _Nonnull)name
+                  properties:(NSDictionary * _Nullable)properties) {
+    [Purchasely emitWithName:name properties:properties ?: @{}];
+}
+
 RCT_EXPORT_METHOD(setUserAttributeWithString:(NSString * _Nonnull)key
                   value:(NSString * _Nonnull)value
                   legalBasis:(NSString * _Nullable)legalBasis) {

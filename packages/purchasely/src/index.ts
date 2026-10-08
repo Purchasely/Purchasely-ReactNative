@@ -337,6 +337,18 @@ const userDidConsumeSubscriptionContent = (): void => {
   return NativeModules.Purchasely.userDidConsumeSubscriptionContent();
 };
 
+/**
+ * Send a custom event declared in the Console.
+ *
+ * The name must match the Console declaration exactly. An undeclared name is
+ * dropped. The SDK validates no property type: the backend casts each value
+ * against the declared `data_type`. The event never reaches the event listener.
+ * Pass dates as ISO strings.
+ */
+const emit = (name: string, properties: Record<string, unknown> = {}): void => {
+  return NativeModules.Purchasely.emit(name, properties);
+};
+
 const setUserAttributeWithString = (key: string, value: string, legalBasis?: PLYDataProcessingLegalBasis): void => {
   return NativeModules.Purchasely.setUserAttributeWithString(key, value, legalBasis);
 };
@@ -572,6 +584,7 @@ const Purchasely = {
   allowCampaigns,
   setLanguage,
   userDidConsumeSubscriptionContent,
+  emit,
   setUserAttributeWithString,
   setUserAttributeWithNumber,
   setUserAttributeWithInt,
