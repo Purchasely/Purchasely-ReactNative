@@ -1,4 +1,4 @@
-import { NativeModules } from 'react-native';
+import { NativeModules, Platform } from 'react-native';
 
 import { LogLevels, RunningMode } from './enums';
 import {
@@ -323,6 +323,12 @@ export class PurchaselyBuilder {
         ) {
             startOptions.appHandlesRedemptionAlert = this.state.appHandlesRedemptionAlert;
         }
+        // Android hands the cold-start deeplink to the native builder, which
+        // replays it once and coordinates it with the automatic interception.
+        // A JS forward after start() would look like a second deeplink to it.
+        if (Platform.OS === 'android' && this.state.deeplink) {
+            startOptions.deeplink = this.state.deeplink;
+        }
 
         // Subscribed before the native start() call, never after: a redemption
         // can settle during start(), and this is the last point at which the
@@ -342,8 +348,8 @@ export class PurchaselyBuilder {
             startOptions
         );
 
-        // Replay a cold-start deeplink now that the SDK is configured.
-        if (this.state.deeplink) {
+        // iOS has no automatic interception: replay now that the SDK is configured.
+        if (Platform.OS !== 'android' && this.state.deeplink) {
             await NativeModules.Purchasely.handleDeeplink(this.state.deeplink);
         }
 
