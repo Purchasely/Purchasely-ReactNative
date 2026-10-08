@@ -798,7 +798,7 @@ Let users opt out of non-essential data processing by revoking consent per purpo
 `ALL_NON_ESSENTIALS` expands natively. The expansion differs by platform:
 
 - On iOS it covers `ANALYTICS`, `CAMPAIGNS`, `PERSONALIZATION` and `THIRD_PARTY_INTEGRATION`. It does **not** include `IDENTIFIED_ANALYTICS` or `REFUND_HANDLING`. List them explicitly.
-- On Android it also covers `IDENTIFIED_ANALYTICS`. Android has no `REFUND_HANDLING` purpose, so the bridge ignores it there.
+- On Android it also covers `IDENTIFIED_ANALYTICS`. Android has no `REFUND_HANDLING` purpose, so the bridge ignores it there. On Android, `[REFUND_HANDLING]` alone is the same as `[]`.
 
 The bridge keeps every purpose of the list when `ALL_NON_ESSENTIALS` is one of them.
 
@@ -867,6 +867,19 @@ Purchasely.setUserAttributeListener((attribute) => {
     }
 });
 ```
+
+### Custom Events (6.2.0)
+
+Send an event that you declared in the Console with `emit`:
+
+```typescript
+Purchasely.emit('recipe_viewed', { recipe_id: 42, vegan: true });
+```
+
+- The name must match the Console declaration exactly. An undeclared name is dropped.
+- The SDK does not check the property types. The backend casts each value against the declared `data_type`.
+- Pass dates as ISO strings.
+- The event does not reach `addEventListener`.
 
 ---
 
@@ -1015,6 +1028,24 @@ await Purchasely.builder('YOUR_API_KEY')
 ```
 
 > **Recommendation**: Use StoreKit 2 (`storekitVersion('storeKit2')`) for new integrations.
+
+### Promotional Offer Signing (iOS)
+
+`signPromotionalOffer` is deprecated. It signs over the anonymous user id. Use `signPromotionalOfferWithToken` (6.2.0):
+
+```typescript
+const signature = await Purchasely.signPromotionalOfferWithToken({
+    storeProductId: 'com.example.plus.yearly',
+    storeOfferId: 'com.example.plus.yearly.winback',
+    // purchaseContextToken: '<your UUID>', // optional
+});
+// signature.purchaseContextToken is the lowercase UUID that the signature covers.
+```
+
+- Put `signature.purchaseContextToken` in the account field of the purchase that redeems the offer.
+- In Observer mode, set StoreKit 1 `applicationUsername` to the returned `purchaseContextToken` exactly. With StoreKit 2, pass its UUID as the purchase `appAccountToken`. Do not use the anonymous user id or generate another token: Apple rejects the offer when the purchase carries a different value from the one used to sign it.
+- When you give no token, native creates one. A token that is not a canonical UUID string rejects the promise.
+- Android has no equivalent. The method resolves `null`.
 
 ### Android Stores
 
