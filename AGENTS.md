@@ -11,9 +11,9 @@ Purchasely React Native SDK: a bridge from React Native to the native Purchasely
 
 | Property | Value |
 |----------|-------|
-| Current version | 6.1.1 |
-| Native iOS SDK | 6.1.2 (`packages/purchasely/react-native-purchasely.podspec`) |
-| Native Android SDK | 6.1.1 (`packages/purchasely/android/build.gradle`) |
+| Current version | 6.2.0 |
+| Native iOS SDK | 6.2.0 (`packages/purchasely/react-native-purchasely.podspec`) |
+| Native Android SDK | 6.2.0 (`packages/purchasely/android/build.gradle`) |
 | React Native | 0.86.0 |
 | TypeScript | 5.8 strict |
 | Node.js | 22 (`.nvmrc`, `engines` >= 22.11) |
