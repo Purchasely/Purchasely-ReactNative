@@ -4,7 +4,7 @@ This document describes the step-by-step process for releasing a new version of 
 
 ## Prerequisites
 
-- Node.js v20+ (see `.nvmrc`)
+- Node.js v22+ (see `.nvmrc`)
 - Yarn 3.6.1+
 - `gh` CLI authenticated with push access to the repository
 - npm Trusted Publishers configured (see [npm Setup](#npm-trusted-publisher-setup) — one-time only)
@@ -71,10 +71,8 @@ Replace all occurrences of the old version string with `{VERSION}` in:
 
 ### 6. Update Documentation
 
-Update version references in **`CLAUDE.md`**:
-- Properties table (Current Version, Native iOS SDK, Native Android SDK)
-- Native Dependencies section (iOS SDK version, Android core version)
-- Version Compatibility table
+Update version references in **`AGENTS.md`**:
+- Properties table (Current version, Native iOS SDK, Native Android SDK)
 
 ### 7. Update the Yarn Lock File
 
@@ -176,7 +174,7 @@ All should return `{VERSION}`.
 | `packages/huawei/android/build.gradle` | Android SDK version (if updated) |
 | `packages/android-player/android/build.gradle` | Android SDK version (if updated) |
 | `VERSIONS.md` | Version mapping table |
-| `CLAUDE.md` | Version references in properties and docs |
+| `AGENTS.md` | Version references in the properties table |
 | `packages/purchasely/src/__tests__/index.test.ts` | Test version expectations |
 | `packages/purchasely/src/__tests__/types.test.ts` | Test version expectations |
 | `yarn.lock` | Dependency lock file |
@@ -230,7 +228,7 @@ The release tag must match exactly the version in all `package.json` files. Rele
 
 1. **Always update tests** when bumping versions to avoid CI failures
 2. **Run full test suite locally** before pushing to catch issues early
-3. **Update CLAUDE.md** alongside version bumps to keep docs in sync
+3. **Update AGENTS.md** alongside version bumps to keep docs in sync
 4. **Update VERSIONS.md** to maintain the version history for documentation
 5. **Use semantic versioning**:
    - MAJOR: Breaking API changes
