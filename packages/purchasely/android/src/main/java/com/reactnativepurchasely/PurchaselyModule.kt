@@ -314,6 +314,17 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
   }
 
   @ReactMethod
+  fun signPromotionalOfferWithToken(
+    storeProductId: String,
+    storeOfferId: String,
+    purchaseContextToken: String?,
+    promise: Promise
+  ) {
+    // iOS-only, like signPromotionalOffer: resolves as a no-op success.
+    promise.resolve(null)
+  }
+
+  @ReactMethod
   fun getAnonymousUserId(promise: Promise) {
     promise.resolve(Purchasely.anonymousUserId)
   }

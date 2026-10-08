@@ -5,6 +5,7 @@ import type {
   PLYDynamicOffering,
   PurchasePlanParameters,
   SignPromotionalOfferParameters,
+  SignPromotionalOfferWithTokenParameters,
   UserAttributesParameters,
 } from './interfaces';
 import {
@@ -21,6 +22,7 @@ import type {
   PLYPlan,
   PLYProduct,
   PLYPromotionalOfferSignature,
+  PLYPromotionalOfferSignatureWithToken,
   PLYSubscription,
   PLYUserAttribute,
 } from './types';
@@ -190,6 +192,9 @@ const purchaseWithPlanVendorId = ({
  * **iOS only.** There is no Android equivalent (Google Play has no
  * promotional-offer-signing primitive), so the Android native bridge is a
  * no-op that resolves `null` instead of rejecting.
+ *
+ * @deprecated Use {@link signPromotionalOfferWithToken}. This method signs
+ * over the anonymous user id.
  */
 const signPromotionalOffer = ({
   storeProductId,
@@ -198,6 +203,34 @@ const signPromotionalOffer = ({
   return NativeModules.Purchasely.signPromotionalOffer(
     storeProductId,
     storeOfferId
+  );
+};
+
+/**
+ * Sign a StoreKit promotional offer over a purchase context token.
+ *
+ * Put the returned `purchaseContextToken` in the account field of the purchase
+ * that redeems the offer. Pass your own token to sign over it. When none is
+ * given, native creates one. A value that is not a canonical UUID string
+ * rejects.
+ *
+ * In Observer mode, set StoreKit 1 `applicationUsername` to the returned
+ * `purchaseContextToken` exactly. With StoreKit 2, pass its UUID as the
+ * purchase `appAccountToken`. Do not use the anonymous user id or generate
+ * another token: Apple rejects the offer when the purchase carries a different
+ * value from the one used to sign it.
+ *
+ * **iOS only.** The Android native bridge is a no-op that resolves `null`.
+ */
+const signPromotionalOfferWithToken = ({
+  storeProductId,
+  storeOfferId,
+  purchaseContextToken = null,
+}: SignPromotionalOfferWithTokenParameters): Promise<PLYPromotionalOfferSignatureWithToken | null> => {
+  return NativeModules.Purchasely.signPromotionalOfferWithToken(
+    storeProductId,
+    storeOfferId,
+    purchaseContextToken
   );
 };
 
@@ -564,6 +597,7 @@ const Purchasely = {
   purchaseWithPlanVendorId,
   setUserAttributeWithDate,
   signPromotionalOffer,
+  signPromotionalOfferWithToken,
   incrementUserAttribute,
   decrementUserAttribute,
   getAnonymousUserId,

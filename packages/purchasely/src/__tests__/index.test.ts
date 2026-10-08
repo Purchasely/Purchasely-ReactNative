@@ -43,6 +43,15 @@ jest.mock('react-native', () => ({
                 keyIdentifier: 'key-id',
                 timestamp: Date.now(),
             }),
+            signPromotionalOfferWithToken: jest.fn().mockResolvedValue({
+                planVendorId: 'plan-id',
+                identifier: 'offer-id',
+                signature: 'signature',
+                nonce: 'nonce',
+                keyIdentifier: 'key-id',
+                timestamp: Date.now(),
+                purchaseContextToken: 'e621e1f8-c36c-495a-93fc-0c247a3e6e5f',
+            }),
             emit: jest.fn(),
             allProducts: jest.fn().mockResolvedValue([]),
             productWithIdentifier: jest.fn().mockResolvedValue({
@@ -619,6 +628,46 @@ describe('Purchasely SDK', () => {
                     storeOfferId: 'offer-123',
                 })
             ).resolves.toBeNull()
+        })
+
+        describe('signPromotionalOfferWithToken', () => {
+            it('sends a null token when none is given and resolves the signature with its token', async () => {
+                const result = await Purchasely.signPromotionalOfferWithToken({
+                    storeProductId: 'product-123',
+                    storeOfferId: 'offer-123',
+                })
+
+                expect(mockedPurchasely.signPromotionalOfferWithToken).toHaveBeenCalledWith(
+                    'product-123',
+                    'offer-123',
+                    null
+                )
+                expect(result?.purchaseContextToken).toBe('e621e1f8-c36c-495a-93fc-0c247a3e6e5f')
+            })
+
+            it('forwards the purchase context token', async () => {
+                await Purchasely.signPromotionalOfferWithToken({
+                    storeProductId: 'product-123',
+                    storeOfferId: 'offer-123',
+                    purchaseContextToken: 'e621e1f8-c36c-495a-93fc-0c247a3e6e5f',
+                })
+
+                expect(mockedPurchasely.signPromotionalOfferWithToken).toHaveBeenCalledWith(
+                    'product-123',
+                    'offer-123',
+                    'e621e1f8-c36c-495a-93fc-0c247a3e6e5f'
+                )
+            })
+
+            it('keeps signPromotionalOffer on the old native method', async () => {
+                await Purchasely.signPromotionalOffer({
+                    storeProductId: 'product-123',
+                    storeOfferId: 'offer-123',
+                })
+
+                expect(mockedPurchasely.signPromotionalOffer).toHaveBeenCalledWith('product-123', 'offer-123')
+                expect(mockedPurchasely.signPromotionalOfferWithToken).not.toHaveBeenCalled()
+            })
         })
     })
 

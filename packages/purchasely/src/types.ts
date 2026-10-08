@@ -113,6 +113,12 @@ export type PLYPromotionalOfferSignature = {
   timestamp: number;
 };
 
+export type PLYPromotionalOfferSignatureWithToken =
+  PLYPromotionalOfferSignature & {
+    /** The lowercase UUID the signature covers. Use it as the purchase account token. */
+    purchaseContextToken: string;
+  };
+
 export type PLYUserAttribute = {
   key: string;
   value?: any | null;

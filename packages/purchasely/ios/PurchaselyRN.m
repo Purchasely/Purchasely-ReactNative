@@ -999,6 +999,38 @@ RCT_EXPORT_METHOD(signPromotionalOffer:(NSString * )storeProductId
     });
 }
 
+RCT_EXPORT_METHOD(signPromotionalOfferWithToken:(NSString * )storeProductId
+                  storeOfferId:(NSString * )storeOfferId
+                  purchaseContextToken:(NSString * _Nullable)purchaseContextToken
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+{
+    // A nil token makes native create one. A string that does not parse must
+    // not become nil: the app account field would not match the signed token.
+    NSUUID *token = nil;
+    if (purchaseContextToken != nil) {
+        token = [[NSUUID alloc] initWithUUIDString:purchaseContextToken];
+        if (token == nil) {
+            reject(@"-1", [NSString stringWithFormat:@"`purchaseContextToken` must be a canonical UUID string. Received \"%@\".", purchaseContextToken], nil);
+            return;
+        }
+    }
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (@available(iOS 12.2, *)) {
+            [Purchasely signPromotionalOfferWithStoreProductId:storeProductId storeOfferId:storeOfferId purchaseContextToken:token success:^(PLYOfferSignature * _Nonnull signature, NSUUID * _Nonnull usedToken) {
+                NSMutableDictionary *result = [signature.asDictionary mutableCopy];
+                result[@"purchaseContextToken"] = usedToken.UUIDString.lowercaseString;
+                resolve(result);
+            } failure:^(NSError * _Nullable error) {
+                [self reject: reject with: error];
+            }];
+        } else {
+            [self reject: reject with: nil];
+        }
+    });
+}
+
 RCT_EXPORT_METHOD(purchaseWithPlanVendorId:(NSString * _Nonnull)planVendorId
                   offerId:(NSString * _Nullable)offerId
 				  contentId:(NSString * _Nullable)contentId

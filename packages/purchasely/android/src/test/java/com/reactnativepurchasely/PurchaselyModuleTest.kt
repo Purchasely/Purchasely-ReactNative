@@ -70,6 +70,15 @@ class PurchaselyModuleTest {
         verify(promise).resolve(null)
     }
 
+    @Test
+    fun `sign promotional offer with token resolves null on Android`() {
+        val promise = mock(Promise::class.java)
+
+        purchaselyModule.signPromotionalOfferWithToken("product", "offer", null, promise)
+
+        verify(promise).resolve(null)
+    }
+
     // endregion
 
     // region emit
