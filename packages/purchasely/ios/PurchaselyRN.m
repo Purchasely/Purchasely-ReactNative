@@ -1247,10 +1247,8 @@ RCT_EXPORT_METHOD(clearDynamicOfferings)
     }
 
     if ([p isEqualToString:@"all-non-essentials"]) {
-      return [NSSet setWithObject:PLYDataProcessingPurpose.allNonEssentials];
-    }
-
-    if ([p isEqualToString:@"analytics"]) {
+      [result addObject:PLYDataProcessingPurpose.allNonEssentials];
+    } else if ([p isEqualToString:@"analytics"]) {
       [result addObject:PLYDataProcessingPurpose.analytics];
     } else if ([p isEqualToString:@"identified-analytics"]) {
       [result addObject:PLYDataProcessingPurpose.identifiedAnalytics];
@@ -1269,13 +1267,8 @@ RCT_EXPORT_METHOD(clearDynamicOfferings)
 }
 
 RCT_EXPORT_METHOD(revokeDataProcessingConsent:(NSArray<NSString *> * _Nonnull)purposes) {
-    NSSet<PLYDataProcessingPurpose *> *mapped = [self mapPurposesFromStrings:purposes];
-  
-    if (mapped.count > 0) {
-        [Purchasely revokeDataProcessingConsentFor:mapped];
-    } else {
-        NSLog(@"[Purchasely] revokeDataProcessingConsent called with no valid purposes: %@", purposes);
-    }
+    // Native replaces the stored set, so an empty set grants every purpose back.
+    [Purchasely revokeDataProcessingConsentFor:[self mapPurposesFromStrings:purposes]];
 }
 
 RCT_EXPORT_METHOD(setDebugMode:(BOOL)enabled) {

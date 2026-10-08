@@ -568,6 +568,17 @@
     XCTAssertFalse([mapped containsObject:PLYDataProcessingPurpose.refundHandling]);
 }
 
+- (void)testMapPurposesAllNonEssentialsKeepsCombinedPurposesInBothOrders {
+    NSSet *expected = [NSSet setWithObjects:PLYDataProcessingPurpose.allNonEssentials,
+                                            PLYDataProcessingPurpose.refundHandling, nil];
+
+    NSSet *forward = [self.purchaselyModule mapPurposesFromStrings:@[@"all-non-essentials", @"refund-handling"]];
+    NSSet *reverse = [self.purchaselyModule mapPurposesFromStrings:@[@"refund-handling", @"all-non-essentials"]];
+
+    XCTAssertEqualObjects(forward, expected);
+    XCTAssertEqualObjects(reverse, expected);
+}
+
 - (void)testMapPurposesEveryKebabToken {
     NSSet *mapped = [self.purchaselyModule mapPurposesFromStrings:@[@"analytics",
                                                                     @"identified-analytics",

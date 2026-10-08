@@ -809,15 +809,8 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
 
   @ReactMethod
   fun revokeDataProcessingConsent(purposes: ReadableArray) {
-    val mapped = mapPurposesFromReadableArray(purposes)
-
-    if (mapped.isEmpty()) {
-      Log.w("Purchasely", "revokeDataProcessingConsent called with no valid purposes: $purposes")
-      return
-    }
-
-    // SDK call — adjust if your signature differs
-    Purchasely.revokeDataProcessingConsent(mapped)
+    // Native replaces the stored set, so an empty set grants every purpose back.
+    Purchasely.revokeDataProcessingConsent(mapPurposesFromReadableArray(purposes))
   }
 
   @ReactMethod

@@ -795,7 +795,12 @@ Let users opt out of non-essential data processing by revoking consent per purpo
 | `REFUND_HANDLING` | `refund-handling` | iOS 6.2.0+ (ignored on Android) |
 | `ALL_NON_ESSENTIALS` | `all-non-essentials` | iOS, Android |
 
-`ALL_NON_ESSENTIALS` expands natively to `ANALYTICS`, `CAMPAIGNS`, `PERSONALIZATION` and `THIRD_PARTY_INTEGRATION`. It does **not** include `IDENTIFIED_ANALYTICS` or `REFUND_HANDLING`: those must be listed explicitly.
+`ALL_NON_ESSENTIALS` expands natively. The expansion differs by platform:
+
+- On iOS it covers `ANALYTICS`, `CAMPAIGNS`, `PERSONALIZATION` and `THIRD_PARTY_INTEGRATION`. It does **not** include `IDENTIFIED_ANALYTICS` or `REFUND_HANDLING`. List them explicitly.
+- On Android it also covers `IDENTIFIED_ANALYTICS`. Android has no `REFUND_HANDLING` purpose, so the bridge ignores it there.
+
+The bridge keeps every purpose of the list when `ALL_NON_ESSENTIALS` is one of them.
 
 `REFUND_HANDLING` states that the user refuses processing of the consumption data attached to a refund request. The SDK only carries this flag to Purchasely; it does not change any local behavior.
 
@@ -825,7 +830,7 @@ Purchasely.revokeDataProcessingConsent([
 Purchasely.revokeDataProcessingConsent([]);
 ```
 
-Call it before `Purchasely.start()` or as soon as the user's choice changes. Unknown values are ignored by the native SDKs.
+Call it before `Purchasely.start()` or as soon as the user's choice changes. Unknown values are ignored by the native SDKs. A list with only unknown values has the same effect as an empty list.
 
 ---
 

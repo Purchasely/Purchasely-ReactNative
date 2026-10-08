@@ -13,6 +13,12 @@ import io.purchasely.ext.presentation.PLYPresentationType
 import io.purchasely.storage.userData.PLYUserAttributeSource
 import io.purchasely.storage.userData.PLYUserAttributeType
 import io.purchasely.views.presentation.PLYThemeMode
+import io.mockk.Runs
+import io.mockk.every
+import io.mockk.just
+import io.mockk.mockkObject
+import io.mockk.unmockkObject
+import io.mockk.verify as mockkVerify
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
@@ -548,6 +554,20 @@ class PurchaselyModuleTest {
             ),
             map("ANALYTICS", "IDENTIFIED_ANALYTICS", "CAMPAIGNS", "PERSONALIZATION")
         )
+    }
+
+    @Test
+    fun `revokeDataProcessingConsent forwards an empty set so native grants every purpose back`() {
+        mockkObject(Purchasely)
+        try {
+            every { Purchasely.revokeDataProcessingConsent(any()) } just Runs
+
+            purchaselyModule.revokeDataProcessingConsent(JavaOnlyArray.of())
+
+            mockkVerify { Purchasely.revokeDataProcessingConsent(emptySet()) }
+        } finally {
+            unmockkObject(Purchasely)
+        }
     }
 
     // endregion
