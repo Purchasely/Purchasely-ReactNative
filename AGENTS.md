@@ -77,6 +77,22 @@ cd example/ios && xcodebuild test -workspace example.xcworkspace \
 - E2E (`integration_test/`, runner component `example/src/E2ETestRunner.tsx`): tests T1..Tn print `[E2E:Tn:PASS|FAIL]` markers. A crash-regression test does not fail, its markers disappear, and the runner's missing-marker check catches it. Android can assert native bounds with `uiautomator`; iOS cannot (accessibility tree only), so iOS is capture only. E2E must never gate `publish.yml`.
 - Local iOS E2E: Homebrew `idb` breaks under Python 3.14. Use a Python 3.12 venv with `fb-idb` and `IDB=<venv>/bin/idb bash integration_test/run_e2e_ios.sh <UDID>`.
 
+## Testing scope of the bridge
+
+The bridge tests its own code and its calls to the native SDK. The native SDK tests its own behavior after the bridge calls it.
+
+Test these three things:
+
+1. **The bridge code.** Argument parsing, type conversion, default values, validation, error mapping, and the no-op of a platform-specific method.
+2. **The call to the native SDK.** The JS, TypeScript or Dart call reaches the native bridge with the expected method name and argument format, and the native bridge accepts that format.
+3. **The result that the bridge can see.** When the call has a completion (callback, promise, `Future` result or returned value), check it on a real device in the E2E suite: success or error, and the returned value. Examples: `setUserAttribute` has a listener callback, and `getUserAttribute` returns the value that was set. When the call has no completion (for example `emit`), stop at points 1 and 2.
+
+Do not test:
+
+- What the native SDK does after the call: network requests, backend reception, event delivery, StoreKit or Google Play Billing behavior. The native SDK owns this part.
+- The backend or an analytics database (for example ClickHouse) to prove that a call worked.
+- New iOS tests that swizzle a native SDK method. Existing swizzle tests stay.
+
 ## CI/CD
 
 | Workflow | Trigger | Purpose |
