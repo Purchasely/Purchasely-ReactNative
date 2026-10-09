@@ -2,6 +2,7 @@ package com.reactnativepurchasely
 
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.JavaOnlyArray
+import com.facebook.react.bridge.JavaOnlyMap
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReadableArray
@@ -13,6 +14,12 @@ import io.purchasely.ext.presentation.PLYPresentationType
 import io.purchasely.storage.userData.PLYUserAttributeSource
 import io.purchasely.storage.userData.PLYUserAttributeType
 import io.purchasely.views.presentation.PLYThemeMode
+import io.mockk.Runs
+import io.mockk.every
+import io.mockk.just
+import io.mockk.mockkObject
+import io.mockk.unmockkObject
+import io.mockk.verify as mockkVerify
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
@@ -61,6 +68,45 @@ class PurchaselyModuleTest {
         purchaselyModule.signPromotionalOffer("product", "offer", promise)
 
         verify(promise).resolve(null)
+    }
+
+    @Test
+    fun `sign promotional offer with token resolves null on Android`() {
+        val promise = mock(Promise::class.java)
+
+        purchaselyModule.signPromotionalOfferWithToken("product", "offer", null, promise)
+
+        verify(promise).resolve(null)
+    }
+
+    // endregion
+
+    // region emit
+
+    @Test
+    fun `emit forwards the event name and its properties`() {
+        val purchaselyStatic = mockStatic(Purchasely::class.java)
+        try {
+            purchaselyModule.emit("recipe_viewed", JavaOnlyMap.of("recipe_id", 42.0, "vegan", true))
+
+            purchaselyStatic.verify {
+                Purchasely.emit("recipe_viewed", mapOf("recipe_id" to 42.0, "vegan" to true))
+            }
+        } finally {
+            purchaselyStatic.close()
+        }
+    }
+
+    @Test
+    fun `emit sends an empty map when properties are null`() {
+        val purchaselyStatic = mockStatic(Purchasely::class.java)
+        try {
+            purchaselyModule.emit("recipe_viewed", null)
+
+            purchaselyStatic.verify { Purchasely.emit("recipe_viewed", emptyMap()) }
+        } finally {
+            purchaselyStatic.close()
+        }
     }
 
     // endregion
@@ -548,6 +594,20 @@ class PurchaselyModuleTest {
             ),
             map("ANALYTICS", "IDENTIFIED_ANALYTICS", "CAMPAIGNS", "PERSONALIZATION")
         )
+    }
+
+    @Test
+    fun `revokeDataProcessingConsent forwards an empty set so native grants every purpose back`() {
+        mockkObject(Purchasely)
+        try {
+            every { Purchasely.revokeDataProcessingConsent(any()) } just Runs
+
+            purchaselyModule.revokeDataProcessingConsent(JavaOnlyArray.of())
+
+            mockkVerify { Purchasely.revokeDataProcessingConsent(emptySet()) }
+        } finally {
+            unmockkObject(Purchasely)
+        }
     }
 
     // endregion

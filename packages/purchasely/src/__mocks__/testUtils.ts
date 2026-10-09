@@ -96,6 +96,16 @@ export const createMockPurchaselyModule = () => ({
         keyIdentifier: 'key-id',
         timestamp: Date.now(),
     }),
+    signPromotionalOfferWithToken: jest.fn().mockResolvedValue({
+        planVendorId: 'plan-id',
+        identifier: 'offer-id',
+        signature: 'signature',
+        nonce: 'nonce',
+        keyIdentifier: 'key-id',
+        timestamp: Date.now(),
+        purchaseContextToken: 'e621e1f8-c36c-495a-93fc-0c247a3e6e5f',
+    }),
+    emit: jest.fn(),
     allProducts: jest.fn().mockResolvedValue([]),
     productWithIdentifier: jest.fn().mockResolvedValue({
         name: 'Test Product',

@@ -195,7 +195,7 @@ export const HomeScreen: React.FC<NativeStackScreenProps<any>> = ({
 
     const onPressSignPromotionalOffer = async () => {
         try {
-            const signature = await Purchasely.signPromotionalOffer({
+            const signature = await Purchasely.signPromotionalOfferWithToken({
                 storeProductId: 'com.purchasely.plus.yearly',
                 storeOfferId: 'com.purchasely.plus.yearly.winback.test',
             })
@@ -211,6 +211,7 @@ export const HomeScreen: React.FC<NativeStackScreenProps<any>> = ({
             console.log('Signature signature: ' + signature.signature)
             console.log('Signature nonce: ' + signature.nonce)
             console.log('Signature keyIdentifier: ' + signature.keyIdentifier)
+            console.log('Signature purchaseContextToken: ' + signature.purchaseContextToken)
         } catch (e) {
             console.error(e)
         }

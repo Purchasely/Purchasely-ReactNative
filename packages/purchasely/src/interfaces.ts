@@ -84,6 +84,12 @@ export interface SignPromotionalOfferParameters {
   storeOfferId: string;
 }
 
+export interface SignPromotionalOfferWithTokenParameters
+  extends SignPromotionalOfferParameters {
+  /** A canonical UUID string. When absent, native creates a new token. */
+  purchaseContextToken?: string | null;
+}
+
 export interface UserAttributesParameters {
   key: string;
   value?: number | null;

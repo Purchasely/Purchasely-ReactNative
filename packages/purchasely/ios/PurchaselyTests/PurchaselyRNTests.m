@@ -6,7 +6,19 @@
 //
 
 #import <XCTest/XCTest.h>
+#import <objc/runtime.h>
 #import "PurchaselyRN.h"
+#import "Purchasely_Hybrid.h"
+
+// Exposes the private wire-string mapper implemented in PurchaselyRN.m.
+@interface PurchaselyRN (DataProcessingPurposeTesting)
+- (NSSet<PLYDataProcessingPurpose *> *)mapPurposesFromStrings:(NSArray<NSString *> *)strings;
+- (void)signPromotionalOfferWithToken:(NSString *)storeProductId
+                         storeOfferId:(NSString *)storeOfferId
+                 purchaseContextToken:(NSString *)purchaseContextToken
+                              resolve:(RCTPromiseResolveBlock)resolve
+                               reject:(RCTPromiseRejectBlock)reject;
+@end
 
 // Captures events sent through RCTEventEmitter so
 // `emitPresentationCloseRequestedForId:` (the native onCloseRequested -> JS
@@ -23,6 +35,21 @@
     self.lastEventName = name;
     self.lastEventBody = body;
 }
+@end
+
+typedef void (^PLYSignSuccess)(PLYOfferSignature *, NSUUID *);
+typedef void (^PLYSignFailure)(NSError *);
+
+// What the stubbed native class method saw, and what the bridge answered.
+@interface PurchaselyRNSignRun : NSObject
+@property (nonatomic, assign) NSUInteger nativeCalls;
+@property (nonatomic, strong) NSUUID *tokenSeenByNative;
+@property (nonatomic, strong) PLYOfferSignature *signature;
+@property (nonatomic, strong) id resolved;
+@property (nonatomic, strong) NSError *rejectedWith;
+@property (nonatomic, copy) NSString *rejectCode;
+@end
+@implementation PurchaselyRNSignRun
 @end
 
 @interface PurchaselyRNTests : XCTestCase
@@ -530,6 +557,171 @@
                  @"closePresentation: must never emit CLOSE_REQUESTED itself");
 
     [recorder stopObserving];
+}
+
+#pragma mark - revokeDataProcessingConsent wire-string mapping
+
+// Pins `mapPurposesFromStrings:` — the only place the JS enum strings meet
+// the native `PLYDataProcessingPurpose` façade. Both RN's kebab-case tokens
+// and the SCREAMING_SNAKE_CASE convention of the other SDKs must resolve to
+// the same native purpose, and `all-non-essentials` must stay a fixed
+// bundle that never implies `refundHandling`.
+
+- (void)testMapPurposesRefundHandlingBothConventions {
+    NSSet *kebab = [self.purchaselyModule mapPurposesFromStrings:@[@"refund-handling"]];
+    NSSet *snake = [self.purchaselyModule mapPurposesFromStrings:@[@"REFUND_HANDLING"]];
+
+    XCTAssertEqualObjects(kebab, [NSSet setWithObject:PLYDataProcessingPurpose.refundHandling]);
+    XCTAssertEqualObjects(snake, [NSSet setWithObject:PLYDataProcessingPurpose.refundHandling]);
+}
+
+- (void)testMapPurposesRefundHandlingCombinesWithOtherPurposes {
+    NSSet *mapped = [self.purchaselyModule mapPurposesFromStrings:@[@"analytics", @"refund-handling"]];
+
+    NSSet *expected = [NSSet setWithObjects:PLYDataProcessingPurpose.analytics,
+                                            PLYDataProcessingPurpose.refundHandling, nil];
+    XCTAssertEqualObjects(mapped, expected);
+}
+
+- (void)testMapPurposesAllNonEssentialsExcludesRefundHandling {
+    NSSet *mapped = [self.purchaselyModule mapPurposesFromStrings:@[@"all-non-essentials"]];
+
+    XCTAssertEqualObjects(mapped, [NSSet setWithObject:PLYDataProcessingPurpose.allNonEssentials]);
+    XCTAssertFalse([mapped containsObject:PLYDataProcessingPurpose.refundHandling]);
+}
+
+- (void)testMapPurposesAllNonEssentialsKeepsCombinedPurposesInBothOrders {
+    NSSet *expected = [NSSet setWithObjects:PLYDataProcessingPurpose.allNonEssentials,
+                                            PLYDataProcessingPurpose.refundHandling, nil];
+
+    NSSet *forward = [self.purchaselyModule mapPurposesFromStrings:@[@"all-non-essentials", @"refund-handling"]];
+    NSSet *reverse = [self.purchaselyModule mapPurposesFromStrings:@[@"refund-handling", @"all-non-essentials"]];
+
+    XCTAssertEqualObjects(forward, expected);
+    XCTAssertEqualObjects(reverse, expected);
+}
+
+- (void)testMapPurposesEveryKebabToken {
+    NSSet *mapped = [self.purchaselyModule mapPurposesFromStrings:@[@"analytics",
+                                                                    @"identified-analytics",
+                                                                    @"campaigns",
+                                                                    @"personalization",
+                                                                    @"third-party-integration",
+                                                                    @"refund-handling"]];
+
+    NSSet *expected = [NSSet setWithObjects:PLYDataProcessingPurpose.analytics,
+                                            PLYDataProcessingPurpose.identifiedAnalytics,
+                                            PLYDataProcessingPurpose.campaigns,
+                                            PLYDataProcessingPurpose.personalization,
+                                            PLYDataProcessingPurpose.thirdPartyIntegrations,
+                                            PLYDataProcessingPurpose.refundHandling, nil];
+    XCTAssertEqualObjects(mapped, expected);
+}
+
+- (void)testMapPurposesDropsUnknownTokens {
+    NSSet *mapped = [self.purchaselyModule mapPurposesFromStrings:@[@"refund", @"refund_handling_v2"]];
+
+    XCTAssertEqual(mapped.count, 0u);
+}
+
+#pragma mark - signPromotionalOfferWithToken token validation
+
+// A token that is not a canonical UUID must reject. A nil token would make
+// native create a new one, and the app account field would not match it.
+- (void)assertSignRejectsToken:(NSString *)token {
+    __block NSString *code = nil;
+    __block BOOL resolved = NO;
+
+    [self.purchaselyModule signPromotionalOfferWithToken:@"product"
+                                            storeOfferId:@"offer"
+                                    purchaseContextToken:token
+                                                 resolve:^(id result) { resolved = YES; }
+                                                  reject:^(NSString *c, NSString *message, NSError *error) { code = c; }];
+
+    XCTAssertEqualObjects(code, @"-1");
+    XCTAssertFalse(resolved);
+}
+
+// `+[Purchasely signPromotionalOfferWithStoreProductId:...purchaseContextToken:...]` is a class
+// method on the SDK: swap its implementation for a stub, then restore it.
+// `PLYOfferSignature` has no public initializer, so build it with alloc + KVC.
+- (PurchaselyRNSignRun *)signWithToken:(NSString *)token nativeToken:(NSUUID *)nativeToken nativeError:(NSError *)nativeError {
+    SEL selector = @selector(signPromotionalOfferWithStoreProductId:storeOfferId:purchaseContextToken:success:failure:);
+    Method method = class_getClassMethod([Purchasely class], selector);
+    IMP original = method_getImplementation(method);
+    PurchaselyRNSignRun *run = [PurchaselyRNSignRun new];
+
+    PLYOfferSignature *signature = [PLYOfferSignature alloc];
+    [signature setValue:@"monthly" forKey:@"planVendorId"];
+    [signature setValue:@"offer-1" forKey:@"identifier"];
+    [signature setValue:@"c2lnbmF0dXJl" forKey:@"signature"];
+    [signature setValue:@"KEY1" forKey:@"keyIdentifier"];
+    [signature setValue:[[NSUUID alloc] initWithUUIDString:@"3F2504E0-4F89-11D3-9A0C-0305E82C3301"] forKey:@"nonce"];
+    [signature setValue:@(1700000000.0) forKey:@"timestamp"];
+    run.signature = signature;
+
+    method_setImplementation(method, imp_implementationWithBlock(
+        ^(id _self, NSString *product, NSString *offer, NSUUID *seen, PLYSignSuccess success, PLYSignFailure failure) {
+            run.nativeCalls += 1;
+            run.tokenSeenByNative = seen;
+            if (nativeError) { failure(nativeError); } else { success(signature, nativeToken); }
+        }));
+
+    XCTestExpectation *answered = [self expectationWithDescription:@"sign answered"];
+    @try {
+        [self.purchaselyModule signPromotionalOfferWithToken:@"product"
+                                                storeOfferId:@"offer"
+                                        purchaseContextToken:token
+                                                     resolve:^(id result) { run.resolved = result; [answered fulfill]; }
+                                                      reject:^(NSString *c, NSString *m, NSError *e) { run.rejectCode = c; run.rejectedWith = e; [answered fulfill]; }];
+        [self waitForExpectations:@[answered] timeout:5];
+    } @finally {
+        method_setImplementation(method, original);
+    }
+    return run;
+}
+
+- (void)testSignPromotionalOfferWithTokenReturnsTheNativeTokenLowercase {
+    NSUUID *returned = [[NSUUID alloc] initWithUUIDString:@"3F2504E0-4F89-11D3-9A0C-0305E82C3301"];
+
+    PurchaselyRNSignRun *run = [self signWithToken:@"3F2504E0-4F89-11D3-9A0C-0305E82C3301" nativeToken:returned nativeError:nil];
+
+    XCTAssertEqual(run.nativeCalls, (NSUInteger)1);
+    XCTAssertEqualObjects(run.tokenSeenByNative, returned);
+    XCTAssertNil(run.rejectCode);
+    NSMutableDictionary *expected = [run.signature.asDictionary mutableCopy];
+    expected[@"purchaseContextToken"] = @"3f2504e0-4f89-11d3-9a0c-0305e82c3301";
+    XCTAssertEqualObjects(run.resolved, expected, @"StoreKit 1 needs the lowercase form");
+}
+
+- (void)testSignPromotionalOfferWithTokenReturnsTheTokenNativeMadeForANilToken {
+    NSUUID *made = [NSUUID UUID];
+
+    PurchaselyRNSignRun *run = [self signWithToken:nil nativeToken:made nativeError:nil];
+
+    XCTAssertEqual(run.nativeCalls, (NSUInteger)1);
+    XCTAssertNil(run.tokenSeenByNative);
+    XCTAssertEqualObjects(run.resolved[@"purchaseContextToken"], made.UUIDString.lowercaseString);
+}
+
+- (void)testSignPromotionalOfferWithTokenForwardsANativeError {
+    NSError *error = [NSError errorWithDomain:@"purchasely" code:7
+                                     userInfo:@{NSLocalizedDescriptionKey: @"signature failed"}];
+
+    PurchaselyRNSignRun *run = [self signWithToken:@"3f2504e0-4f89-11d3-9a0c-0305e82c3301" nativeToken:[NSUUID UUID] nativeError:error];
+
+    XCTAssertEqual(run.nativeCalls, (NSUInteger)1);
+    XCTAssertNil(run.resolved);
+    XCTAssertEqualObjects(run.rejectCode, @"7");
+    XCTAssertEqualObjects(run.rejectedWith, error);
+}
+
+- (void)testSignPromotionalOfferWithTokenRejectsAMalformedToken {
+    [self assertSignRejectsToken:@"not-a-uuid"];
+}
+
+- (void)testSignPromotionalOfferWithTokenRejectsAnEmptyToken {
+    [self assertSignRejectsToken:@""];
 }
 
 @end

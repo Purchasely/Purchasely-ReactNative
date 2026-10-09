@@ -139,7 +139,7 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     constants["sourcePlayStore"] = StoreType.GOOGLE_PLAY_STORE.ordinal
     constants["sourceHuaweiAppGallery"] = StoreType.HUAWEI_APP_GALLERY.ordinal
     constants["sourceAmazonAppstore"] = StoreType.AMAZON_APP_STORE.ordinal
-    constants["sourceStripe"] = StoreType.WEB_CHECKOUT_STRIPE.ordinal
+    constants["sourceStripe"] = StoreType.STRIPE.ordinal
     constants["sourceNone"] = StoreType.NONE.ordinal
     constants["consumable"] = DistributionType.CONSUMABLE.ordinal
     constants["nonConsumable"] = DistributionType.NON_CONSUMABLE.ordinal
@@ -310,6 +310,17 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     // equivalent native API. Per product decision (RN-W-01), this resolves as a no-op
     // success instead of permanently rejecting; `null` makes the absent iOS signature
     // explicit to cross-platform callers.
+    promise.resolve(null)
+  }
+
+  @ReactMethod
+  fun signPromotionalOfferWithToken(
+    storeProductId: String,
+    storeOfferId: String,
+    purchaseContextToken: String?,
+    promise: Promise
+  ) {
+    // iOS-only, like signPromotionalOffer: resolves as a no-op success.
     promise.resolve(null)
   }
 
@@ -504,6 +515,11 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     "ESSENTIAL" -> PLYDataProcessingLegalBasis.ESSENTIAL
     else -> PLYDataProcessingLegalBasis.OPTIONAL
   }
+}
+
+@ReactMethod
+fun emit(name: String, properties: ReadableMap?) {
+  Purchasely.emit(name, properties?.toHashMap() ?: emptyMap())
 }
 
 @ReactMethod
@@ -809,15 +825,8 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
 
   @ReactMethod
   fun revokeDataProcessingConsent(purposes: ReadableArray) {
-    val mapped = mapPurposesFromReadableArray(purposes)
-
-    if (mapped.isEmpty()) {
-      Log.w("Purchasely", "revokeDataProcessingConsent called with no valid purposes: $purposes")
-      return
-    }
-
-    // SDK call — adjust if your signature differs
-    Purchasely.revokeDataProcessingConsent(mapped)
+    // Native replaces the stored set, so an empty set grants every purpose back.
+    Purchasely.revokeDataProcessingConsent(mapPurposesFromReadableArray(purposes))
   }
 
   @ReactMethod
@@ -1420,7 +1429,7 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
           StoreType.HUAWEI_APP_GALLERY -> StoreType.HUAWEI_APP_GALLERY.ordinal
           StoreType.AMAZON_APP_STORE -> StoreType.AMAZON_APP_STORE.ordinal
           StoreType.APPLE_APP_STORE -> StoreType.APPLE_APP_STORE.ordinal
-          StoreType.WEB_CHECKOUT_STRIPE -> StoreType.WEB_CHECKOUT_STRIPE.ordinal
+          StoreType.STRIPE -> StoreType.STRIPE.ordinal
           else -> null
         }
         if(data.data.plan == null) {

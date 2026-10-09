@@ -21,10 +21,11 @@ This document provides comprehensive documentation for integrating and using the
 7. [User Identification](#user-identification)
 8. [Subscription Status & Entitlements](#subscription-status--entitlements)
 9. [Custom User Attributes](#custom-user-attributes)
-10. [Event Listeners](#event-listeners)
-11. [Pre-fetching Screens](#pre-fetching-screens)
-12. [Deeplinks Management](#deeplinks-management)
-13. [Platform-Specific Features](#platform-specific-features)
+10. [Data Processing Consent](#data-processing-consent)
+11. [Event Listeners](#event-listeners)
+12. [Pre-fetching Screens](#pre-fetching-screens)
+13. [Deeplinks Management](#deeplinks-management)
+14. [Platform-Specific Features](#platform-specific-features)
 
 ---
 
@@ -778,6 +779,61 @@ Purchasely.clearUserAttributes();
 
 ---
 
+## Data Processing Consent
+
+Let users opt out of non-essential data processing by revoking consent per purpose with `revokeDataProcessingConsent`.
+
+### Purposes
+
+| `PLYDataProcessingPurpose` | Wire value | Availability |
+|---|---|---|
+| `ANALYTICS` | `analytics` | iOS, Android |
+| `IDENTIFIED_ANALYTICS` | `identified-analytics` | iOS, Android |
+| `CAMPAIGNS` | `campaigns` | iOS, Android |
+| `PERSONALIZATION` | `personalization` | iOS, Android |
+| `THIRD_PARTY_INTEGRATION` | `third-party-integration` | iOS, Android |
+| `REFUND_HANDLING` | `refund-handling` | iOS 6.2.0+ (ignored on Android) |
+| `ALL_NON_ESSENTIALS` | `all-non-essentials` | iOS, Android |
+
+`ALL_NON_ESSENTIALS` expands natively. The expansion differs by platform:
+
+- On iOS it covers `ANALYTICS`, `CAMPAIGNS`, `PERSONALIZATION` and `THIRD_PARTY_INTEGRATION`. It does **not** include `IDENTIFIED_ANALYTICS` or `REFUND_HANDLING`. List them explicitly.
+- On Android it also covers `IDENTIFIED_ANALYTICS`. Android has no `REFUND_HANDLING` purpose, so the bridge ignores it there. On Android, `[REFUND_HANDLING]` alone is the same as `[]`.
+
+The bridge keeps every purpose of the list when `ALL_NON_ESSENTIALS` is one of them.
+
+`REFUND_HANDLING` states that the user refuses processing of the consumption data attached to a refund request. The SDK only carries this flag to Purchasely; it does not change any local behavior.
+
+### Set Semantics
+
+Each call **replaces** the stored set of revoked purposes; nothing is merged with previous calls. Always pass the complete list of purposes the user currently refuses.
+
+```typescript
+import Purchasely, { PLYDataProcessingPurpose } from 'react-native-purchasely';
+
+// Revoke everything non-essential plus refund handling
+Purchasely.revokeDataProcessingConsent([
+  PLYDataProcessingPurpose.ALL_NON_ESSENTIALS,
+  PLYDataProcessingPurpose.REFUND_HANDLING,
+]);
+
+// Later: the user accepts analytics again but still refuses refund handling.
+// Pass the full remaining set, not just the change.
+Purchasely.revokeDataProcessingConsent([
+  PLYDataProcessingPurpose.CAMPAIGNS,
+  PLYDataProcessingPurpose.PERSONALIZATION,
+  PLYDataProcessingPurpose.THIRD_PARTY_INTEGRATION,
+  PLYDataProcessingPurpose.REFUND_HANDLING,
+]);
+
+// Grant all purposes back
+Purchasely.revokeDataProcessingConsent([]);
+```
+
+Call it before `Purchasely.start()` or as soon as the user's choice changes. Unknown values are ignored by the native SDKs. A list with only unknown values has the same effect as an empty list.
+
+---
+
 ## Event Listeners
 
 ### UI / SDK Events Listener
@@ -811,6 +867,19 @@ Purchasely.setUserAttributeListener((attribute) => {
     }
 });
 ```
+
+### Custom Events (6.2.0)
+
+Send an event that you declared in the Console with `emit`:
+
+```typescript
+Purchasely.emit('recipe_viewed', { recipe_id: 42, vegan: true });
+```
+
+- The name must match the Console declaration exactly. An undeclared name is dropped.
+- The SDK does not check the property types. The backend casts each value against the declared `data_type`.
+- Pass dates as ISO strings.
+- The event does not reach `addEventListener`.
 
 ---
 
@@ -959,6 +1028,24 @@ await Purchasely.builder('YOUR_API_KEY')
 ```
 
 > **Recommendation**: Use StoreKit 2 (`storekitVersion('storeKit2')`) for new integrations.
+
+### Promotional Offer Signing (iOS)
+
+`signPromotionalOffer` is deprecated. It signs over the anonymous user id. Use `signPromotionalOfferWithToken` (6.2.0):
+
+```typescript
+const signature = await Purchasely.signPromotionalOfferWithToken({
+    storeProductId: 'com.example.plus.yearly',
+    storeOfferId: 'com.example.plus.yearly.winback',
+    // purchaseContextToken: '<your UUID>', // optional
+});
+// signature.purchaseContextToken is the lowercase UUID that the signature covers.
+```
+
+- Put `signature.purchaseContextToken` in the account field of the purchase that redeems the offer.
+- In Observer mode, set StoreKit 1 `applicationUsername` to the returned `purchaseContextToken` exactly. With StoreKit 2, pass its UUID as the purchase `appAccountToken`. Do not use the anonymous user id or generate another token: Apple rejects the offer when the purchase carries a different value from the one used to sign it.
+- When you give no token, native creates one. A token that is not a canonical UUID string rejects the promise.
+- Android has no equivalent. The method resolves `null`.
 
 ### Android Stores
 

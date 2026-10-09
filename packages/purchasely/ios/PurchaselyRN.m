@@ -716,6 +716,11 @@ RCT_EXPORT_METHOD(setAttribute:(NSInteger)attribute value:(NSString * _Nonnull)v
 	[Purchasely setAttribute:attribute value:value];
 }
 
+RCT_EXPORT_METHOD(emit:(NSString * _Nonnull)name
+                  properties:(NSDictionary * _Nullable)properties) {
+    [Purchasely emitWithName:name properties:properties ?: @{}];
+}
+
 RCT_EXPORT_METHOD(setUserAttributeWithString:(NSString * _Nonnull)key
                   value:(NSString * _Nonnull)value
                   legalBasis:(NSString * _Nullable)legalBasis) {
@@ -994,6 +999,38 @@ RCT_EXPORT_METHOD(signPromotionalOffer:(NSString * )storeProductId
     });
 }
 
+RCT_EXPORT_METHOD(signPromotionalOfferWithToken:(NSString * )storeProductId
+                  storeOfferId:(NSString * )storeOfferId
+                  purchaseContextToken:(NSString * _Nullable)purchaseContextToken
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+{
+    // A nil token makes native create one. A string that does not parse must
+    // not become nil: the app account field would not match the signed token.
+    NSUUID *token = nil;
+    if (purchaseContextToken != nil) {
+        token = [[NSUUID alloc] initWithUUIDString:purchaseContextToken];
+        if (token == nil) {
+            reject(@"-1", [NSString stringWithFormat:@"`purchaseContextToken` must be a canonical UUID string. Received \"%@\".", purchaseContextToken], nil);
+            return;
+        }
+    }
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (@available(iOS 12.2, *)) {
+            [Purchasely signPromotionalOfferWithStoreProductId:storeProductId storeOfferId:storeOfferId purchaseContextToken:token success:^(PLYOfferSignature * _Nonnull signature, NSUUID * _Nonnull usedToken) {
+                NSMutableDictionary *result = [signature.asDictionary mutableCopy];
+                result[@"purchaseContextToken"] = usedToken.UUIDString.lowercaseString;
+                resolve(result);
+            } failure:^(NSError * _Nullable error) {
+                [self reject: reject with: error];
+            }];
+        } else {
+            [self reject: reject with: nil];
+        }
+    });
+}
+
 RCT_EXPORT_METHOD(purchaseWithPlanVendorId:(NSString * _Nonnull)planVendorId
                   offerId:(NSString * _Nullable)offerId
 				  contentId:(NSString * _Nullable)contentId
@@ -1247,10 +1284,8 @@ RCT_EXPORT_METHOD(clearDynamicOfferings)
     }
 
     if ([p isEqualToString:@"all-non-essentials"]) {
-      return [NSSet setWithObject:PLYDataProcessingPurpose.allNonEssentials];
-    }
-
-    if ([p isEqualToString:@"analytics"]) {
+      [result addObject:PLYDataProcessingPurpose.allNonEssentials];
+    } else if ([p isEqualToString:@"analytics"]) {
       [result addObject:PLYDataProcessingPurpose.analytics];
     } else if ([p isEqualToString:@"identified-analytics"]) {
       [result addObject:PLYDataProcessingPurpose.identifiedAnalytics];
@@ -1260,6 +1295,8 @@ RCT_EXPORT_METHOD(clearDynamicOfferings)
       [result addObject:PLYDataProcessingPurpose.personalization];
     } else if ([p isEqualToString:@"third-party-integration"]) {
       [result addObject:PLYDataProcessingPurpose.thirdPartyIntegrations];
+    } else if ([p isEqualToString:@"refund-handling"]) {
+      [result addObject:PLYDataProcessingPurpose.refundHandling];
     }
   }
 
@@ -1267,13 +1304,8 @@ RCT_EXPORT_METHOD(clearDynamicOfferings)
 }
 
 RCT_EXPORT_METHOD(revokeDataProcessingConsent:(NSArray<NSString *> * _Nonnull)purposes) {
-    NSSet<PLYDataProcessingPurpose *> *mapped = [self mapPurposesFromStrings:purposes];
-  
-    if (mapped.count > 0) {
-        [Purchasely revokeDataProcessingConsentFor:mapped];
-    } else {
-        NSLog(@"[Purchasely] revokeDataProcessingConsent called with no valid purposes: %@", purposes);
-    }
+    // Native replaces the stored set, so an empty set grants every purpose back.
+    [Purchasely revokeDataProcessingConsentFor:[self mapPurposesFromStrings:purposes]];
 }
 
 RCT_EXPORT_METHOD(setDebugMode:(BOOL)enabled) {
