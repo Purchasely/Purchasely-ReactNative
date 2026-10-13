@@ -4574,10 +4574,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"basic-ftp@npm:>=5.3.1":
-  version: 6.0.1
-  resolution: "basic-ftp@npm:6.0.1"
-  checksum: 305cf434b39dc7b39eb07c41275397c719c74407e9ef33560f6247cff0bf1a4de847873e20b29ba39299f4f18d9ebeb770fcdeba15834de20d0be8bb3d21b2cf
+"basic-ftp@npm:>=6.2.1":
+  version: 6.2.3
+  resolution: "basic-ftp@npm:6.2.3"
+  checksum: 9913138a033d89dc4c5a856a110def76d0a98d6c5880438121a1621e511f1bdbf4bc178802794c7d43211c01936ff9ae046ae986bc49200a40e4d7c4b8a81451
   languageName: node
   linkType: hard
 
@@ -4642,13 +4642,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"brace-expansion@npm:~1.1.16":
-  version: 1.1.18
-  resolution: "brace-expansion@npm:1.1.18"
+"brace-expansion@npm:~1.1.20":
+  version: 1.1.21
+  resolution: "brace-expansion@npm:1.1.21"
   dependencies:
     balanced-match: ^1.0.0
     concat-map: 0.0.1
-  checksum: aa84023a4118f9185b6f8c71ca3467c945878b141ba340261de209676442f81b08db5b7c7c119707cdecb7322fcfcdb71d8ffea55db9d1aad673d7c65469211f
+  checksum: b841b4198a0ab8a1b433920ed65b46a9b4368c0ad1f95b2ed229a682c7d7d5b5839620204b5644a05c967d29e66bdf0a59b1115e74e0f27761d0dc02f5e0d835
   languageName: node
   linkType: hard
 
