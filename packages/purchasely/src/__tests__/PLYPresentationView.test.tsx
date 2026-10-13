@@ -311,6 +311,37 @@ describe('PLYPresentationView', () => {
                 tree.unmount()
             })
         })
+
+        it('MOB-652 a remount with a new key adopts the id of the latest preload', async () => {
+            const request: any = { requestId: 'req-a' }
+            const onClosed = jest.fn()
+
+            let tree: any
+            await act(async () => {
+                tree = create(<PLYPresentationView key="1" request={request} onPresentationClosed={onClosed} />)
+            })
+
+            request.requestId = 'req-b'
+            await act(async () => {
+                tree.update(<PLYPresentationView key="2" request={request} onPresentationClosed={onClosed} />)
+            })
+
+            expect(tree.root.findByType('PurchaselyView' as any).props.requestId).toBe('req-b')
+
+            await act(async () => {
+                mockEmitter.__emit(DISMISSED, { requestId: 'req-a', closeReason: null, error: null })
+            })
+            expect(onClosed).not.toHaveBeenCalled()
+
+            await act(async () => {
+                mockEmitter.__emit(DISMISSED, { requestId: 'req-b', closeReason: null, error: null })
+            })
+            expect(onClosed).toHaveBeenCalledTimes(1)
+
+            await act(async () => {
+                tree.unmount()
+            })
+        })
     })
 
     describe('Props', () => {
