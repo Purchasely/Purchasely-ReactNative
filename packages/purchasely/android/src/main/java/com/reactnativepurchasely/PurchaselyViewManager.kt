@@ -145,6 +145,12 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
       return
     }
 
+    if (props.placementId == null && props.screenId == null) {
+      // An empty builder makes the SDK load the app default screen (ply_default).
+      Log.w("PurchaselyView", "No preloaded presentation for requestId=${props.requestId} and no placement/screen: nothing to display")
+      return
+    }
+
     val prepared: PLYPresentationBase.Prepared = PLYPresentationBase.builder()
       .also { b ->
         props.placementId?.let { b.placementId(it) }
