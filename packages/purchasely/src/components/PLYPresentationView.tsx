@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   findNodeHandle,
   Platform,
@@ -90,6 +90,9 @@ interface PLYPresentationViewProps {
    * `requestId` is null and the view falls back to `placementId` /
    * `presentation`. Preload before EACH mount: a request consumed by an
    * unmounted view is evicted natively and must be re-preloaded before reuse.
+   * The view keeps the `requestId` it was mounted with, including `null`. A
+   * new request object, or a new `preload()` of the same request, needs a
+   * remount of the view (change its React `key`).
    */
   request?: PLYPresentationRequest;
   /**
@@ -119,9 +122,11 @@ export const PLYPresentationView: React.FC<PLYPresentationViewProps> = ({
   const fallbackViewId = fallbackViewIdRef.current;
 
   // The id this instance listens for on `PURCHASELY_PRESENTATION_DISMISSED`:
-  // the bridge `requestId` once the `request` prop has been preloaded,
-  // otherwise the generated fallback (routed by the native `viewId` prop).
-  const routingId = request?.requestId ?? fallbackViewId;
+  // the request `requestId` read at mount, otherwise the generated fallback
+  // (routed by the native `viewId` prop). A later preload() gets a new id
+  // that this view must not adopt (MOB-652).
+  const [requestId] = useState(() => request?.requestId ?? null);
+  const routingId = requestId ?? fallbackViewId;
 
   useEffect(() => {
     if (!onPresentationClosed) return;
@@ -164,7 +169,7 @@ export const PLYPresentationView: React.FC<PLYPresentationViewProps> = ({
       style={{ flex }}
       placementId={placementId}
       presentation={presentation}
-      requestId={request?.requestId ?? undefined}
+      requestId={requestId ?? undefined}
       viewId={fallbackViewId}
       {...(Platform.OS === 'android' && { ref: ref })}
     />

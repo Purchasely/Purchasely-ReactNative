@@ -25,6 +25,11 @@ All notable changes to `react-native-purchasely` are documented in this file.
   `Purchasely` pod.
 - Supported linkages: static libraries and `use_frameworks! :linkage => :static`.
   Dynamic frameworks are not supported in this release.
+- Each `PLYPresentationRequest.preload()` call now assigns a new `requestId`.
+  `display()` after `preload()` sends the same request id. `close()` and
+  `back()` target the latest `preload()` or `display()`. A mounted
+  `PLYPresentationView` keeps the `requestId` it was mounted with, including
+  `null`: remount it (change its React `key`) to show a newer `preload()`.
 
 ### Fixed
 
@@ -42,6 +47,11 @@ All notable changes to `react-native-purchasely` are documented in this file.
   `CANCELLED` while the paywall stays on screen. Its later outcome, for example
   a purchase, now reaches the app. The paywall keeps the theme and the layout
   of its first render until the next mount.
+- Android: an inline `PLYPresentationView` no longer shows the app default
+  screen (`ply_default`) after the same `request` is preloaded again. An old
+  view unmount or an old dismiss can no longer delete the entry of a newer
+  `preload()`. An inline view with no preloaded entry and no placement or
+  screen now shows nothing.
 
 ## [6.0.0] — 2026-07-21
 

@@ -308,9 +308,13 @@ export class PLYPresentationRequest {
     }
 
     /**
-     * The bridge request id assigned to this request, or `null` before the
-     * first `preload()` / `display()`. Consumed by the embedded presentation
-     * view to correlate native lifecycle events.
+     * The bridge request id of the latest `preload()` / `display()`, or `null`
+     * before the first one. Every `preload()` assigns a new id. `display()`
+     * sends the current id again, so `display()` after `preload()` uses the
+     * same request id. Consumed by the embedded presentation view to correlate
+     * native lifecycle events. A mounted `PLYPresentationView` keeps the id it
+     * was mounted with: remount it (for example with a new `key`) to show a
+     * newer `preload()`.
      */
     get requestId(): string | null {
         return this._requestId;
@@ -323,9 +327,12 @@ export class PLYPresentationRequest {
      * @remarks
      * Calling `preload()` or `display()` again on the same request before
      * this one settles supersedes it — see {@link display}'s remarks.
+     * Each call assigns a new {@link requestId}.
      */
     preload(): Promise<PLYLoadedPresentation> {
-        const requestId = this.ensureRequestId();
+        // A new native key per preload: an old view or an old dismiss of a
+        // previous preload can never touch this one (MOB-652).
+        const requestId = (this._requestId = generateRequestId());
 
         // Settle whatever preload()/display() is still pending on this
         // request as "superseded" before starting a fresh one.
@@ -506,6 +513,10 @@ export class PLYPresentationRequest {
      * Programmatically close the presentation if it is currently visible.
      *
      * @remarks
+     * Targets the {@link requestId} of the latest `preload()` / `display()`.
+     * The same applies to `back()` and to the `close()` / `back()` of a
+     * {@link PLYLoadedPresentation}.
+     *
      * **iOS** closes the specific presentation identified by its `requestId`
      * (falling back to closing all Purchasely screens when the request is no
      * longer tracked). **Android** does not yet expose a per-request close, so
