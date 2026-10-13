@@ -223,6 +223,96 @@ describe('PLYPresentationView', () => {
         })
     })
 
+    describe('MOB-652 · mounted request id', () => {
+        it('MOB-652 a mounted view keeps its requestId when the same request is preloaded again', async () => {
+            const request: any = { requestId: 'req-a' }
+            const onClosed = jest.fn()
+
+            let tree: any
+            await act(async () => {
+                tree = create(<PLYPresentationView request={request} onPresentationClosed={onClosed} />)
+            })
+
+            request.requestId = 'req-b'
+            await act(async () => {
+                tree.update(<PLYPresentationView request={request} onPresentationClosed={onClosed} />)
+            })
+
+            expect(tree.root.findByType('PurchaselyView' as any).props.requestId).toBe('req-a')
+
+            await act(async () => {
+                mockEmitter.__emit(DISMISSED, { requestId: 'req-b', closeReason: null, error: null })
+            })
+            expect(onClosed).not.toHaveBeenCalled()
+
+            await act(async () => {
+                mockEmitter.__emit(DISMISSED, { requestId: 'req-a', closeReason: null, error: null })
+            })
+            expect(onClosed).toHaveBeenCalledTimes(1)
+
+            await act(async () => {
+                tree.unmount()
+            })
+        })
+
+        it('MOB-652 a mounted view keeps its null requestId when the request gets its first id', async () => {
+            const request: any = { requestId: null }
+            const onClosed = jest.fn()
+
+            let tree: any
+            await act(async () => {
+                tree = create(<PLYPresentationView request={request} onPresentationClosed={onClosed} />)
+            })
+            const viewId = tree.root.findByType('PurchaselyView' as any).props.viewId
+
+            request.requestId = 'req-x'
+            await act(async () => {
+                tree.update(<PLYPresentationView request={request} onPresentationClosed={onClosed} />)
+            })
+
+            expect(tree.root.findByType('PurchaselyView' as any).props.requestId).toBeUndefined()
+
+            await act(async () => {
+                mockEmitter.__emit(DISMISSED, { requestId: 'req-x', closeReason: null, error: null })
+            })
+            expect(onClosed).not.toHaveBeenCalled()
+
+            await act(async () => {
+                mockEmitter.__emit(DISMISSED, { requestId: viewId, closeReason: null, error: null })
+            })
+            expect(onClosed).toHaveBeenCalledTimes(1)
+
+            await act(async () => {
+                tree.unmount()
+            })
+        })
+
+        it('MOB-652 a mounted view ignores a different request object until it is remounted', async () => {
+            const onClosed = jest.fn()
+            const first: any = { requestId: 'req-a' }
+            const second: any = { requestId: 'req-c' }
+
+            let tree: any
+            await act(async () => {
+                tree = create(<PLYPresentationView request={first} onPresentationClosed={onClosed} />)
+            })
+            await act(async () => {
+                tree.update(<PLYPresentationView request={second} onPresentationClosed={onClosed} />)
+            })
+
+            expect(tree.root.findByType('PurchaselyView' as any).props.requestId).toBe('req-a')
+
+            await act(async () => {
+                mockEmitter.__emit(DISMISSED, { requestId: 'req-c', closeReason: null, error: null })
+            })
+            expect(onClosed).not.toHaveBeenCalled()
+
+            await act(async () => {
+                tree.unmount()
+            })
+        })
+    })
+
     describe('Props', () => {
         it('should accept all optional props', async () => {
             const presentation = {
