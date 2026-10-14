@@ -1033,6 +1033,79 @@ describe('façade · integration with native bridge', () => {
         });
     });
 
+    describe('MOB-652 · fresh request id per preload()', () => {
+        it('MOB-652 two preload() calls send two different ids to native', async () => {
+            const req = PLYPresentationBuilder.placement('home').build();
+
+            // The first preload is superseded: handle its rejection first.
+            const first = req.preload().catch(() => undefined);
+            req.preload().catch(() => undefined);
+            await first;
+
+            const calls = native.preloadPresentation.mock.calls;
+            expect(calls).toHaveLength(2);
+            expect(calls[0][0]).not.toBe(calls[1][0]);
+            expect(req.requestId).toBe(calls[1][0]);
+        });
+
+        it('MOB-652 a late LOADED of a superseded preload does not resolve the new preload', async () => {
+            const req = PLYPresentationBuilder.placement('home').build();
+
+            const first = req.preload().catch(() => undefined);
+            const second = req.preload();
+            await first;
+            const calls = native.preloadPresentation.mock.calls;
+
+            emit(PURCHASELY_PRESENTATION_EVENTS.LOADED, {
+                requestId: calls[0][0],
+                presentation: { ...fakePresentationPayload, id: 'screen-old' },
+            });
+            await new Promise((resolve) => setImmediate(resolve));
+
+            const pending = Symbol('pending');
+            await expect(
+                Promise.race([second, Promise.resolve(pending)])
+            ).resolves.toBe(pending);
+
+            emit(PURCHASELY_PRESENTATION_EVENTS.LOADED, {
+                requestId: calls[1][0],
+                presentation: fakePresentationPayload,
+            });
+            const loaded = await second;
+            expect(loaded.screenId).toBe('screen-abc');
+        });
+
+        it('MOB-652 display() after preload() sends the same request id', async () => {
+            const req = PLYPresentationBuilder.placement('home').build();
+
+            const preloaded = req.preload();
+            emit(PURCHASELY_PRESENTATION_EVENTS.LOADED, {
+                requestId: native.preloadPresentation.mock.calls[0][0],
+                presentation: fakePresentationPayload,
+            });
+            await preloaded;
+            req.display();
+
+            expect(native.displayPresentation.mock.calls[0][0]).toBe(
+                native.preloadPresentation.mock.calls[0][0]
+            );
+        });
+
+        it('MOB-652 close() and back() target the latest preload', async () => {
+            const req = PLYPresentationBuilder.placement('home').build();
+
+            const first = req.preload().catch(() => undefined);
+            req.preload().catch(() => undefined);
+            await first;
+            req.close();
+            req.back();
+
+            const latestId = native.preloadPresentation.mock.calls[1][0];
+            expect(native.closePresentation).toHaveBeenCalledWith(latestId);
+            expect(native.goBackToPreviousScreen).toHaveBeenCalledWith(latestId);
+        });
+    });
+
     describe('Action interceptor lifecycle', () => {
         it('registers, dispatches and resolves an interceptor end-to-end', async () => {
             const handler = jest.fn().mockResolvedValue('success' as const);
