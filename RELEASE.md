@@ -25,10 +25,23 @@ git checkout -b version/{VERSION}
 
 Update the Purchasely iOS SDK version in:
 
-**`packages/purchasely/react-native-purchasely.podspec`** (line ~23):
-```ruby
-s.dependency "Purchasely", '{IOS_VERSION}'
+The iOS SDK comes from Swift Package Manager, not from the `Purchasely` pod. Edit `url` and `checksum` in:
+
+**`packages/purchasely/ios/PurchaselySPM/Package.swift`**
+```swift
+.binaryTarget(
+    name: "Purchasely",
+    url: "https://github.com/Purchasely/Purchasely-iOS/releases/download/{IOS_VERSION}/Purchasely-ios-xcframework.zip",
+    checksum: "{CHECKSUM}"
+)
 ```
+
+Compute the checksum from the release asset:
+```bash
+curl -fsSL https://github.com/Purchasely/Purchasely-iOS/releases/download/{IOS_VERSION}/Purchasely-ios-xcframework.zip | shasum -a 256
+```
+
+The Purchasely-iOS release must never replace `Purchasely-ios-xcframework.zip` of a published tag, and must keep that asset name. A replaced asset breaks the checksum for every client.
 
 #### Android SDK Version
 
@@ -167,7 +180,7 @@ All should return `{VERSION}`.
 | `packages/huawei/package.json` | Version + purchasely dependency |
 | `packages/amazon/package.json` | Version + purchasely dependency |
 | `packages/android-player/package.json` | Version number |
-| `packages/purchasely/react-native-purchasely.podspec` | iOS SDK version (if updated) |
+| `packages/purchasely/ios/PurchaselySPM/Package.swift` | iOS SDK `url` and `checksum` (if updated) |
 | `packages/purchasely/android/build.gradle` | Android SDK version (if updated) |
 | `packages/google/android/build.gradle` | Android SDK version (if updated) |
 | `packages/amazon/android/build.gradle` | Android SDK version (if updated) |
@@ -200,14 +213,6 @@ yarn install
 git add yarn.lock
 git commit --amend --no-edit
 git push --force-with-lease
-```
-
-### iOS Build Fails with "CocoaPods could not find compatible versions"
-
-The CI needs `--repo-update` to fetch the latest pod specs. This is already configured in `.github/workflows/ci.yml`. If running locally:
-```bash
-cd example/ios
-pod install --repo-update
 ```
 
 ### Test Fails with Version Mismatch

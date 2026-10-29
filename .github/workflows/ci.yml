@@ -92,6 +92,13 @@ jobs:
       - name: Lint example app
         run: yarn workspace example lint
 
+      - name: Check the Purchasely SPM hook loader
+        run: |
+          for m in missing ok plain phase; do
+            ruby scripts/purchasely_spm_check.rb packages/purchasely/ios/purchasely_spm.rb "$m"
+          done
+          bash scripts/launch_check_test.sh integration_test/tgz_smoke/launch_check.sh
+
   test:
     runs-on: ubuntu-latest
     if: github.event.action != 'labeled' || github.event.label.name == 'run-ci'
@@ -241,28 +248,51 @@ jobs:
         env:
           NO_FLIPPER: 1
 
+      # The iOS SDK comes from Swift Package Manager: no Purchasely pod in the
+      # lockfile, one embed phase in the example project, and a second
+      # `pod install` leaves the project file unchanged.
+      - name: Check the SPM wiring
+        run: |
+          if grep -q '^  - Purchasely (' example/ios/Podfile.lock; then
+            echo "FAIL: Podfile.lock still has the Purchasely pod from trunk"
+            exit 1
+          fi
+          cd example/ios
+          h1=$(shasum example.xcodeproj/project.pbxproj)
+          pod install
+          [ "$h1" = "$(shasum example.xcodeproj/project.pbxproj)" ]
+          ruby ../../scripts/count-embed-phases.rb example.xcodeproj | grep -qx 'example: 1'
+          cd ../..
+          ruby scripts/purchasely_spm_check.rb packages/purchasely/ios/purchasely_spm.rb guard
+
       - name: Prebuild CocoaPods targets
         run: |
           ccache -z
           xcodebuild \
             -workspace example/ios/example.xcworkspace \
             -scheme Pods-example \
-            -configuration Debug \
+            -configuration Release \
             -destination 'generic/platform=iOS' \
             -derivedDataPath example/ios/DerivedData \
             CODE_SIGNING_ALLOWED=NO \
             build
 
-      - name: Build example for iOS
+      # A Release archive, not a Debug build: Archive is where the duplicate
+      # `Purchasely.xcframework-ios.signature` of the binary target fails, and
+      # the archived app must carry the embedded Purchasely.framework.
+      - name: Archive example for iOS
         run: |
-          xcodebuild \
+          xcodebuild archive \
             -workspace example/ios/example.xcworkspace \
             -scheme example \
-            -configuration Debug \
+            -configuration Release \
             -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/example.xcarchive" \
             -derivedDataPath example/ios/DerivedData \
-            CODE_SIGNING_ALLOWED=NO \
-            build
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Check Purchasely.framework is embedded in the archived app
+        run: test -f "$RUNNER_TEMP/example.xcarchive/Products/Applications/example.app/Frameworks/Purchasely.framework/Purchasely"
 
       # A ccache that is wired up wrong fails OPEN: the build succeeds and is
       # merely slow. This step is the only signal, so it runs even on failure.
@@ -273,21 +303,18 @@ jobs:
         if: always()
         run: ccache -s
 
-  # Regression guard for the client-reported build failure fixed by b99a2d1:
-  # under `use_frameworks!`, the pod's generated Swift header lands in
-  # `react_native_purchasely.framework/Headers/` instead of `DerivedSources/`,
-  # so the quoted `#import "react_native_purchasely-Swift.h"` in PurchaselyRN.m
-  # was not found. Every other iOS job installs pods WITHOUT `use_frameworks!`,
-  # so none of them compiles that layout.
+  # A packed client under static frameworks. It guards two things:
+  # - the client-reported failure fixed by b99a2d1: under `use_frameworks!`, the
+  #   pod's generated Swift header lands in `react_native_purchasely.framework/
+  #   Headers/` instead of `DerivedSources/`. Every other iOS job installs pods
+  #   WITHOUT `use_frameworks!`.
+  # - the zero-configuration contract of the SPM wiring. The fixture project is
+  #   fresh (no embed phase), and the app consumes the npm tarball, not the
+  #   workspace. `pod install` must add the phase, and the Release app must
+  #   launch, link Purchasely.framework and read back a user attribute.
   #
-  # Only the `react-native-purchasely` pod scheme is built: the discriminating
-  # unit is whether PurchaselyRN.m compiles inside a framework-layout target.
-  # Building the whole example app under `use_frameworks!` would add unrelated
-  # pod failure surface to a header-resolution check.
-  #
-  # `static` linkage only. The reporter saw `:linkage => :static` and `:dynamic`
-  # fail on the very same header path, and both put the header in the framework
-  # bundle, so the second linkage costs a macOS runner and proves nothing new.
+  # Launch check only (start + T13), no full E2E: the E2E suite runs in
+  # e2e-ios.yml on the default linkage.
   build-ios-frameworks:
     name: iOS Build (use_frameworks!)
     runs-on: macos-latest
@@ -302,6 +329,10 @@ jobs:
       - name: Build library
         run: yarn prepare
 
+      - name: Pack react-native-purchasely
+        working-directory: packages/purchasely
+        run: npm pack --ignore-scripts --pack-destination "$RUNNER_TEMP"
+
       # Download caches only (content-addressed, shared with the other iOS
       # jobs). The generated `Pods` tree is never cached -- see build-ios.
       - name: Cache CocoaPods
@@ -314,29 +345,59 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cocoapods-
 
-      # No DerivedData cache: its key in the other iOS jobs hashes the same
-      # files, so both layouts would share one entry and hand each other object
-      # files built for the wrong linkage.
-      - name: Install CocoaPods with use_frameworks!
+      - name: Install the packed tarball in the fixture app
+        working-directory: test-projects/rn-purchasely-test
         run: |
-          cd example/ios
+          npm ci --ignore-scripts
+          npm install --no-save --ignore-scripts "$RUNNER_TEMP"/react-native-purchasely-*.tgz
+          cp ../../integration_test/tgz_smoke/App.tsx App.tsx
+
+      # The fixture must start without the embed phase: pod install adds it.
+      - name: Check the fixture has no embed phase
+        working-directory: test-projects/rn-purchasely-test/ios
+        run: |
+          ruby ../../../scripts/count-embed-phases.rb RNPurchaselyTest.xcodeproj | grep -qx 'RNPurchaselyTest: 0'
+
+      # Read by test-projects/rn-purchasely-test/ios/Podfile -> use_frameworks! :linkage => :static
+      - name: Install CocoaPods with use_frameworks!
+        working-directory: test-projects/rn-purchasely-test/ios
+        run: |
           pod install --repo-update
+          ruby ../../../scripts/count-embed-phases.rb RNPurchaselyTest.xcodeproj | grep -qx 'RNPurchaselyTest: 1'
+          h1=$(shasum RNPurchaselyTest.xcodeproj/project.pbxproj)
+          pod install
+          [ "$h1" = "$(shasum RNPurchaselyTest.xcodeproj/project.pbxproj)" ]
         env:
           NO_FLIPPER: 1
-          # Read by example/ios/Podfile -> use_frameworks! :linkage => :static
           USE_FRAMEWORKS: static
 
-      - name: Build the react-native-purchasely pod under use_frameworks!
+      - name: Boot iOS Simulator
+        id: sim
+        run: |
+          UDID=$(xcrun simctl list devices available -j | jq -r '[.devices | to_entries[] | select(.key | contains("iOS")) | .value[] | select(.name | startswith("iPhone"))][0].udid')
+          xcrun simctl boot "$UDID"
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+
+      - name: Build the packed client app (Release)
+        working-directory: test-projects/rn-purchasely-test/ios
         run: |
           xcodebuild \
-            -workspace example/ios/example.xcworkspace \
-            -scheme react-native-purchasely \
-            -configuration Debug \
-            -destination 'generic/platform=iOS' \
-            -derivedDataPath example/ios/DerivedDataFrameworks \
+            -workspace RNPurchaselyTest.xcworkspace \
+            -scheme RNPurchaselyTest \
+            -configuration Release \
+            -sdk iphonesimulator \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -derivedDataPath DerivedData \
             CODE_SIGNING_ALLOWED=NO \
             build
 
+      # Fails on a dead process, a missing [TGZ:T13:PASS] marker or a dyld error.
+      - name: Launch the app and read the markers
+        run: |
+          bash integration_test/tgz_smoke/launch_check.sh \
+            "${{ steps.sim.outputs.udid }}" \
+            test-projects/rn-purchasely-test/ios/DerivedData/Build/Products/Release-iphonesimulator/RNPurchaselyTest.app \
+            com.rnpurchaselytest
 
   ios-unit-tests:
     name: iOS Unit Tests (bridge)
