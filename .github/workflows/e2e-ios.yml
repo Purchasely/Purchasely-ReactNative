@@ -99,7 +99,7 @@ jobs:
           npx react-native bundle --entry-file index.js --platform ios --dev false \
             --bundle-output "$RUNNER_TEMP/a1.js" --sourcemap-output "$RUNNER_TEMP/a1.map"
           node -e "
-            const s = require(process.argv[1]).sources
+            const s = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8')).sources
             const packed = s.filter((x) => x.includes('example/node_modules/react-native-purchasely/')).length
             const workspace = s.filter((x) => x.includes('packages/purchasely/')).length
             console.log('packed sources:', packed, 'workspace sources:', workspace)
