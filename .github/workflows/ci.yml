@@ -94,9 +94,10 @@ jobs:
 
       - name: Check the Purchasely SPM hook loader
         run: |
-          for m in missing ok plain; do
+          for m in missing ok plain phase; do
             ruby scripts/purchasely_spm_check.rb packages/purchasely/ios/purchasely_spm.rb "$m"
           done
+          bash scripts/launch_check_test.sh integration_test/tgz_smoke/launch_check.sh
 
   test:
     runs-on: ubuntu-latest
@@ -387,24 +388,13 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             build
 
-      # A live PID is not enough (a dyld failure can look like a late exit), and
-      # `log show` matches its own arguments unless `log` is excluded.
+      # Fails on a dead process, a missing [TGZ:T13:PASS] marker or a dyld error.
       - name: Launch the app and read the markers
-        env:
-          UDID: ${{ steps.sim.outputs.udid }}
         run: |
-          APP=test-projects/rn-purchasely-test/ios/DerivedData/Build/Products/Release-iphonesimulator/RNPurchaselyTest.app
-          xcrun simctl install "$UDID" "$APP"
-          START=$(date '+%Y-%m-%d %H:%M:%S')
-          OUT=$(xcrun simctl launch "$UDID" com.rnpurchaselytest)
-          echo "$OUT"
-          PID=${OUT##*: }
-          sleep 15
-          ps -p "$PID" > /dev/null
-          LOG=$(xcrun simctl spawn "$UDID" log show --start "$START" --predicate 'NOT process == "log" AND (eventMessage CONTAINS "[TGZ:" OR eventMessage CONTAINS "Library not loaded" OR eventMessage CONTAINS "OS_REASON_DYLD")')
-          echo "$LOG" | grep -o '\[TGZ:[A-Z0-9:]*\]' | sort -u
-          echo "$LOG" | grep -q '\[TGZ:T13:PASS\]'
-          ! echo "$LOG" | grep -qE 'Library not loaded|OS_REASON_DYLD'
+          bash integration_test/tgz_smoke/launch_check.sh \
+            "${{ steps.sim.outputs.udid }}" \
+            test-projects/rn-purchasely-test/ios/DerivedData/Build/Products/Release-iphonesimulator/RNPurchaselyTest.app \
+            com.rnpurchaselytest
 
   ios-unit-tests:
     name: iOS Unit Tests (bridge)
