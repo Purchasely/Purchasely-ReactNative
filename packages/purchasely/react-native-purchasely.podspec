@@ -1,4 +1,5 @@
 require "json"
+require_relative "ios/purchasely_spm"
 
 package = JSON.parse(File.read(File.join(__dir__, "package.json")))
 
@@ -20,7 +21,7 @@ Pod::Spec.new do |s|
   s.requires_arc = true
 
   s.dependency "React-Core"
-  s.dependency "Purchasely", '6.2.0'
+  # The Purchasely iOS SDK comes from Swift Package Manager (ios/spm, added by ios/purchasely_spm.rb).
 
   s.test_spec 'Tests' do |test_spec|
     test_spec.source_files = 'ios/PurchaselyTests/**/*.{h,m,mm,swift}'
