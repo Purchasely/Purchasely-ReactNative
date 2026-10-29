@@ -86,6 +86,16 @@ jobs:
       - name: Build library
         run: yarn purchasely:prepare
 
+      # Compares the declarations that `bob build` wrote in lib/ with the committed report.
+      # api-extractor prints no diff, so the step prints it.
+      - name: Check the public API report
+        run: |
+          yarn api:check || {
+            diff -u packages/purchasely/api/react-native-purchasely.api.md packages/purchasely/temp/react-native-purchasely.api.md || true
+            echo "::error::The public API of react-native-purchasely changed. Run 'yarn purchasely:prepare && yarn api:update', then commit packages/purchasely/api/react-native-purchasely.api.md."
+            exit 1
+          }
+
       - name: Typecheck example app
         run: yarn workspace example typecheck
 
