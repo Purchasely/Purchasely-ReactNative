@@ -81,7 +81,7 @@ jobs:
         run: yarn prepare
 
       # The suite runs against the npm tarball, not the workspace symlink: the
-      # tarball is what clients install, and it must carry ios/spm and
+      # tarball is what clients install, and it must carry ios/PurchaselySPM and
       # ios/purchasely_spm.rb. Run before `pod install`.
       - name: Install the packed tarball in the example app
         run: |

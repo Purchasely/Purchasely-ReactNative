@@ -27,7 +27,7 @@ Update the Purchasely iOS SDK version in:
 
 The iOS SDK comes from Swift Package Manager, not from the `Purchasely` pod. Edit `url` and `checksum` in:
 
-**`packages/purchasely/ios/spm/Package.swift`**
+**`packages/purchasely/ios/PurchaselySPM/Package.swift`**
 ```swift
 .binaryTarget(
     name: "Purchasely",
@@ -180,7 +180,7 @@ All should return `{VERSION}`.
 | `packages/huawei/package.json` | Version + purchasely dependency |
 | `packages/amazon/package.json` | Version + purchasely dependency |
 | `packages/android-player/package.json` | Version number |
-| `packages/purchasely/ios/spm/Package.swift` | iOS SDK `url` and `checksum` (if updated) |
+| `packages/purchasely/ios/PurchaselySPM/Package.swift` | iOS SDK `url` and `checksum` (if updated) |
 | `packages/purchasely/android/build.gradle` | Android SDK version (if updated) |
 | `packages/google/android/build.gradle` | Android SDK version (if updated) |
 | `packages/amazon/android/build.gradle` | Android SDK version (if updated) |
