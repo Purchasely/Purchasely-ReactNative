@@ -6,6 +6,7 @@
 
 # T2: hybrid bridge, JS side and public API
 /packages/purchasely/src/ @kherembourg @chouaibMo @El-Fitz @EPIKorial
+/packages/purchasely/api/ @kherembourg @chouaibMo @El-Fitz @EPIKorial
 
 # T2: hybrid bridge, Android side, store modules
 /packages/purchasely/android/     @kherembourg @chouaibMo @El-Fitz @EPIKorial
