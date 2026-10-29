@@ -1,32 +1,31 @@
 # Reviewers of the T2 and T3 paths of REVIEW.md, section 5.
 # GitHub requests these owners on each PR that changes a matching path.
 # Branch protection does not require a code owner review: REVIEW.md sets who must approve.
-# Bridge sides: Android owners for android/, iOS owners for ios/, the SDK lead for the
-# JS or Dart side and the native pins.
-# The last pattern that matches a file wins: keep the pins and the T3 paths at the end.
+# The four SDK owners own every bridge path, so an author can get a second owner.
+# The last pattern that matches a file wins: keep the T3 paths at the end.
 
 # T2: hybrid bridge, JS side and public API
-/packages/purchasely/src/ @kherembourg
+/packages/purchasely/src/ @kherembourg @chouaibMo @El-Fitz @EPIKorial
 
 # T2: hybrid bridge, Android side, store modules
-/packages/purchasely/android/     @kherembourg @chouaibMo
-/packages/google/android/         @kherembourg @chouaibMo
-/packages/amazon/android/         @kherembourg @chouaibMo
-/packages/huawei/android/         @kherembourg @chouaibMo
-/packages/android-player/android/ @kherembourg @chouaibMo
+/packages/purchasely/android/     @kherembourg @chouaibMo @El-Fitz @EPIKorial
+/packages/google/android/         @kherembourg @chouaibMo @El-Fitz @EPIKorial
+/packages/amazon/android/         @kherembourg @chouaibMo @El-Fitz @EPIKorial
+/packages/huawei/android/         @kherembourg @chouaibMo @El-Fitz @EPIKorial
+/packages/android-player/android/ @kherembourg @chouaibMo @El-Fitz @EPIKorial
 
 # T2: hybrid bridge, iOS side
-/packages/purchasely/ios/ @kherembourg @EPIKorial @El-Fitz
+/packages/purchasely/ios/ @kherembourg @chouaibMo @El-Fitz @EPIKorial
 
 # T2: native SDK pins and build compatibility
-/packages/purchasely/android/build.gradle            @kherembourg
-/packages/google/android/build.gradle                @kherembourg
-/packages/amazon/android/build.gradle                @kherembourg
-/packages/huawei/android/build.gradle                @kherembourg
-/packages/android-player/android/build.gradle        @kherembourg
-/packages/purchasely/android/gradle.properties       @kherembourg
-/packages/purchasely/react-native-purchasely.podspec @kherembourg
-/example/ios/Podfile.lock                            @kherembourg
+/packages/purchasely/android/build.gradle            @kherembourg @chouaibMo @El-Fitz @EPIKorial
+/packages/google/android/build.gradle                @kherembourg @chouaibMo @El-Fitz @EPIKorial
+/packages/amazon/android/build.gradle                @kherembourg @chouaibMo @El-Fitz @EPIKorial
+/packages/huawei/android/build.gradle                @kherembourg @chouaibMo @El-Fitz @EPIKorial
+/packages/android-player/android/build.gradle        @kherembourg @chouaibMo @El-Fitz @EPIKorial
+/packages/purchasely/android/gradle.properties       @kherembourg @chouaibMo @El-Fitz @EPIKorial
+/packages/purchasely/react-native-purchasely.podspec @kherembourg @chouaibMo @El-Fitz @EPIKorial
+/example/ios/Podfile.lock                            @kherembourg @chouaibMo @El-Fitz @EPIKorial
 
 # T3: publication, published package manifests, this file
 /.github/workflows/publish.yml        @kherembourg @chouaibMo @El-Fitz @EPIKorial
