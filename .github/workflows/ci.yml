@@ -253,7 +253,10 @@ jobs:
       # `pod install` leaves the project file unchanged.
       - name: Check the SPM wiring
         run: |
-          ! grep -q '^  - Purchasely (' example/ios/Podfile.lock
+          if grep -q '^  - Purchasely (' example/ios/Podfile.lock; then
+            echo "FAIL: Podfile.lock still has the Purchasely pod from trunk"
+            exit 1
+          fi
           cd example/ios
           h1=$(shasum example.xcodeproj/project.pbxproj)
           pod install
