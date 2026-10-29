@@ -80,6 +80,32 @@ jobs:
       - name: Build JS SDK
         run: yarn prepare
 
+      # The suite runs against the npm tarball, not the workspace symlink: the
+      # tarball is what clients install, and it must carry ios/spm and
+      # ios/purchasely_spm.rb. Run before `pod install`.
+      - name: Install the packed tarball in the example app
+        run: |
+          (cd packages/purchasely && npm pack --ignore-scripts --pack-destination "$RUNNER_TEMP")
+          cd example
+          rm node_modules/react-native-purchasely
+          mkdir node_modules/react-native-purchasely
+          tar xzf "$RUNNER_TEMP"/react-native-purchasely-*.tgz --strip-components 1 -C node_modules/react-native-purchasely
+
+      # Without this, Metro could still resolve the workspace copy and the suite
+      # would not test the tarball.
+      - name: Check Metro bundles the packed tarball
+        working-directory: example
+        run: |
+          npx react-native bundle --entry-file index.js --platform ios --dev false \
+            --bundle-output "$RUNNER_TEMP/a1.js" --sourcemap-output "$RUNNER_TEMP/a1.map"
+          node -e "
+            const s = require(process.argv[1]).sources
+            const packed = s.filter((x) => x.includes('example/node_modules/react-native-purchasely/')).length
+            const workspace = s.filter((x) => x.includes('packages/purchasely/')).length
+            console.log('packed sources:', packed, 'workspace sources:', workspace)
+            process.exit(packed > 0 && workspace === 0 ? 0 : 1)
+          " "$RUNNER_TEMP/a1.map"
+
       - name: Cache CocoaPods
         uses: actions/cache@v4
         with:
