@@ -79,25 +79,33 @@ when 'plain'
 when 'phase'
   require 'tmpdir'
   require 'fileutils'
+  require 'open3'
   load file
   # Runs the embed phase script with a fake build folder. label: the folder CocoaPods made under
-  # "Target Support Files" (nil: the bridge pod is not installed). Returns [exit ok, framework copied].
-  run = lambda do |label|
+  # "Target Support Files" (nil: the bridge pod is not installed). framework: the built framework exists.
+  # Returns [exit ok, framework copied, warning printed].
+  run = lambda do |label, framework = true|
     Dir.mktmpdir do |d|
       FileUtils.mkdir_p("#{d}/pods/Target Support Files/#{label}") if label
       FileUtils.mkdir_p("#{d}/products/Purchasely.framework")
-      File.write("#{d}/products/Purchasely.framework/Purchasely", 'binary')
+      File.write("#{d}/products/Purchasely.framework/Purchasely", 'binary') if framework
       env = { 'TARGET_BUILD_DIR' => "#{d}/app", 'FRAMEWORKS_FOLDER_PATH' => 'Frameworks', 'PODS_ROOT' => "#{d}/pods",
               'BUILT_PRODUCTS_DIR' => "#{d}/products", 'CONFIGURATION_BUILD_DIR' => "#{d}/products", 'OBJROOT' => d,
               'PLATFORM_NAME' => 'iphonesimulator', 'CODE_SIGNING_ALLOWED' => 'NO' }
-      [system(env, '/bin/sh', '-c', PurchaselySPM::SCRIPT), File.exist?("#{d}/app/Frameworks/Purchasely.framework/Purchasely")]
+      _out, err, status = Open3.capture3(env, '/bin/sh', '-c', PurchaselySPM::SCRIPT)
+      [status.success?, File.exist?("#{d}/app/Frameworks/Purchasely.framework/Purchasely"), err.include?('Purchasely.framework not found')]
     end
   end
-  { 'react-native-purchasely' => [true, true], 'react-native-purchasely-iOS' => [true, true], nil => [true, false] }.each do |label, expected|
-    got = run.call(label)
-    abort "FAIL phase: label #{label.inspect} gave #{got}, expected #{expected}" unless got == expected
+  {
+    ['react-native-purchasely'] => [true, true, false],
+    ['react-native-purchasely-iOS'] => [true, true, false],
+    [nil] => [true, false, false],
+    ['react-native-purchasely', false] => [true, false, true]
+  }.each do |args, expected|
+    got = run.call(*args)
+    abort "FAIL phase: #{args.inspect} gave #{got}, expected #{expected}" unless got == expected
   end
-  puts 'PASS phase: embeds for react-native-purchasely and react-native-purchasely-iOS, skips when the pod is absent'
+  puts 'PASS phase: embeds for both labels, skips when the pod is absent, warns when the framework is missing'
 else
   abort "FAIL: unknown mode #{mode.inspect}"
 end

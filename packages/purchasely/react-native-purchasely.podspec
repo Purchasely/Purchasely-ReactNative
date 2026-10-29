@@ -21,7 +21,7 @@ Pod::Spec.new do |s|
   s.requires_arc = true
 
   s.dependency "React-Core"
-  # The Purchasely iOS SDK comes from Swift Package Manager (ios/spm, added by ios/purchasely_spm.rb).
+  # The Purchasely iOS SDK comes from Swift Package Manager (ios/PurchaselySPM, added by ios/purchasely_spm.rb).
 
   s.test_spec 'Tests' do |test_spec|
     test_spec.source_files = 'ios/PurchaselyTests/**/*.{h,m,mm,swift}'

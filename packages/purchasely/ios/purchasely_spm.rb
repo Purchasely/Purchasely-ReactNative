@@ -8,7 +8,7 @@
 #   1. guard_uuid_counter: stops new objects from overwriting existing ones (see below).
 #   2. The Podfile post_install hooks. React Native's react_native_post_install removes every
 #      Swift package reference, then adds back the ones that its spm_dependency declared.
-#   3. add_package: adds the local package ios/spm and its Purchasely product to the
+#   3. add_package: adds the local package ios/PurchaselySPM and its Purchasely product to the
 #      react-native-purchasely target. It runs after step 2, so React Native does not remove
 #      it, and it removes no other reference. It does not use spm_dependency: React Native
 #      0.75-0.83 makes a remote reference from a local path.
@@ -17,10 +17,12 @@
 # run_podfile_post_integrate_hooks (the client .xcodeproj): add_embed_phase. Xcode embeds a
 # package framework only in the targets that link it directly, so without this phase the app
 # crashes at launch: "Library not loaded: @rpath/Purchasely.framework/Purchasely".
+require 'pathname'
+
 module PurchaselySPM
   POD_NAME = 'react-native-purchasely'.freeze
   PRODUCT = 'Purchasely'.freeze
-  PACKAGE_PATH = File.expand_path('spm', __dir__).freeze
+  PACKAGE_PATH = File.expand_path('PurchaselySPM', __dir__).freeze
   # CocoaPods 1.13 is the first release that requires Xcodeproj 1.23 (local Swift packages).
   MINIMUM_COCOAPODS = '1.13.0'.freeze
   PHASE_NAME = '[react-native-purchasely] Embed Purchasely.framework'.freeze
@@ -39,10 +41,11 @@ module PurchaselySPM
       mkdir -p "$DEST"
       rsync -a --delete --exclude Headers --exclude Modules "$SRC" "$DEST/"
       if [ "${CODE_SIGNING_ALLOWED:-NO}" = "YES" ] && [ -n "${EXPANDED_CODE_SIGN_IDENTITY:-}" ]; then
-        codesign --force --sign "$EXPANDED_CODE_SIGN_IDENTITY" --preserve-metadata=identifier,entitlements "$DEST/Purchasely.framework"
+        codesign --force --sign "$EXPANDED_CODE_SIGN_IDENTITY" ${OTHER_CODE_SIGN_FLAGS:-} --preserve-metadata=identifier,entitlements "$DEST/Purchasely.framework"
       fi
       exit 0
     done
+    echo "warning: [react-native-purchasely] Purchasely.framework not found in ${BUILT_PRODUCTS_DIR}; the app will not launch" >&2
   SCRIPT
 
   def self.hookable?(installer_class)
@@ -55,7 +58,8 @@ module PurchaselySPM
     error = defined?(Pod::PlainInformative) ? Pod::PlainInformative : RuntimeError
     raise error, "[react-native-purchasely] This CocoaPods (#{defined?(Pod::VERSION) ? Pod::VERSION : 'unknown'}) " \
                  'cannot add the Purchasely iOS SDK through Swift Package Manager. ' \
-                 "Update CocoaPods to #{MINIMUM_COCOAPODS} or later"
+                 "Update CocoaPods to #{MINIMUM_COCOAPODS} or later. " \
+                 'If your CocoaPods is already 1.13.0 or later, report this version to Purchasely.'
   end
 
   # The Pods projects that hold a react-native-purchasely target, with those targets. With
@@ -99,10 +103,12 @@ module PurchaselySPM
   def self.add_package(installer)
     bridge_targets_by_project(installer).each do |project, targets|
       refs = project.root_object.package_references
-      pkg = refs.find { |p| p.is_a?(Xcodeproj::Project::Object::XCLocalSwiftPackageReference) && p.relative_path == PACKAGE_PATH }
+      # Relative to the Pods project folder, so the project does not hold a machine path.
+      path = Pathname(PACKAGE_PATH).relative_path_from(Pathname(project.path).dirname).to_s
+      pkg = refs.find { |p| p.is_a?(Xcodeproj::Project::Object::XCLocalSwiftPackageReference) && p.relative_path == path }
       unless pkg
         pkg = project.new(Xcodeproj::Project::Object::XCLocalSwiftPackageReference)
-        pkg.relative_path = PACKAGE_PATH
+        pkg.relative_path = path
         refs << pkg
       end
       targets.each do |target|
