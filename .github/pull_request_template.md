@@ -28,6 +28,7 @@
 
 ## Checklist
 
+- [ ] The `tier:T<n>` label of the **Tier** section.
 - [ ] `yarn test && yarn lint && yarn typecheck` pass.
 - [ ] CI ran on the head commit: after each push, add the `run-ci` label.
 - [ ] Public API change: Jest tests, both native bridge test suites, iOS and Android at parity.
