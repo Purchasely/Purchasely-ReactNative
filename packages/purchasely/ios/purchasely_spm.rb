@@ -28,8 +28,9 @@ module PurchaselySPM
   SCRIPT = <<~'SCRIPT'.freeze
     set -e
     [ -n "${TARGET_BUILD_DIR:-}" ] && [ -n "${FRAMEWORKS_FOLDER_PATH:-}" ] || exit 0
-    # The bridge pod was removed: do not copy a stale framework from DerivedData.
-    [ -d "${PODS_ROOT:-}/Target Support Files/react-native-purchasely" ] || exit 0
+    # The bridge pod was removed: do not copy a stale framework from DerivedData. CocoaPods can
+    # suffix the label (react-native-purchasely-iOS), so match the prefix.
+    ls -d "${PODS_ROOT:-}/Target Support Files/react-native-purchasely"* >/dev/null 2>&1 || exit 0
     # Xcode stages the binary target signature once per consumer; a second copy fails Archive.
     rm -f "${CONFIGURATION_BUILD_DIR}/Purchasely.xcframework-ios.signature"
     for SRC in "${BUILT_PRODUCTS_DIR}/Purchasely.framework" "${OBJROOT}/UninstalledProducts/${PLATFORM_NAME}/Purchasely.framework"; do

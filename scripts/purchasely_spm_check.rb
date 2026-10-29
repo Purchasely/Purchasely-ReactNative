@@ -76,6 +76,28 @@ when 'plain'
   load file
   abort 'FAIL' if defined?(Pod::Installer)
   puts 'PASS plain: loaded without CocoaPods installer'
+when 'phase'
+  require 'tmpdir'
+  require 'fileutils'
+  load file
+  # Runs the embed phase script with a fake build folder. label: the folder CocoaPods made under
+  # "Target Support Files" (nil: the bridge pod is not installed). Returns [exit ok, framework copied].
+  run = lambda do |label|
+    Dir.mktmpdir do |d|
+      FileUtils.mkdir_p("#{d}/pods/Target Support Files/#{label}") if label
+      FileUtils.mkdir_p("#{d}/products/Purchasely.framework")
+      File.write("#{d}/products/Purchasely.framework/Purchasely", 'binary')
+      env = { 'TARGET_BUILD_DIR' => "#{d}/app", 'FRAMEWORKS_FOLDER_PATH' => 'Frameworks', 'PODS_ROOT' => "#{d}/pods",
+              'BUILT_PRODUCTS_DIR' => "#{d}/products", 'CONFIGURATION_BUILD_DIR' => "#{d}/products", 'OBJROOT' => d,
+              'PLATFORM_NAME' => 'iphonesimulator', 'CODE_SIGNING_ALLOWED' => 'NO' }
+      [system(env, '/bin/sh', '-c', PurchaselySPM::SCRIPT), File.exist?("#{d}/app/Frameworks/Purchasely.framework/Purchasely")]
+    end
+  end
+  { 'react-native-purchasely' => [true, true], 'react-native-purchasely-iOS' => [true, true], nil => [true, false] }.each do |label, expected|
+    got = run.call(label)
+    abort "FAIL phase: label #{label.inspect} gave #{got}, expected #{expected}" unless got == expected
+  end
+  puts 'PASS phase: embeds for react-native-purchasely and react-native-purchasely-iOS, skips when the pod is absent'
 else
   abort "FAIL: unknown mode #{mode.inspect}"
 end
