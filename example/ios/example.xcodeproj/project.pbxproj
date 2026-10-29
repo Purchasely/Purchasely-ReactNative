@@ -112,6 +112,7 @@
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				960C6109ED1F97F7C3356A11 /* [CP] Embed Pods Frameworks */,
 				5E2EC29234889B3939C0ED14 /* [CP] Copy Pods Resources */,
+				CD4A4111AAED7444ED6F4283 /* [react-native-purchasely] Embed Purchasely.framework */,
 			);
 			buildRules = (
 			);
@@ -238,6 +239,25 @@
 			shellPath = /bin/sh;
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-example/Pods-example-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
+		};
+		CD4A4111AAED7444ED6F4283 /* [react-native-purchasely] Embed Purchasely.framework */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "[react-native-purchasely] Embed Purchasely.framework";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e\n[ -n \"${TARGET_BUILD_DIR:-}\" ] && [ -n \"${FRAMEWORKS_FOLDER_PATH:-}\" ] || exit 0\n# The bridge pod was removed: do not copy a stale framework from DerivedData.\n[ -d \"${PODS_ROOT:-}/Target Support Files/react-native-purchasely\" ] || exit 0\n# Xcode stages the binary target signature once per consumer; a second copy fails Archive.\nrm -f \"${CONFIGURATION_BUILD_DIR}/Purchasely.xcframework-ios.signature\"\nfor SRC in \"${BUILT_PRODUCTS_DIR}/Purchasely.framework\" \"${OBJROOT}/UninstalledProducts/${PLATFORM_NAME}/Purchasely.framework\"; do\n  [ -f \"$SRC/Purchasely\" ] || continue\n  DEST=\"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}\"\n  mkdir -p \"$DEST\"\n  rsync -a --delete --exclude Headers --exclude Modules \"$SRC\" \"$DEST/\"\n  if [ \"${CODE_SIGNING_ALLOWED:-NO}\" = \"YES\" ] && [ -n \"${EXPANDED_CODE_SIGN_IDENTITY:-}\" ]; then\n    codesign --force --sign \"$EXPANDED_CODE_SIGN_IDENTITY\" --preserve-metadata=identifier,entitlements \"$DEST/Purchasely.framework\"\n  fi\n  exit 0\ndone\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
