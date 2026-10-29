@@ -121,3 +121,5 @@ This file provides the underlying native SDK versions that the React Native SDK 
 | 6.1.0   | 6.1.0       | 6.1.0           |
 | 6.1.1   | 6.1.2       | 6.1.1           |
 | 6.2.0   | 6.2.0       | 6.2.0           |
+
+From 6.3.0, the iOS SDK comes from Swift Package Manager (the `Purchasely-iOS` release zip), not from the `Purchasely` pod.
