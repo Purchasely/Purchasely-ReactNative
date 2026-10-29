@@ -16,8 +16,9 @@ PID=${OUT##*: }
 sleep "${LAUNCH_WAIT:-15}"
 ps -p "$PID" >/dev/null || { echo "FAIL: process $PID is dead"; exit 1; }
 
-# `log show` matches its own arguments unless the `log` process is excluded.
-LOG=$(xcrun simctl spawn "$UDID" log show --start "$START" --predicate 'NOT process == "log" AND (eventMessage CONTAINS "[TGZ:" OR eventMessage CONTAINS "Library not loaded" OR eventMessage CONTAINS "OS_REASON_DYLD")' || true)
+# Only the app process: other apps and simulator services log dyld errors too, and `log show` would
+# match its own arguments.
+LOG=$(xcrun simctl spawn "$UDID" log show --start "$START" --predicate "processID == $PID AND (eventMessage CONTAINS \"[TGZ:\" OR eventMessage CONTAINS \"Library not loaded\" OR eventMessage CONTAINS \"OS_REASON_DYLD\")" || true)
 grep -oE '\[TGZ:[A-Z0-9:]*\]|Library not loaded.*|OS_REASON_DYLD.*' <<<"$LOG" | sort -u || true
 if grep -qE 'Library not loaded|OS_REASON_DYLD' <<<"$LOG"; then echo "FAIL: dyld error in the log"; exit 1; fi
 grep -q '\[TGZ:T13:PASS\]' <<<"$LOG" || { echo "FAIL: no [TGZ:T13:PASS] in the log"; exit 1; }
