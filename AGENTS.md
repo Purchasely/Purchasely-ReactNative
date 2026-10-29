@@ -39,6 +39,7 @@ yarn all:prepare        # Builder Bob build of all packages (all:clean to clean)
 yarn lint               # ESLint (yarn lint --fix to fix)
 yarn typecheck          # TypeScript
 yarn test               # Jest (packages/purchasely)
+yarn api:check          # Public API report, after purchasely:prepare (api:update to write it)
 yarn example:start | example:ios | example:android
 ```
 
