@@ -39,6 +39,7 @@ yarn all:prepare        # Builder Bob build of all packages (all:clean to clean)
 yarn lint               # ESLint (yarn lint --fix to fix)
 yarn typecheck          # TypeScript
 yarn test               # Jest (packages/purchasely)
+yarn api:check          # Public API report, after purchasely:prepare (api:update to write it)
 yarn example:start | example:ios | example:android
 ```
 
@@ -127,6 +128,10 @@ Maintenance of an older major (5.x):
 - Always set the PR base branch explicitly.
 - All tests must pass before merge, including pre-existing failures: fix them in your change.
 - Validate edited workflow YAML before pushing: `ruby -e "require 'yaml'; YAML.safe_load(File.read('.github/workflows/<file>'))"`.
+
+[REVIEW.md](REVIEW.md) sets the review and merge rules: the tier of the PR (T0 to T3), the
+reviewers it needs, what runs before the release, and the sections of the PR body. Read it
+before you open a PR, and give the tier in the PR body.
 
 ## Agent tooling
 
