@@ -186,6 +186,9 @@ maintenance release. Use `publish.yml`.
 - **Release checklist:** `RELEASE.md`. It waits for the `ci.yml` checks. This repo has no
   release test plan file. The E2E suites run on demand (`workflow_dispatch`), and
   `integration_test/E2E_TEST_INDEX.md` lists their scenarios.
+- **Reviewers:** `.github/CODEOWNERS` requests the owners of the T2 and T3 paths. Branch
+  protection does not require a code owner review: the tier sets who must approve. For a T2 or
+  T3 file that `CODEOWNERS` does not list, the author requests the reviewers.
 - **The PR also has:** for a new or changed public method, type, component or listener: Jest
   tests, both native bridge test suites, and iOS and Android at parity. For a native SDK bump:
   all native pins at the same version, `VERSIONS.md` and the version table of `AGENTS.md`.
@@ -197,8 +200,6 @@ Section 5 of the other repos:
 
 ### Not in place yet
 
-- A `CODEOWNERS` file that requests the right reviewers for the T2 and T3 paths. Until then,
-  the author requests them.
 - A public API check in CI (a report of the exported declarations, compared on each PR).
 - Labels `tier:T0` to `tier:T3`. Until then, the tier is in the PR body.
 - A release test plan file for each version, for the "Before release" column of section 1.
