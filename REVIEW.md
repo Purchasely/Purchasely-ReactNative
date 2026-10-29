@@ -172,17 +172,20 @@ maintenance release. Use `publish.yml`.
   the PR does not start it. After each push, add the `run-ci` label
   (`gh pr edit <n> --add-label run-ci`). The run removes it. On a PR from a fork or from
   Dependabot, remove the label by hand before you add it again.
-- **Jobs of `ci.yml`:** `lint` (lint, typecheck, build, example typecheck and lint), `test`
-  (Jest), `build-android` (example build and the Android JUnit suite), `build-ios`,
-  `iOS Build (use_frameworks!)`, `iOS Unit Tests (bridge)`, `build-rn-0-86-android`,
-  `build-rn-0-86-ios`. `main` has no required check, so GitHub does not block the merge. The
-  person who merges reads the checks of the head commit.
+- **Jobs of `ci.yml`:** `lint` (lint, typecheck, build, public API report, example typecheck
+  and lint), `test` (Jest), `build-android` (example build and the Android JUnit suite),
+  `build-ios`, `iOS Build (use_frameworks!)`, `iOS Unit Tests (bridge)`,
+  `build-rn-0-86-android`, `build-rn-0-86-ios`. `main` has no required check, so GitHub does
+  not block the merge. The person who merges reads the checks of the head commit.
 - **E2E:** `e2e-android.yml` and `e2e-ios.yml` run on a real device against the real backend.
   They run only when the PR changes a path of their `paths:` list. On such a PR, `run-ci` also
   starts them again. They never gate `publish.yml`. Scenarios: `integration_test/E2E_TEST_INDEX.md`.
-- **Public API:** no check in CI. The platform reviewer reads the diff of the exports of
-  `src/`. For a packaging change, run `yarn all:prepare`, then `npm publish --dry-run` in each
-  package.
+- **Public API:** the `lint` job of `ci.yml` runs `yarn api:check` after the build. API
+  Extractor compares the declarations in `lib/` with the committed report
+  `packages/purchasely/api/react-native-purchasely.api.md`. If they differ, the step fails and
+  shows the diff. To update the report, run `yarn purchasely:prepare && yarn api:update`, then
+  commit it. The platform reviewer reads the diff of the report. It is not a required check. For
+  a packaging change, run `yarn all:prepare`, then `npm publish --dry-run` in each package.
 - **Release checklist:** `RELEASE.md`. It waits for the `ci.yml` checks. This repo has no
   release test plan file. The E2E suites run on demand (`workflow_dispatch`), and
   `integration_test/E2E_TEST_INDEX.md` lists their scenarios.
@@ -202,7 +205,6 @@ Section 5 of the other repos:
 
 ### Not in place yet
 
-- A public API check in CI (a report of the exported declarations, compared on each PR).
 - A release test plan file for each version, for the "Before release" column of section 1.
 - Required checks on `main`. Today `main` needs one approval and has no required check. It
   also lets admins bypass the rules, allows force pushes, and does not require resolved
