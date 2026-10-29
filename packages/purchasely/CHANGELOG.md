@@ -16,6 +16,11 @@ All notable changes to `react-native-purchasely` are documented in this file.
   the framework in the app.
 - If your Podfile has `pod 'Purchasely'`, or your project adds the
   `Purchasely-iOS` package, remove it.
+- The Purchasely iOS SDK is now linked by the bridge pod through SPM. If your
+  own native app code imports `Purchasely`, it no longer gets the module from a
+  `Purchasely` pod.
+- Supported linkages: static libraries and `use_frameworks! :linkage => :static`.
+  Dynamic frameworks are not supported in this release.
 
 ## [6.0.0] — 2026-07-21
 
