@@ -15,7 +15,8 @@ async function run(): Promise<void> {
         Purchasely.setUserAttributeWithString('tgz_str', 'hello_tgz')
         await new Promise<void>((resolve) => setTimeout(resolve, 300))
         const value = await Purchasely.userAttribute('tgz_str')
-        if (value !== 'hello_tgz') throw new Error(`got ${JSON.stringify(value)}`)
+        if (value !== 'hello_tgz')
+            throw new Error(`got ${JSON.stringify(value)}`)
         console.error('[TGZ:T13:PASS]')
     } catch (e) {
         console.error(`[TGZ:T13:FAIL] ${e}`)
