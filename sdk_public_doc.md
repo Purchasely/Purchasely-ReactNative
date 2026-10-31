@@ -458,7 +458,9 @@ reuse an already-loaded presentation without loading it twice. Note:
 unmounting a `<PLYPresentationView request={...}>` without dismissing it
 evicts the preloaded entry natively (iOS/Android parity) — remounting the
 same `request` then shows a blank view until `request.preload()` is called
-again.
+again. Each `request.preload()` call assigns a new `requestId`. A mounted view keeps
+the `requestId` it was mounted with: remount it (change its React `key`) to
+show a newer preload.
 
 ---
 
