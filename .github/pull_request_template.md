@@ -32,5 +32,5 @@
 - [ ] `yarn test && yarn lint && yarn typecheck` pass.
 - [ ] CI ran on the head commit: after each push, add the `run-ci` label.
 - [ ] Public API change: Jest tests, both native bridge test suites, iOS and Android at parity, update the API report (`yarn api:update`).
-- [ ] Native SDK bump: all native pins at the same version, `VERSIONS.md` and the version table of `AGENTS.md`.
+- [ ] Native SDK bump: the native pins of each platform at one version, `VERSIONS.md` and the version table of `AGENTS.md`.
 - [ ] Workflow change: the YAML validation of `AGENTS.md`.
