@@ -67,7 +67,7 @@ two rows, the more specific row wins. Section 5 gives the paths of each area in 
 | Generated or rewritten files | files that a script builds or rewrites | T2 |
 | Hybrid bridge, contained change | bridge code that keeps the arguments, defaults, type mappings, errors, results, callbacks and listener lifetime | T1 |
 | Hybrid bridge, contract change | a change to one of the items above, or to purchase, restore, identity or entitlement behavior, also with no signature change | T2 |
-| Native SDK version in a bridge | the native pins: `build.gradle`, `.podspec`, `Package.swift`, `plugin.xml`, lockfiles | T2 minimum, or the highest tier of the native changes that the new version brings. Keep all native pins at the same version. |
+| Native SDK version in a bridge | the native pins: `build.gradle`, `.podspec`, `Package.swift`, `plugin.xml`, lockfiles | T2 minimum, or the highest tier of the native changes that the new version brings. Keep the pins of one platform at one version: the iOS pins together, the Android pins together. The two platforms can differ (`VERSIONS.md` gives each pair). |
 | CI: comments and formatting | workflow files, no behavior change | T0 |
 | CI: tests and reports | test workflows, CI scripts, Actions version bumps | T1 |
 | Publication, signing, credentials, required checks | publish workflows and scripts, signing, secrets, `permissions:`, the composition of the published artifact, a required check | T3, wherever the code is. |
@@ -177,7 +177,7 @@ maintenance release. Use `publish.yml`.
   `build-ios`, `iOS Build (use_frameworks!)`, `iOS Unit Tests (bridge)`,
   `build-rn-0-86-android`, `build-rn-0-86-ios`. `main` has no required check, so GitHub does
   not block the merge. The person who merges reads the checks of the head commit.
-- **E2E:** `e2e-android.yml` and `e2e-ios.yml` run on a real device against the real backend.
+- **E2E:** `e2e-android.yml` and `e2e-ios.yml` run on an Android emulator and an iOS simulator against the real backend.
   They run only when the PR changes a path of their `paths:` list. On such a PR, `run-ci` also
   starts them again. They never gate `publish.yml`. Scenarios: `integration_test/E2E_TEST_INDEX.md`.
 - **Public API:** the `lint` job of `ci.yml` runs `yarn api:check` after the build. API
@@ -196,7 +196,7 @@ maintenance release. Use `publish.yml`.
   T3 file that `CODEOWNERS` does not list, the author requests the reviewers.
 - **The PR also has:** for a new or changed public method, type, component or listener: Jest
   tests, both native bridge test suites, and iOS and Android at parity. For a native SDK bump:
-  all native pins at the same version, `VERSIONS.md` and the version table of `AGENTS.md`.
+  the native pins of each platform at one version, `VERSIONS.md` and the version table of `AGENTS.md`.
   `yarn test && yarn lint && yarn typecheck` pass. For a workflow change, the YAML validation
   of `AGENTS.md`.
 
