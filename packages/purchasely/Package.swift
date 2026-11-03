@@ -112,7 +112,8 @@ let packageTargets: [Target] = [
         path: "ios",
         sources: [
             "PurchaselyViewManager.m",
-        ]
+        ],
+        publicHeadersPath: "."
     ),
 ]
 
