@@ -32,11 +32,77 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          tarball=$(cd packages/purchasely && npm pack --ignore-scripts --pack-destination "$RUNNER_TEMP" --silent)
-          echo "PURCHASELY_TARBALL=$RUNNER_TEMP/$tarball" >> "$GITHUB_ENV"
+          (cd packages/purchasely && npm pack --ignore-scripts --pack-destination "$RUNNER_TEMP")
+          tarball=$(find "$RUNNER_TEMP" -maxdepth 1 -name 'react-native-purchasely-*.tgz' -print -quit)
+          test -n "$tarball"
+          echo "PURCHASELY_TARBALL=$tarball" >> "$GITHUB_ENV"
           echo "Packed $tarball"
-          tar -tzf "$RUNNER_TEMP/$tarball" | grep '^package/Package.swift$'
-          tar -xOf "$RUNNER_TEMP/$tarball" package/package.json | grep '"swiftpmConfig"'
+          tar -tzf "$tarball" | grep '^package/Package.swift
+
+      - name: Create clean React Native 0.88.1 consumer
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP_DIR="$RUNNER_TEMP/RNSwiftPMTest"
+          npx --yes @react-native-community/cli@latest init RNSwiftPMTest \
+            --version 0.88.1 \
+            --directory "$APP_DIR" \
+            --pm npm \
+            --install-pods false \
+            --skip-git-init true
+          cd "$APP_DIR"
+          npm install --save "$PURCHASELY_TARBALL"
+          node -e "const p=require('./node_modules/react-native-purchasely/package.json'); if(p.swiftpmConfig?.name !== 'ReactNativePurchasely') process.exit(1)"
+
+      - name: Convert consumer to React Native SwiftPM
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/RNSwiftPMTest"
+          npx react-native spm add --deintegrate --yes
+          test -f ios/RNSwiftPMTest.xcodeproj/.spm-injected.json
+          test -e ios/build/generated/autolinking/libs/ReactNativePurchasely/Package.swift
+          grep -R 'ReactNativePurchasely' ios/build/generated/autolinking/Package.swift
+
+      - name: Show Xcode and SwiftPM graph diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          cd "$RUNNER_TEMP/RNSwiftPMTest/ios"
+          xcodebuild -resolvePackageDependencies \
+            -project RNSwiftPMTest.xcodeproj \
+            -scheme RNSwiftPMTest
+
+      - name: Build Debug consumer
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/RNSwiftPMTest/ios"
+          xcodebuild \
+            -project RNSwiftPMTest.xcodeproj \
+            -scheme RNSwiftPMTest \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/DerivedDataSwiftPMDebug" \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Build Release consumer
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/RNSwiftPMTest/ios"
+          xcodebuild \
+            -project RNSwiftPMTest.xcodeproj \
+            -scheme RNSwiftPMTest \
+            -configuration Release \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/DerivedDataSwiftPMRelease" \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+          tar -xOf "$tarball" package/package.json | grep '"swiftpmConfig"'
 
       - name: Create clean React Native 0.88.1 consumer
         shell: bash
