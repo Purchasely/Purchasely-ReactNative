@@ -109,11 +109,11 @@ let packageTargets: [Target] = [
     .target(
         name: "ReactNativePurchaselyViewRegistration",
         dependencies: viewRegistrationDependencies,
-        path: "ios",
+        path: "swiftpm/ViewRegistration",
         sources: [
-            "PurchaselyViewManager.m",
+            "PurchaselyViewManagerRegistration.m",
         ],
-        publicHeadersPath: "."
+        publicHeadersPath: "include"
     ),
 ]
 
