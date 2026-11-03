@@ -5,7 +5,7 @@
 //  Created by Jean-François GRANG on 13/01/2021.
 //
 
-#import <Foundation/Foundation.h>
+#import "UIViewController+Hybrid.h"
 
 @implementation UIViewController (Hybrid)
 
