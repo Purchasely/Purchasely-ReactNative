@@ -1,0 +1,104 @@
+name: React Native 0.88 SwiftPM compatibility
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'packages/purchasely/**'
+      - '.github/workflows/swiftpm-rn-0-88.yml'
+
+concurrency:
+  group: rn-088-swiftpm-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-ios-swiftpm:
+    name: RN 0.88.1 / iOS / SwiftPM
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup repository
+        uses: ./.github/actions/setup
+
+      - name: Build Purchasely packages
+        run: yarn purchasely:prepare
+
+      - name: Pack the publishable Purchasely package
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd packages/purchasely && npm pack --ignore-scripts --pack-destination "$RUNNER_TEMP")
+          tarball=$(find "$RUNNER_TEMP" -maxdepth 1 -name 'react-native-purchasely-*.tgz' -print -quit)
+          test -n "$tarball"
+          echo "PURCHASELY_TARBALL=$tarball" >> "$GITHUB_ENV"
+          echo "Packed $tarball"
+          tar -tzf "$tarball" | grep '^package/Package.swift$'
+          tar -xOf "$tarball" package/package.json | grep '"swiftpmConfig"'
+
+      - name: Create clean React Native 0.88.1 consumer
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP_DIR="$RUNNER_TEMP/RNSwiftPMTest"
+          npx --yes @react-native-community/cli@latest init RNSwiftPMTest \
+            --version 0.88.1 \
+            --directory "$APP_DIR" \
+            --pm npm \
+            --install-pods false \
+            --skip-git-init true
+          cd "$APP_DIR"
+          npm install --save "$PURCHASELY_TARBALL"
+          node -e "const p=require('./node_modules/react-native-purchasely/package.json'); if(p.swiftpmConfig?.name !== 'ReactNativePurchasely') process.exit(1)"
+
+      - name: Convert consumer to React Native SwiftPM
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/RNSwiftPMTest"
+          npx react-native spm add --deintegrate --yes
+          test -f ios/RNSwiftPMTest.xcodeproj/.spm-injected.json
+          test -e ios/build/generated/autolinking/libs/ReactNativePurchasely/Package.swift
+          grep -R 'ReactNativePurchasely' ios/build/generated/autolinking/Package.swift
+
+      - name: Show Xcode and SwiftPM graph diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          cd "$RUNNER_TEMP/RNSwiftPMTest/ios"
+          xcodebuild -resolvePackageDependencies \
+            -project RNSwiftPMTest.xcodeproj \
+            -scheme RNSwiftPMTest
+
+      - name: Build Debug consumer
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/RNSwiftPMTest/ios"
+          xcodebuild \
+            -project RNSwiftPMTest.xcodeproj \
+            -scheme RNSwiftPMTest \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/DerivedDataSwiftPMDebug" \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Build Release consumer
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/RNSwiftPMTest/ios"
+          xcodebuild \
+            -project RNSwiftPMTest.xcodeproj \
+            -scheme RNSwiftPMTest \
+            -configuration Release \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/DerivedDataSwiftPMRelease" \
+            CODE_SIGNING_ALLOWED=NO \
+            build

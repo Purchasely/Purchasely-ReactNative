@@ -13,6 +13,8 @@
     "ios",
     "cpp",
     "*.podspec",
+    "swiftpm",
+    "Package.swift",
     "react-native.config.js",
     "!ios/build",
     "!android/build",
@@ -109,5 +111,8 @@
         }
       ]
     ]
+  },
+  "swiftpmConfig": {
+    "name": "ReactNativePurchasely"
   }
 }
