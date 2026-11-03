@@ -22,7 +22,9 @@
 // the iOS build/E2E CI jobs). If a custom target label ever changes the module
 // name, this single line fails with a "file not found" error naming this exact
 // header, localizing the fix.
-#if __has_include(<react_native_purchasely/react_native_purchasely-Swift.h>)
+#if REACT_NATIVE_PURCHASELY_SWIFTPM
+@import ReactNativePurchaselyTransition;
+#elif __has_include(<react_native_purchasely/react_native_purchasely-Swift.h>)
 #import <react_native_purchasely/react_native_purchasely-Swift.h>
 #else
 #import "react_native_purchasely-Swift.h"
