@@ -32,7 +32,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          tarball=$(cd packages/purchasely && npm pack --pack-destination "$RUNNER_TEMP" --silent)
+          tarball=$(cd packages/purchasely && npm pack --ignore-scripts --pack-destination "$RUNNER_TEMP" --silent)
           echo "PURCHASELY_TARBALL=$RUNNER_TEMP/$tarball" >> "$GITHUB_ENV"
           echo "Packed $tarball"
           tar -tzf "$RUNNER_TEMP/$tarball" | grep '^package/Package.swift$'
