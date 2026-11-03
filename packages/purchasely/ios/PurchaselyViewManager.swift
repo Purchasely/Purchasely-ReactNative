@@ -6,6 +6,9 @@
 //
 
 import Foundation
+#if SWIFT_PACKAGE
+import React
+#endif
 
 @objc (PurchaselyViewManager)
 class PurchaselyViewManager: RCTViewManager {
