@@ -3230,10 +3230,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nodable/entities@npm:^2.1.0":
-  version: 2.1.0
-  resolution: "@nodable/entities@npm:2.1.0"
-  checksum: ae5a432a665d210bb28b3a9dbe8caf49f46be65fdc626bd14febe8f150b735182efb6967fe12f8c8f39d22e572b8b9361b4915aec094f8cea5e01f683191cf80
+"@nodable/entities@npm:^3.1.0":
+  version: 3.1.0
+  resolution: "@nodable/entities@npm:3.1.0"
+  checksum: 64d3b0b92d9a35e5073497ce421d2b689bb03b97ea9755f1dbe787d7857a61b0d6c2ffd37f565ee24bc8cbdf89da35781bff8b873af02a7d0570783858912f8d
   languageName: node
   linkType: hard
 
@@ -5142,6 +5142,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"anynum@npm:^1.0.1":
+  version: 1.0.1
+  resolution: "anynum@npm:1.0.1"
+  checksum: 42b4b624ec5b6ba3cf2ba457568a66f48adfe59c7ea5dae3931aec1d5292f1549ee436d54ab1e205beb7c7c7eed136daa03c878e8d4575cd6b5e712df2f84146
+  languageName: node
+  linkType: hard
+
 "appdirsjs@npm:^1.2.4":
   version: 1.2.7
   resolution: "appdirsjs@npm:1.2.7"
@@ -5584,10 +5591,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"basic-ftp@npm:>=6.2.1":
-  version: 6.2.3
-  resolution: "basic-ftp@npm:6.2.3"
-  checksum: 9913138a033d89dc4c5a856a110def76d0a98d6c5880438121a1621e511f1bdbf4bc178802794c7d43211c01936ff9ae046ae986bc49200a40e4d7c4b8a81451
+"basic-ftp@npm:>=6.2.4":
+  version: 6.2.6
+  resolution: "basic-ftp@npm:6.2.6"
+  checksum: 10d96617cd350336e604570f4b25dbec3173ad5944527cf3305a4f60e7699ba22b7918309a639ed1806ad7cd21abfe97ef0ee9d5ac63146ce2d0331af60417df
   languageName: node
   linkType: hard
 
@@ -7891,17 +7898,19 @@ __metadata:
   languageName: node
   linkType: hard
 
-"fast-xml-parser@npm:>=4.5.4":
-  version: 5.7.2
-  resolution: "fast-xml-parser@npm:5.7.2"
+"fast-xml-parser@npm:>=5.12.0":
+  version: 5.12.1
+  resolution: "fast-xml-parser@npm:5.12.1"
   dependencies:
-    "@nodable/entities": ^2.1.0
-    fast-xml-builder: ^1.1.5
-    path-expression-matcher: ^1.5.0
-    strnum: ^2.2.3
+    "@nodable/entities": ^3.1.0
+    fast-xml-builder: ^1.3.2
+    is-unsafe: ^2.0.3
+    path-expression-matcher: ^1.6.2
+    strnum: ^2.5.1
+    xml-naming: ^0.3.0
   bin:
     fxparser: src/cli/cli.js
-  checksum: 6ef5c57be6234de514e55d834b0711358aa205e7d40e2ef975843f493efe39c4d00f869e94eb8b48fecb4f67694fa442b798a991b53a28f173dcbc929f55dea4
+  checksum: 6d558aa32d3ca4ff87b85835b0fe732870cdd93515bcb7cdf97dd1f2b9d040f5c67829ab8d2a14bfb9f5f40cce8e86e2ac4f0796fabf5858ac2f1a72e7505cf6
   languageName: node
   linkType: hard
 
@@ -9298,6 +9307,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"is-unsafe@npm:^2.0.3":
+  version: 2.0.3
+  resolution: "is-unsafe@npm:2.0.3"
+  checksum: 5a4749d8b29075bebe7d8adb77562a2638f0a0a1b892c5eaec50485e5c81afddfd6c180a77d1ac05f2b13962e8c60356443577613f3804187d6fad72aa84f125
+  languageName: node
+  linkType: hard
+
 "is-weakmap@npm:^2.0.2":
   version: 2.0.2
   resolution: "is-weakmap@npm:2.0.2"
@@ -9921,16 +9937,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"joi@npm:^17.13.8":
-  version: 17.13.8
-  resolution: "joi@npm:17.13.8"
+"joi@npm:^17.13.9":
+  version: 17.13.9
+  resolution: "joi@npm:17.13.9"
   dependencies:
     "@hapi/hoek": ^9.3.0
     "@hapi/topo": ^5.1.0
     "@sideway/address": ^4.1.5
     "@sideway/formula": ^3.0.1
     "@sideway/pinpoint": ^2.0.0
-  checksum: 8ba537317e0a972b053edb0f656c4bb4207e3869d585b9d7fe92c8f4ba07812780d67dd727346611d2d3aa9b499c7d7af8cfd4d8c08c3453e03d6890f2fa61ac
+  checksum: 4beeaa7e3bd1ba2d073b8b00d2f0723115104f08f1b384032321110d74af9fea2f5286baaf02332af3e87edafa05182179f1a712af6d21e9547bdf0879a7da34
   languageName: node
   linkType: hard
 
@@ -11516,6 +11532,13 @@ __metadata:
   version: 1.5.0
   resolution: "path-expression-matcher@npm:1.5.0"
   checksum: 52f0491a88f728f2eefb83a5c4f84f1185a8572e34ba41a72f88e270d5796c966ec1fe78e978599c490ccac0656a4cc55d75485538393873d32a4ef096a8dda6
+  languageName: node
+  linkType: hard
+
+"path-expression-matcher@npm:^1.6.2":
+  version: 1.6.2
+  resolution: "path-expression-matcher@npm:1.6.2"
+  checksum: a367990364461d48801a695db23f63d2842a3d9be60bf364148cfd69546f1eb621b76fd86c4c5c0b2545ac60fea0db85a8149a37094db0efc9d120beb5060172
   languageName: node
   linkType: hard
 
@@ -13291,10 +13314,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"strnum@npm:^2.2.3":
-  version: 2.2.3
-  resolution: "strnum@npm:2.2.3"
-  checksum: e8deb0dd6f40e4a878bdd4404bdfdd47922665fcaaf27f2b345013b30d45d86f4b93d99cbc005bfb7c96edef6173369bd76a9df40bb7758850b7864075a28156
+"strnum@npm:^2.5.1":
+  version: 2.5.1
+  resolution: "strnum@npm:2.5.1"
+  dependencies:
+    anynum: ^1.0.1
+  checksum: f91efcc81b432e77f7a970ffd9e23f8c85a8320168ce2e960a20851b6312ac96f548a07c93fe1cf03171a0d5b33a8b21ef945caef41c66ba9f3d8f0dc298e65e
   languageName: node
   linkType: hard
 
@@ -14232,6 +14257,13 @@ __metadata:
   version: 0.1.0
   resolution: "xml-naming@npm:0.1.0"
   checksum: 8d1b5b84430f688a95f02ae1e13557d481242eed6de945569c444a6ec1553a0065afe39a1536aeffee3a787cb3cf99432e61d9fbbaa6d8d64555d550e6b4b13d
+  languageName: node
+  linkType: hard
+
+"xml-naming@npm:^0.3.0":
+  version: 0.3.0
+  resolution: "xml-naming@npm:0.3.0"
+  checksum: 842b816c0db75497588dd77ead8a6ff8a6be20b90a8fe24219b425ce91ab797e208eff8b0ddb26c0e1e69bfbc855ce6e4d4fbf7277cbe3785bbe6f28018ac804
   languageName: node
   linkType: hard
 
