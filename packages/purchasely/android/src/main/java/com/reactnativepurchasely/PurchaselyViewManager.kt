@@ -5,6 +5,7 @@ import android.view.Choreographer
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import androidx.fragment.app.FragmentActivity
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReadableArray
 import com.facebook.react.bridge.ReadableMap
@@ -94,9 +95,9 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
 
   private fun createFragment(root: FrameLayout, reactNativeViewId: Int) {
     Log.d("PurchaselyView", "Creating presentation in view having id=$reactNativeViewId.")
-    // The SDK needs the Activity: it is the view's LifecycleOwner and shows the
-    // web checkout dialog. `root.context` is RN's ThemedReactContext.
-    val activity = reactContext.currentActivity ?: return
+    // The SDK needs a FragmentActivity: it is the view's LifecycleOwner and shows
+    // the web checkout dialog. `root.context` is RN's ThemedReactContext.
+    val activity = (reactContext.currentActivity as? FragmentActivity) ?: return
     val parentView = root.findViewById<ViewGroup?>(reactNativeViewId) ?: return
     val props = propsFor(root)
     if (props.host != null) return
