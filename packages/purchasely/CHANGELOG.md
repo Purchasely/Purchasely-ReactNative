@@ -32,8 +32,11 @@ All notable changes to `react-native-purchasely` are documented in this file.
   mounts (for example, when its screen is popped or replaced) no longer
   crashes the app with
   `IllegalArgumentException: No view found for id … for fragment
-  PurchaselyFragment`. The unmount now removes the fragment even when its
-  transaction is still queued.
+  PurchaselyFragment`.
+- Android: an embedded `<PLYPresentationView>` inside a React Native `<Modal>`,
+  or on a screen that leaves the window before the paywall is created, no
+  longer crashes with the same exception. The paywall is now a plain child view
+  of the React Native view, with no Fragment.
 
 ## [6.0.0] — 2026-07-21
 
