@@ -143,6 +143,20 @@ class PurchaselyViewManagerLifecycleTest {
     }
 
     @Test
+    fun `a configuration change while detached leaves one paywall at the attach`() {
+        val root = newRoot()
+        manager.setRequestId(root, REQUEST_ID)
+        create(root)
+
+        activity.onConfigurationChanged(Configuration(activity.resources.configuration))
+        activity.addContentView(root, FrameLayout.LayoutParams(100, 100))
+
+        verify(exactly = 1) { presentation.buildView(any(), any()) }
+        assertEquals(1, (root.getChildAt(0) as ViewGroup).childCount)
+        manager.onDropViewInstance(root)
+    }
+
+    @Test
     fun `a second create command builds no second paywall`() {
         val root = mountedRoot()
         manager.setRequestId(root, REQUEST_ID)

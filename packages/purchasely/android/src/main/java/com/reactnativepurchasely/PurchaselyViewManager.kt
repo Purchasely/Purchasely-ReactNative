@@ -49,6 +49,7 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
     var layoutCallback: Choreographer.FrameCallback? = null
     var host: ViewGroup? = null
     var buildJob: Job? = null
+    var pendingAttach: View.OnAttachStateChangeListener? = null
     var removeConfigurationListener: (() -> Unit)? = null
   }
 
@@ -137,7 +138,7 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
     props: ViewProps,
     callback: (PLYPresentationOutcome) -> Unit
   ) {
-    props.buildJob?.cancel()
+    cancelPendingBuild(host, props)
     // A requestId means JS already preloaded this presentation: reuse it.
     // The SDK never fires the preload-time `onDismissed` for an embedded view
     // (E2E T25), so the outcome must be routed through `callback` here.
@@ -185,13 +186,23 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
       build()?.let { host.addView(it) }
       return
     }
-    host.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+    val listener = object : View.OnAttachStateChangeListener {
       override fun onViewAttachedToWindow(v: View) {
         host.removeOnAttachStateChangeListener(this)
+        props.pendingAttach = null
         buildWhenAttached(host, props, build)
       }
       override fun onViewDetachedFromWindow(v: View) {}
-    })
+    }
+    props.pendingAttach = listener
+    host.addOnAttachStateChangeListener(listener)
+  }
+
+  /** Stops the build in progress, so a rebuild or a drop leaves no second paywall. */
+  private fun cancelPendingBuild(host: ViewGroup, props: ViewProps) {
+    props.buildJob?.cancel()
+    props.pendingAttach?.let { host.removeOnAttachStateChangeListener(it) }
+    props.pendingAttach = null
   }
 
   /** Lays the embedded view out every frame. The callback lives on the view's
@@ -287,7 +298,7 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
     }
     // A preload still running, or a build waiting for the attach, would build a
     // paywall for a view that is gone.
-    props?.buildJob?.cancel()
+    props?.host?.let { cancelPendingBuild(it, props) }
     props?.host = null
     props?.removeConfigurationListener?.invoke()
   }
