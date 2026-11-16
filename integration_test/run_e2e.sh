@@ -274,6 +274,39 @@ if [ "$SUITE_RESULT" = "PASS" ]; then
   [ "$T27_RESULT" = "PASS" ] && ok "T27: cold-start deeplink phase PASSED"
 fi
 
+# -- T32 inline race phase (fresh process) -------------------------------------
+# An embedded view torn down right after its mount: unmount, screen pushed on
+# top, RN <Modal>. A broken build crashes with `No view found for id … for
+# fragment PurchaselyFragment` and emits no marker, so a new FATAL EXCEPTION in
+# logcat fails T32 at once. Fresh process: a crash here must not hide T1-T30.
+T32_RESULT="SKIP"
+if [ "$SUITE_RESULT" = "PASS" ]; then
+  log "T32: launching inline race phase (E2E_PHASE=inline_race)..."
+  FATAL_BEFORE=$(grep -c 'FATAL EXCEPTION' "$LOGCAT_FILE" 2>/dev/null)
+  adb -s "$DEV" shell am force-stop "$PKG" 2>/dev/null || true
+  sleep 1
+  adb -s "$DEV" shell am start -n "$ACTIVITY" \
+    --es E2E_MODE true \
+    --es E2E_PHASE inline_race
+  T32_START=$(date +%s)
+  while true; do
+    if [ $(( $(date +%s) - T32_START )) -ge 180 ]; then
+      err "T32: timeout waiting for the inline race result"
+      T32_RESULT="FAIL"; break
+    fi
+    if grep -q '\[E2E:T32:PASS\]' "$LOGCAT_FILE" 2>/dev/null; then T32_RESULT="PASS"; break; fi
+    if grep -q '\[E2E:T32:FAIL\]' "$LOGCAT_FILE" 2>/dev/null; then T32_RESULT="FAIL"; break; fi
+    if [ "$(grep -c 'FATAL EXCEPTION' "$LOGCAT_FILE" 2>/dev/null)" -gt "$FATAL_BEFORE" ]; then
+      sleep 2
+      err "T32: the app crashed during the inline race phase"
+      grep -A3 'FATAL EXCEPTION' "$LOGCAT_FILE" | tail -4
+      T32_RESULT="FAIL"; break
+    fi
+    sleep 0.5
+  done
+  [ "$T32_RESULT" = "PASS" ] && ok "T32: inline race phase PASSED"
+fi
+
 # Kill logcat so `wait` doesn't hang indefinitely on it
 kill "$LOGCAT_PID" 2>/dev/null || true
 LOGCAT_PID=""
@@ -310,7 +343,7 @@ echo "==========================================="
 # still read as a full pass. It is now authoritative -- a missing marker fails
 # the run.
 MISSING_IDS=()
-for id in T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13 T14 T15 T16 T17 T18 T19 T20 T21 T22 T23 T24 T25 T26 T27 T28 T29 T30; do
+for id in T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13 T14 T15 T16 T17 T18 T19 T20 T21 T22 T23 T24 T25 T26 T27 T28 T29 T30 T32; do
   PASS_LINE=$(grep "\[E2E:${id}:PASS\]" "$LOGCAT_FILE" 2>/dev/null | tail -1)
   FAIL_LINE=$(grep "\[E2E:${id}:FAIL\]" "$LOGCAT_FILE" 2>/dev/null | tail -1)
   SKIP_LINE=$(grep "\[E2E:${id}:SKIP\]" "$LOGCAT_FILE" 2>/dev/null | tail -1)
@@ -339,7 +372,7 @@ if [ -d "$ARTIFACT_DIR" ]; then
 fi
 
 echo "==========================================="
-if [ "$SUITE_RESULT" = "PASS" ] && [ "$T27_RESULT" != "FAIL" ] \
+if [ "$SUITE_RESULT" = "PASS" ] && [ "$T27_RESULT" != "FAIL" ] && [ "$T32_RESULT" != "FAIL" ] \
    && [ "$DUAL_INLINE_RESULT" != "FAIL" ] && [ "${#MISSING_IDS[@]}" -eq 0 ]; then
   ok "ALL E2E TESTS PASSED"
   exit 0
