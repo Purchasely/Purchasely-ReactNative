@@ -9,6 +9,7 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
+import androidx.fragment.app.FragmentManager
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReadableArray
 import com.facebook.react.bridge.ReadableMap
@@ -45,6 +46,10 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
     var width: Int? = null
     var height: Int? = null
     var layoutCallback: Choreographer.FrameCallback? = null
+    // Kept from the create so the drop removes a fragment whose transaction is
+    // still queued: `findFragmentByTag` cannot see it yet.
+    var fragment: Fragment? = null
+    var fragmentManager: FragmentManager? = null
   }
 
   private val propsByView = mutableMapOf<FrameLayout, ViewProps>()
@@ -114,12 +119,14 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
 
     val tag = reactNativeViewId.toString()
     val fm = activity.supportFragmentManager
+    val props = propsFor(root)
     val existing = fm.findFragmentByTag(tag)
     if (existing != null && existing.isAdded) {
+      props.fragment = existing
+      props.fragmentManager = fm
       return
     }
 
-    val props = propsByView[root] ?: ViewProps()
     // The fresh/ad hoc path wires this callback twice (builder + built view),
     // so guard against emitting the dismissal twice.
     var delivered = false
@@ -134,6 +141,8 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
     }
 
     val fragment = PurchaselyFragment(props.screenId, props.placementId, props.requestId, outcomeHandler)
+    props.fragment = fragment
+    props.fragmentManager = fm
 
     fm.beginTransaction()
       .setReorderingAllowed(true)
@@ -232,14 +241,15 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
     props?.requestId?.let {
       PurchaselyModule.evictPresentationRequest(it)
     }
-    val activity = (reactContext.currentActivity as? FragmentActivity) ?: return
-    val fm = activity.supportFragmentManager
-    val tag = view.id.toString()
-    fm.findFragmentByTag(tag)?.let { frag ->
-      fm.beginTransaction()
-        .remove(frag)
-        .commitAllowingStateLoss()
-    }
+    val fm = props?.fragmentManager ?: return
+    val fragment = props.fragment ?: return
+    if (fm.isDestroyed) return
+    // Reordering lets AndroidX run a still-queued replace and this remove in one
+    // batch, so the fragment never looks up its container, which is gone.
+    fm.beginTransaction()
+      .setReorderingAllowed(true)
+      .remove(fragment)
+      .commitAllowingStateLoss()
   }
 
   companion object {

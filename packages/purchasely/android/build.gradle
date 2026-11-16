@@ -148,4 +148,6 @@ dependencies {
   // The Purchasely singleton's non-@JvmStatic methods can only be intercepted on the object.
   testImplementation 'io.mockk:mockk:1.14.7'
   testImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3'
+  // A real FragmentManager and main Looper for the fragment lifecycle tests.
+  testImplementation 'org.robolectric:robolectric:4.17'
 }
