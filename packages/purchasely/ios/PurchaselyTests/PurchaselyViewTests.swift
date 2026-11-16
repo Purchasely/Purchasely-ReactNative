@@ -330,6 +330,42 @@ class PurchaselyViewTests: XCTestCase {
     // starts a second `setupView()` while an earlier preload is still in
     // flight, the stale completion must not replace the controller the newer
     // generation already installed.
+    // MARK: - Close Request Tests
+
+    func testCloseRequestRemovesTheShownControllerFromItsParent() {
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 400, height: 600))
+        let root = UIViewController()
+        window.rootViewController = root
+        window.makeKeyAndVisible()
+        root.view.addSubview(purchaselyView)
+
+        let embedded = UIViewController()
+        purchaselyView.installPreloadedController(embedded, generation: purchaselyView._setupGeneration)
+        XCTAssertTrue(embedded.parent === root, "Precondition: containment declared")
+
+        purchaselyView.closeRequested(for: embedded)
+
+        XCTAssertNil(embedded.parent, "The SDK completes an inline close only after removeFromParent()")
+        XCTAssertNil(embedded.viewIfLoaded?.superview)
+        XCTAssertNil(purchaselyView._controller)
+    }
+
+    func testCloseRequestForAReplacedControllerIsIgnored() {
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 400, height: 600))
+        let root = UIViewController()
+        window.rootViewController = root
+        window.makeKeyAndVisible()
+        root.view.addSubview(purchaselyView)
+
+        let current = UIViewController()
+        purchaselyView.installPreloadedController(current, generation: purchaselyView._setupGeneration)
+
+        purchaselyView.closeRequested(for: UIViewController())
+
+        XCTAssertTrue(purchaselyView._controller === current, "A late close request of an old paywall must not remove the new one")
+        XCTAssertTrue(current.parent === root)
+    }
+
     func testASupersededPreloadCompletionIsIgnored() {
         let generation = purchaselyView._setupGeneration
         let current = UIViewController()
