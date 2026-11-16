@@ -28,8 +28,9 @@ All notable changes to `react-native-purchasely` are documented in this file.
 
 ### Fixed
 
-- Android: an embedded `<PLYPresentationView>` that unmounts, or whose screen
-  changes, right after it mounts no longer crashes the app with
+- Android: an embedded `<PLYPresentationView>` that unmounts right after it
+  mounts (for example, when its screen is popped or replaced) no longer
+  crashes the app with
   `IllegalArgumentException: No view found for id … for fragment
   PurchaselyFragment`. The unmount now removes the fragment even when its
   transaction is still queued.
