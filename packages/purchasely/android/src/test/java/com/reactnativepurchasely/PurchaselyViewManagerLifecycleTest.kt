@@ -88,19 +88,21 @@ class PurchaselyViewManagerLifecycleTest {
     // An RN `<Modal>` is a Dialog window: a container looked up by id in the
     // Activity window is not found there, and the app crashed at every mount.
     @Test
-    fun `a view in another window than the activity gets its paywall host`() {
+    fun `a view in another window than the activity gets its paywall`() {
         val dialog = Dialog(activity)
         val root = FrameLayout(activity).apply { id = View.generateViewId() }
         dialog.setContentView(root)
         dialog.show()
         shadowOf(Looper.getMainLooper()).idle()
         assertTrue(root.isAttachedToWindow)
+        manager.setRequestId(root, REQUEST_ID)
 
         manager.receiveCommand(root, PurchaselyViewManager.COMMAND_CREATE.toString(), JavaOnlyArray.of(root.id))
         // Not `idle()`: the per-frame layout loop of a mounted view never lets it end.
         activity.supportFragmentManager.executePendingTransactions()
 
         assertEquals(1, root.childCount)
+        verify(exactly = 1) { presentation.buildView(activity, any()) }
         manager.onDropViewInstance(root)
     }
 
