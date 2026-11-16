@@ -5,6 +5,7 @@ import android.view.Choreographer
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import androidx.core.util.Consumer
 import androidx.fragment.app.FragmentActivity
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReadableArray
@@ -30,8 +31,8 @@ import kotlinx.coroutines.withContext
  * View manager for `<PLYPresentationView />`, hosting a `PLYPresentationView`
  * in a plain child view of the RN view. No Fragment: a fragment container is
  * looked up by id in the Activity window, which fails for a view that unmounts
- * before the transaction runs, leaves the window, or lives in an RN `<Modal>`. The presentation comes from a `placementId`, a
- * `presentation` map, or an already-preloaded `requestId`. Outcomes go back to
+ * before the transaction runs, leaves the window, or lives in an RN `<Modal>`.
+ * The presentation comes from a `placementId`, a `presentation` map, or an already-preloaded `requestId`. Outcomes go back to
  * JS as `PURCHASELY_PRESENTATION_DISMISSED`, routed by `requestId` or `viewId`.
  */
 class PurchaselyViewManager(private val reactContext: ReactApplicationContext) : ViewGroupManager<FrameLayout>() {
@@ -48,6 +49,7 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
     var layoutCallback: Choreographer.FrameCallback? = null
     var host: ViewGroup? = null
     var buildJob: Job? = null
+    var removeConfigurationListener: (() -> Unit)? = null
   }
 
   private val propsByView = mutableMapOf<FrameLayout, ViewProps>()
@@ -76,7 +78,7 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
     val reactNativeViewId = args?.getInt(0) ?: return
 
     when (commandId) {
-      COMMAND_CREATE -> createFragment(root, reactNativeViewId)
+      COMMAND_CREATE -> createPresentation(root, reactNativeViewId)
       else -> {}
     }
   }
@@ -88,12 +90,12 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
     val commandIdInt = commandId?.toIntOrNull() ?: return
 
     when (commandIdInt) {
-      COMMAND_CREATE -> createFragment(root, reactNativeViewId)
+      COMMAND_CREATE -> createPresentation(root, reactNativeViewId)
       else -> {}
     }
   }
 
-  private fun createFragment(root: FrameLayout, reactNativeViewId: Int) {
+  private fun createPresentation(root: FrameLayout, reactNativeViewId: Int) {
     Log.d("PurchaselyView", "Creating presentation in view having id=$reactNativeViewId.")
     // The SDK needs a FragmentActivity: it is the view's LifecycleOwner and shows
     // the web checkout dialog. `root.context` is RN's ThemedReactContext.
@@ -116,14 +118,16 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
       }
     }
 
-    val host = object : FrameLayout(activity) {
-      override fun onConfigurationChanged(newConfig: Configuration?) {
-        super.onConfigurationChanged(newConfig)
-        removeAllViews()
-        attachPurchaselyView(this, props, outcomeHandler)
-      }
-    }
+    val host = FrameLayout(activity)
     props.host = host
+    // The Activity changes, as the Fragment received them: a View also gets
+    // window-only changes, and each rebuild dismisses the paywall.
+    val onConfigurationChanged = Consumer<Configuration> {
+      host.removeAllViews()
+      attachPurchaselyView(host, props, outcomeHandler)
+    }
+    activity.addOnConfigurationChangedListener(onConfigurationChanged)
+    props.removeConfigurationListener = { activity.removeOnConfigurationChangedListener(onConfigurationChanged) }
     parentView.addView(host)
     attachPurchaselyView(host, props, outcomeHandler)
   }
@@ -285,6 +289,7 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
     // paywall for a view that is gone.
     props?.buildJob?.cancel()
     props?.host = null
+    props?.removeConfigurationListener?.invoke()
   }
 
   companion object {

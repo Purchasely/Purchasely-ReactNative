@@ -9,14 +9,24 @@ import android.widget.FrameLayout
 import androidx.fragment.app.FragmentActivity
 import com.facebook.react.bridge.JavaOnlyArray
 import com.facebook.react.bridge.ReactApplicationContext
+import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
+import io.mockk.mockkStatic
 import io.mockk.unmockkObject
+import io.mockk.unmockkStatic
 import io.mockk.verify
 import io.purchasely.ext.presentation.PLYPresentation
+import io.purchasely.ext.presentation.PLYPresentationBase
+import io.purchasely.ext.presentation.preload
+import io.purchasely.views.presentation.PLYPresentationView
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -38,6 +48,16 @@ class PurchaselyViewManagerLifecycleTest {
     private lateinit var activity: FragmentActivity
     private lateinit var manager: PurchaselyViewManager
 
+    private val sdkView = mockk<PLYPresentationView>(relaxed = true) {
+        every { parent } returns null
+        // A relaxed View answers any id lookup of the window decor otherwise.
+        every { findViewById<View>(any()) } returns null
+    }
+    private val presentation = mockk<PLYPresentation>(relaxed = true) {
+        every { buildView(any(), any()) } returns sdkView
+    }
+    private val preloadStarted = CountDownLatch(1)
+
     @Before
     fun setUp() {
         controller = Robolectric.buildActivity(FragmentActivity::class.java).setup()
@@ -46,43 +66,33 @@ class PurchaselyViewManagerLifecycleTest {
         manager = PurchaselyViewManager(reactContext)
         mockkObject(PurchaselyModule)
         every { PurchaselyModule.loadedPresentation(REQUEST_ID) } returns presentation
+        mockkStatic(PRELOAD_FILE)
+        coEvery { any<PLYPresentationBase.Prepared>().preload() } coAnswers {
+            preloadStarted.countDown()
+            presentation
+        }
     }
 
     @After
     fun tearDown() {
+        unmockkStatic(PRELOAD_FILE)
         unmockkObject(PurchaselyModule)
     }
 
-    private val presentation = mockk<PLYPresentation>(relaxed = true) {
-        every { buildView(any(), any()) } returns null
-    }
-
     // Regression: a view mounted then unmounted in the same main-thread task (a
-    // banner mounted at cold start) left its queued fragment behind, and the
-    // FragmentManager threw "No view found for id" when it ran the transaction.
+    // banner mounted at cold start) crashed on the next Looper pass or pause.
     @Test
-    fun `a view dropped before its fragment commit runs leaves no fragment and does not crash`() {
+    fun `a view dropped right after its create loads nothing and does not crash`() {
         val root = mountedRoot()
+        manager.setPlacementId(root, PLACEMENT_ID)
 
-        manager.receiveCommand(root, PurchaselyViewManager.COMMAND_CREATE.toString(), JavaOnlyArray.of(root.id))
+        create(root)
         (root.parent as ViewGroup).removeView(root)
         manager.onDropViewInstance(root)
         shadowOf(Looper.getMainLooper()).idle()
-
-        assertTrue(activity.supportFragmentManager.fragments.isEmpty())
-    }
-
-    // The same orphaned transaction, flushed by the activity pause instead.
-    @Test
-    fun `a view dropped before its fragment commit runs does not crash the activity pause`() {
-        val root = mountedRoot()
-
-        manager.receiveCommand(root, PurchaselyViewManager.COMMAND_CREATE.toString(), JavaOnlyArray.of(root.id))
-        (root.parent as ViewGroup).removeView(root)
-        manager.onDropViewInstance(root)
         controller.pause()
 
-        assertTrue(activity.supportFragmentManager.fragments.isEmpty())
+        assertFalse(preloadStarted.await(PRELOAD_WAIT_MS, TimeUnit.MILLISECONDS))
     }
 
     // An RN `<Modal>` is a Dialog window: a container looked up by id in the
@@ -90,18 +100,15 @@ class PurchaselyViewManagerLifecycleTest {
     @Test
     fun `a view in another window than the activity gets its paywall`() {
         val dialog = Dialog(activity)
-        val root = FrameLayout(activity).apply { id = View.generateViewId() }
+        val root = newRoot()
         dialog.setContentView(root)
         dialog.show()
         shadowOf(Looper.getMainLooper()).idle()
         assertTrue(root.isAttachedToWindow)
         manager.setRequestId(root, REQUEST_ID)
 
-        manager.receiveCommand(root, PurchaselyViewManager.COMMAND_CREATE.toString(), JavaOnlyArray.of(root.id))
-        // Not `idle()`: the per-frame layout loop of a mounted view never lets it end.
-        activity.supportFragmentManager.executePendingTransactions()
+        create(root)
 
-        assertEquals(1, root.childCount)
         verify(exactly = 1) { presentation.buildView(activity, any()) }
         manager.onDropViewInstance(root)
     }
@@ -110,23 +117,24 @@ class PurchaselyViewManagerLifecycleTest {
     // attaches. A view built while detached lets the next build replace that
     // request, and its outcome goes to another paywall.
     @Test
-    fun `a preloaded paywall is built only once its view is attached`() {
-        val root = FrameLayout(activity).apply { id = View.generateViewId() }
+    fun `a preloaded paywall is built and added only once its view is attached`() {
+        val root = newRoot()
         manager.setRequestId(root, REQUEST_ID)
 
-        manager.receiveCommand(root, PurchaselyViewManager.COMMAND_CREATE.toString(), JavaOnlyArray.of(root.id))
+        create(root)
         verify(exactly = 0) { presentation.buildView(any(), any()) }
 
         activity.addContentView(root, FrameLayout.LayoutParams(100, 100))
         verify(exactly = 1) { presentation.buildView(any(), any()) }
+        assertSame(sdkView, (root.getChildAt(0) as ViewGroup).getChildAt(0))
         manager.onDropViewInstance(root)
     }
 
     @Test
     fun `a view dropped before its first attach never builds its paywall`() {
-        val root = FrameLayout(activity).apply { id = View.generateViewId() }
+        val root = newRoot()
         manager.setRequestId(root, REQUEST_ID)
-        manager.receiveCommand(root, PurchaselyViewManager.COMMAND_CREATE.toString(), JavaOnlyArray.of(root.id))
+        create(root)
 
         manager.onDropViewInstance(root)
         activity.addContentView(root, FrameLayout.LayoutParams(100, 100))
@@ -135,24 +143,54 @@ class PurchaselyViewManagerLifecycleTest {
     }
 
     @Test
-    fun `a configuration change rebuilds the paywall`() {
+    fun `a second create command builds no second paywall`() {
         val root = mountedRoot()
         manager.setRequestId(root, REQUEST_ID)
-        manager.receiveCommand(root, PurchaselyViewManager.COMMAND_CREATE.toString(), JavaOnlyArray.of(root.id))
 
-        root.getChildAt(0).dispatchConfigurationChanged(Configuration())
+        create(root)
+        create(root)
 
-        verify(exactly = 2) { presentation.buildView(any(), any()) }
+        verify(exactly = 1) { presentation.buildView(any(), any()) }
+        assertEquals(1, root.childCount)
         manager.onDropViewInstance(root)
     }
 
+    // The fragment rebuilt the paywall on the Activity configuration changes
+    // only. A rebuild dismisses the paywall, so a view-level configuration
+    // dispatch must not cause one.
+    @Test
+    fun `only an activity configuration change rebuilds the paywall, until the drop`() {
+        val root = mountedRoot()
+        manager.setRequestId(root, REQUEST_ID)
+        create(root)
+
+        root.getChildAt(0).dispatchConfigurationChanged(Configuration(activity.resources.configuration))
+        verify(exactly = 1) { presentation.buildView(any(), any()) }
+
+        activity.onConfigurationChanged(Configuration(activity.resources.configuration))
+        verify(exactly = 2) { presentation.buildView(any(), any()) }
+
+        manager.onDropViewInstance(root)
+        activity.onConfigurationChanged(Configuration(activity.resources.configuration))
+        verify(exactly = 2) { presentation.buildView(any(), any()) }
+    }
+
+    private fun create(root: FrameLayout) =
+        manager.receiveCommand(root, PurchaselyViewManager.COMMAND_CREATE.toString(), JavaOnlyArray.of(root.id))
+
+    private fun newRoot(): FrameLayout = FrameLayout(activity).apply { id = View.generateViewId() }
+
     private fun mountedRoot(): FrameLayout {
-        val root = FrameLayout(activity).apply { id = View.generateViewId() }
+        val root = newRoot()
         activity.addContentView(root, FrameLayout.LayoutParams(100, 100))
         return root
     }
 
     private companion object {
         const val REQUEST_ID = "request-1"
+        const val PLACEMENT_ID = "placement-1"
+        const val PRELOAD_FILE = "io.purchasely.ext.presentation.PLYPresentationDslKt"
+        // The preload runs on Dispatchers.Default: the wait bounds the check that it never starts.
+        const val PRELOAD_WAIT_MS = 300L
     }
 }
