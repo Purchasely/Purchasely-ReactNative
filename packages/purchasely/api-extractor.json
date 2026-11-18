@@ -4,7 +4,8 @@
   "newlineKind": "lf",
   "apiReport": {
     "enabled": true,
-    "reportFolder": "<projectFolder>/api/"
+    "reportFolder": "<projectFolder>/api/",
+    "includeForgottenExports": true
   },
   "docModel": { "enabled": false },
   "dtsRollup": { "enabled": false },

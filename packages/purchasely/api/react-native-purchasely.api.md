@@ -11,6 +11,9 @@ import { default as React_2 } from 'react';
 export const addWebRedemptionListener: (callback: WebRedemptionListenerCallback) => EmitterSubscription;
 
 // @public (undocumented)
+type AndroidStore = 'google' | 'huawei' | 'amazon';
+
+// @public (undocumented)
 export enum Attributes {
     // (undocumented)
     ADJUST_ID,
@@ -56,6 +59,30 @@ export enum Attributes {
     ONESIGNAL_USER_ID,
     // (undocumented)
     SENDINBLUE_USER_EMAIL
+}
+
+// @public (undocumented)
+interface BuilderConfig {
+    // (undocumented)
+    backgroundColor?: string | null;
+    // Warning: (ae-forgotten-export) The symbol "PresentationCallbacks" needs to be exported by the entry point index.d.ts
+    //
+    // (undocumented)
+    callbacks: PresentationCallbacks;
+    // (undocumented)
+    contentId?: string | null;
+    // (undocumented)
+    displayBackButton?: boolean | null;
+    // (undocumented)
+    displayCloseButton?: boolean | null;
+    // (undocumented)
+    isDefault?: boolean;
+    // (undocumented)
+    placementId?: string | null;
+    // (undocumented)
+    progressColor?: string | null;
+    // (undocumented)
+    screenId?: string | null;
 }
 
 // @public (undocumented)
@@ -182,6 +209,9 @@ export interface Constants {
     userAttributeStringArray: number;
 }
 
+// @public (undocumented)
+type EventListenerCallback = (event: PLYEvent) => void;
+
 // @public
 export function interceptAction(kind: PLYPresentationActionKind, handler: PLYActionInterceptorHandler): void;
 
@@ -196,6 +226,9 @@ export enum LogLevels {
     // (undocumented)
     WARNING
 }
+
+// @public (undocumented)
+type LogLevelString = 'debug' | 'info' | 'warn' | 'error';
 
 // Warning: (ae-internal-missing-underscore) The name "normalizePlan" should be prefixed with an underscore because the declaration is marked as @internal
 //
@@ -685,6 +718,18 @@ export enum PLYPresentationType {
 export const PLYPresentationView: React_2.FC<PLYPresentationViewProps>;
 
 // @public (undocumented)
+interface PLYPresentationViewProps {
+    // (undocumented)
+    flex?: number;
+    onPresentationClosed?: (outcome: PLYPresentationOutcome) => void;
+    // (undocumented)
+    placementId?: string;
+    // (undocumented)
+    presentation?: any;
+    request?: PLYPresentationRequest;
+}
+
+// @public (undocumented)
 export type PLYProduct = {
     name: string;
     vendorId: string;
@@ -860,6 +905,18 @@ export type PLYWebRedemptionResult = {
     errorMessage: string | null;
 };
 
+// @public
+interface PresentationCallbacks {
+    // (undocumented)
+    onCloseRequested?: () => void;
+    // (undocumented)
+    onDismissed?: (outcome: PLYPresentationOutcome) => void;
+    // (undocumented)
+    onLoaded?: (presentation: PLYPresentation, error?: PLYPresentationError | null) => void;
+    // (undocumented)
+    onPresented?: (presentation?: PLYPresentation | null, error?: PLYPresentationError | null) => void;
+}
+
 // @public (undocumented)
 export enum ProductResult {
     // (undocumented)
@@ -869,6 +926,9 @@ export enum ProductResult {
     // (undocumented)
     PRODUCT_RESULT_RESTORED
 }
+
+// @public (undocumented)
+type PurchaseListenerCallback = () => void;
 
 // @public (undocumented)
 const Purchasely: {
@@ -1043,8 +1103,14 @@ export enum RunningMode {
     OBSERVER
 }
 
+// @public (undocumented)
+type RunningModeString = 'observer' | 'full';
+
 // @public
 export function setDefaultPresentationDismissHandler(handler: (outcome: PLYPresentationOutcome) => void): EmitterSubscription;
+
+// @public (undocumented)
+function setUserAttributeWithDate(key: string, value: Date, legalBasis?: PLYDataProcessingLegalBasis): void;
 
 // @public (undocumented)
 export interface SignPromotionalOfferParameters {
@@ -1076,6 +1142,9 @@ export interface StartParameters {
 }
 
 // @public (undocumented)
+type StorekitVersion = 'storeKit1' | 'storeKit2';
+
+// @public (undocumented)
 export enum SubscriptionSource {
     // (undocumented)
     AMAZON_APPSTORE,
@@ -1097,6 +1166,12 @@ export interface UserAttributeListener {
     // (undocumented)
     onUserAttributeSet?: (key: string, type: PLYUserAttributeType | null | undefined, value: any, source: PLYUserAttributeSource | null | undefined) => void;
 }
+
+// @public (undocumented)
+type UserAttributeRemovedListenerCallback = (userAttribute: PLYUserAttribute) => void;
+
+// @public (undocumented)
+type UserAttributeSetListenerCallback = (userAttribute: PLYUserAttribute) => void;
 
 // @public (undocumented)
 export interface UserAttributesParameters {
