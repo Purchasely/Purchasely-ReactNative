@@ -8,14 +8,21 @@ on:
     paths:
       - 'packages/purchasely/**'
       - '.github/workflows/swiftpm-rn-0-88.yml'
+    # No `synchronize`, as in ci.yml: re-run on demand with the `run-ci` label.
+    types: [opened, reopened, ready_for_review, labeled]
 
+# A `labeled` event for another label gets its own group, so it cancels nothing.
 concurrency:
-  group: rn-088-swiftpm-${{ github.ref }}
+  group: >-
+    rn-088-swiftpm-${{ github.ref }}-${{
+      (github.event.action == 'labeled' && github.event.label.name != 'run-ci')
+      && format('label-{0}', github.event.label.name) || 'run' }}
   cancel-in-progress: true
 
 jobs:
   build-ios-swiftpm:
     name: RN 0.88.1 / iOS / SwiftPM
+    if: github.event.action != 'labeled' || github.event.label.name == 'run-ci'
     runs-on: macos-latest
     timeout-minutes: 60
     steps:
