@@ -6,8 +6,6 @@
 //
 
 #import <React/RCTBridgeModule.h>
-// The generated Swift header declares the public PurchaselyViewManager subclass.
-#import <React/RCTViewManager.h>
 
 #import <React/RCTLog.h>
 #import <Purchasely/Purchasely-Swift.h>

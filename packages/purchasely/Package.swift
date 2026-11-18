@@ -105,7 +105,8 @@ let packageTargets: [Target] = [
 
     // RCT_EXTERN_REMAP_MODULE is Objective-C while PurchaselyViewManager is
     // Swift, so the registration lives in its own ObjC target. The Swift class
-    // must stay public: Release builds do not export internal symbols.
+    // is public under SWIFT_PACKAGE only: Release builds do not export internal
+    // symbols across targets.
     .target(
         name: "ReactNativePurchaselyViewRegistration",
         dependencies: viewRegistrationDependencies,
