@@ -387,7 +387,16 @@ function E2ETestRunnerSuite({ phase }: { phase: string }) {
         // ── T5 — all products ─────────────────────────────────────────────────
         running('T5')
         try {
-            const products = await Purchasely.allProducts()
+            // The SDK waits for a StoreKit SKProductsRequest. On a CI simulator the App Store
+            // sometimes does not answer in time: retry once on that SDK timeout only.
+            let products
+            try {
+                products = await Purchasely.allProducts()
+            } catch (e) {
+                if (!String(e).includes('Products request timed out')) throw e
+                console.log(`[E2E:T5] StoreKit timeout, retry once: ${e}`)
+                products = await Purchasely.allProducts()
+            }
             if (!Array.isArray(products)) throw new Error('allProducts did not return array')
             pass('T5', `count=${products.length}`)
         } catch (e) { fail('T5', e); suitePass = false }
