@@ -16,7 +16,8 @@ Words in this file:
 - **Platform reviewer**: an engineer of the platform that the change affects, who is not the
   author. For a bridge change (React Native, Flutter, Cordova), an engineer of the native SDK
   that the change affects.
-- **SDK lead**: the lead of the mobile SDKs (`kherembourg`).
+- **SDK lead**: the lead and final owner of the mobile SDKs (`kherembourg`). Rule 6 of section 3
+  gives the SDK lead a shorter path through the approval rules.
 
 ## 1. Tiers
 
@@ -103,6 +104,11 @@ two rows, the more specific row wins. Section 5 gives the paths of each area in 
      automatic subscription fetch.
    - `allow_campaigns` = `false`: Android and iOS. On iOS, an explicit app setting overrides it.
    - `request_body_gzip_enabled` = `false`: Android.
+6. **The SDK lead approves all tiers.** These two cases replace the approval conditions of
+   section 1 and rule 3, T3 included. The required checks of rule 2 still apply.
+   - An approval from the SDK lead is always enough.
+   - A PR by the SDK lead is enough with one approval from a team member who is not the author.
+     For example, a T3 PR by `kherembourg` and an approval from `macminisupport` or `chouaibMo`.
 
 ## 4. The PR body
 
