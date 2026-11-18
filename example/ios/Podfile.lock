@@ -1449,9 +1449,9 @@ PODS:
     - ReactNativeDependencies
     - SwiftUIIntrospect (~> 1.0)
     - Yoga
-  - react-native-purchasely (6.2.0):
+  - react-native-purchasely (6.3.0):
     - React-Core
-  - react-native-purchasely/Tests (6.2.0):
+  - react-native-purchasely/Tests (6.3.0):
     - React-Core
   - react-native-safe-area-context (5.5.2):
     - hermes-engine

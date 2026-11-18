@@ -6,6 +6,7 @@ All notable changes to `react-native-purchasely` are documented in this file.
 
 ### Changed
 
+- Native SDKs: iOS 6.3.0 and Android 6.3.0. Bridge version 6.3.0.
 - The iOS SDK comes from Swift Package Manager, not from the `Purchasely` pod
   of CocoaPods trunk. `pod install` adds the SDK to the `react-native-purchasely`
   pod. You change nothing in your Podfile or Xcode project.
