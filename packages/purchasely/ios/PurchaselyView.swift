@@ -218,6 +218,7 @@ class PurchaselyView: UIView {
       if let requestId = self.requestId,
          let loaded = PurchaselyRN.loadedPresentation(forRequestId: requestId),
          let controller = loaded.controller {
+          removeOnCloseRequest(loaded, controller: controller)
           return controller
       }
 
@@ -239,10 +240,29 @@ class PurchaselyView: UIView {
               guard let routingId = self?.viewId else { return }
               PurchaselyRN.emitPresentationDismissed(forId: routingId, outcome: outcome)
           }
+          removeOnCloseRequest(matched, controller: controller)
           return controller
       }
 
       return createNativeViewController(placementId: effectivePlacementId)
+  }
+
+  /// iOS SDK 6.3+ waits for an inline paywall to leave its parent before it sends
+  /// `onDismissed`. Chain the close request so this view removes it; the JS emit wired at preload runs first.
+  private func removeOnCloseRequest(_ presentation: PLYPresentation, controller: UIViewController) {
+    let previous = presentation.onCloseRequested
+    presentation.onCloseRequested = { [weak self, weak controller] in
+      previous?()
+      // Async: SDK 6.2 calls this from inside its own dismissal.
+      DispatchQueue.main.async { self?.closeRequested(for: controller) }
+    }
+  }
+
+  /// Removes the paywall only if it is still the one this view shows (a prop swap may have replaced it).
+  /// Without an ancestor controller this view declares no containment, so the SDK does not treat the paywall as app-owned inline and keeps its standard close path.
+  func closeRequested(for controller: UIViewController?) {
+    guard let controller, _controller === controller else { return }
+    detachController()
   }
 
   private func createNativeViewController(placementId: String?) -> UIViewController? {

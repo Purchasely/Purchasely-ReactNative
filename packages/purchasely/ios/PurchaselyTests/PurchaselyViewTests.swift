@@ -7,6 +7,7 @@
 
 import XCTest
 @testable import react_native_purchasely
+import Purchasely
 
 class PurchaselyViewTests: XCTestCase {
 
@@ -324,12 +325,134 @@ class PurchaselyViewTests: XCTestCase {
                      "falling back to the root VC would rebuild the inconsistency")
     }
 
+    // MARK: - Close Request Tests
+
+    func testCloseRequestRemovesTheShownControllerFromItsParent() {
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 400, height: 600))
+        let root = UIViewController()
+        window.rootViewController = root
+        window.makeKeyAndVisible()
+        root.view.addSubview(purchaselyView)
+
+        let embedded = UIViewController()
+        purchaselyView.installPreloadedController(embedded, generation: purchaselyView._setupGeneration)
+        XCTAssertTrue(embedded.parent === root, "Precondition: containment declared")
+
+        purchaselyView.closeRequested(for: embedded)
+
+        XCTAssertNil(embedded.parent, "The SDK completes an inline close only after removeFromParent()")
+        XCTAssertNil(embedded.viewIfLoaded?.superview)
+        XCTAssertNil(purchaselyView._controller)
+    }
+
+    func testCloseRequestForAReplacedControllerIsIgnored() {
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 400, height: 600))
+        let root = UIViewController()
+        window.rootViewController = root
+        window.makeKeyAndVisible()
+        root.view.addSubview(purchaselyView)
+
+        let current = UIViewController()
+        purchaselyView.installPreloadedController(current, generation: purchaselyView._setupGeneration)
+
+        purchaselyView.closeRequested(for: UIViewController())
+
+        XCTAssertTrue(purchaselyView._controller === current, "A late close request of an old paywall must not remove the new one")
+        XCTAssertTrue(current.parent === root)
+    }
+
+    // The SDK only ever calls `presentation.onCloseRequested`. These tests mount
+    // the view through `setupView()` so the wrapper it installs is what runs.
+    func testInstalledCloseRequestOnTheRequestIdPathChainsThenDetaches() {
+        let fake = FakeInlinePresentation()
+        let stub: @convention(block) (AnyObject, NSString?) -> AnyObject? = { _, _ in fake }
+        assertInstalledCloseRequest(on: fake,
+                                    registry: #selector(PurchaselyRN.loadedPresentation(forRequestId:)),
+                                    stub: stub) {
+            purchaselyView.requestId = "req-close"
+        }
+    }
+
+    func testInstalledCloseRequestOnThePresentationPropPathChainsThenDetaches() {
+        let fake = FakeInlinePresentation()
+        let stub: @convention(block) (AnyObject, NSString?, NSString?) -> AnyObject? = { _, _, _ in fake }
+        assertInstalledCloseRequest(on: fake,
+                                    registry: #selector(PurchaselyRN.takeLoadedPresentation(matchingScreenId:placementId:)),
+                                    stub: stub) {
+            purchaselyView.presentation = ["id": fake.screenId, "placementId": "inline"]
+        }
+    }
+
+    func testInstalledCloseRequestKeepsAControllerInstalledBeforeTheMainQueueHop() {
+        let fake = FakeInlinePresentation()
+        let stub: @convention(block) (AnyObject, NSString?) -> AnyObject? = { _, _ in fake }
+        assertInstalledCloseRequest(on: fake,
+                                    registry: #selector(PurchaselyRN.loadedPresentation(forRequestId:)),
+                                    stub: stub,
+                                    replaceBeforeHop: true) {
+            purchaselyView.requestId = "req-close"
+        }
+    }
+
+    private func assertInstalledCloseRequest(on fake: FakeInlinePresentation,
+                                             registry selector: Selector,
+                                             stub: Any,
+                                             replaceBeforeHop: Bool = false,
+                                             mount: () -> Void,
+                                             file: StaticString = #filePath,
+                                             line: UInt = #line) {
+        // Stubs the bridge registry (not the SDK): only a real preload fills it.
+        guard let method = class_getClassMethod(PurchaselyRN.self, selector) else {
+            return XCTFail("Missing registry method", file: file, line: line)
+        }
+        let original = method_setImplementation(method, imp_implementationWithBlock(stub))
+        defer { method_setImplementation(method, original) }
+
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 400, height: 600))
+        let root = UIViewController()
+        window.rootViewController = root
+        window.makeKeyAndVisible()
+        root.view.addSubview(purchaselyView)
+
+        var previousCalls = 0
+        fake.onCloseRequested = { previousCalls += 1 }
+        mount()
+        let embedded = fake.embedded
+        XCTAssertTrue(purchaselyView._controller === embedded, "Precondition: setupView() reused the preloaded controller", file: file, line: line)
+        XCTAssertTrue(embedded.parent === root, "Precondition: containment declared", file: file, line: line)
+
+        fake.onCloseRequested?()
+
+        XCTAssertEqual(previousCalls, 1, "The callback wired at preload runs first, once", file: file, line: line)
+        XCTAssertTrue(embedded.parent === root, "Removal waits for the main queue", file: file, line: line)
+
+        let replacement = UIViewController()
+        if replaceBeforeHop {
+            purchaselyView.installPreloadedController(replacement, generation: purchaselyView._setupGeneration)
+        }
+
+        // Main queue is FIFO: this runs after the hop the wrapper queued.
+        let hop = expectation(description: "main-queue hop of the close request")
+        DispatchQueue.main.async { hop.fulfill() }
+        wait(for: [hop], timeout: 2)
+
+        XCTAssertEqual(previousCalls, 1, file: file, line: line)
+        XCTAssertNil(embedded.parent, "The SDK completes an inline close only after removeFromParent()", file: file, line: line)
+        if replaceBeforeHop {
+            XCTAssertTrue(purchaselyView._controller === replacement, "A late close request must not remove the new paywall", file: file, line: line)
+            XCTAssertTrue(replacement.parent === root, file: file, line: line)
+        } else {
+            XCTAssertNil(purchaselyView._controller, file: file, line: line)
+        }
+    }
+
     // MARK: - Stale Preload Completion Tests
 
     // Bug: `request.preload` completions carry no identity. If a prop change
     // starts a second `setupView()` while an earlier preload is still in
     // flight, the stale completion must not replace the controller the newer
     // generation already installed.
+
     func testASupersededPreloadCompletionIsIgnored() {
         let generation = purchaselyView._setupGeneration
         let current = UIViewController()
@@ -782,4 +905,37 @@ final class AppearanceCountingViewController: UIViewController {
         super.viewDidDisappear(a); didDisappearCount += 1
         if isMovingFromParent { didDisappearWhileMovingFromParentCount += 1 }
     }
+}
+
+/// Minimal `PLYPresentation`: the close-request wiring reads only `controller`
+/// and `onCloseRequested`; `screenId`/`placementId` match the presentation prop.
+final class FakeInlinePresentation: NSObject, PLYPresentation {
+    let embedded = PLYPresentationViewController()
+    var screenId: String { "screen-close" }
+    var language: String { "en" }
+    var placementId: String? { "inline" }
+    var audienceId: String? { nil }
+    var abTestId: String? { nil }
+    var abTestVariantId: String? { nil }
+    var campaignId: String? { nil }
+    var flowId: String? { nil }
+    var type: PLYPresentationType { .normal }
+    var controller: PLYPresentationViewController? { embedded }
+    var plans: [PLYPresentationPlan] { [] }
+    var metadata: PLYPresentationMetadata? { nil }
+    var backgroundColor: UIColor? { nil }
+    var height: Int { 0 }
+    var transition: PLYTransition { PLYTransition(type: .fullScreen) }
+    var connections: Set<PLYConnection> { [] }
+    var isFlow: Bool { false }
+    var onPresented: ((PLYPresentation?, Error?) -> Void)?
+    var onCloseRequested: (() -> Void)?
+    var onDismissed: ((PLYPresentationOutcome) -> Void)?
+    func display(from sourceViewController: UIViewController?) {}
+    func display(from sourceViewController: UIViewController?, transitionType: PLYTransition?) {}
+    func close() {}
+    func back() {}
+    func exposed() {}
+    func executeConnection(_ connection: PLYConnection?) {}
+    func preload(completion: @escaping (PLYPresentation?, Error?) -> Void) { completion(self, nil) }
 }
