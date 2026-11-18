@@ -1,0 +1,40 @@
+# Reviewers of the T2 and T3 paths of REVIEW.md, section 5.
+# GitHub requests these owners on each PR that changes a matching path.
+# Branch protection does not require a code owner review: REVIEW.md sets who must approve.
+# The four SDK owners own every bridge path, so an author can get a second owner.
+# The last pattern that matches a file wins: keep the T3 paths at the end.
+
+# T2: hybrid bridge, JS side and public API
+/packages/purchasely/src/ @kherembourg @chouaibMo @El-Fitz @EPIKorial
+/packages/purchasely/api/ @kherembourg @chouaibMo @El-Fitz @EPIKorial
+
+# T2: hybrid bridge, Android side, store modules
+/packages/purchasely/android/     @kherembourg @chouaibMo @El-Fitz @EPIKorial
+/packages/google/android/         @kherembourg @chouaibMo @El-Fitz @EPIKorial
+/packages/amazon/android/         @kherembourg @chouaibMo @El-Fitz @EPIKorial
+/packages/huawei/android/         @kherembourg @chouaibMo @El-Fitz @EPIKorial
+/packages/android-player/android/ @kherembourg @chouaibMo @El-Fitz @EPIKorial
+
+# T2: hybrid bridge, iOS side
+/packages/purchasely/ios/ @kherembourg @chouaibMo @El-Fitz @EPIKorial
+
+# T2: native SDK pins and build compatibility
+/packages/purchasely/android/build.gradle            @kherembourg @chouaibMo @El-Fitz @EPIKorial
+/packages/google/android/build.gradle                @kherembourg @chouaibMo @El-Fitz @EPIKorial
+/packages/amazon/android/build.gradle                @kherembourg @chouaibMo @El-Fitz @EPIKorial
+/packages/huawei/android/build.gradle                @kherembourg @chouaibMo @El-Fitz @EPIKorial
+/packages/android-player/android/build.gradle        @kherembourg @chouaibMo @El-Fitz @EPIKorial
+/packages/purchasely/android/gradle.properties       @kherembourg @chouaibMo @El-Fitz @EPIKorial
+/packages/purchasely/react-native-purchasely.podspec @kherembourg @chouaibMo @El-Fitz @EPIKorial
+/example/ios/Podfile.lock                            @kherembourg @chouaibMo @El-Fitz @EPIKorial
+
+# T3: publication, published package manifests, this file
+/.github/workflows/publish.yml        @kherembourg @chouaibMo @El-Fitz @EPIKorial
+/publish.sh                           @kherembourg @chouaibMo @El-Fitz @EPIKorial
+/prepare.sh                           @kherembourg @chouaibMo @El-Fitz @EPIKorial
+/packages/purchasely/package.json     @kherembourg @chouaibMo @El-Fitz @EPIKorial
+/packages/google/package.json         @kherembourg @chouaibMo @El-Fitz @EPIKorial
+/packages/amazon/package.json         @kherembourg @chouaibMo @El-Fitz @EPIKorial
+/packages/huawei/package.json         @kherembourg @chouaibMo @El-Fitz @EPIKorial
+/packages/android-player/package.json @kherembourg @chouaibMo @El-Fitz @EPIKorial
+/.github/CODEOWNERS                   @kherembourg @chouaibMo @El-Fitz @EPIKorial
