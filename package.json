@@ -50,6 +50,7 @@
     "minimatch@^9.0.4": "^11.0.1",
     "minimatch@^9.0.5": "^11.0.1",
     "minimatch@^10.2.2": "^11.0.1",
+    "minimatch@10.2.3": "^11.0.1",
     "nanoid": "^3.3.18",
     "picomatch@npm:^4.0.2": "4.0.4",
     "picomatch@npm:^4.0.3": "4.0.4",
