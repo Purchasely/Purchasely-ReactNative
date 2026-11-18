@@ -259,7 +259,7 @@ class PurchaselyView: UIView {
   }
 
   /// Removes the paywall only if it is still the one this view shows (a prop swap may have replaced it).
-  /// shortcut: without an ancestor controller there is no containment, so the SDK gets no removal signal and keeps the outcome; such hosts are not supported for inline close.
+  /// Without an ancestor controller this view declares no containment, so the SDK does not treat the paywall as app-owned inline and keeps its standard close path.
   func closeRequested(for controller: UIViewController?) {
     guard let controller, _controller === controller else { return }
     detachController()
