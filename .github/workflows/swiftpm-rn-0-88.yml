@@ -61,6 +61,20 @@ jobs:
           cd "$APP_DIR"
           npm install --save "$PURCHASELY_TARBALL"
           node -e "const p=require('./node_modules/react-native-purchasely/package.json'); if(p.swiftpmConfig?.name !== 'ReactNativePurchasely') process.exit(1)"
+          # Smoke app for the Release launch check. console.error reaches the system log in Release.
+          cat > App.tsx <<'EOF'
+          import React, { useEffect } from 'react'
+          import { NativeModules, Text, UIManager } from 'react-native'
+
+          export default function App(): React.JSX.Element {
+              useEffect(() => {
+                  const mod = !!NativeModules.Purchasely
+                  const view = !!UIManager.getViewManagerConfig('PurchaselyView')
+                  console.error(`[SPM_SMOKE] module=${mod} view=${view}`)
+              }, [])
+              return <Text>SwiftPM smoke</Text>
+          }
+          EOF
 
       - name: Convert consumer to React Native SwiftPM
         shell: bash
@@ -109,3 +123,29 @@ jobs:
             -derivedDataPath "$RUNNER_TEMP/DerivedDataSwiftPMRelease" \
             CODE_SIGNING_ALLOWED=NO \
             build
+
+      # A build can link while React Native still cannot find the module or the view manager.
+      - name: Launch Release consumer and check registration
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP="$RUNNER_TEMP/DerivedDataSwiftPMRelease/Build/Products/Release-iphonesimulator/RNSwiftPMTest.app"
+          BUNDLE_ID=$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$APP/Info.plist")
+          UDID=$(xcrun simctl list devices available -j | jq -r '[.devices | to_entries[] | select(.key | test("iOS")) | .value[] | select(.name | startswith("iPhone"))][0].udid')
+          test -n "$UDID" && test "$UDID" != null
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl install "$UDID" "$APP"
+          START=$(date '+%Y-%m-%d %H:%M:%S')
+          OUT=$(xcrun simctl launch "$UDID" "$BUNDLE_ID")
+          echo "$OUT"
+          PID=${OUT##*: }
+          LOG=""
+          for _ in $(seq 1 30); do
+            sleep 2
+            LOG=$(xcrun simctl spawn "$UDID" log show --start "$START" --predicate "processID == $PID AND eventMessage CONTAINS \"[SPM_SMOKE]\"" || true)
+            grep -q '\[SPM_SMOKE\]' <<<"$LOG" && break
+          done
+          xcrun simctl terminate "$UDID" "$BUNDLE_ID" || true
+          LINE=$(grep -oE '\[SPM_SMOKE\] module=[a-z]+ view=[a-z]+' <<<"$LOG" | head -1 || true)
+          echo "${LINE:-no [SPM_SMOKE] line in 60s}"
+          test "$LINE" = '[SPM_SMOKE] module=true view=true'
