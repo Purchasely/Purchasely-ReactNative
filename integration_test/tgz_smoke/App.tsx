@@ -9,7 +9,13 @@ const API_KEY = '0ad0594b-3b3d-4fea-8ee1-4b5df91efe87'
 
 async function run(): Promise<void> {
     console.error('[TGZ:START]')
-    await Purchasely.builder(API_KEY).runningMode('full').start()
+    // A backend or network error must not fail this check: ci.yml gates publish.yml, and the
+    // check is about the packed bridge and its SDK framework. T13 still runs after the error.
+    try {
+        await Purchasely.builder(API_KEY).runningMode('full').start()
+    } catch (e) {
+        console.error(`[TGZ:START:ERROR] ${e}`)
+    }
     try {
         // T13 logic: write then read a user attribute through the bridge.
         Purchasely.setUserAttributeWithString('tgz_str', 'hello_tgz')
