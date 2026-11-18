@@ -9,10 +9,19 @@ const API_KEY = '0ad0594b-3b3d-4fea-8ee1-4b5df91efe87'
 
 async function run(): Promise<void> {
     console.error('[TGZ:START]')
-    // A backend or network error must not fail this check: ci.yml gates publish.yml, and the
-    // check is about the packed bridge and its SDK framework. T13 still runs after the error.
+    // A slow or failing backend must not fail this check: ci.yml gates publish.yml, and the
+    // check is about the packed bridge and its SDK framework. The wait is bounded below the
+    // LAUNCH_WAIT of launch_check.sh (15 s), and T13 still runs after an error or a timeout.
     try {
-        await Purchasely.builder(API_KEY).runningMode('full').start()
+        await Promise.race([
+            Purchasely.builder(API_KEY).runningMode('full').start(),
+            new Promise((_, reject) =>
+                setTimeout(
+                    () => reject(new Error('start() took more than 8 s')),
+                    8000
+                )
+            ),
+        ])
     } catch (e) {
         console.error(`[TGZ:START:ERROR] ${e}`)
     }
