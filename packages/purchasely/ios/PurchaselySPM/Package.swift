@@ -1,7 +1,8 @@
 // swift-tools-version:5.9
 // The Purchasely iOS SDK for the react-native-purchasely pod. ../purchasely_spm.rb adds this
-// package to the pod during `pod install`. The url and checksum are the only place that pins
-// the iOS SDK version.
+// package to the pod during `pod install`. The url and checksum pin the iOS SDK version for
+// CocoaPods apps. ../../Package.swift pins it for React Native SwiftPM apps (`exact:`): keep
+// the two at the same version.
 import PackageDescription
 
 let package = Package(

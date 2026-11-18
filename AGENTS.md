@@ -12,7 +12,7 @@ Purchasely React Native SDK: a bridge from React Native to the native Purchasely
 | Property | Value |
 |----------|-------|
 | Current version | 6.2.0 |
-| Native iOS SDK | 6.2.0 (`packages/purchasely/ios/PurchaselySPM/Package.swift`, SPM binary target, no trunk pod; CocoaPods >= 1.13) |
+| Native iOS SDK | 6.2.0 (CocoaPods apps: `packages/purchasely/ios/PurchaselySPM/Package.swift`, SPM binary target, no trunk pod, CocoaPods >= 1.13; RN 0.88 SwiftPM apps: `packages/purchasely/Package.swift`, `exact:`. Keep the two equal.) |
 | Native Android SDK | 6.2.0 (`packages/purchasely/android/build.gradle`) |
 | React Native | 0.86.0 |
 | TypeScript | 5.8 strict |
@@ -26,6 +26,7 @@ Purchasely React Native SDK: a bridge from React Native to the native Purchasely
 Yarn workspaces (`packages/*` and `example`).
 
 - `packages/purchasely` (`react-native-purchasely`): core bridge. TypeScript in `src/` (`index.ts`, `types.ts`, `enums.ts`, `interfaces.ts`, `startBuilder.ts`, `presentation.ts`, `interceptor.ts`, `components/PLYPresentationView.tsx`). iOS in `ios/` (`PurchaselyRN.m`, `PurchaselyView.swift`, `PurchaselyViewManager.swift`). Android in `android/src/main/java/com/reactnativepurchasely/` (`PurchaselyModule.kt`, `PurchaselyViewManager.kt`).
+- RN 0.88 SwiftPM: `packages/purchasely/Package.swift` lists the native files of each target in explicit `sources`. A new file in `ios/` must go in that list. A new view prop must go in `ios/PurchaselyViewManager.m` and in `swiftpm/ViewRegistration/PurchaselyViewManagerRegistration.m`.
 - `packages/google`, `amazon`, `huawei`, `android-player`: `@purchasely/react-native-purchasely-*` store and player packages. Five packages are published in total.
 - `example/`: reference app, also the host for native tests and E2E.
 - `integration_test/`: E2E scripts and test index (`E2E_TEST_INDEX.md`).
@@ -100,6 +101,7 @@ Do not test:
 |----------|---------|---------|
 | `ci.yml` | PR to `main` or `release/**`, push to `main`, `merge_group`, `workflow_call`, `workflow_dispatch` | Lint, test, native builds, native tests |
 | `e2e-android.yml`, `e2e-ios.yml` | PR touching bridge paths, `workflow_dispatch` | Device E2E against the real backend |
+| `swiftpm-rn-0-88.yml` | PR touching `packages/purchasely/**` (open and `run-ci` label only), `workflow_dispatch` | RN 0.88.1 SwiftPM consumer: Debug and Release builds, Release launch check. `publish.yml` does not call it |
 | `publish.yml` | release published, `workflow_dispatch` | Run CI, check versions, publish 5 packages |
 
 `ci.yml` jobs: `lint`, `test`, `build-android` (also runs the JUnit suite), `build-ios`, `iOS Build (use_frameworks!)`, `iOS Unit Tests (bridge)`, `build-rn-0-86-android`, `build-rn-0-86-ios`.
