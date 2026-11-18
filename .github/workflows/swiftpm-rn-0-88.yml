@@ -1,0 +1,151 @@
+name: React Native 0.88 SwiftPM compatibility
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'packages/purchasely/**'
+      - '.github/workflows/swiftpm-rn-0-88.yml'
+    # No `synchronize`, as in ci.yml: re-run on demand with the `run-ci` label.
+    types: [opened, reopened, ready_for_review, labeled]
+
+# A `labeled` event for another label gets its own group, so it cancels nothing.
+concurrency:
+  group: >-
+    rn-088-swiftpm-${{ github.ref }}-${{
+      (github.event.action == 'labeled' && github.event.label.name != 'run-ci')
+      && format('label-{0}', github.event.label.name) || 'run' }}
+  cancel-in-progress: true
+
+jobs:
+  build-ios-swiftpm:
+    name: RN 0.88.1 / iOS / SwiftPM
+    if: github.event.action != 'labeled' || github.event.label.name == 'run-ci'
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup repository
+        uses: ./.github/actions/setup
+
+      - name: Build Purchasely packages
+        run: yarn purchasely:prepare
+
+      - name: Pack the publishable Purchasely package
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd packages/purchasely && npm pack --ignore-scripts --pack-destination "$RUNNER_TEMP")
+          tarball=$(find "$RUNNER_TEMP" -maxdepth 1 -name 'react-native-purchasely-*.tgz' -print -quit)
+          test -n "$tarball"
+          echo "PURCHASELY_TARBALL=$tarball" >> "$GITHUB_ENV"
+          echo "Packed $tarball"
+          tar -tzf "$tarball" | grep '^package/Package.swift$'
+          tar -xOf "$tarball" package/package.json | grep '"swiftpmConfig"'
+
+      - name: Create clean React Native 0.88.1 consumer
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP_DIR="$RUNNER_TEMP/RNSwiftPMTest"
+          npx --yes @react-native-community/cli@latest init RNSwiftPMTest \
+            --version 0.88.1 \
+            --directory "$APP_DIR" \
+            --pm npm \
+            --install-pods false \
+            --skip-git-init true
+          cd "$APP_DIR"
+          npm install --save "$PURCHASELY_TARBALL"
+          node -e "const p=require('./node_modules/react-native-purchasely/package.json'); if(p.swiftpmConfig?.name !== 'ReactNativePurchasely') process.exit(1)"
+          # Smoke app for the Release launch check. console.error reaches the system log in Release.
+          cat > App.tsx <<'EOF'
+          import React, { useEffect } from 'react'
+          import { NativeModules, Text, UIManager } from 'react-native'
+
+          export default function App(): React.JSX.Element {
+              useEffect(() => {
+                  const mod = !!NativeModules.Purchasely
+                  const view = !!UIManager.getViewManagerConfig('PurchaselyView')
+                  console.error(`[SPM_SMOKE] module=${mod} view=${view}`)
+              }, [])
+              return <Text>SwiftPM smoke</Text>
+          }
+          EOF
+
+      - name: Convert consumer to React Native SwiftPM
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/RNSwiftPMTest"
+          npx react-native spm add --deintegrate --yes
+          test -f ios/RNSwiftPMTest.xcodeproj/.spm-injected.json
+          test -e ios/build/generated/autolinking/libs/ReactNativePurchasely/Package.swift
+          grep -R 'ReactNativePurchasely' ios/build/generated/autolinking/Package.swift
+
+      - name: Show Xcode and SwiftPM graph diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          cd "$RUNNER_TEMP/RNSwiftPMTest/ios"
+          xcodebuild -resolvePackageDependencies \
+            -project RNSwiftPMTest.xcodeproj \
+            -scheme RNSwiftPMTest
+
+      - name: Build Debug consumer
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/RNSwiftPMTest/ios"
+          xcodebuild \
+            -project RNSwiftPMTest.xcodeproj \
+            -scheme RNSwiftPMTest \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/DerivedDataSwiftPMDebug" \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Build Release consumer
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/RNSwiftPMTest/ios"
+          xcodebuild \
+            -project RNSwiftPMTest.xcodeproj \
+            -scheme RNSwiftPMTest \
+            -configuration Release \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/DerivedDataSwiftPMRelease" \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      # A build can link while React Native still cannot find the module or the view manager.
+      - name: Launch Release consumer and check registration
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP="$RUNNER_TEMP/DerivedDataSwiftPMRelease/Build/Products/Release-iphonesimulator/RNSwiftPMTest.app"
+          BUNDLE_ID=$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$APP/Info.plist")
+          UDID=$(xcrun simctl list devices available -j | jq -r '[.devices | to_entries[] | select(.key | test("iOS")) | .value[] | select(.name | startswith("iPhone"))][0].udid')
+          test -n "$UDID" && test "$UDID" != null
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl install "$UDID" "$APP"
+          START=$(date '+%Y-%m-%d %H:%M:%S')
+          OUT=$(xcrun simctl launch "$UDID" "$BUNDLE_ID")
+          echo "$OUT"
+          PID=${OUT##*: }
+          LOG=""
+          for _ in $(seq 1 30); do
+            sleep 2
+            LOG=$(xcrun simctl spawn "$UDID" log show --start "$START" --predicate "processID == $PID AND eventMessage CONTAINS \"[SPM_SMOKE]\"" || true)
+            grep -q '\[SPM_SMOKE\]' <<<"$LOG" && break
+          done
+          xcrun simctl terminate "$UDID" "$BUNDLE_ID" || true
+          LINE=$(grep -oE '\[SPM_SMOKE\] module=[a-z]+ view=[a-z]+' <<<"$LOG" | head -1 || true)
+          echo "${LINE:-no [SPM_SMOKE] line in 60s}"
+          test "$LINE" = '[SPM_SMOKE] module=true view=true'

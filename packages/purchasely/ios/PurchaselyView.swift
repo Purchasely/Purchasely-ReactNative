@@ -7,6 +7,9 @@
 
 import Foundation
 import Purchasely
+#if SWIFT_PACKAGE
+import ReactNativePurchaselyBridge
+#endif
 
 class PurchaselyView: UIView {
 
