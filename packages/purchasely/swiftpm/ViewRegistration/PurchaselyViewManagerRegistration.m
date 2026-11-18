@@ -3,9 +3,8 @@
 #import "React/RCTViewManager.h"
 
 // SwiftPM compiles Objective-C and Swift sources in separate targets.
-// Keeping the extern-module registration here lets this target depend on the
-// Swift PurchaselyViewManager implementation, which prevents Release builds
-// from dead-stripping the Swift class.
+// This category links against the Swift PurchaselyViewManager class, which
+// must stay public so that Release builds export its symbol.
 @interface RCT_EXTERN_REMAP_MODULE(PurchaselyView, PurchaselyViewManager, RCTViewManager)
 
 RCT_EXPORT_VIEW_PROPERTY(placementId, NSString)
