@@ -4,6 +4,24 @@ All notable changes to `react-native-purchasely` are documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- The iOS SDK comes from Swift Package Manager, not from the `Purchasely` pod
+  of CocoaPods trunk. `pod install` adds the SDK to the `react-native-purchasely`
+  pod. You change nothing in your Podfile or Xcode project.
+- CocoaPods 1.13 or later is required. An older version stops `pod install`
+  with an error that says so.
+- `pod install` adds one build phase, `[react-native-purchasely] Embed
+  Purchasely.framework`, to each app target of your Xcode project. It embeds
+  the framework in the app.
+- If your Podfile has `pod 'Purchasely'`, or your project adds the
+  `Purchasely-iOS` package, remove it.
+- The Purchasely iOS SDK is now linked by the bridge pod through SPM. If your
+  own native app code imports `Purchasely`, it no longer gets the module from a
+  `Purchasely` pod.
+- Supported linkages: static libraries and `use_frameworks! :linkage => :static`.
+  Dynamic frameworks are not supported in this release.
+
 ## [6.0.0] — 2026-07-21
 
 First stable release of Purchasely 6 for React Native. Native SDKs: iOS pod
