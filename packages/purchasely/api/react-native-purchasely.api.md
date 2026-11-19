@@ -1221,10 +1221,10 @@ export type WebRedemptionListenerCallback = (result: PLYWebRedemptionResult) => 
 //
 // src/index.ts:76:58 - (ae-forgotten-export) The symbol "PurchaseListenerCallback" needs to be exported by the entry point index.d.ts
 // src/index.ts:87:65 - (ae-forgotten-export) The symbol "UserSubscriptionStatusListenerCallback" needs to be exported by the entry point index.d.ts
-// src/index.ts:152:36 - (ae-forgotten-export) The symbol "UserAttributeSetListenerCallback" needs to be exported by the entry point index.d.ts
-// src/index.ts:169:45 - (ae-forgotten-export) The symbol "UserAttributeRemovedListenerCallback" needs to be exported by the entry point index.d.ts
-// src/index.ts:247:45 - (ae-forgotten-export) The symbol "setUserAttributeWithDate" needs to be exported by the entry point index.d.ts
-// src/index.ts:560:6 - (ae-forgotten-export) The symbol "EventListenerCallback" needs to be exported by the entry point index.d.ts
+// src/index.ts:155:36 - (ae-forgotten-export) The symbol "UserAttributeSetListenerCallback" needs to be exported by the entry point index.d.ts
+// src/index.ts:172:45 - (ae-forgotten-export) The symbol "UserAttributeRemovedListenerCallback" needs to be exported by the entry point index.d.ts
+// src/index.ts:250:45 - (ae-forgotten-export) The symbol "setUserAttributeWithDate" needs to be exported by the entry point index.d.ts
+// src/index.ts:563:6 - (ae-forgotten-export) The symbol "EventListenerCallback" needs to be exported by the entry point index.d.ts
 
 // (No @packageDocumentation comment for this package)
 
