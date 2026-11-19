@@ -26,6 +26,7 @@ Full changelog available at https://docs.purchasely.com/changelog/63-subscriptio
 
 ### Changed
 
+- Android: `restoreAllProducts` and `silentRestoreAllProducts` now reject with a `BillingUnavailable` error when Google Play billing is unavailable (no Google account, old Play services). 6.2.0 resolved `false`. This comes from the native Android 6.3.0 (#1938). Add a `try/catch` (or `.catch`) before you upgrade.
 - `addPurchasedListener`, `removePurchasedListener`, `listenToPurchases` and
   `stopListeningToPurchases` are deprecated. Use
   `addUserSubscriptionStatusListener`. Their behavior does not change.
