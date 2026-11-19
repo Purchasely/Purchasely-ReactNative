@@ -566,15 +566,15 @@ export class PLYPresentationRequest {
         presentation: PLYPresentation,
         requestId: string
     ): PLYLoadedPresentation {
-        // close/back/exposed keep the id of the preload that produced this
-        // result: a later preload() must not redirect them (MOB-675).
+        // exposed() keeps the id of the preload that produced this result: a
+        // later preload() must not redirect it (MOB-675). display(), close() and
+        // back() follow the request's latest preload, as before.
         return {
             ...presentation,
             display: (transition?: PLYTransition | null) =>
                 this.display(transition),
-            close: () => NativeModules.Purchasely.closePresentation(requestId),
-            back: () =>
-                NativeModules.Purchasely.goBackToPreviousScreen(requestId),
+            close: () => this.close(),
+            back: () => this.back(),
             exposed: async () => {
                 await NativeModules.Purchasely.exposedPresentation(requestId);
             },

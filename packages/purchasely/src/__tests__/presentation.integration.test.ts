@@ -1179,7 +1179,7 @@ describe('façade · integration with native bridge', () => {
             expect(native.goBackToPreviousScreen).toHaveBeenCalledWith(latestId);
         });
 
-        it('MOB-675 exposed(), close() and back() of a loaded presentation keep the id of their own preload', async () => {
+        it('MOB-675 exposed() of a loaded presentation keeps the id of its own preload; close() and back() follow display() to the latest preload', async () => {
             const req = PLYPresentationBuilder.placement('home').build();
 
             const first = req.preload();
@@ -1195,9 +1195,10 @@ describe('façade · integration with native bridge', () => {
             loaded.close();
             loaded.back();
 
+            const secondId = native.preloadPresentation.mock.calls[1][0];
             expect(native.exposedPresentation).toHaveBeenCalledWith(firstId);
-            expect(native.closePresentation).toHaveBeenCalledWith(firstId);
-            expect(native.goBackToPreviousScreen).toHaveBeenCalledWith(firstId);
+            expect(native.closePresentation).toHaveBeenCalledWith(secondId);
+            expect(native.goBackToPreviousScreen).toHaveBeenCalledWith(secondId);
         });
     });
 
