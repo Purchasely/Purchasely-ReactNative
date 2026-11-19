@@ -5,7 +5,6 @@ import android.view.Choreographer
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
-import androidx.core.util.Consumer
 import androidx.fragment.app.FragmentActivity
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReadableArray
@@ -19,7 +18,6 @@ import io.purchasely.ext.presentation.PLYPresentationBase
 import io.purchasely.ext.presentation.PLYPresentationOutcome
 import io.purchasely.ext.presentation.preload
 import io.purchasely.views.presentation.PLYPresentationView
-import android.content.res.Configuration
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -50,7 +48,6 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
     var host: ViewGroup? = null
     var buildJob: Job? = null
     var pendingAttach: View.OnAttachStateChangeListener? = null
-    var removeConfigurationListener: (() -> Unit)? = null
   }
 
   private val propsByView = mutableMapOf<FrameLayout, ViewProps>()
@@ -121,14 +118,8 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
 
     val host = FrameLayout(activity)
     props.host = host
-    // The Activity changes, as the Fragment received them: a View also gets
-    // window-only changes, and each rebuild dismisses the paywall.
-    val onConfigurationChanged = Consumer<Configuration> {
-      host.removeAllViews()
-      attachPurchaselyView(host, props, outcomeHandler)
-    }
-    activity.addOnConfigurationChangedListener(onConfigurationChanged)
-    props.removeConfigurationListener = { activity.removeOnConfigurationChangedListener(onConfigurationChanged) }
+    // No rebuild on a configuration change: the SDK view sends its outcome when
+    // it leaves the window, so a rebuild dismisses the paywall for JS.
     parentView.addView(host)
     attachPurchaselyView(host, props, outcomeHandler)
   }
@@ -198,7 +189,7 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
     host.addOnAttachStateChangeListener(listener)
   }
 
-  /** Stops the build in progress, so a rebuild or a drop leaves no second paywall. */
+  /** Stops the build in progress, so a second build or a drop leaves no second paywall. */
   private fun cancelPendingBuild(host: ViewGroup, props: ViewProps) {
     props.buildJob?.cancel()
     props.pendingAttach?.let { host.removeOnAttachStateChangeListener(it) }
@@ -300,7 +291,6 @@ class PurchaselyViewManager(private val reactContext: ReactApplicationContext) :
     // paywall for a view that is gone.
     props?.host?.let { cancelPendingBuild(it, props) }
     props?.host = null
-    props?.removeConfigurationListener?.invoke()
   }
 
   companion object {

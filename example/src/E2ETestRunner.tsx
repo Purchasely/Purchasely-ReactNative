@@ -79,6 +79,7 @@ import Purchasely, {
     removeDefaultPresentationDismissHandler,
 } from 'react-native-purchasely'
 import BayardReproScreen from './BayardReproScreen'
+import InlineRaceScreen, { INLINE_RACE_PHASE } from './InlineRaceScreen'
 
 // ── Config ───────────────────────────────────────────────────────────────────
 const API_KEY = '0ad0594b-3b3d-4fea-8ee1-4b5df91efe87'
@@ -194,6 +195,9 @@ export default function E2ETestRunner(props: { phase?: string } = {}) {
     const phase = props.phase ?? 'all'
     if (phase === BAYARD_PHASE) {
         return <BayardReproScreen />
+    }
+    if (phase.split(':')[0] === INLINE_RACE_PHASE) {
+        return <InlineRaceScreen phase={phase} />
     }
     return <E2ETestRunnerSuite phase={phase} />
 }

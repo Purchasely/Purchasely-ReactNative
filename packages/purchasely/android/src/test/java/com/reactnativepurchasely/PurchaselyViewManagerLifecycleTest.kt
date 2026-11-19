@@ -11,14 +11,19 @@ import com.facebook.react.bridge.JavaOnlyArray
 import com.facebook.react.bridge.ReactApplicationContext
 import io.mockk.coEvery
 import io.mockk.every
+import io.mockk.just
 import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.mockkStatic
+import io.mockk.runs
+import io.mockk.slot
 import io.mockk.unmockkObject
 import io.mockk.unmockkStatic
 import io.mockk.verify
 import io.purchasely.ext.presentation.PLYPresentation
 import io.purchasely.ext.presentation.PLYPresentationBase
+import io.purchasely.ext.presentation.PLYPresentationOutcome
+import io.purchasely.ext.presentation.PLYPurchaseResult
 import io.purchasely.ext.presentation.preload
 import io.purchasely.views.presentation.PLYPresentationView
 import java.util.concurrent.CountDownLatch
@@ -143,20 +148,6 @@ class PurchaselyViewManagerLifecycleTest {
     }
 
     @Test
-    fun `a configuration change while detached leaves one paywall at the attach`() {
-        val root = newRoot()
-        manager.setRequestId(root, REQUEST_ID)
-        create(root)
-
-        activity.onConfigurationChanged(Configuration(activity.resources.configuration))
-        activity.addContentView(root, FrameLayout.LayoutParams(100, 100))
-
-        verify(exactly = 1) { presentation.buildView(any(), any()) }
-        assertEquals(1, (root.getChildAt(0) as ViewGroup).childCount)
-        manager.onDropViewInstance(root)
-    }
-
-    @Test
     fun `a second create command builds no second paywall`() {
         val root = mountedRoot()
         manager.setRequestId(root, REQUEST_ID)
@@ -169,24 +160,34 @@ class PurchaselyViewManagerLifecycleTest {
         manager.onDropViewInstance(root)
     }
 
-    // The fragment rebuilt the paywall on the Activity configuration changes
-    // only. A rebuild dismisses the paywall, so a view-level configuration
-    // dispatch must not cause one.
+    // A rebuild removes the SDK view, and the SDK view sends its outcome when it
+    // leaves the window: JS got "CANCELLED" for a paywall that stayed on screen,
+    // and the real outcome was dropped.
     @Test
-    fun `only an activity configuration change rebuilds the paywall, until the drop`() {
+    fun `an activity configuration change keeps the paywall and its outcome`() {
         val root = mountedRoot()
         manager.setRequestId(root, REQUEST_ID)
+        val sdkCallback = slot<(PLYPresentationOutcome) -> Unit>()
+        every { presentation.buildView(any(), capture(sdkCallback)) } returns sdkView
+        every { PurchaselyModule.emitPresentationDismissed(any(), any(), any()) } just runs
         create(root)
+        val host = root.getChildAt(0) as ViewGroup
+        // Stands for PLYPresentationView.onDetachedFromWindow, which a mock does not run.
+        host.setOnHierarchyChangeListener(object : ViewGroup.OnHierarchyChangeListener {
+            override fun onChildViewAdded(parent: View, child: View) {}
+            override fun onChildViewRemoved(parent: View, child: View) = sdkCallback.captured(PLYPresentationOutcome())
+        })
 
-        root.getChildAt(0).dispatchConfigurationChanged(Configuration(activity.resources.configuration))
+        activity.onConfigurationChanged(Configuration(activity.resources.configuration))
+
         verify(exactly = 1) { presentation.buildView(any(), any()) }
+        assertSame(sdkView, host.getChildAt(0))
+        verify(exactly = 0) { PurchaselyModule.emitPresentationDismissed(any(), any(), any()) }
 
-        activity.onConfigurationChanged(Configuration(activity.resources.configuration))
-        verify(exactly = 2) { presentation.buildView(any(), any()) }
-
+        val purchased = PLYPresentationOutcome(purchaseResult = PLYPurchaseResult.PURCHASED)
+        sdkCallback.captured(purchased)
+        verify(exactly = 1) { PurchaselyModule.emitPresentationDismissed(any(), REQUEST_ID, purchased) }
         manager.onDropViewInstance(root)
-        activity.onConfigurationChanged(Configuration(activity.resources.configuration))
-        verify(exactly = 2) { presentation.buildView(any(), any()) }
     }
 
     private fun create(root: FrameLayout) =

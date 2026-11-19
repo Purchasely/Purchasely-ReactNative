@@ -659,6 +659,29 @@ Tourne juste avant T20 : T20 révoque le consentement `ANALYTICS`, et ensuite le
 
 ---
 
+## T32 — Vue embarquée détruite juste après son montage (Android, process dédié)
+
+**Inspiré de :** crash client Android, RN 0.86 + `react-native-purchasely` 6.1.1 : `IllegalArgumentException: No view found for id … for fragment PurchaselyFragment`.
+
+**Ce que ça teste :** une `<PLYPresentationView placementId=…>` retirée de la fenêtre **avant** le passage suivant du thread principal. Sur 6.1.1, la commande `create` met en file un commit de fragment asynchrone ; si la vue part avant ce commit, AndroidX ne trouve plus le conteneur et l'app meurt. T25 et T28-T30 retirent la vue après `PRESENTATION_VIEWED` : le commit a toujours tourné, ils ne voient pas le bug.
+
+Le retrait vient du même commit React que le montage : un frère placé **après** la vue lance son effet de montage juste après l'effet `create` de la vue.
+
+| Step | Action | Assert |
+|------|--------|--------|
+| `unmount` | 20 cycles : monter, puis démonter dans le même commit React | app vivante |
+| `screen` | 10 cycles : monter dans l'écran A d'un `ScreenStack`, puis pousser l'écran B (sans animation) tout de suite | app vivante |
+| `modal` | monter la vue dans une `<Modal>` RN (fenêtre Dialog) | `PRESENTATION_VIEWED` (30 s) |
+| `health` | un montage normal après le reste | `PRESENTATION_VIEWED` (30 s) |
+
+Process dédié, lancé par `run_e2e.sh` après T27 avec `E2E_PHASE=inline_race` (`inline_race:<step>` lance un seul step). Un crash n'émet aucun marqueur : le script lit le nouveau `FATAL EXCEPTION` dans logcat et met T32 en FAIL. iOS : non lancé (le bug vit dans l'hôte fragment Android).
+
+**Mesuré sur un appareil Android (2026-11-16) :** le code de 6.1.1 (`main`) crashe sur `unmount`, `screen` et `modal`, à chaque run. #337 seul passe `unmount` (3/3) et crashe encore sur `screen` et `modal`. #337 + #338 + #339 passent tous les steps (`unmount` 3/3, `screen` 2/2). La course dépend du timing : un PASS donne une bonne confiance, pas une preuve.
+
+**Marqueurs :** `[E2E:T32:PASS]` / `[E2E:T32:FAIL]`, plus `[E2E:T32] STEP:<step>:START|OK`
+
+---
+
 ## Architecture du runner
 
 ```
@@ -676,9 +699,11 @@ CI (ubuntu-latest + KVM)
               ├── surveille [E2E:SUITE:PASS|FAIL] (suite principale T1-T26 + T28-T30)
               ├── si PASS → relaunch --es E2E_PHASE deeplink_coldstart (process neuf)
               │              └── surveille [E2E:T27:PASS|FAIL]          (T27 cold-start)
+              ├── si PASS → relaunch --es E2E_PHASE inline_race (process neuf)
+              │              └── surveille [E2E:T32:PASS|FAIL] + FATAL EXCEPTION (T32)
               ├── chaque driver hôte est `wait`é : code retour non-nul → warning visible
-              ├── tout id T1-T30 sans AUCUN marqueur PASS/FAIL/SKIP → échec (filet authoritatif)
-              └── exit 0 si (suite PASS ET T27 ≠ FAIL ET aucun marqueur manquant), sinon 1
+              ├── tout id T1-T30 + T32 sans AUCUN marqueur PASS/FAIL/SKIP → échec (filet authoritatif)
+              └── exit 0 si (suite PASS ET T27 ≠ FAIL ET T32 ≠ FAIL ET aucun marqueur manquant), sinon 1
 
 CI (macos-15 + simulateur iOS)
   └── run_e2e_ios.sh

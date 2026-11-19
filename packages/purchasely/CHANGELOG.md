@@ -37,6 +37,11 @@ All notable changes to `react-native-purchasely` are documented in this file.
   or on a screen that leaves the window before the paywall is created, no
   longer crashes with the same exception. The paywall is now a plain child view
   of the React Native view, with no Fragment.
+- Android: a configuration change that the Activity handles (rotation, dark
+  mode, split screen) no longer closes an embedded `<PLYPresentationView>` with
+  `CANCELLED` while the paywall stays on screen. Its later outcome, for example
+  a purchase, now reaches the app. The paywall keeps the theme and the layout
+  of its first render until the next mount.
 
 ## [6.0.0] — 2026-07-21
 
