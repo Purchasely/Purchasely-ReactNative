@@ -140,6 +140,20 @@ class PurchaselyModuleTest {
         }
     }
 
+    @Test
+    fun `stopUserSubscriptionStatusListener removes the status listener from the SDK`() {
+        val purchaselyStatic = mockStatic(Purchasely::class.java)
+        try {
+            purchaselyModule.stopUserSubscriptionStatusListener()
+
+            purchaselyStatic.verify {
+                Purchasely.removeUserSubscriptionStatusListener(org.mockito.kotlin.any<UserSubscriptionStatusListener>())
+            }
+        } finally {
+            purchaselyStatic.close()
+        }
+    }
+
     // endregion
 
     // region emit

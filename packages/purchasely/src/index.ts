@@ -97,24 +97,53 @@ type UserSubscriptionStatusListenerCallback = (
   status: PLYUserSubscriptionStatus
 ) => void;
 
+let userSubscriptionStatusListeners = 0;
+let lastUserSubscriptionStatus: PLYUserSubscriptionStatus | null = null;
+
 /**
  * Listen to the user subscription status. The callback gets one status call
  * (`reason` is `null`) when the SDK knows the status, then each change: a
  * subscription purchased, restored, redeemed from the web or expired. Several
  * listeners are allowed. New in 6.3.0.
  *
- * The first listener makes the bridge register one native listener, which stays
- * registered. Only that first listener is sure to get the status call.
+ * The first listener makes the bridge register one native listener. A listener
+ * added later gets the last status that the bridge received, once, after this
+ * call returns. The last `remove()` unregisters the native listener.
  */
 const addUserSubscriptionStatusListener = (
   callback: UserSubscriptionStatusListenerCallback
 ): EmitterSubscription => {
+  let removed = false;
+  let received = false;
   const subscription = PurchaselyEventEmitter.addListener(
     'USER_SUBSCRIPTION_STATUS_LISTENER',
-    callback
+    (status: PLYUserSubscriptionStatus) => {
+      received = true;
+      lastUserSubscriptionStatus = status;
+      callback(status);
+    }
   );
-  // After the JS listener exists, so the status call that the SDK sends on add is not lost.
-  NativeModules.Purchasely.startUserSubscriptionStatusListener();
+  const removeEmitterListener = subscription.remove.bind(subscription);
+  subscription.remove = () => {
+    if (removed) return;
+    removed = true;
+    removeEmitterListener();
+    if (--userSubscriptionStatusListeners === 0) {
+      lastUserSubscriptionStatus = null;
+      NativeModules.Purchasely.stopUserSubscriptionStatusListener();
+    }
+  };
+
+  if (userSubscriptionStatusListeners++ === 0) {
+    // After the JS listener exists, so the status call that the SDK sends on add is not lost.
+    NativeModules.Purchasely.startUserSubscriptionStatusListener();
+  } else if (lastUserSubscriptionStatus) {
+    // The native SDK sends the status call only when its delegate is added.
+    const cached = lastUserSubscriptionStatus;
+    queueMicrotask(() => {
+      if (!removed && !received) callback(cached);
+    });
+  }
   return subscription;
 };
 

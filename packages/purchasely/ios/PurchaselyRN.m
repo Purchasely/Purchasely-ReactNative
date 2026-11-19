@@ -653,6 +653,15 @@ RCT_EXPORT_METHOD(startUserSubscriptionStatusListener) {
     });
 }
 
+/// The last JS listener removed: unregisters the native delegate. The next start adds it again.
+RCT_EXPORT_METHOD(stopUserSubscriptionStatusListener) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (!self->_userSubscriptionStatusStarted) { return; }
+        self->_userSubscriptionStatusStarted = NO;
+        [Purchasely removeUserSubscriptionStatusDelegate:self];
+    });
+}
+
 RCT_EXPORT_METHOD(isEligibleForIntroOffer:(NSString * _Nonnull)planVendorId
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject) {

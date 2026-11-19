@@ -113,6 +113,12 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     Purchasely.addUserSubscriptionStatusListener(userSubscriptionStatusListener)
   }
 
+  /** The last JS listener stops it. The next start adds it again. */
+  @ReactMethod
+  fun stopUserSubscriptionStatusListener() {
+    Purchasely.removeUserSubscriptionStatusListener(userSubscriptionStatusListener)
+  }
+
   override fun getName(): String {
     return "Purchasely"
   }

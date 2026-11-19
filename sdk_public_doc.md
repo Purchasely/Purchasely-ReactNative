@@ -883,8 +883,9 @@ Purchasely.removeUserSubscriptionStatusListener(subscription);
 
 `subscription` is `null` only in a status call for a user who has no
 subscription (`isActive` is then `false`). The first listener makes the bridge
-register one native listener, which stays registered. Only that first listener is
-sure to get the status call.
+register one native listener. A listener added later gets the last status that
+the bridge received, once, after `addUserSubscriptionStatusListener` returns.
+The last `remove()` unregisters the native listener.
 
 ### Custom User Attributes Listener
 

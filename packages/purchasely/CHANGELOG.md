@@ -11,7 +11,8 @@ All notable changes to `react-native-purchasely` are documented in this file.
   `{ isActive, reason, subscription }`: `reason` is `'PURCHASED'`,
   `'RESTORED'`, `'EXPIRED'`, `'WEB_REDEEMED'` or `null` (a status call), and
   `subscription` has the shape of `userSubscriptions()` or is `null`. Several
-  listeners are allowed.
+  listeners are allowed. A listener added later gets the last status once. The
+  last removal unregisters the native listener.
 - `presentation.exposed()` on a preloaded presentation: tells Purchasely the
   user reached the moment a `DEACTIVATED` presentation (a campaign NONE arm)
   would have shown. It sends `EXPERIMENT_EXPOSED`.

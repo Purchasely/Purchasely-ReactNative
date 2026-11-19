@@ -12,6 +12,7 @@ jest.mock('react-native', () => {
             Purchasely: {
                 getConstants: jest.fn(() => constants),
                 startUserSubscriptionStatusListener: jest.fn(),
+                stopUserSubscriptionStatusListener: jest.fn(),
                 addListener: jest.fn(),
                 removeListeners: jest.fn(),
                 __emit: (name: string, event: any) =>
@@ -49,14 +50,23 @@ const purchased: PLYUserSubscriptionStatus = {
     subscription: { plan: { vendorId: 'plan-1' } } as any,
 }
 
+// The listener count is module state: every test removes what it added.
+const active: Array<{ remove: () => void }> = []
+const add = (cb: jest.Mock) => {
+    const subscription = Purchasely.addUserSubscriptionStatusListener(cb)
+    active.push(subscription)
+    return subscription
+}
+
 describe('user subscription status listener', () => {
-    beforeEach(() => {
+    afterEach(() => {
+        active.splice(0).forEach((s) => s.remove())
         jest.clearAllMocks()
     })
 
     it('delivers the payload to the listener and starts the native listener', () => {
         const callback = jest.fn()
-        const subscription = Purchasely.addUserSubscriptionStatusListener(callback)
+        const subscription = add(callback)
 
         expect(native.startUserSubscriptionStatusListener).toHaveBeenCalledTimes(1)
         native.__emit(EVENT, purchased)
@@ -68,7 +78,7 @@ describe('user subscription status listener', () => {
 
     it('stops the delivery after remove', () => {
         const callback = jest.fn()
-        const subscription = Purchasely.addUserSubscriptionStatusListener(callback)
+        const subscription = add(callback)
         Purchasely.removeUserSubscriptionStatusListener(subscription)
 
         native.__emit(EVENT, purchased)
@@ -79,8 +89,8 @@ describe('user subscription status listener', () => {
     it('delivers to two listeners, and removing one keeps the other', () => {
         const first = jest.fn()
         const second = jest.fn()
-        const firstSubscription = Purchasely.addUserSubscriptionStatusListener(first)
-        Purchasely.addUserSubscriptionStatusListener(second)
+        const firstSubscription = add(first)
+        add(second)
 
         native.__emit(EVENT, purchased)
         expect(first).toHaveBeenCalledWith(purchased)
@@ -94,7 +104,7 @@ describe('user subscription status listener', () => {
 
     it('passes a status call with a null reason and a null subscription unchanged', () => {
         const callback = jest.fn()
-        Purchasely.addUserSubscriptionStatusListener(callback)
+        add(callback)
 
         native.__emit(EVENT, { isActive: false, reason: null, subscription: null })
 
@@ -103,10 +113,77 @@ describe('user subscription status listener', () => {
 
     it('keeps the purchased listener on its own event', () => {
         const callback = jest.fn()
-        Purchasely.addUserSubscriptionStatusListener(callback)
+        add(callback)
 
         native.__emit('PURCHASE_LISTENER', {})
 
         expect(callback).not.toHaveBeenCalled()
+    })
+
+    describe('several listeners', () => {
+        const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0))
+        it('replays the last status to a new listener only, once', async () => {
+            const first = jest.fn()
+            const second = jest.fn()
+            add(first)
+            native.__emit(EVENT, purchased)
+
+            add(second)
+            expect(second).not.toHaveBeenCalled()
+            await flush()
+
+            expect(second).toHaveBeenCalledTimes(1)
+            expect(second).toHaveBeenCalledWith(purchased)
+            expect(first).toHaveBeenCalledTimes(1)
+            expect(native.startUserSubscriptionStatusListener).toHaveBeenCalledTimes(1)
+        })
+
+        it('does not replay when nothing was received', async () => {
+            const second = jest.fn()
+            add(jest.fn())
+            add(second)
+            await flush()
+
+            expect(second).not.toHaveBeenCalled()
+        })
+
+        it('does not replay to a listener removed before the replay', async () => {
+            add(jest.fn())
+            native.__emit(EVENT, purchased)
+            const second = jest.fn()
+            const subscription = add(second)
+            subscription.remove()
+            await flush()
+
+            expect(second).not.toHaveBeenCalled()
+        })
+
+        it('counts a double remove once', () => {
+            const first = add(jest.fn())
+            add(jest.fn())
+
+            first.remove()
+            Purchasely.removeUserSubscriptionStatusListener(first as any)
+
+            expect(native.stopUserSubscriptionStatusListener).not.toHaveBeenCalled()
+        })
+
+        it('stops the native listener on the last remove and starts it again on the next add', async () => {
+            const first = add(jest.fn())
+            const second = add(jest.fn())
+            native.__emit(EVENT, purchased)
+
+            first.remove()
+            expect(native.stopUserSubscriptionStatusListener).not.toHaveBeenCalled()
+            Purchasely.removeUserSubscriptionStatusListener(second as any)
+            expect(native.stopUserSubscriptionStatusListener).toHaveBeenCalledTimes(1)
+
+            const third = jest.fn()
+            add(third)
+            await flush()
+
+            expect(native.startUserSubscriptionStatusListener).toHaveBeenCalledTimes(2)
+            expect(third).not.toHaveBeenCalled()
+        })
     })
 })
