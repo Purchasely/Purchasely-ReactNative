@@ -26,6 +26,15 @@ All notable changes to `react-native-purchasely` are documented in this file.
 - Supported linkages: static libraries and `use_frameworks! :linkage => :static`.
   Dynamic frameworks are not supported in this release.
 
+### Fixed
+
+- Android: an embedded `<PLYPresentationView>` that unmounts right after it
+  mounts (for example, when its screen is popped or replaced) no longer
+  crashes the app with
+  `IllegalArgumentException: No view found for id … for fragment
+  PurchaselyFragment`. The unmount now removes the fragment even when its
+  transaction is still queued.
+
 ## [6.0.0] — 2026-07-21
 
 First stable release of Purchasely 6 for React Native. Native SDKs: iOS pod
