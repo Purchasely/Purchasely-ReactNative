@@ -13,6 +13,8 @@ jest.mock('react-native', () => {
                 getConstants: jest.fn(() => constants),
                 startUserSubscriptionStatusListener: jest.fn(),
                 stopUserSubscriptionStatusListener: jest.fn(),
+                userLogin: jest.fn().mockResolvedValue(true),
+                userLogout: jest.fn(),
                 addListener: jest.fn(),
                 removeListeners: jest.fn(),
                 __emit: (name: string, event: any) =>
@@ -156,6 +158,23 @@ describe('user subscription status listener', () => {
             await flush()
 
             expect(second).not.toHaveBeenCalled()
+        })
+
+        it('does not replay the previous user status after userLogout or userLogin', async () => {
+            add(jest.fn())
+            native.__emit(EVENT, purchased)
+            Purchasely.userLogout()
+            const afterLogout = jest.fn()
+            add(afterLogout)
+            await flush()
+            expect(afterLogout).not.toHaveBeenCalled()
+
+            native.__emit(EVENT, purchased)
+            await Purchasely.userLogin('user-b')
+            const afterLogin = jest.fn()
+            add(afterLogin)
+            await flush()
+            expect(afterLogin).not.toHaveBeenCalled()
         })
 
         it('counts a double remove once', () => {

@@ -323,6 +323,8 @@ const getAnonymousUserId = (): Promise<string> => {
 };
 
 const userLogin = (userId: string): Promise<boolean> => {
+  // The cached status belongs to the previous user: never replay it.
+  lastUserSubscriptionStatus = null;
   return NativeModules.Purchasely.userLogin(userId);
 };
 
@@ -333,6 +335,7 @@ const userLogin = (userId: string): Promise<boolean> => {
  * attributes. Defaults to `true`, matching both native SDKs' own default.
  */
 const userLogout = (clearUserAttributes: boolean = true): void => {
+  lastUserSubscriptionStatus = null;
   return NativeModules.Purchasely.userLogout(clearUserAttributes);
 };
 
