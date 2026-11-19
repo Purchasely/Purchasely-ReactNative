@@ -236,7 +236,18 @@ export type PLYEventName =
    * Read `properties.redemption.error_code` and
    * `properties.error_message`.
    */
-  | 'REDEMPTION_FAILED';
+  | 'REDEMPTION_FAILED'
+  /**
+   * The user was assigned to an arm of a campaign experiment. New in 6.3.0.
+   * Read `properties.experiment_id` and `properties.experiment_variant_id`.
+   */
+  | 'EXPERIMENT_ASSIGNED'
+  /**
+   * The user was exposed to the arm of a campaign experiment: a screen shown,
+   * or a NONE arm at `display()` / `exposed()`. New in 6.3.0. Read
+   * `properties.experiment_id` and `properties.experiment_variant_id`.
+   */
+  | 'EXPERIMENT_EXPOSED';
 
 export type PLYEventPropertyPlan = {
   type?: string;
@@ -431,6 +442,10 @@ export type PLYEventProperties = {
   stripe_purchase_id?: string;
   /** Set on `REDEMPTION_CONSUMED` and `REDEMPTION_FAILED`. New in 6.1.0. */
   redemption?: PLYEventPropertyRedemption;
+  /** Set on `EXPERIMENT_ASSIGNED` and `EXPERIMENT_EXPOSED`. New in 6.3.0. */
+  experiment_id?: string;
+  /** The arm of `experiment_id` the user got. New in 6.3.0. */
+  experiment_variant_id?: string;
 };
 
 /**

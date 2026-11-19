@@ -351,7 +351,18 @@ export type PLYEventName = 'APP_INSTALLED' | 'APP_CONFIGURED' | 'APP_UPDATED' | 
 * Read `properties.redemption.error_code` and
 * `properties.error_message`.
 */
-| 'REDEMPTION_FAILED';
+| 'REDEMPTION_FAILED'
+/**
+* The user was assigned to an arm of a campaign experiment. New in 6.3.0.
+* Read `properties.experiment_id` and `properties.experiment_variant_id`.
+*/
+| 'EXPERIMENT_ASSIGNED'
+/**
+* The user was exposed to the arm of a campaign experiment: a screen shown,
+* or a NONE arm at `display()` / `exposed()`. New in 6.3.0. Read
+* `properties.experiment_id` and `properties.experiment_variant_id`.
+*/
+| 'EXPERIMENT_EXPOSED';
 
 // @public (undocumented)
 export type PLYEventProperties = {
@@ -435,6 +446,8 @@ export type PLYEventProperties = {
     stripe_checkout_session_id?: string;
     stripe_purchase_id?: string;
     redemption?: PLYEventPropertyRedemption;
+    experiment_id?: string;
+    experiment_variant_id?: string;
 };
 
 // @public (undocumented)
@@ -532,6 +545,7 @@ export interface PLYLoadedPresentation extends PLYPresentation {
     back(): void;
     close(): void;
     display(transition?: PLYTransition | null): Promise<PLYPresentationOutcome>;
+    exposed(): Promise<void>;
 }
 
 // @public
@@ -692,6 +706,7 @@ export class PLYPresentationRequest {
     back(): void;
     close(): void;
     display(transition?: PLYTransition | null): Promise<PLYPresentationOutcome>;
+    exposed(): Promise<void>;
     onCloseRequested(handler: () => void): this;
     onDismissed(handler: (outcome: PLYPresentationOutcome) => void): this;
     // (undocumented)

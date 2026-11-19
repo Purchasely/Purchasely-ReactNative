@@ -18,6 +18,9 @@
                  purchaseContextToken:(NSString *)purchaseContextToken
                               resolve:(RCTPromiseResolveBlock)resolve
                                reject:(RCTPromiseRejectBlock)reject;
+- (void)exposedPresentation:(NSString *)requestId
+                   resolve:(RCTPromiseResolveBlock)resolve
+                    reject:(RCTPromiseRejectBlock)reject;
 @end
 
 // Captures events sent through RCTEventEmitter so
@@ -722,6 +725,19 @@ typedef void (^PLYSignFailure)(NSError *);
 
 - (void)testSignPromotionalOfferWithTokenRejectsAnEmptyToken {
     [self assertSignRejectsToken:@""];
+}
+
+// exposed() needs the presentation kept from preload. An unknown request id
+// rejects with an argument error and never reaches native.
+- (void)testExposedPresentationRejectsAnUnknownRequestId {
+    __block NSString *code = nil;
+    __block id resolved = nil;
+    [self.purchaselyModule exposedPresentation:@"unknown-request"
+                                       resolve:^(id value) { resolved = value; }
+                                        reject:^(NSString *c, NSString *m, NSError *e) { code = c; }];
+
+    XCTAssertEqualObjects(code, @"ARG_INVALID");
+    XCTAssertNil(resolved);
 }
 
 @end

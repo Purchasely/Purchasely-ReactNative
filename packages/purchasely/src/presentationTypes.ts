@@ -140,6 +140,16 @@ export interface PLYLoadedPresentation extends PLYPresentation {
     close(): void;
     /** Navigate back inside a multi-step (Flow) presentation. */
     back(): void;
+    /**
+     * Tells Purchasely the app reached the moment it would have shown this
+     * presentation: sends `EXPERIMENT_EXPOSED` for the experiment it serves, at
+     * each call, and nothing when it serves none. Call it for a
+     * `PLYPresentationType.DEACTIVATED` presentation (a campaign NONE arm) that
+     * the app renders itself without calling {@link display}. The native SDKs
+     * ignore it for any other type. Rejects when the presentation did not come
+     * from `preload()`. New in 6.3.0.
+     */
+    exposed(): Promise<void>;
 }
 
 /** Information surfaced when an interceptor is triggered. */

@@ -1032,6 +1032,21 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
   }
 
   /**
+   * Native `exposed()` on the presentation kept from `preloadPresentation`.
+   * A requestId with no loaded presentation rejects with an argument error.
+   */
+  @ReactMethod
+  fun exposedPresentation(requestId: String?, promise: Promise) {
+    val loaded = requestId?.let { activeLoadedPresentations[it] }
+    if (loaded == null) {
+      promise.reject("ARG_INVALID", "exposed: no loaded presentation for this requestId, pass a presentation returned by preload()")
+      return
+    }
+    loaded.exposed()
+    promise.resolve(true)
+  }
+
+  /**
    * Resolve a loaded native presentation from the identifiers JS sends
    * (`screenId`, with `placementId` as fallback). A v6 presentation cannot be
    * rebuilt from a JS map, so the instance is looked up in the per-request

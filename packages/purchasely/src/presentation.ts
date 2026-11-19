@@ -539,6 +539,11 @@ export class PLYPresentationRequest {
         NativeModules.Purchasely.goBackToPreviousScreen(this._requestId);
     }
 
+    /** Native `exposed()` on the presentation kept from `preload()`. See {@link PLYLoadedPresentation.exposed}. */
+    async exposed(): Promise<void> {
+        await NativeModules.Purchasely.exposedPresentation(this._requestId);
+    }
+
     private ensureRequestId(): string {
         if (!this._requestId) {
             this._requestId = generateRequestId();
@@ -561,6 +566,7 @@ export class PLYPresentationRequest {
                 this.display(transition),
             close: () => this.close(),
             back: () => this.back(),
+            exposed: () => this.exposed(),
         };
     }
 

@@ -81,6 +81,29 @@ class PurchaselyModuleTest {
 
     // endregion
 
+    // region exposed
+
+    @Test
+    fun `exposedPresentation rejects with an argument error when no presentation was loaded`() {
+        val promise = mock(Promise::class.java)
+
+        purchaselyModule.exposedPresentation("unknown-request", promise)
+
+        verify(promise).reject(org.mockito.ArgumentMatchers.eq("ARG_INVALID"), org.mockito.ArgumentMatchers.anyString())
+        verify(promise, never()).resolve(org.mockito.ArgumentMatchers.any())
+    }
+
+    @Test
+    fun `exposedPresentation rejects with an argument error when the request id is null`() {
+        val promise = mock(Promise::class.java)
+
+        purchaselyModule.exposedPresentation(null, promise)
+
+        verify(promise).reject(org.mockito.ArgumentMatchers.eq("ARG_INVALID"), org.mockito.ArgumentMatchers.anyString())
+    }
+
+    // endregion
+
     // region emit
 
     @Test

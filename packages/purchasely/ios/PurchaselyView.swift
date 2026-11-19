@@ -215,9 +215,11 @@ class PurchaselyView: UIView {
                                          placementId: String?) -> UIViewController? {
       // A `requestId` means JS already preloaded this presentation: reuse it.
       // Its dismissal is already routed by `preloadPresentation:`.
+      // A loaded presentation is the answer even with no controller (a deactivated
+      // NONE arm has none): falling through would fetch a second, other screen.
       if let requestId = self.requestId,
-         let loaded = PurchaselyRN.loadedPresentation(forRequestId: requestId),
-         let controller = loaded.controller {
+         let loaded = PurchaselyRN.loadedPresentation(forRequestId: requestId) {
+          guard let controller = loaded.controller else { return nil }
           removeOnCloseRequest(loaded, controller: controller)
           return controller
       }
@@ -231,8 +233,7 @@ class PurchaselyView: UIView {
       if let presentation = presentation,
          let presentationPlacementId = presentation.placementId,
          let matched = PurchaselyRN.takeLoadedPresentation(matchingScreenId: presentation.id,
-                                                            placementId: presentationPlacementId),
-         let controller = matched.controller {
+                                                            placementId: presentationPlacementId) {
           // Re-route the dismissal to the id JS actually listens on. `onDismissed`
           // is one slot, so this replaces the earlier wiring. `viewId` is read
           // lazily because RN may still apply it after this runs.
@@ -240,6 +241,7 @@ class PurchaselyView: UIView {
               guard let routingId = self?.viewId else { return }
               PurchaselyRN.emitPresentationDismissed(forId: routingId, outcome: outcome)
           }
+          guard let controller = matched.controller else { return nil }
           removeOnCloseRequest(matched, controller: controller)
           return controller
       }

@@ -590,6 +590,23 @@ describe('Purchasely Types', () => {
             expect(event.properties.redemption?.purchase_context?.replay).toBe(false)
         })
 
+        it('should accept the EXPERIMENT_EXPOSED payload with the experiment ids', () => {
+            const event: PLYEvent = {
+                name: 'EXPERIMENT_EXPOSED',
+                properties: {
+                    sdk_version: '6.3.0',
+                    event_name: 'EXPERIMENT_EXPOSED',
+                    event_created_at_ms: 1705315200000,
+                    event_created_at: '2024-01-15T12:00:00Z',
+                    experiment_id: 'exp-1',
+                    experiment_variant_id: 'var-1',
+                },
+            }
+
+            expect(event.properties.experiment_id).toBe('exp-1')
+            expect(event.properties.experiment_variant_id).toBe('var-1')
+        })
+
         it('should accept the REDEMPTION_FAILED payload, with error_message at the top level', () => {
             const event: PLYEvent = {
                 name: 'REDEMPTION_FAILED',
@@ -856,9 +873,12 @@ describe('Purchasely Event Names', () => {
             // New on both native platforms in 6.1.0 (Web2App redemption).
             'REDEMPTION_CONSUMED',
             'REDEMPTION_FAILED',
+            // New on both native platforms in 6.3.0 (campaign experiments).
+            'EXPERIMENT_ASSIGNED',
+            'EXPERIMENT_EXPOSED',
         ]
 
-        expect(eventNames).toHaveLength(44)
+        expect(eventNames).toHaveLength(46)
         eventNames.forEach(name => {
             expect(typeof name).toBe('string')
         })

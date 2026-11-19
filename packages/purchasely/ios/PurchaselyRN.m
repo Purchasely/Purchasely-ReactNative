@@ -1723,6 +1723,13 @@ RCT_EXPORT_METHOD(displayPresentation:(NSString *)requestId
         @synchronized (kPresentationStateLock) {
             kPresentationsByRequest[requestId] = presentation;
         }
+
+        // A deactivated or client presentation has no screen (RN registers no custom
+        // screen handler): native display() hands it to this completion, then sends one
+        // empty outcome to onDismissed. Nothing was presented, so no onPresented.
+        if (presentation.type == PLYPresentationTypeDeactivated || presentation.type == PLYPresentationTypeClient) {
+            return;
+        }
         strongSelf.presentedPresentationViewController = presentation.controller;
 
         // v6: by the time this completion fires, `displayWithTransition:
@@ -1876,6 +1883,24 @@ RCT_EXPORT_METHOD(goBackToPreviousScreen:(NSString *)requestId) {
             RCTLogWarn(@"[Purchasely] goBackToPreviousScreen(%@): no loaded presentation to navigate back", requestId);
         }
     });
+}
+
+/// Native `exposed()` on the presentation kept from `preloadPresentation:`.
+/// A requestId with no loaded presentation rejects with an argument error.
+RCT_EXPORT_METHOD(exposedPresentation:(NSString * _Nullable)requestId
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
+    ensurePresentationState();
+    id<PLYPresentation> presentation = nil;
+    @synchronized (kPresentationStateLock) {
+        presentation = requestId != nil ? kPresentationsByRequest[requestId] : nil;
+    }
+    if (presentation == nil) {
+        reject(@"ARG_INVALID", @"exposed: no loaded presentation for this requestId, pass a presentation returned by preload()", nil);
+        return;
+    }
+    [presentation exposed];
+    resolve(@(YES));
 }
 
 #pragma mark - client (BYOS) presentations

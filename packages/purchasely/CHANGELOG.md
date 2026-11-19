@@ -4,8 +4,21 @@ All notable changes to `react-native-purchasely` are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- `presentation.exposed()` on a preloaded presentation: tells Purchasely the
+  user reached the moment a `DEACTIVATED` presentation (a campaign NONE arm)
+  would have shown. It sends `EXPERIMENT_EXPOSED`.
+- `EXPERIMENT_ASSIGNED` and `EXPERIMENT_EXPOSED` events, with the
+  `experiment_id` and `experiment_variant_id` properties.
+
 ### Changed
 
+- `display()` on a `DEACTIVATED` or `CLIENT` presentation resolves once with an
+  empty outcome and sends no `onPresented`. On iOS the bridge no longer
+  invents `onPresented` for it.
+- An inline view on a loaded `DEACTIVATED` presentation shows nothing and does
+  not fetch another screen on iOS.
 - Native SDKs: iOS 6.3.0 and Android 6.3.0. Bridge version 6.3.0.
 - The iOS SDK comes from Swift Package Manager, not from the `Purchasely` pod
   of CocoaPods trunk. `pod install` adds the SDK to the `react-native-purchasely`

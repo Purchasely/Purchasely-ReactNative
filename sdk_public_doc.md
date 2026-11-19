@@ -955,6 +955,30 @@ try {
 | `DEACTIVATED` | No paywall for this placement |
 | `CLIENT` | Your own paywall (BYOS) |
 
+#### No screen: `DEACTIVATED` and `CLIENT` (6.3.0)
+
+A campaign experiment can serve a "no screen" arm: the presentation `type` is
+`DEACTIVATED`. `display()` on it shows nothing. It resolves once with an outcome
+that holds the presentation, no error and no purchase result, and the SDK counts
+the exposure (`EXPERIMENT_EXPOSED`). The same holds for a `CLIENT` presentation,
+because the React Native bridge registers no custom screen handler.
+
+If your app does not call `display()` (an inline placement, for example), call
+`exposed()` on the preloaded presentation at the moment the user would have seen
+the screen. It sends `EXPERIMENT_EXPOSED` at each
+call, and does nothing for a presentation that serves no experiment. It rejects
+when the presentation did not come from `preload()`.
+
+```typescript
+const presentation = await Purchasely.presentation.placement('inline').build().preload();
+if (presentation.type === PLYPresentationType.DEACTIVATED) {
+    await presentation.exposed();
+}
+```
+
+`EXPERIMENT_ASSIGNED` and `EXPERIMENT_EXPOSED` events carry
+`properties.experiment_id` and `properties.experiment_variant_id`.
+
 ---
 
 ## Deeplinks Management
