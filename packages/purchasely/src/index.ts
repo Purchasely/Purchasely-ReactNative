@@ -141,7 +141,10 @@ const addUserSubscriptionStatusListener = (
     // The native SDK sends the status call only when its delegate is added.
     const cached = lastUserSubscriptionStatus;
     queueMicrotask(() => {
-      if (!removed && !received) callback(cached);
+      // Skip it if a login or logout (or a fresh status) replaced the cache meanwhile.
+      if (!removed && !received && lastUserSubscriptionStatus === cached) {
+        callback(cached);
+      }
     });
   }
   return subscription;

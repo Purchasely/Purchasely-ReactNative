@@ -177,6 +177,16 @@ describe('user subscription status listener', () => {
             expect(afterLogin).not.toHaveBeenCalled()
         })
 
+        it('drops a queued replay when the user logs out in the same turn', async () => {
+            add(jest.fn())
+            native.__emit(EVENT, purchased)
+            const late = jest.fn()
+            add(late)
+            Purchasely.userLogout()
+            await flush()
+            expect(late).not.toHaveBeenCalled()
+        })
+
         it('counts a double remove once', () => {
             const first = add(jest.fn())
             add(jest.fn())
