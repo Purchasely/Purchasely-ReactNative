@@ -396,7 +396,12 @@ static __weak PurchaselyRN *_sharedEmitter;
             id<PLYPresentation> presentation = kPresentationsByRequest[key];
             if ([presentation.screenId isEqualToString:screenId] &&
                 [presentation.placementId isEqualToString:placementId]) {
-                [kPresentationsByRequest removeObjectForKey:key];
+                // A NONE/CLIENT arm has no controller, so nothing to share: keep the
+                // entry so a re-applied prop or a later exposed() still finds it
+                // (the view must not fetch the placement again).
+                if (presentation.controller != nil) {
+                    [kPresentationsByRequest removeObjectForKey:key];
+                }
                 return presentation;
             }
         }

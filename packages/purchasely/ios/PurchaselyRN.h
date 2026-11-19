@@ -51,8 +51,9 @@
 
 /// Look up a presentation preloaded via `preloadPresentation:` matching the
 /// given screen/placement identifiers, atomically removing it from the
-/// registry — a matched presentation is single-use, claimed by whichever
-/// embedded `PLYPresentationView` resolves it first. Used by the
+/// registry when it has a controller — such a presentation is single-use, claimed
+/// by whichever embedded `PLYPresentationView` resolves it first. A presentation
+/// with no controller (deactivated, client) stays registered. Used by the
 /// `presentation` prop path, which carries a screen dict but no `requestId`.
 + (nullable id<PLYPresentation>)takeLoadedPresentationMatchingScreenId:(nullable NSString *)screenId
                                                             placementId:(nullable NSString *)placementId
