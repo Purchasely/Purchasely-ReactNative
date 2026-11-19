@@ -151,15 +151,21 @@ class PurchaselyViewManagerLifecycleTest {
     @Test
     fun `a view with no preloaded entry and no placement or screen loads nothing`() {
         every { PurchaselyModule.loadedPresentation(STALE_REQUEST_ID) } returns null
-        val root = mountedRoot()
-        manager.setRequestId(root, STALE_REQUEST_ID)
+        // A spy: the real builder runs, and the call is recorded. No looper idle here:
+        // the frame callback of a mounted view posts itself again on every frame.
+        mockkObject(PLYPresentationBase.Companion)
+        try {
+            val root = mountedRoot()
+            manager.setRequestId(root, STALE_REQUEST_ID)
 
-        create(root)
-        shadowOf(Looper.getMainLooper()).idle()
+            create(root)
 
-        assertFalse(preloadStarted.await(PRELOAD_WAIT_MS, TimeUnit.MILLISECONDS))
-        verify(exactly = 0) { presentation.buildView(any(), any()) }
-        manager.onDropViewInstance(root)
+            verify(exactly = 0) { PLYPresentationBase.builder() }
+            verify(exactly = 0) { presentation.buildView(any(), any()) }
+            manager.onDropViewInstance(root)
+        } finally {
+            unmockkObject(PLYPresentationBase.Companion)
+        }
     }
 
     @Test
