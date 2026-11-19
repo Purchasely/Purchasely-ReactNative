@@ -6,6 +6,12 @@ All notable changes to `react-native-purchasely` are documented in this file.
 
 ### Added
 
+- `Purchasely.addUserSubscriptionStatusListener(callback)` and
+  `removeUserSubscriptionStatusListener(subscription)`. The callback gets
+  `{ isActive, reason, subscription }`: `reason` is `'PURCHASED'`,
+  `'RESTORED'`, `'EXPIRED'`, `'WEB_REDEEMED'` or `null` (a status call), and
+  `subscription` has the shape of `userSubscriptions()` or is `null`. Several
+  listeners are allowed.
 - `presentation.exposed()` on a preloaded presentation: tells Purchasely the
   user reached the moment a `DEACTIVATED` presentation (a campaign NONE arm)
   would have shown. It sends `EXPERIMENT_EXPOSED`.
@@ -14,6 +20,9 @@ All notable changes to `react-native-purchasely` are documented in this file.
 
 ### Changed
 
+- `addPurchasedListener`, `removePurchasedListener`, `listenToPurchases` and
+  `stopListeningToPurchases` are deprecated. Use
+  `addUserSubscriptionStatusListener`. Their behavior does not change.
 - `display()` on a `DEACTIVATED` or `CLIENT` presentation resolves once with an
   empty outcome and sends no `onPresented`. On iOS the bridge no longer
   invents `onPresented` for it.

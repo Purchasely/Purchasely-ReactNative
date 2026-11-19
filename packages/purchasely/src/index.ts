@@ -1,4 +1,5 @@
 import { NativeEventEmitter, NativeModules } from 'react-native';
+import type { EmitterSubscription } from 'react-native';
 
 import { PLYPresentationView } from './components/PLYPresentationView';
 import type {
@@ -25,6 +26,7 @@ import type {
   PLYPromotionalOfferSignatureWithToken,
   PLYSubscription,
   PLYUserAttribute,
+  PLYUserSubscriptionStatus,
 } from './types';
 import {
   PLYPresentationBuilder,
@@ -81,17 +83,53 @@ const removeEventListener = () => {
 
 type PurchaseListenerCallback = () => void;
 
+/** @deprecated Use {@link addUserSubscriptionStatusListener}. */
 const addPurchasedListener = (callback: PurchaseListenerCallback) => {
   return PurchaselyEventEmitter.addListener('PURCHASE_LISTENER', callback);
 };
 
+/** @deprecated Use {@link removeUserSubscriptionStatusListener}. */
 const removePurchasedListener = () => {
   return PurchaselyEventEmitter.removeAllListeners('PURCHASE_LISTENER');
 };
 
+type UserSubscriptionStatusListenerCallback = (
+  status: PLYUserSubscriptionStatus
+) => void;
+
+/**
+ * Listen to the user subscription status. The callback gets one status call
+ * (`reason` is `null`) when the SDK knows the status, then each change: a
+ * subscription purchased, restored, redeemed from the web or expired. Several
+ * listeners are allowed. New in 6.3.0.
+ *
+ * The first listener makes the bridge register one native listener, which stays
+ * registered. Only that first listener is sure to get the status call.
+ */
+const addUserSubscriptionStatusListener = (
+  callback: UserSubscriptionStatusListenerCallback
+): EmitterSubscription => {
+  const subscription = PurchaselyEventEmitter.addListener(
+    'USER_SUBSCRIPTION_STATUS_LISTENER',
+    callback
+  );
+  // After the JS listener exists, so the status call that the SDK sends on add is not lost.
+  NativeModules.Purchasely.startUserSubscriptionStatusListener();
+  return subscription;
+};
+
+/** Stop the delivery to one listener added with {@link addUserSubscriptionStatusListener}. */
+const removeUserSubscriptionStatusListener = (
+  subscription: EmitterSubscription
+) => {
+  subscription.remove();
+};
+
 const listenToEvents = addEventListener;
 const stopListeningToEvents = removeEventListener;
+/** @deprecated Use {@link addUserSubscriptionStatusListener}. */
 const listenToPurchases = addPurchasedListener;
+/** @deprecated Use {@link removeUserSubscriptionStatusListener}. */
 const stopListeningToPurchases = removePurchasedListener;
 
 type UserAttributeSetListenerCallback = (
@@ -586,6 +624,8 @@ const Purchasely = {
   removePurchasedListener,
   listenToPurchases,
   stopListeningToPurchases,
+  addUserSubscriptionStatusListener,
+  removeUserSubscriptionStatusListener,
   addUserAttributeSetListener,
   removeUserAttributeSetListener,
   addUserAttributeRemovedListener,

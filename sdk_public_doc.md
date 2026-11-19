@@ -861,6 +861,30 @@ Purchasely.addEventListener((event) => {
 });
 ```
 
+### User Subscription Status Listener (6.3.0)
+
+`addUserSubscriptionStatusListener` replaces `addPurchasedListener`
+(deprecated, same behavior). The callback gets one status call (`reason` is
+`null`) when the SDK knows the status, then each change. Several listeners are
+allowed.
+
+```typescript
+const subscription = Purchasely.addUserSubscriptionStatusListener((status) => {
+    // status: { isActive, reason, subscription }
+    // reason: 'PURCHASED' | 'RESTORED' | 'EXPIRED' | 'WEB_REDEEMED' | null
+    // subscription: same shape as userSubscriptions(), or null
+    console.log(status.isActive, status.reason, status.subscription);
+});
+
+// Later:
+Purchasely.removeUserSubscriptionStatusListener(subscription);
+```
+
+`subscription` is `null` only in a status call for a user who has no
+subscription (`isActive` is then `false`). The first listener makes the bridge
+register one native listener, which stays registered. Only that first listener is
+sure to get the status call.
+
 ### Custom User Attributes Listener
 
 When a user submits answers to a survey, custom user attributes can be set automatically by the SDK:

@@ -311,6 +311,17 @@ function App(): React.JSX.Element {
         Purchasely.addPurchasedListener(() => {
             console.log('Purchase successful')
         })
+
+        Purchasely.addUserSubscriptionStatusListener((status) => {
+            console.log(
+                '[Purchasely] UserSubscriptionStatus',
+                JSON.stringify({
+                    isActive: status.isActive,
+                    reason: status.reason,
+                    subscription: status.subscription?.plan?.vendorId ?? null,
+                })
+            )
+        })
     }
 
     // Preload a placement so its paywall is ready before the user reaches it.

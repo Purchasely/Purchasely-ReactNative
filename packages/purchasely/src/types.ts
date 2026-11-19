@@ -448,6 +448,29 @@ export type PLYEventProperties = {
   experiment_variant_id?: string;
 };
 
+/** Why the SDK sends a {@link PLYUserSubscriptionStatus}. */
+export type PLYUserSubscriptionStatusReason =
+  | 'PURCHASED'
+  | 'RESTORED'
+  | 'EXPIRED'
+  | 'WEB_REDEEMED';
+
+/**
+ * The user subscription status, delivered to the listener you add with
+ * `Purchasely.addUserSubscriptionStatusListener`. New in 6.3.0.
+ */
+export type PLYUserSubscriptionStatus = {
+  /** `true` when the user has one or more active subscriptions. Non-consumables do not count. */
+  isActive: boolean;
+  /** What changed, or `null` for a status call that tells the current status. */
+  reason: PLYUserSubscriptionStatusReason | null;
+  /**
+   * The subscription of the call, in the shape of `Purchasely.userSubscriptions()`.
+   * `null` only in a status call for a user who has no subscription.
+   */
+  subscription: PLYSubscription | null;
+};
+
 /**
  * What a Web2App redemption granted.
  *

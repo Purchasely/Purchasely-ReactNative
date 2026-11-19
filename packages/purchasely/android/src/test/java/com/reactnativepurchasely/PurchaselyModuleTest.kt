@@ -104,6 +104,44 @@ class PurchaselyModuleTest {
 
     // endregion
 
+    // region user subscription status
+
+    @Test
+    fun `userSubscriptionStatusToMap maps the reason by name and keeps the subscription`() {
+        val map = userSubscriptionStatusToMap(
+            PLYUserSubscriptionStatus(true, PLYUserSubscriptionStatusReason.WEB_REDEEMED, null)
+        )
+
+        assertEquals(true, map["isActive"])
+        assertEquals("WEB_REDEEMED", map["reason"])
+        assertTrue(map.containsKey("subscription"))
+    }
+
+    @Test
+    fun `userSubscriptionStatusToMap keeps a status call with a null reason and a null subscription`() {
+        val map = userSubscriptionStatusToMap(PLYUserSubscriptionStatus(false, null, null))
+
+        assertEquals(false, map["isActive"])
+        assertTrue(map.containsKey("reason") && map["reason"] == null)
+        assertTrue(map.containsKey("subscription") && map["subscription"] == null)
+    }
+
+    @Test
+    fun `startUserSubscriptionStatusListener adds a status listener to the SDK`() {
+        val purchaselyStatic = mockStatic(Purchasely::class.java)
+        try {
+            purchaselyModule.startUserSubscriptionStatusListener()
+
+            purchaselyStatic.verify {
+                Purchasely.addUserSubscriptionStatusListener(org.mockito.kotlin.any<UserSubscriptionStatusListener>())
+            }
+        } finally {
+            purchaselyStatic.close()
+        }
+    }
+
+    // endregion
+
     // region emit
 
     @Test

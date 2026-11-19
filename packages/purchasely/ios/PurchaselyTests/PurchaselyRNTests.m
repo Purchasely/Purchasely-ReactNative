@@ -740,4 +740,35 @@ typedef void (^PLYSignFailure)(NSError *);
     XCTAssertNil(resolved);
 }
 
+- (void)testUserSubscriptionStatusBodyMapsEachReasonToItsWireName {
+    NSDictionary *subscription = @{@"plan": @"p"};
+    NSDictionary<NSNumber *, NSString *> *expected = @{
+        @(PLYUserSubscriptionStatusReasonPurchased): @"PURCHASED",
+        @(PLYUserSubscriptionStatusReasonRestored): @"RESTORED",
+        @(PLYUserSubscriptionStatusReasonExpired): @"EXPIRED",
+        @(PLYUserSubscriptionStatusReasonWebRedeemed): @"WEB_REDEEMED",
+    };
+    for (NSNumber *reason in expected) {
+        NSDictionary *body = [PurchaselyRN userSubscriptionStatusBodyWithIsActive:YES
+                                                                           reason:(PLYUserSubscriptionStatusReason)reason.integerValue
+                                                                     subscription:subscription];
+        XCTAssertEqualObjects(body[@"reason"], expected[reason]);
+        XCTAssertEqualObjects(body[@"isActive"], @YES);
+        XCTAssertEqualObjects(body[@"subscription"], subscription);
+    }
+}
+
+// A status call has no reason, and a user with no subscription has no subscription:
+// both stay in the body as NSNull, so the three keys never change.
+- (void)testUserSubscriptionStatusBodyKeepsNullReasonAndSubscription {
+    NSDictionary *body = [PurchaselyRN userSubscriptionStatusBodyWithIsActive:NO
+                                                                       reason:PLYUserSubscriptionStatusReasonNone
+                                                                 subscription:nil];
+
+    XCTAssertEqual(body.count, (NSUInteger)3);
+    XCTAssertEqualObjects(body[@"isActive"], @NO);
+    XCTAssertEqualObjects(body[@"reason"], [NSNull null]);
+    XCTAssertEqualObjects(body[@"subscription"], [NSNull null]);
+}
+
 @end

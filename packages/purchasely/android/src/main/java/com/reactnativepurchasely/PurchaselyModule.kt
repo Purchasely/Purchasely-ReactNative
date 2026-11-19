@@ -94,6 +94,25 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     sendEvent(reactApplicationContext, "WEB_REDEMPTION_LISTENER", Arguments.makeNativeMap(params))
   }
 
+  /**
+   * The one native user subscription status listener. Not the single-slot
+   * [Purchasely.purchaseListener]: the SDK keeps a list, and adding this same
+   * instance twice has no effect.
+   */
+  private val userSubscriptionStatusListener = UserSubscriptionStatusListener { status ->
+    sendEvent(
+      reactApplicationContext,
+      "USER_SUBSCRIPTION_STATUS_LISTENER",
+      Arguments.makeNativeMap(userSubscriptionStatusToMap(status))
+    )
+  }
+
+  /** The first JS listener starts it. Idempotent. */
+  @ReactMethod
+  fun startUserSubscriptionStatusListener() {
+    Purchasely.addUserSubscriptionStatusListener(userSubscriptionStatusListener)
+  }
+
   override fun getName(): String {
     return "Purchasely"
   }
@@ -1629,3 +1648,14 @@ internal fun webRedemptionResultToMap(result: PLYWebRedemptionResult): Map<Strin
     Pair("errorMessage", result.errorMessage),
   )
 }
+
+/**
+ * Map a [PLYUserSubscriptionStatus] to the JS `PLYUserSubscriptionStatus` shape.
+ * `reason` is the enum name, or null for a status call. `subscription` is the
+ * map `userSubscriptions()` returns, or null.
+ */
+internal fun userSubscriptionStatusToMap(status: PLYUserSubscriptionStatus): Map<String, Any?> = mapOf(
+  Pair("isActive", status.isActive),
+  Pair("reason", status.reason?.name),
+  Pair("subscription", status.subscription?.let(PurchaselyModule::subscriptionToMap)),
+)

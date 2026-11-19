@@ -357,7 +357,10 @@ static PLYTransition *plyTransitionFromMap(NSDictionary *map) {
                                    dismissible:dismissible];
 }
 
-@implementation PurchaselyRN
+@implementation PurchaselyRN {
+    // The one native status delegate is registered at most once.
+    BOOL _userSubscriptionStatusStarted;
+}
 
 RCT_EXPORT_MODULE(Purchasely);
 
@@ -638,6 +641,16 @@ RCT_EXPORT_METHOD(start:(NSString * _Nonnull)apiKey
     [Purchasely setUserAttributeDelegate: self];
 
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(purchasePerformed) name:@"ply_purchasedSubscription" object:nil];
+}
+
+/// Registers the one native status delegate. Idempotent: the first JS listener starts it.
+/// The SDK holds its delegate weakly, so this module is the strong owner.
+RCT_EXPORT_METHOD(startUserSubscriptionStatusListener) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (self->_userSubscriptionStatusStarted) { return; }
+        self->_userSubscriptionStatusStarted = YES;
+        [Purchasely addUserSubscriptionStatusDelegate:self];
+    });
 }
 
 RCT_EXPORT_METHOD(isEligibleForIntroOffer:(NSString * _Nonnull)planVendorId
@@ -1336,6 +1349,7 @@ RCT_EXPORT_METHOD(closeAllScreens) {
     @"USER_ATTRIBUTE_SET_LISTENER",
     @"USER_ATTRIBUTE_REMOVED_LISTENER",
     @"WEB_REDEMPTION_LISTENER",
+    @"USER_SUBSCRIPTION_STATUS_LISTENER",
     // cross-platform bridge events. Names mirror the Android bridge so the
     // same JS layer drives both platforms. See the presentation section below.
     @"PURCHASELY_PRESENTATION_LOADED",
@@ -1470,6 +1484,36 @@ RCT_EXPORT_METHOD(closeAllScreens) {
         @"replay": @(replay),
         @"errorCode": errorCode ?: [NSNull null],
         @"errorMessage": errorMessage ?: [NSNull null]
+    };
+}
+
+/// `PLYUserSubscriptionStatusDelegate`. The SDK calls this on the main thread, with the
+/// current status once on add, then at each change.
+- (void)userSubscriptionStatusUpdated:(PLYUserSubscriptionStatus *)status {
+    if (!self.shouldEmit) return;
+
+    NSDictionary<NSString *, id> *body =
+        [PurchaselyRN userSubscriptionStatusBodyWithIsActive:status.isActive
+                                                      reason:status.reason
+                                                subscription:status.subscription.asDictionary];
+    [self sendEventWithName:@"USER_SUBSCRIPTION_STATUS_LISTENER" body:body];
+}
+
++ (NSDictionary<NSString *, id> *)userSubscriptionStatusBodyWithIsActive:(BOOL)isActive
+                                                                  reason:(PLYUserSubscriptionStatusReason)reason
+                                                            subscription:(NSDictionary * _Nullable)subscription {
+    NSString *wireReason = nil;
+    switch (reason) {
+        case PLYUserSubscriptionStatusReasonPurchased: wireReason = @"PURCHASED"; break;
+        case PLYUserSubscriptionStatusReasonRestored: wireReason = @"RESTORED"; break;
+        case PLYUserSubscriptionStatusReasonExpired: wireReason = @"EXPIRED"; break;
+        case PLYUserSubscriptionStatusReasonWebRedeemed: wireReason = @"WEB_REDEEMED"; break;
+        case PLYUserSubscriptionStatusReasonNone: break;
+    }
+    return @{
+        @"isActive": @(isActive),
+        @"reason": wireReason ?: [NSNull null],
+        @"subscription": subscription ?: [NSNull null]
     };
 }
 

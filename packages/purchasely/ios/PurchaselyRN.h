@@ -9,7 +9,7 @@
 #import <React/RCTEventEmitter.h>
 @import Purchasely;
 
-@interface PurchaselyRN: RCTEventEmitter <RCTBridgeModule, PLYEventDelegate, PLYUserAttributeDelegate, PLYWebRedemptionDelegate>
+@interface PurchaselyRN: RCTEventEmitter <RCTBridgeModule, PLYEventDelegate, PLYUserAttributeDelegate, PLYWebRedemptionDelegate, PLYUserSubscriptionStatusDelegate>
 
 /// Build the `WEB_REDEMPTION_LISTENER` event body from the parts of a
 /// `PLYWebRedemptionResult`.
@@ -28,6 +28,13 @@
                                                                 replay:(BOOL)replay
                                                              errorCode:(nullable NSString *)errorCode
                                                           errorMessage:(nullable NSString *)errorMessage;
+
+/// Build the `USER_SUBSCRIPTION_STATUS_LISTENER` event body. The same three keys
+/// on every call; `PLYUserSubscriptionStatusReasonNone` (a status call) and a
+/// missing subscription become `NSNull`.
++ (nonnull NSDictionary<NSString *, id> *)userSubscriptionStatusBodyWithIsActive:(BOOL)isActive
+                                                                          reason:(PLYUserSubscriptionStatusReason)reason
+                                                                    subscription:(nullable NSDictionary *)subscription;
 
 @property (nonatomic, retain) UIViewController* presentedPresentationViewController;
 

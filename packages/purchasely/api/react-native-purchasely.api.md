@@ -4,7 +4,7 @@
 
 ```ts
 
-import { EmitterSubscription } from 'react-native';
+import type { EmitterSubscription } from 'react-native';
 import { default as React_2 } from 'react';
 
 // @public
@@ -885,6 +885,16 @@ export enum PLYUserAttributeType {
 }
 
 // @public
+export type PLYUserSubscriptionStatus = {
+    isActive: boolean;
+    reason: PLYUserSubscriptionStatusReason | null;
+    subscription: PLYSubscription | null;
+};
+
+// @public
+export type PLYUserSubscriptionStatusReason = 'PURCHASED' | 'RESTORED' | 'EXPIRED' | 'WEB_REDEEMED';
+
+// @public
 export interface PLYWebCheckoutPayload {
     // (undocumented)
     clientReferenceId: string;
@@ -965,6 +975,8 @@ const Purchasely: {
     removePurchasedListener: () => void;
     listenToPurchases: (callback: PurchaseListenerCallback) => EmitterSubscription;
     stopListeningToPurchases: () => void;
+    addUserSubscriptionStatusListener: (callback: UserSubscriptionStatusListenerCallback) => EmitterSubscription;
+    removeUserSubscriptionStatusListener: (subscription: EmitterSubscription) => void;
     addUserAttributeSetListener: (callback: UserAttributeSetListenerCallback) => EmitterSubscription;
     removeUserAttributeSetListener: () => void;
     addUserAttributeRemovedListener: (callback: UserAttributeRemovedListenerCallback) => EmitterSubscription;
@@ -1199,15 +1211,19 @@ export interface UserAttributesParameters {
 }
 
 // @public (undocumented)
+type UserSubscriptionStatusListenerCallback = (status: PLYUserSubscriptionStatus) => void;
+
+// @public (undocumented)
 export type WebRedemptionListenerCallback = (result: PLYWebRedemptionResult) => void;
 
 // Warnings were encountered during analysis:
 //
-// src/index.ts:74:58 - (ae-forgotten-export) The symbol "PurchaseListenerCallback" needs to be exported by the entry point index.d.ts
-// src/index.ts:84:65 - (ae-forgotten-export) The symbol "UserAttributeSetListenerCallback" needs to be exported by the entry point index.d.ts
-// src/index.ts:102:45 - (ae-forgotten-export) The symbol "UserAttributeRemovedListenerCallback" needs to be exported by the entry point index.d.ts
-// src/index.ts:180:45 - (ae-forgotten-export) The symbol "setUserAttributeWithDate" needs to be exported by the entry point index.d.ts
-// src/index.ts:490:6 - (ae-forgotten-export) The symbol "EventListenerCallback" needs to be exported by the entry point index.d.ts
+// src/index.ts:76:58 - (ae-forgotten-export) The symbol "PurchaseListenerCallback" needs to be exported by the entry point index.d.ts
+// src/index.ts:87:65 - (ae-forgotten-export) The symbol "UserSubscriptionStatusListenerCallback" needs to be exported by the entry point index.d.ts
+// src/index.ts:123:36 - (ae-forgotten-export) The symbol "UserAttributeSetListenerCallback" needs to be exported by the entry point index.d.ts
+// src/index.ts:140:45 - (ae-forgotten-export) The symbol "UserAttributeRemovedListenerCallback" needs to be exported by the entry point index.d.ts
+// src/index.ts:218:45 - (ae-forgotten-export) The symbol "setUserAttributeWithDate" needs to be exported by the entry point index.d.ts
+// src/index.ts:528:6 - (ae-forgotten-export) The symbol "EventListenerCallback" needs to be exported by the entry point index.d.ts
 
 // (No @packageDocumentation comment for this package)
 
