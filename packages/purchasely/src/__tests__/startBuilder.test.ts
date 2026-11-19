@@ -18,6 +18,7 @@ import { mockConstants } from '../__mocks__/testUtils'
 // referencing an outer-scope object here would still be `undefined` when the
 // factory actually runs.
 jest.mock('react-native', () => ({
+    Platform: { OS: 'ios' },
     NativeModules: {
         Purchasely: {
             getConstants: jest.fn(() => require('../__mocks__/testUtils').mockConstants),
@@ -36,7 +37,7 @@ jest.mock('react-native', () => ({
     }),
 }))
 
-import { NativeModules } from 'react-native'
+import { NativeModules, Platform } from 'react-native'
 import emitterSpy from '../__mocks__/emitterSpy'
 import { removeWebRedemptionListener } from '../redemption'
 import { PurchaselyBuilder } from '../startBuilder'
@@ -51,6 +52,7 @@ describe('PurchaselyBuilder', () => {
         // Static field can leak mutations across tests — reset to the
         // package default before each test.
         PurchaselyBuilder.bridgeVersion = '6.2.0'
+        Platform.OS = 'ios'
     })
 
     describe('apiKey() defaults', () => {
@@ -463,6 +465,27 @@ describe('PurchaselyBuilder', () => {
 
             expect(mockNative.handleDeeplink).toHaveBeenCalledWith('purchasely://cold-start')
             expect(callOrder).toEqual(['start', 'handleDeeplink:purchasely://cold-start'])
+        })
+
+        it('hands the deeplink to the native builder on Android instead of replaying it from JS', async () => {
+            Platform.OS = 'android'
+
+            await PurchaselyBuilder.apiKey('api-key')
+                .handleDeeplink('purchasely://cold-start')
+                .start()
+
+            expect(mockNative.start.mock.calls[0][7]).toEqual({
+                deeplink: 'purchasely://cold-start',
+            })
+            expect(mockNative.handleDeeplink).not.toHaveBeenCalled()
+        })
+
+        it('does not send the deeplink in the startOptions map on iOS', async () => {
+            await PurchaselyBuilder.apiKey('api-key')
+                .handleDeeplink('purchasely://cold-start')
+                .start()
+
+            expect(mockNative.start.mock.calls[0][7]).toEqual({})
         })
 
         it('does not call native.handleDeeplink when no cold-start deeplink was set', async () => {

@@ -219,6 +219,9 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     ) {
       startOptions.getBoolean("automaticDeeplinkHandling")
     } else null
+    val deeplink = if (startOptions.hasKey("deeplink") && !startOptions.isNull("deeplink")) {
+      startOptions.getString("deeplink")
+    } else null
     // Three states, and they are not interchangeable:
     //   key absent -> leave the SDK's current setting alone
     //   null       -> clear the proxy, back to api.purchasely.io
@@ -278,6 +281,8 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
         automaticDeeplinkHandling?.let { this.automaticDeeplinkHandling(it) }
         if (proxySpecified) this.proxy(proxyApi)
         parsedAnonymousUserId?.let { this.anonymousUserId(it, anonymousUserIdOverride) }
+        // Stashed by the native builder and replayed once configuration ends.
+        deeplink?.let { this.handleDeeplink(Uri.parse(it)) }
         // Registered unconditionally: the native SDK has no runtime setter on
         // purpose, because a redemption can settle during `start()` (a cold
         // start that the link itself triggered, or a token left pending by a
