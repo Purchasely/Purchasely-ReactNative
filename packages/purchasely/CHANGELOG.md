@@ -55,8 +55,9 @@ All notable changes to `react-native-purchasely` are documented in this file.
   view unmount or an old dismiss can no longer delete the entry of a newer
   `preload()`. An inline view with no preloaded entry and no placement or
   screen now shows nothing.
-- iOS: when the SDK requests the close of an embedded `<PLYPresentationView>`,
-  the bridge now removes the native paywall from the view, and the app still
+- iOS: when the SDK requests the close of an embedded `<PLYPresentationView>`
+  that shows a preloaded `request` or `presentation`, the bridge now removes the
+  native paywall from the view, and the app still
   receives `onPresentationClosed`. The React Native view keeps its size until
   the app unmounts it: unmount it in `onPresentationClosed`. This also prepares
   the next iOS SDK, which sends the outcome only after the paywall leaves its
