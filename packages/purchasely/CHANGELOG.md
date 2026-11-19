@@ -23,8 +23,11 @@ All notable changes to `react-native-purchasely` are documented in this file.
 - The Purchasely iOS SDK is now linked by the bridge pod through SPM. If your
   own native app code imports `Purchasely`, it no longer gets the module from a
   `Purchasely` pod.
-- Supported linkages: static libraries and `use_frameworks! :linkage => :static`.
-  Dynamic frameworks are not supported in this release.
+- Linkages: CI tests static libraries and `use_frameworks! :linkage => :static`.
+  `use_frameworks!` with dynamic linkage builds and launches only when React
+  Native builds from source (`RCT_USE_PREBUILT_RNCORE=0`), the same as before
+  this release. With the React Native prebuilt core, every pod that links
+  React-Core fails to link.
 - Each `PLYPresentationRequest.preload()` call now assigns a new `requestId`.
   `display()` after `preload()` sends the same request id. `close()` and
   `back()` target the latest `preload()` or `display()`. A mounted
