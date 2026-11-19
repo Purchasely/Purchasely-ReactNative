@@ -595,12 +595,12 @@ Android n'a jamais eu le bug (il attend `isAttachedToWindow` avant de construire
 
 **Pourquoi l'assertion est côté hôte :** les tailles qui dérapent sont celles des **enfants natifs**. JS ne les voit pas — les containers RN gardent la hauteur que le test leur a donnée quoi qu'il arrive. Le driver lit donc les bounds réels dans l'arbre de vues (`uiautomator dump` sur Android, `idb ui describe-all` sur iOS) et vérifie qu'ils diffèrent et suivent chacun son container. La capture d'écran est l'artefact que lit un humain, pas ce en quoi le test a confiance.
 
-**Note fixture :** l'app de test n'a qu'un placement, et deux `preload()` du même placement coup sur coup sont rejetés par le SDK. La seconde requête passe donc par `screen(id)` — même contenu, chemin embarqué identique. Une intégration réelle monte deux bannières depuis deux placements.
+**Note fixture :** au plus **une** des deux vues contient une vidéo (une vraie app n'en joue jamais deux à la fois ; deux vidéos simultanées ont figé le process iOS au montage en CI). La vue haute affiche le placement `integration_test_audiences` (écran `nr011` sur iOS, avec vidéo). La vue basse affiche le placement `integration_test_drawer` (écran `Integration Test Drawer`, composer sans composant vidéo, vérifié dans la Console). Deux placements distincts évitent aussi le rejet d'un second `preload()` du même placement. Sur Android, l'écran du placement audiences n'a pas de vidéo non plus (`DailyMail+ Pill Landing`).
 
 | Step | Action | Assert |
 |------|--------|--------|
 | 1 | `placement(...).build().preload()` | `screenId` non-vide |
-| 2 | `screen(screenId).build().preload()` | — |
+| 2 | `placement('integration_test_drawer').build().preload()` | — |
 | 3 | monter les deux vues (containers 260dp / 110dp) | — |
 | 4 | `waitFor(2 × PRESENTATION_VIEWED, 30000)` | les deux ont rendu |
 | 5 | `[E2E:DUAL_INLINE_DP:260:110]` + `[E2E:READY_FOR_DUAL_INLINE]` | — |

@@ -1364,20 +1364,20 @@ function E2ETestRunnerSuite({ phase }: { phase: string }) {
                 if (event.name === 'PRESENTATION_VIEWED') viewed29.push(event)
             })
             try {
-                // Two DIFFERENT request kinds for the same content: the fixture app
-                // has a single placement, and preloading it twice back to back is
-                // rejected by the SDK (a second fetch for a placement already being
-                // fetched). A real integration mounts two banners from two
-                // placements; `screen(id)` is the closest stand-in the fixture
-                // allows, and it exercises the same embedded path.
+                // Two DIFFERENT placements, so the SDK does not reject a second fetch
+                // of a placement already being fetched. At most ONE of them may hold
+                // a video: a real app never plays two at once, and two simultaneous
+                // videos froze the iOS process at mount in CI. The tall slot uses
+                // the audiences screen (video on iOS); the short slot uses the
+                // drawer screen, which has none (Console: no video component).
                 const tall = Purchasely.presentation.placement(PLACEMENT_AUDIENCES).build()
                 const loadedTall = await withTimeout(tall.preload(), 30000, 'tall preload()')
                 if (!loadedTall.screenId) throw new Error('preload returned no screenId')
 
-                // Observed on iOS: this second preload sometimes never settles —
+                // Observed on iOS: a second preload sometimes never settles —
                 // neither resolve nor reject. Without the race the suite hangs to
                 // the host timeout with no marker at all.
-                const short = Purchasely.presentation.screen(loadedTall.screenId).build()
+                const short = Purchasely.presentation.placement(PLACEMENT_DRAWER).build()
                 await withTimeout(short.preload(), 30000, 'short preload()')
 
                 setDualRequests([tall, short])
