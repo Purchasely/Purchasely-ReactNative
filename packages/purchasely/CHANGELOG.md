@@ -17,6 +17,9 @@ All notable changes to `react-native-purchasely` are documented in this file.
   would have shown. It sends `EXPERIMENT_EXPOSED`.
 - `EXPERIMENT_ASSIGNED` and `EXPERIMENT_EXPOSED` events, with the
   `experiment_id` and `experiment_variant_id` properties.
+- `PLYDataProcessingPurpose.SUPPORT_INVESTIGATION` (`'support-investigation'`)
+  for `revokeDataProcessingConsent`. `ALL_NON_ESSENTIALS` includes it on iOS
+  and Android.
 
 ### Changed
 

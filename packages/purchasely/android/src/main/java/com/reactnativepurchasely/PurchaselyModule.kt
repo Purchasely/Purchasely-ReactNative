@@ -1385,6 +1385,7 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
         "campaigns" -> result.add(PLYDataProcessingPurpose.Campaigns)
         "personalization" -> result.add(PLYDataProcessingPurpose.Personalization)
         "third-party-integration" -> result.add(PLYDataProcessingPurpose.ThirdPartyIntegrations)
+        "support-investigation" -> result.add(PLYDataProcessingPurpose.SupportInvestigation)
         // silently ignore unknown strings
       }
     }

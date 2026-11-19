@@ -803,13 +803,14 @@ Let users opt out of non-essential data processing by revoking consent per purpo
 | `CAMPAIGNS` | `campaigns` | iOS, Android |
 | `PERSONALIZATION` | `personalization` | iOS, Android |
 | `THIRD_PARTY_INTEGRATION` | `third-party-integration` | iOS, Android |
+| `SUPPORT_INVESTIGATION` | `support-investigation` | iOS, Android 6.3.0+ |
 | `REFUND_HANDLING` | `refund-handling` | iOS 6.2.0+ (ignored on Android) |
 | `ALL_NON_ESSENTIALS` | `all-non-essentials` | iOS, Android |
 
 `ALL_NON_ESSENTIALS` expands natively. The expansion differs by platform:
 
-- On iOS it covers `ANALYTICS`, `CAMPAIGNS`, `PERSONALIZATION` and `THIRD_PARTY_INTEGRATION`. It does **not** include `IDENTIFIED_ANALYTICS` or `REFUND_HANDLING`. List them explicitly.
-- On Android it also covers `IDENTIFIED_ANALYTICS`. Android has no `REFUND_HANDLING` purpose, so the bridge ignores it there. On Android, `[REFUND_HANDLING]` alone is the same as `[]`.
+- On iOS it covers `ANALYTICS`, `CAMPAIGNS`, `PERSONALIZATION`, `THIRD_PARTY_INTEGRATION` and `SUPPORT_INVESTIGATION` (6.3.0+). It does **not** include `IDENTIFIED_ANALYTICS` or `REFUND_HANDLING`. List them explicitly.
+- On Android it also covers `IDENTIFIED_ANALYTICS` and `SUPPORT_INVESTIGATION` (6.3.0+). Android has no `REFUND_HANDLING` purpose, so the bridge ignores it there. On Android, `[REFUND_HANDLING]` alone is the same as `[]`.
 
 The bridge keeps every purpose of the list when `ALL_NON_ESSENTIALS` is one of them.
 

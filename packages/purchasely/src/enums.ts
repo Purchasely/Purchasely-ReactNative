@@ -101,6 +101,8 @@ export enum PLYDataProcessingPurpose {
    * Ignored by the Android bridge.
    */
   REFUND_HANDLING = 'refund-handling',
+  /** 6.3.0+. The user refuses processing of data for support investigation. Part of ALL_NON_ESSENTIALS. */
+  SUPPORT_INVESTIGATION = 'support-investigation',
   ALL_NON_ESSENTIALS = 'all-non-essentials'
 }
 

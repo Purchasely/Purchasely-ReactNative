@@ -313,6 +313,7 @@ export enum PLYDataProcessingPurpose {
     // (undocumented)
     PERSONALIZATION = "personalization",
     REFUND_HANDLING = "refund-handling",
+    SUPPORT_INVESTIGATION = "support-investigation",
     // (undocumented)
     THIRD_PARTY_INTEGRATION = "third-party-integration"
 }

@@ -586,6 +586,14 @@ typedef void (^PLYSignFailure)(NSError *);
     XCTAssertEqualObjects(mapped, expected);
 }
 
+- (void)testMapPurposesSupportInvestigationBothConventions {
+    NSSet *kebab = [self.purchaselyModule mapPurposesFromStrings:@[@"support-investigation"]];
+    NSSet *snake = [self.purchaselyModule mapPurposesFromStrings:@[@"SUPPORT_INVESTIGATION"]];
+
+    XCTAssertEqualObjects(kebab, [NSSet setWithObject:PLYDataProcessingPurpose.supportInvestigation]);
+    XCTAssertEqualObjects(snake, [NSSet setWithObject:PLYDataProcessingPurpose.supportInvestigation]);
+}
+
 - (void)testMapPurposesAllNonEssentialsExcludesRefundHandling {
     NSSet *mapped = [self.purchaselyModule mapPurposesFromStrings:@[@"all-non-essentials"]];
 
@@ -610,6 +618,7 @@ typedef void (^PLYSignFailure)(NSError *);
                                                                     @"campaigns",
                                                                     @"personalization",
                                                                     @"third-party-integration",
+                                                                    @"support-investigation",
                                                                     @"refund-handling"]];
 
     NSSet *expected = [NSSet setWithObjects:PLYDataProcessingPurpose.analytics,
@@ -617,6 +626,7 @@ typedef void (^PLYSignFailure)(NSError *);
                                             PLYDataProcessingPurpose.campaigns,
                                             PLYDataProcessingPurpose.personalization,
                                             PLYDataProcessingPurpose.thirdPartyIntegrations,
+                                            PLYDataProcessingPurpose.supportInvestigation,
                                             PLYDataProcessingPurpose.refundHandling, nil];
     XCTAssertEqualObjects(mapped, expected);
 }

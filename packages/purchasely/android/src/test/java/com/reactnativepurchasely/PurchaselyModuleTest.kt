@@ -647,6 +647,14 @@ class PurchaselyModuleTest {
             map("ALL_NON_ESSENTIALS")
         )
         assertEquals(
+            setOf(PLYDataProcessingPurpose.SupportInvestigation),
+            map("support-investigation")
+        )
+        assertEquals(
+            setOf(PLYDataProcessingPurpose.SupportInvestigation),
+            map("SUPPORT_INVESTIGATION")
+        )
+        assertEquals(
             setOf(
                 PLYDataProcessingPurpose.Analytics,
                 PLYDataProcessingPurpose.IdentifiedAnalytics,
