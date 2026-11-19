@@ -108,7 +108,7 @@ Do not test:
 
 - No workflow rebuilds on a push to an open PR (no `synchronize`). They run when the PR opens, reopens or leaves draft, and on demand with the `run-ci` label: `gh pr edit <n> --add-label run-ci`. The run removes the label. Each job filters `labeled` events to `run-ci`.
 - `push` to `main` runs `ci.yml` in full to seed the shared cache scope. PR caches are not readable from other branches.
-- The `e2e-ios` concurrency group is global, so a push on another PR cancels a running iOS E2E. A short failure during setup is a cancellation: read the log.
+- The `e2e-ios` concurrency group is per branch (`github.ref`): a new run on the same PR cancels the running one, other PRs do not. A label other than `run-ci` gets a group of its own. A short failure during setup is a cancellation: read the log.
 - `brew install idb-companion` in `e2e-ios.yml` needs the newest full Xcode on the runner; the job restores the Xcode 16.x selection before building the app (RN 0.86 needs Xcode >= 16.1).
 - Check whether a CI failure is an environment problem (runner image, Xcode, cache) before suspecting the code.
 
