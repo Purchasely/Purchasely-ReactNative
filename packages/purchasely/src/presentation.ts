@@ -370,7 +370,12 @@ export class PLYPresentationRequest {
                             return;
                         }
                         this.livePresentation = presentation;
-                        resolve(this.buildLoadedPresentation(presentation));
+                        resolve(
+                            this.buildLoadedPresentation(
+                                presentation,
+                                requestId
+                            )
+                        );
                     }
                 );
             this.subscriptions.push(loadedSubscription);
@@ -558,15 +563,21 @@ export class PLYPresentationRequest {
      * its own lifecycle.
      */
     private buildLoadedPresentation(
-        presentation: PLYPresentation
+        presentation: PLYPresentation,
+        requestId: string
     ): PLYLoadedPresentation {
+        // close/back/exposed keep the id of the preload that produced this
+        // result: a later preload() must not redirect them (MOB-675).
         return {
             ...presentation,
             display: (transition?: PLYTransition | null) =>
                 this.display(transition),
-            close: () => this.close(),
-            back: () => this.back(),
-            exposed: () => this.exposed(),
+            close: () => NativeModules.Purchasely.closePresentation(requestId),
+            back: () =>
+                NativeModules.Purchasely.goBackToPreviousScreen(requestId),
+            exposed: async () => {
+                await NativeModules.Purchasely.exposedPresentation(requestId);
+            },
         };
     }
 

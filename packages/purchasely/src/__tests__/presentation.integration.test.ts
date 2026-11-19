@@ -1178,6 +1178,27 @@ describe('façade · integration with native bridge', () => {
             expect(native.closePresentation).toHaveBeenCalledWith(latestId);
             expect(native.goBackToPreviousScreen).toHaveBeenCalledWith(latestId);
         });
+
+        it('MOB-675 exposed(), close() and back() of a loaded presentation keep the id of their own preload', async () => {
+            const req = PLYPresentationBuilder.placement('home').build();
+
+            const first = req.preload();
+            const firstId = native.preloadPresentation.mock.calls[0][0];
+            emit(PURCHASELY_PRESENTATION_EVENTS.LOADED, {
+                requestId: firstId,
+                presentation: fakePresentationPayload,
+            });
+            const loaded = await first;
+            req.preload().catch(() => undefined);
+
+            await loaded.exposed();
+            loaded.close();
+            loaded.back();
+
+            expect(native.exposedPresentation).toHaveBeenCalledWith(firstId);
+            expect(native.closePresentation).toHaveBeenCalledWith(firstId);
+            expect(native.goBackToPreviousScreen).toHaveBeenCalledWith(firstId);
+        });
     });
 
     describe('Action interceptor lifecycle', () => {
