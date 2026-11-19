@@ -13,9 +13,8 @@ let package = Package(
     targets: [
         .binaryTarget(
             name: "Purchasely",
-            // shortcut: checksum of the 6.3.0 zip is unknown until the iOS release; replace it before merge.
             url: "https://github.com/Purchasely/Purchasely-iOS/releases/download/6.3.0/Purchasely-ios-xcframework.zip",
-            checksum: "0000000000000000000000000000000000000000000000000000000000000000"
+            checksum: "bcb872336adaf61b621d006d2e588066a2853cc0abf6b0d52fac910a98099c71"
         ),
     ]
 )

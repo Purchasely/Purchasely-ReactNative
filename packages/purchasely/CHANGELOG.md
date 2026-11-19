@@ -4,6 +4,8 @@ All notable changes to `react-native-purchasely` are documented in this file.
 
 ## [Unreleased]
 
+Full changelog available at https://docs.purchasely.com/changelog/63-subscription-status-listener.
+
 ### Added
 
 - `Purchasely.addUserSubscriptionStatusListener(callback)` and
