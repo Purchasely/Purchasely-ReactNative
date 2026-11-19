@@ -17,9 +17,9 @@ All notable changes to `react-native-purchasely` are documented in this file.
 - CocoaPods apps: if your Podfile has `pod 'Purchasely'`, or your project adds
   the `Purchasely-iOS` package, remove it.
 - React Native 0.88 SwiftPM support (preview): `react-native-purchasely`
-  declares a Swift package, and it adds `Purchasely-iOS` at an exact version.
-  Do not add `Purchasely-iOS` at another version, and do not keep
-  `pod 'Purchasely'`.
+  declares a Swift package, and it adds the iOS SDK from the same release zip
+  as for CocoaPods apps. Do not add the `Purchasely-iOS` package, and do not
+  keep `pod 'Purchasely'`.
 - The Purchasely iOS SDK is now linked by the bridge pod through SPM. If your
   own native app code imports `Purchasely`, it no longer gets the module from a
   `Purchasely` pod.

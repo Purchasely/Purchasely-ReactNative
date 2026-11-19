@@ -12,7 +12,7 @@ Purchasely React Native SDK: a bridge from React Native to the native Purchasely
 | Property | Value |
 |----------|-------|
 | Current version | 6.2.0 |
-| Native iOS SDK | 6.2.0 (CocoaPods apps: `packages/purchasely/ios/PurchaselySPM/Package.swift`, SPM binary target, no trunk pod, CocoaPods >= 1.13; RN 0.88 SwiftPM apps: `packages/purchasely/Package.swift`, `exact:`. Keep the two equal.) |
+| Native iOS SDK | 6.2.0 (`packages/purchasely/ios/PurchaselySPM/Package.swift`, SPM binary target, no trunk pod, CocoaPods >= 1.13. RN 0.88 SwiftPM apps get it from the same package through `packages/purchasely/Package.swift`, so the `url` and `checksum` are the only iOS pin.) |
 | Native Android SDK | 6.2.0 (`packages/purchasely/android/build.gradle`) |
 | React Native | 0.86.0 |
 | TypeScript | 5.8 strict |

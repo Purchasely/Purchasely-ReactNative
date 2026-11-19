@@ -43,17 +43,7 @@ curl -fsSL https://github.com/Purchasely/Purchasely-iOS/releases/download/{IOS_V
 
 The Purchasely-iOS release must never replace `Purchasely-ios-xcframework.zip` of a published tag, and must keep that asset name. A replaced asset breaks the checksum for every client.
 
-React Native 0.88+ SwiftPM apps get the SDK from the `Purchasely-iOS` package instead. Edit the same version in:
-
-**`packages/purchasely/Package.swift`**
-```swift
-.package(
-    url: "https://github.com/Purchasely/Purchasely-iOS.git",
-    exact: "{IOS_VERSION}"
-)
-```
-
-The two files must pin the same iOS SDK version.
+React Native 0.88+ SwiftPM apps get the SDK from the same package: `packages/purchasely/Package.swift` depends on `ios/PurchaselySPM` by path. Do not add a version in `packages/purchasely/Package.swift`.
 
 #### Android SDK Version
 
@@ -193,7 +183,6 @@ All should return `{VERSION}`.
 | `packages/amazon/package.json` | Version + purchasely dependency |
 | `packages/android-player/package.json` | Version number |
 | `packages/purchasely/ios/PurchaselySPM/Package.swift` | iOS SDK `url` and `checksum` (if updated) |
-| `packages/purchasely/Package.swift` | iOS SDK `exact:` version for React Native SwiftPM apps (if updated) |
 | `packages/purchasely/android/build.gradle` | Android SDK version (if updated) |
 | `packages/google/android/build.gradle` | Android SDK version (if updated) |
 | `packages/amazon/android/build.gradle` | Android SDK version (if updated) |
