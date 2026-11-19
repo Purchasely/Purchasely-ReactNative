@@ -147,6 +147,21 @@ class PurchaselyViewManagerLifecycleTest {
         verify(exactly = 0) { presentation.buildView(any(), any()) }
     }
 
+    // MOB-652: an empty builder made the SDK load the app default screen (ply_default).
+    @Test
+    fun `a view with no preloaded entry and no placement or screen loads nothing`() {
+        every { PurchaselyModule.loadedPresentation(STALE_REQUEST_ID) } returns null
+        val root = mountedRoot()
+        manager.setRequestId(root, STALE_REQUEST_ID)
+
+        create(root)
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertFalse(preloadStarted.await(PRELOAD_WAIT_MS, TimeUnit.MILLISECONDS))
+        verify(exactly = 0) { presentation.buildView(any(), any()) }
+        manager.onDropViewInstance(root)
+    }
+
     @Test
     fun `a second create command builds no second paywall`() {
         val root = mountedRoot()
@@ -203,6 +218,7 @@ class PurchaselyViewManagerLifecycleTest {
 
     private companion object {
         const val REQUEST_ID = "request-1"
+        const val STALE_REQUEST_ID = "request-stale"
         const val PLACEMENT_ID = "placement-1"
         const val PRELOAD_FILE = "io.purchasely.ext.presentation.PLYPresentationDslKt"
         // The preload runs on Dispatchers.Default: the wait bounds the check that it never starts.
