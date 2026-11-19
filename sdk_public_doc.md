@@ -73,7 +73,7 @@ The iOS SDK comes from Swift Package Manager. You do not add anything for it:
 
 - Use CocoaPods 1.13 or later.
 - Do not add `pod 'Purchasely'` or the `Purchasely-iOS` package yourself.
-- React Native 0.88 SwiftPM (preview): after `npx react-native spm add --deintegrate`, the bridge package adds `Purchasely-iOS` at an exact version. Do not add it at another version.
+- React Native 0.88 SwiftPM (preview): after `npx react-native spm add --deintegrate`, the bridge package adds the iOS SDK. Do not add the `Purchasely-iOS` package.
 - `pod install` adds the build phase `[react-native-purchasely] Embed Purchasely.framework` to each app target. The phase embeds `Purchasely.framework` in the app.
 - Supported linkages: static libraries (the React Native default) and static frameworks (`use_frameworks! :linkage => :static`).
 - If you remove the bridge, the phase stays and does nothing. A clean build removes the old framework copy.

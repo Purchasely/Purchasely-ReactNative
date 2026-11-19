@@ -45,6 +45,7 @@ jobs:
           echo "PURCHASELY_TARBALL=$tarball" >> "$GITHUB_ENV"
           echo "Packed $tarball"
           tar -tzf "$tarball" | grep '^package/Package.swift$'
+          tar -tzf "$tarball" | grep '^package/ios/PurchaselySPM/Package.swift$'
           tar -xOf "$tarball" package/package.json | grep '"swiftpmConfig"'
 
       - name: Create clean React Native 0.88.1 consumer
@@ -52,7 +53,8 @@ jobs:
         run: |
           set -euo pipefail
           APP_DIR="$RUNNER_TEMP/RNSwiftPMTest"
-          npx --yes @react-native-community/cli@latest init RNSwiftPMTest \
+          # The CLI version that the RN 0.88.1 template pins (@react-native-community/template@0.88.1).
+          npx --yes @react-native-community/cli@20.2.0 init RNSwiftPMTest \
             --version 0.88.1 \
             --directory "$APP_DIR" \
             --pm npm \
