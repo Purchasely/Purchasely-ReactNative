@@ -9,7 +9,7 @@
 #import <React/RCTEventEmitter.h>
 @import Purchasely;
 
-@interface PurchaselyRN: RCTEventEmitter <RCTBridgeModule, PLYEventDelegate, PLYUserAttributeDelegate, PLYWebRedemptionDelegate>
+@interface PurchaselyRN: RCTEventEmitter <RCTBridgeModule, PLYEventDelegate, PLYUserAttributeDelegate, PLYWebRedemptionDelegate, PLYUserSubscriptionStatusDelegate>
 
 /// Build the `WEB_REDEMPTION_LISTENER` event body from the parts of a
 /// `PLYWebRedemptionResult`.
@@ -29,6 +29,13 @@
                                                              errorCode:(nullable NSString *)errorCode
                                                           errorMessage:(nullable NSString *)errorMessage;
 
+/// Build the `USER_SUBSCRIPTION_STATUS_LISTENER` event body. The same three keys
+/// on every call; `PLYUserSubscriptionStatusReasonNone` (a status call) and a
+/// missing subscription become `NSNull`.
++ (nonnull NSDictionary<NSString *, id> *)userSubscriptionStatusBodyWithIsActive:(BOOL)isActive
+                                                                          reason:(PLYUserSubscriptionStatusReason)reason
+                                                                    subscription:(nullable NSDictionary *)subscription;
+
 @property (nonatomic, retain) UIViewController* presentedPresentationViewController;
 
 @property (class, nonatomic, strong) UIViewController *sharedViewController;
@@ -44,8 +51,9 @@
 
 /// Look up a presentation preloaded via `preloadPresentation:` matching the
 /// given screen/placement identifiers, atomically removing it from the
-/// registry — a matched presentation is single-use, claimed by whichever
-/// embedded `PLYPresentationView` resolves it first. Used by the
+/// registry when it has a controller — such a presentation is single-use, claimed
+/// by whichever embedded `PLYPresentationView` resolves it first. A presentation
+/// with no controller (deactivated, client) stays registered. Used by the
 /// `presentation` prop path, which carries a screen dict but no `requestId`.
 + (nullable id<PLYPresentation>)takeLoadedPresentationMatchingScreenId:(nullable NSString *)screenId
                                                             placementId:(nullable NSString *)placementId

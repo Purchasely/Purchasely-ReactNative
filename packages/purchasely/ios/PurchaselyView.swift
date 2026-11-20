@@ -18,6 +18,10 @@ class PurchaselyView: UIView {
   // `nearestViewController`, `detachController` and `installPreloadedController`
   // are `internal` purely as XCTest seams.
   var _controller: UIViewController?
+  // The presentation and placement paths have no registry entry once mounted.
+  // Keep their callbacks alive after the preload request releases the
+  // controller's backing presentation.
+  private var retainedPresentation: PLYPresentation?
   // We drove the controller through an "appeared" transition; one per window entry.
   private var _appeared = false
   // Bumped by every `setupView()`, so a slow preload completion can tell it has
@@ -209,15 +213,18 @@ class PurchaselyView: UIView {
     _appeared = false
     _view = nil
     _controller = nil
+    retainedPresentation = nil
   }
 
   private func getPresentationController(presentation: PurchaselyPresentation?,
                                          placementId: String?) -> UIViewController? {
       // A `requestId` means JS already preloaded this presentation: reuse it.
       // Its dismissal is already routed by `preloadPresentation:`.
+      // A loaded presentation is the answer even with no controller (a deactivated
+      // NONE arm has none): falling through would fetch a second, other screen.
       if let requestId = self.requestId,
-         let loaded = PurchaselyRN.loadedPresentation(forRequestId: requestId),
-         let controller = loaded.controller {
+         let loaded = PurchaselyRN.loadedPresentation(forRequestId: requestId) {
+          guard let controller = loaded.controller else { return nil }
           removeOnCloseRequest(loaded, controller: controller)
           return controller
       }
@@ -231,8 +238,7 @@ class PurchaselyView: UIView {
       if let presentation = presentation,
          let presentationPlacementId = presentation.placementId,
          let matched = PurchaselyRN.takeLoadedPresentation(matchingScreenId: presentation.id,
-                                                            placementId: presentationPlacementId),
-         let controller = matched.controller {
+                                                            placementId: presentationPlacementId) {
           // Re-route the dismissal to the id JS actually listens on. `onDismissed`
           // is one slot, so this replaces the earlier wiring. `viewId` is read
           // lazily because RN may still apply it after this runs.
@@ -240,6 +246,8 @@ class PurchaselyView: UIView {
               guard let routingId = self?.viewId else { return }
               PurchaselyRN.emitPresentationDismissed(forId: routingId, outcome: outcome)
           }
+          guard let controller = matched.controller else { return nil }
+          retainedPresentation = matched
           removeOnCloseRequest(matched, controller: controller)
           return controller
       }
@@ -283,10 +291,10 @@ class PurchaselyView: UIView {
 
     request.preload { [weak self] presentation, _ in
       DispatchQueue.main.async {
-        guard let controller = presentation?.controller else { return }
+        guard let presentation, let controller = presentation.controller else { return }
         // ponytail: a superseded preload is dropped, not released — the SDK has no
         // release for a presentation that was never displayed.
-        self?.installPreloadedController(controller, generation: generation)
+        self?.installPreloadedController(controller, generation: generation, presentation: presentation)
       }
     }
     return nil
@@ -294,9 +302,14 @@ class PurchaselyView: UIView {
 
   /// Installs a preloaded controller unless a newer `setupView()` has superseded
   /// it — otherwise a slow preload would replace the paywall the props now name.
-  func installPreloadedController(_ controller: UIViewController, generation: Int) {
+  func installPreloadedController(_ controller: UIViewController, generation: Int,
+                                  presentation: PLYPresentation? = nil) {
     guard _setupGeneration == generation else { return }
     detachController()
+    if let presentation {
+      retainedPresentation = presentation
+      removeOnCloseRequest(presentation, controller: controller)
+    }
     attachController(controller)
   }
 

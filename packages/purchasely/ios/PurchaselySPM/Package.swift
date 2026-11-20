@@ -13,8 +13,8 @@ let package = Package(
     targets: [
         .binaryTarget(
             name: "Purchasely",
-            url: "https://github.com/Purchasely/Purchasely-iOS/releases/download/6.2.0/Purchasely-ios-xcframework.zip",
-            checksum: "744ec43314361d93f569bf1310a8704989b93b92d8f7245cd5aa020becbb6894"
+            url: "https://github.com/Purchasely/Purchasely-iOS/releases/download/6.3.0/Purchasely-ios-xcframework.zip",
+            checksum: "bcb872336adaf61b621d006d2e588066a2853cc0abf6b0d52fac910a98099c71"
         ),
     ]
 )

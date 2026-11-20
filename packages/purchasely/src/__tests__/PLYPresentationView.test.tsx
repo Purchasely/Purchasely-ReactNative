@@ -40,6 +40,7 @@ jest.mock('react-native', () => {
         NativeModules: {
             Purchasely: {
                 getConstants: jest.fn(() => mockConstants),
+                preloadPresentation: jest.fn(),
             },
         },
         NativeEventEmitter: jest.fn(() => mockEmitter),
@@ -210,6 +211,24 @@ describe('PLYPresentationView', () => {
 
             const purchaselyView = tree.root.findByType('PurchaselyView' as any)
             expect(purchaselyView.props.requestId).toBeUndefined()
+        })
+
+        it('renders a loaded deactivated presentation by its requestId, with no fetch of its own', async () => {
+            // The request was preloaded (the NONE arm is the answer). The view
+            // gets only its requestId: the JS layer starts no second fetch, so
+            // no other screen can come back.
+            const { NativeModules } = jest.requireMock('react-native')
+            const request: any = { requestId: 'req-none' }
+
+            let tree: any
+            await act(async () => {
+                tree = create(<PLYPresentationView request={request} />)
+            })
+
+            const purchaselyView = tree.root.findByType('PurchaselyView' as any)
+            expect(purchaselyView.props.requestId).toBe('req-none')
+            expect(purchaselyView.props.placementId).toBeUndefined()
+            expect(NativeModules.Purchasely.preloadPresentation).toHaveBeenCalledTimes(0)
         })
 
         it('should leave requestId undefined when no request is passed', async () => {

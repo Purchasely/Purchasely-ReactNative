@@ -94,6 +94,31 @@ class PurchaselyModule internal constructor(context: ReactApplicationContext) : 
     sendEvent(reactApplicationContext, "WEB_REDEMPTION_LISTENER", Arguments.makeNativeMap(params))
   }
 
+  /**
+   * The one native user subscription status listener. Not the single-slot
+   * [Purchasely.purchaseListener]: the SDK keeps a list, and adding this same
+   * instance twice has no effect.
+   */
+  private val userSubscriptionStatusListener = UserSubscriptionStatusListener { status ->
+    sendEvent(
+      reactApplicationContext,
+      "USER_SUBSCRIPTION_STATUS_LISTENER",
+      Arguments.makeNativeMap(userSubscriptionStatusToMap(status))
+    )
+  }
+
+  /** The first JS listener starts it. Idempotent. */
+  @ReactMethod
+  fun startUserSubscriptionStatusListener() {
+    Purchasely.addUserSubscriptionStatusListener(userSubscriptionStatusListener)
+  }
+
+  /** The last JS listener stops it. The next start adds it again. */
+  @ReactMethod
+  fun stopUserSubscriptionStatusListener() {
+    Purchasely.removeUserSubscriptionStatusListener(userSubscriptionStatusListener)
+  }
+
   override fun getName(): String {
     return "Purchasely"
   }
@@ -1032,6 +1057,21 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
   }
 
   /**
+   * Native `exposed()` on the presentation kept from `preloadPresentation`.
+   * A requestId with no loaded presentation rejects with an argument error.
+   */
+  @ReactMethod
+  fun exposedPresentation(requestId: String?, promise: Promise) {
+    val loaded = requestId?.let { activeLoadedPresentations[it] }
+    if (loaded == null) {
+      promise.reject("ARG_INVALID", "exposed: no loaded presentation for this requestId, pass a presentation returned by preload()")
+      return
+    }
+    loaded.exposed()
+    promise.resolve(true)
+  }
+
+  /**
    * Resolve a loaded native presentation from the identifiers JS sends
    * (`screenId`, with `placementId` as fallback). A v6 presentation cannot be
    * rebuilt from a JS map, so the instance is looked up in the per-request
@@ -1351,6 +1391,7 @@ fun decrementUserAttribute(key: String, value: Double, legalBasis: String?) {
         "campaigns" -> result.add(PLYDataProcessingPurpose.Campaigns)
         "personalization" -> result.add(PLYDataProcessingPurpose.Personalization)
         "third-party-integration" -> result.add(PLYDataProcessingPurpose.ThirdPartyIntegrations)
+        "support-investigation" -> result.add(PLYDataProcessingPurpose.SupportInvestigation)
         // silently ignore unknown strings
       }
     }
@@ -1614,3 +1655,14 @@ internal fun webRedemptionResultToMap(result: PLYWebRedemptionResult): Map<Strin
     Pair("errorMessage", result.errorMessage),
   )
 }
+
+/**
+ * Map a [PLYUserSubscriptionStatus] to the JS `PLYUserSubscriptionStatus` shape.
+ * `reason` is the enum name, or null for a status call. `subscription` is the
+ * map `userSubscriptions()` returns, or null.
+ */
+internal fun userSubscriptionStatusToMap(status: PLYUserSubscriptionStatus): Map<String, Any?> = mapOf(
+  Pair("isActive", status.isActive),
+  Pair("reason", status.reason?.name),
+  Pair("subscription", status.subscription?.let(PurchaselyModule::subscriptionToMap)),
+)

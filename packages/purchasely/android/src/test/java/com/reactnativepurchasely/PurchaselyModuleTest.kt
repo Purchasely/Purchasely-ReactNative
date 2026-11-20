@@ -81,6 +81,81 @@ class PurchaselyModuleTest {
 
     // endregion
 
+    // region exposed
+
+    @Test
+    fun `exposedPresentation rejects with an argument error when no presentation was loaded`() {
+        val promise = mock(Promise::class.java)
+
+        purchaselyModule.exposedPresentation("unknown-request", promise)
+
+        verify(promise).reject(org.mockito.ArgumentMatchers.eq("ARG_INVALID"), org.mockito.ArgumentMatchers.anyString())
+        verify(promise, never()).resolve(org.mockito.ArgumentMatchers.any())
+    }
+
+    @Test
+    fun `exposedPresentation rejects with an argument error when the request id is null`() {
+        val promise = mock(Promise::class.java)
+
+        purchaselyModule.exposedPresentation(null, promise)
+
+        verify(promise).reject(org.mockito.ArgumentMatchers.eq("ARG_INVALID"), org.mockito.ArgumentMatchers.anyString())
+    }
+
+    // endregion
+
+    // region user subscription status
+
+    @Test
+    fun `userSubscriptionStatusToMap maps the reason by name and keeps the subscription`() {
+        val map = userSubscriptionStatusToMap(
+            PLYUserSubscriptionStatus(true, PLYUserSubscriptionStatusReason.WEB_REDEEMED, null)
+        )
+
+        assertEquals(true, map["isActive"])
+        assertEquals("WEB_REDEEMED", map["reason"])
+        assertTrue(map.containsKey("subscription"))
+    }
+
+    @Test
+    fun `userSubscriptionStatusToMap keeps a status call with a null reason and a null subscription`() {
+        val map = userSubscriptionStatusToMap(PLYUserSubscriptionStatus(false, null, null))
+
+        assertEquals(false, map["isActive"])
+        assertTrue(map.containsKey("reason") && map["reason"] == null)
+        assertTrue(map.containsKey("subscription") && map["subscription"] == null)
+    }
+
+    @Test
+    fun `startUserSubscriptionStatusListener adds a status listener to the SDK`() {
+        val purchaselyStatic = mockStatic(Purchasely::class.java)
+        try {
+            purchaselyModule.startUserSubscriptionStatusListener()
+
+            purchaselyStatic.verify {
+                Purchasely.addUserSubscriptionStatusListener(org.mockito.kotlin.any<UserSubscriptionStatusListener>())
+            }
+        } finally {
+            purchaselyStatic.close()
+        }
+    }
+
+    @Test
+    fun `stopUserSubscriptionStatusListener removes the status listener from the SDK`() {
+        val purchaselyStatic = mockStatic(Purchasely::class.java)
+        try {
+            purchaselyModule.stopUserSubscriptionStatusListener()
+
+            purchaselyStatic.verify {
+                Purchasely.removeUserSubscriptionStatusListener(org.mockito.kotlin.any<UserSubscriptionStatusListener>())
+            }
+        } finally {
+            purchaselyStatic.close()
+        }
+    }
+
+    // endregion
+
     // region emit
 
     @Test
@@ -584,6 +659,14 @@ class PurchaselyModuleTest {
         assertEquals(
             setOf(PLYDataProcessingPurpose.AllNonEssentials),
             map("ALL_NON_ESSENTIALS")
+        )
+        assertEquals(
+            setOf(PLYDataProcessingPurpose.SupportInvestigation),
+            map("support-investigation")
+        )
+        assertEquals(
+            setOf(PLYDataProcessingPurpose.SupportInvestigation),
+            map("SUPPORT_INVESTIGATION")
         )
         assertEquals(
             setOf(

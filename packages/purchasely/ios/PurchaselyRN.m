@@ -357,7 +357,10 @@ static PLYTransition *plyTransitionFromMap(NSDictionary *map) {
                                    dismissible:dismissible];
 }
 
-@implementation PurchaselyRN
+@implementation PurchaselyRN {
+    // The one native status delegate is registered at most once.
+    BOOL _userSubscriptionStatusStarted;
+}
 
 RCT_EXPORT_MODULE(Purchasely);
 
@@ -393,7 +396,12 @@ static __weak PurchaselyRN *_sharedEmitter;
             id<PLYPresentation> presentation = kPresentationsByRequest[key];
             if ([presentation.screenId isEqualToString:screenId] &&
                 [presentation.placementId isEqualToString:placementId]) {
-                [kPresentationsByRequest removeObjectForKey:key];
+                // A NONE/CLIENT arm has no controller, so nothing to share: keep the
+                // entry so a re-applied prop or a later exposed() still finds it
+                // (the view must not fetch the placement again).
+                if (presentation.controller != nil) {
+                    [kPresentationsByRequest removeObjectForKey:key];
+                }
                 return presentation;
             }
         }
@@ -638,6 +646,25 @@ RCT_EXPORT_METHOD(start:(NSString * _Nonnull)apiKey
     [Purchasely setUserAttributeDelegate: self];
 
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(purchasePerformed) name:@"ply_purchasedSubscription" object:nil];
+}
+
+/// Registers the one native status delegate. Idempotent: the first JS listener starts it.
+/// The SDK holds its delegate weakly, so this module is the strong owner.
+RCT_EXPORT_METHOD(startUserSubscriptionStatusListener) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (self->_userSubscriptionStatusStarted) { return; }
+        self->_userSubscriptionStatusStarted = YES;
+        [Purchasely addUserSubscriptionStatusDelegate:self];
+    });
+}
+
+/// The last JS listener removed: unregisters the native delegate. The next start adds it again.
+RCT_EXPORT_METHOD(stopUserSubscriptionStatusListener) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (!self->_userSubscriptionStatusStarted) { return; }
+        self->_userSubscriptionStatusStarted = NO;
+        [Purchasely removeUserSubscriptionStatusDelegate:self];
+    });
 }
 
 RCT_EXPORT_METHOD(isEligibleForIntroOffer:(NSString * _Nonnull)planVendorId
@@ -1297,6 +1324,8 @@ RCT_EXPORT_METHOD(clearDynamicOfferings)
       [result addObject:PLYDataProcessingPurpose.personalization];
     } else if ([p isEqualToString:@"third-party-integration"]) {
       [result addObject:PLYDataProcessingPurpose.thirdPartyIntegrations];
+    } else if ([p isEqualToString:@"support-investigation"]) {
+      [result addObject:PLYDataProcessingPurpose.supportInvestigation];
     } else if ([p isEqualToString:@"refund-handling"]) {
       [result addObject:PLYDataProcessingPurpose.refundHandling];
     }
@@ -1336,6 +1365,7 @@ RCT_EXPORT_METHOD(closeAllScreens) {
     @"USER_ATTRIBUTE_SET_LISTENER",
     @"USER_ATTRIBUTE_REMOVED_LISTENER",
     @"WEB_REDEMPTION_LISTENER",
+    @"USER_SUBSCRIPTION_STATUS_LISTENER",
     // cross-platform bridge events. Names mirror the Android bridge so the
     // same JS layer drives both platforms. See the presentation section below.
     @"PURCHASELY_PRESENTATION_LOADED",
@@ -1470,6 +1500,36 @@ RCT_EXPORT_METHOD(closeAllScreens) {
         @"replay": @(replay),
         @"errorCode": errorCode ?: [NSNull null],
         @"errorMessage": errorMessage ?: [NSNull null]
+    };
+}
+
+/// `PLYUserSubscriptionStatusDelegate`. The SDK calls this on the main thread, with the
+/// current status once on add, then at each change.
+- (void)userSubscriptionStatusUpdated:(PLYUserSubscriptionStatus *)status {
+    if (!self.shouldEmit) return;
+
+    NSDictionary<NSString *, id> *body =
+        [PurchaselyRN userSubscriptionStatusBodyWithIsActive:status.isActive
+                                                      reason:status.reason
+                                                subscription:status.subscription.asDictionary];
+    [self sendEventWithName:@"USER_SUBSCRIPTION_STATUS_LISTENER" body:body];
+}
+
++ (NSDictionary<NSString *, id> *)userSubscriptionStatusBodyWithIsActive:(BOOL)isActive
+                                                                  reason:(PLYUserSubscriptionStatusReason)reason
+                                                            subscription:(NSDictionary * _Nullable)subscription {
+    NSString *wireReason = nil;
+    switch (reason) {
+        case PLYUserSubscriptionStatusReasonPurchased: wireReason = @"PURCHASED"; break;
+        case PLYUserSubscriptionStatusReasonRestored: wireReason = @"RESTORED"; break;
+        case PLYUserSubscriptionStatusReasonExpired: wireReason = @"EXPIRED"; break;
+        case PLYUserSubscriptionStatusReasonWebRedeemed: wireReason = @"WEB_REDEEMED"; break;
+        case PLYUserSubscriptionStatusReasonNone: break;
+    }
+    return @{
+        @"isActive": @(isActive),
+        @"reason": wireReason ?: [NSNull null],
+        @"subscription": subscription ?: [NSNull null]
     };
 }
 
@@ -1723,6 +1783,13 @@ RCT_EXPORT_METHOD(displayPresentation:(NSString *)requestId
         @synchronized (kPresentationStateLock) {
             kPresentationsByRequest[requestId] = presentation;
         }
+
+        // A deactivated or client presentation has no screen (RN registers no custom
+        // screen handler): native display() hands it to this completion, then sends one
+        // empty outcome to onDismissed. Nothing was presented, so no onPresented.
+        if (presentation.type == PLYPresentationTypeDeactivated || presentation.type == PLYPresentationTypeClient) {
+            return;
+        }
         strongSelf.presentedPresentationViewController = presentation.controller;
 
         // v6: by the time this completion fires, `displayWithTransition:
@@ -1876,6 +1943,24 @@ RCT_EXPORT_METHOD(goBackToPreviousScreen:(NSString *)requestId) {
             RCTLogWarn(@"[Purchasely] goBackToPreviousScreen(%@): no loaded presentation to navigate back", requestId);
         }
     });
+}
+
+/// Native `exposed()` on the presentation kept from `preloadPresentation:`.
+/// A requestId with no loaded presentation rejects with an argument error.
+RCT_EXPORT_METHOD(exposedPresentation:(NSString * _Nullable)requestId
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
+    ensurePresentationState();
+    id<PLYPresentation> presentation = nil;
+    @synchronized (kPresentationStateLock) {
+        presentation = requestId != nil ? kPresentationsByRequest[requestId] : nil;
+    }
+    if (presentation == nil) {
+        reject(@"ARG_INVALID", @"exposed: no loaded presentation for this requestId, pass a presentation returned by preload()", nil);
+        return;
+    }
+    [presentation exposed];
+    resolve(@(YES));
 }
 
 #pragma mark - client (BYOS) presentations

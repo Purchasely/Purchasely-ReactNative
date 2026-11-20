@@ -4,8 +4,38 @@ All notable changes to `react-native-purchasely` are documented in this file.
 
 ## [Unreleased]
 
+Full changelog available at https://docs.purchasely.com/changelog/63-subscription-status-listener.
+
+### Added
+
+- `Purchasely.addUserSubscriptionStatusListener(callback)` and
+  `removeUserSubscriptionStatusListener(subscription)`. The callback gets
+  `{ isActive, reason, subscription }`: `reason` is `'PURCHASED'`,
+  `'RESTORED'`, `'EXPIRED'`, `'WEB_REDEEMED'` or `null` (a status call), and
+  `subscription` has the shape of `userSubscriptions()` or is `null`. Several
+  listeners are allowed. A listener added later gets the last status once. The
+  last removal unregisters the native listener.
+- `presentation.exposed()` on a preloaded presentation: tells Purchasely the
+  user reached the moment a `DEACTIVATED` presentation (a campaign NONE arm)
+  would have shown. It sends `EXPERIMENT_EXPOSED`.
+- `EXPERIMENT_ASSIGNED` and `EXPERIMENT_EXPOSED` events, with the
+  `experiment_id` and `experiment_variant_id` properties.
+- `PLYDataProcessingPurpose.SUPPORT_INVESTIGATION` (`'support-investigation'`)
+  for `revokeDataProcessingConsent`. `ALL_NON_ESSENTIALS` includes it on iOS
+  and Android.
+
 ### Changed
 
+- Android: `restoreAllProducts` and `silentRestoreAllProducts` now reject with a `BillingUnavailable` error when Google Play billing is unavailable (no Google account, old Play services). 6.2.0 resolved `false`. This comes from the native Android 6.3.0 (#1938). Add a `try/catch` (or `.catch`) before you upgrade.
+- `addPurchasedListener`, `removePurchasedListener`, `listenToPurchases` and
+  `stopListeningToPurchases` are deprecated. Use
+  `addUserSubscriptionStatusListener`. Their behavior does not change.
+- `display()` on a `DEACTIVATED` or `CLIENT` presentation resolves once with an
+  empty outcome and sends no `onPresented`. On iOS the bridge no longer
+  invents `onPresented` for it.
+- An inline view on a loaded `DEACTIVATED` presentation shows nothing and does
+  not fetch another screen on iOS.
+- Native SDKs: iOS 6.3.0 and Android 6.3.0. Bridge version 6.3.0.
 - The iOS SDK comes from Swift Package Manager, not from the `Purchasely` pod
   of CocoaPods trunk. `pod install` adds the SDK to the `react-native-purchasely`
   pod. You change nothing in your Podfile or Xcode project.
@@ -36,6 +66,9 @@ All notable changes to `react-native-purchasely` are documented in this file.
 
 ### Fixed
 
+- iOS: closing an inline `PLYPresentationView` mounted with a preloaded
+  `presentation` or a `placementId` removes the paywall and delivers
+  `onPresentationClosed` once.
 - Android: an embedded `<PLYPresentationView>` that unmounts right after it
   mounts (for example, when its screen is popped or replaced) no longer
   crashes the app with

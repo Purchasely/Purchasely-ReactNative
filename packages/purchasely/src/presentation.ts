@@ -370,7 +370,12 @@ export class PLYPresentationRequest {
                             return;
                         }
                         this.livePresentation = presentation;
-                        resolve(this.buildLoadedPresentation(presentation));
+                        resolve(
+                            this.buildLoadedPresentation(
+                                presentation,
+                                requestId
+                            )
+                        );
                     }
                 );
             this.subscriptions.push(loadedSubscription);
@@ -539,6 +544,11 @@ export class PLYPresentationRequest {
         NativeModules.Purchasely.goBackToPreviousScreen(this._requestId);
     }
 
+    /** Native `exposed()` on the presentation kept from `preload()`. See {@link PLYLoadedPresentation.exposed}. */
+    async exposed(): Promise<void> {
+        await NativeModules.Purchasely.exposedPresentation(this._requestId);
+    }
+
     private ensureRequestId(): string {
         if (!this._requestId) {
             this._requestId = generateRequestId();
@@ -553,14 +563,21 @@ export class PLYPresentationRequest {
      * its own lifecycle.
      */
     private buildLoadedPresentation(
-        presentation: PLYPresentation
+        presentation: PLYPresentation,
+        requestId: string
     ): PLYLoadedPresentation {
+        // exposed() keeps the id of the preload that produced this result: a
+        // later preload() must not redirect it (MOB-675). display(), close() and
+        // back() follow the request's latest preload, as before.
         return {
             ...presentation,
             display: (transition?: PLYTransition | null) =>
                 this.display(transition),
             close: () => this.close(),
             back: () => this.back(),
+            exposed: async () => {
+                await NativeModules.Purchasely.exposedPresentation(requestId);
+            },
         };
     }
 

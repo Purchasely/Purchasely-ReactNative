@@ -18,6 +18,9 @@
                  purchaseContextToken:(NSString *)purchaseContextToken
                               resolve:(RCTPromiseResolveBlock)resolve
                                reject:(RCTPromiseRejectBlock)reject;
+- (void)exposedPresentation:(NSString *)requestId
+                   resolve:(RCTPromiseResolveBlock)resolve
+                    reject:(RCTPromiseRejectBlock)reject;
 @end
 
 // Captures events sent through RCTEventEmitter so
@@ -583,6 +586,14 @@ typedef void (^PLYSignFailure)(NSError *);
     XCTAssertEqualObjects(mapped, expected);
 }
 
+- (void)testMapPurposesSupportInvestigationBothConventions {
+    NSSet *kebab = [self.purchaselyModule mapPurposesFromStrings:@[@"support-investigation"]];
+    NSSet *snake = [self.purchaselyModule mapPurposesFromStrings:@[@"SUPPORT_INVESTIGATION"]];
+
+    XCTAssertEqualObjects(kebab, [NSSet setWithObject:PLYDataProcessingPurpose.supportInvestigation]);
+    XCTAssertEqualObjects(snake, [NSSet setWithObject:PLYDataProcessingPurpose.supportInvestigation]);
+}
+
 - (void)testMapPurposesAllNonEssentialsExcludesRefundHandling {
     NSSet *mapped = [self.purchaselyModule mapPurposesFromStrings:@[@"all-non-essentials"]];
 
@@ -607,6 +618,7 @@ typedef void (^PLYSignFailure)(NSError *);
                                                                     @"campaigns",
                                                                     @"personalization",
                                                                     @"third-party-integration",
+                                                                    @"support-investigation",
                                                                     @"refund-handling"]];
 
     NSSet *expected = [NSSet setWithObjects:PLYDataProcessingPurpose.analytics,
@@ -614,6 +626,7 @@ typedef void (^PLYSignFailure)(NSError *);
                                             PLYDataProcessingPurpose.campaigns,
                                             PLYDataProcessingPurpose.personalization,
                                             PLYDataProcessingPurpose.thirdPartyIntegrations,
+                                            PLYDataProcessingPurpose.supportInvestigation,
                                             PLYDataProcessingPurpose.refundHandling, nil];
     XCTAssertEqualObjects(mapped, expected);
 }
@@ -722,6 +735,50 @@ typedef void (^PLYSignFailure)(NSError *);
 
 - (void)testSignPromotionalOfferWithTokenRejectsAnEmptyToken {
     [self assertSignRejectsToken:@""];
+}
+
+// exposed() needs the presentation kept from preload. An unknown request id
+// rejects with an argument error and never reaches native.
+- (void)testExposedPresentationRejectsAnUnknownRequestId {
+    __block NSString *code = nil;
+    __block id resolved = nil;
+    [self.purchaselyModule exposedPresentation:@"unknown-request"
+                                       resolve:^(id value) { resolved = value; }
+                                        reject:^(NSString *c, NSString *m, NSError *e) { code = c; }];
+
+    XCTAssertEqualObjects(code, @"ARG_INVALID");
+    XCTAssertNil(resolved);
+}
+
+- (void)testUserSubscriptionStatusBodyMapsEachReasonToItsWireName {
+    NSDictionary *subscription = @{@"plan": @"p"};
+    NSDictionary<NSNumber *, NSString *> *expected = @{
+        @(PLYUserSubscriptionStatusReasonPurchased): @"PURCHASED",
+        @(PLYUserSubscriptionStatusReasonRestored): @"RESTORED",
+        @(PLYUserSubscriptionStatusReasonExpired): @"EXPIRED",
+        @(PLYUserSubscriptionStatusReasonWebRedeemed): @"WEB_REDEEMED",
+    };
+    for (NSNumber *reason in expected) {
+        NSDictionary *body = [PurchaselyRN userSubscriptionStatusBodyWithIsActive:YES
+                                                                           reason:(PLYUserSubscriptionStatusReason)reason.integerValue
+                                                                     subscription:subscription];
+        XCTAssertEqualObjects(body[@"reason"], expected[reason]);
+        XCTAssertEqualObjects(body[@"isActive"], @YES);
+        XCTAssertEqualObjects(body[@"subscription"], subscription);
+    }
+}
+
+// A status call has no reason, and a user with no subscription has no subscription:
+// both stay in the body as NSNull, so the three keys never change.
+- (void)testUserSubscriptionStatusBodyKeepsNullReasonAndSubscription {
+    NSDictionary *body = [PurchaselyRN userSubscriptionStatusBodyWithIsActive:NO
+                                                                       reason:PLYUserSubscriptionStatusReasonNone
+                                                                 subscription:nil];
+
+    XCTAssertEqual(body.count, (NSUInteger)3);
+    XCTAssertEqualObjects(body[@"isActive"], @NO);
+    XCTAssertEqualObjects(body[@"reason"], [NSNull null]);
+    XCTAssertEqualObjects(body[@"subscription"], [NSNull null]);
 }
 
 @end

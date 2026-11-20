@@ -161,7 +161,7 @@ describe('Purchasely SDK', () => {
                 null,
                 mockConstants.logLevelError,
                 mockConstants.runningModeObserver,
-                '6.2.0',
+                '6.3.0',
                 {}
             )
         })

@@ -803,13 +803,11 @@ Let users opt out of non-essential data processing by revoking consent per purpo
 | `CAMPAIGNS` | `campaigns` | iOS, Android |
 | `PERSONALIZATION` | `personalization` | iOS, Android |
 | `THIRD_PARTY_INTEGRATION` | `third-party-integration` | iOS, Android |
+| `SUPPORT_INVESTIGATION` | `support-investigation` | iOS, Android 6.3.0+ |
 | `REFUND_HANDLING` | `refund-handling` | iOS 6.2.0+ (ignored on Android) |
 | `ALL_NON_ESSENTIALS` | `all-non-essentials` | iOS, Android |
 
-`ALL_NON_ESSENTIALS` expands natively. The expansion differs by platform:
-
-- On iOS it covers `ANALYTICS`, `CAMPAIGNS`, `PERSONALIZATION` and `THIRD_PARTY_INTEGRATION`. It does **not** include `IDENTIFIED_ANALYTICS` or `REFUND_HANDLING`. List them explicitly.
-- On Android it also covers `IDENTIFIED_ANALYTICS`. Android has no `REFUND_HANDLING` purpose, so the bridge ignores it there. On Android, `[REFUND_HANDLING]` alone is the same as `[]`.
+`ALL_NON_ESSENTIALS` expands to `ANALYTICS`, `IDENTIFIED_ANALYTICS`, `CAMPAIGNS`, `PERSONALIZATION`, `THIRD_PARTY_INTEGRATION` and `SUPPORT_INVESTIGATION` on iOS and Android 6.3.0. On iOS, add `REFUND_HANDLING` explicitly to revoke it. Android ignores `REFUND_HANDLING`, so `[REFUND_HANDLING]` alone is the same as `[]`.
 
 The bridge keeps every purpose of the list when `ALL_NON_ESSENTIALS` is one of them.
 
@@ -860,6 +858,31 @@ Purchasely.addEventListener((event) => {
     // Analytics.track(event.name, event.properties);
 });
 ```
+
+### User Subscription Status Listener (6.3.0)
+
+`addUserSubscriptionStatusListener` replaces `addPurchasedListener`
+(deprecated, same behavior). The callback gets one status call (`reason` is
+`null`) when the SDK knows the status, then each change. Several listeners are
+allowed.
+
+```typescript
+const subscription = Purchasely.addUserSubscriptionStatusListener((status) => {
+    // status: { isActive, reason, subscription }
+    // reason: 'PURCHASED' | 'RESTORED' | 'EXPIRED' | 'WEB_REDEEMED' | null
+    // subscription: same shape as userSubscriptions(), or null
+    console.log(status.isActive, status.reason, status.subscription);
+});
+
+// Later:
+Purchasely.removeUserSubscriptionStatusListener(subscription);
+```
+
+`subscription` is `null` only in a status call for a user who has no
+subscription (`isActive` is then `false`). The first listener makes the bridge
+register one native listener. A listener added later gets the last status that
+the bridge received, once, after `addUserSubscriptionStatusListener` returns.
+The last `remove()` unregisters the native listener.
 
 ### Custom User Attributes Listener
 
@@ -954,6 +977,30 @@ try {
 | `FALLBACK` | Fallback paywall (requested one not found) |
 | `DEACTIVATED` | No paywall for this placement |
 | `CLIENT` | Your own paywall (BYOS) |
+
+#### No screen: `DEACTIVATED` and `CLIENT` (6.3.0)
+
+A campaign experiment can serve a "no screen" arm: the presentation `type` is
+`DEACTIVATED`. `display()` on it shows nothing. It resolves once with an outcome
+that holds the presentation, no error and no purchase result, and the SDK counts
+the exposure (`EXPERIMENT_EXPOSED`). The same holds for a `CLIENT` presentation,
+because the React Native bridge registers no custom screen handler.
+
+If your app does not call `display()` (an inline placement, for example), call
+`exposed()` on the preloaded presentation at the moment the user would have seen
+the screen. It sends `EXPERIMENT_EXPOSED` at each
+call, and does nothing for a presentation that serves no experiment. It rejects
+when the presentation did not come from `preload()`.
+
+```typescript
+const presentation = await Purchasely.presentation.placement('inline').build().preload();
+if (presentation.type === PLYPresentationType.DEACTIVATED) {
+    await presentation.exposed();
+}
+```
+
+`EXPERIMENT_ASSIGNED` and `EXPERIMENT_EXPOSED` events carry
+`properties.experiment_id` and `properties.experiment_variant_id`.
 
 ---
 

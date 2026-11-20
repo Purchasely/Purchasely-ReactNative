@@ -1,4 +1,5 @@
 import { NativeEventEmitter, NativeModules } from 'react-native';
+import type { EmitterSubscription } from 'react-native';
 
 import { PLYPresentationView } from './components/PLYPresentationView';
 import type {
@@ -25,6 +26,7 @@ import type {
   PLYPromotionalOfferSignatureWithToken,
   PLYSubscription,
   PLYUserAttribute,
+  PLYUserSubscriptionStatus,
 } from './types';
 import {
   PLYPresentationBuilder,
@@ -46,7 +48,7 @@ import type {
   PLYPresentationActionKind,
 } from './presentationTypes';
 
-const purchaselyVersion = '6.2.0';
+const purchaselyVersion = '6.3.0';
 
 const PurchaselyEventEmitter = new NativeEventEmitter(NativeModules.Purchasely);
 
@@ -81,17 +83,99 @@ const removeEventListener = () => {
 
 type PurchaseListenerCallback = () => void;
 
+/** @deprecated Use {@link addUserSubscriptionStatusListener}. */
 const addPurchasedListener = (callback: PurchaseListenerCallback) => {
   return PurchaselyEventEmitter.addListener('PURCHASE_LISTENER', callback);
 };
 
+/** @deprecated Use {@link removeUserSubscriptionStatusListener}. */
 const removePurchasedListener = () => {
   return PurchaselyEventEmitter.removeAllListeners('PURCHASE_LISTENER');
 };
 
+type UserSubscriptionStatusListenerCallback = (
+  status: PLYUserSubscriptionStatus
+) => void;
+
+let userSubscriptionStatusListeners = 0;
+let lastUserSubscriptionStatus: PLYUserSubscriptionStatus | null = null;
+let subscriptionStatusCacheListener: EmitterSubscription | null = null;
+
+/**
+ * Listen to the user subscription status. The callback gets one status call
+ * (`reason` is `null`) when the SDK knows the status, then each change: a
+ * subscription purchased, restored, redeemed from the web or expired. Several
+ * listeners are allowed. New in 6.3.0.
+ *
+ * The first listener makes the bridge register one native listener. A listener
+ * added later gets the last status that the bridge received, once, after this
+ * call returns. The last `remove()` unregisters the native listener.
+ */
+const addUserSubscriptionStatusListener = (
+  callback: UserSubscriptionStatusListenerCallback
+): EmitterSubscription => {
+  const isFirstListener = userSubscriptionStatusListeners === 0;
+  if (isFirstListener) {
+    // Cache each native event before the client listeners run. A client can
+    // change identity during dispatch and later listeners must not restore it.
+    subscriptionStatusCacheListener = PurchaselyEventEmitter.addListener(
+      'USER_SUBSCRIPTION_STATUS_LISTENER',
+      (status: PLYUserSubscriptionStatus) => {
+        lastUserSubscriptionStatus = status;
+      }
+    );
+  }
+  let removed = false;
+  let received = false;
+  const subscription = PurchaselyEventEmitter.addListener(
+    'USER_SUBSCRIPTION_STATUS_LISTENER',
+    (status: PLYUserSubscriptionStatus) => {
+      received = true;
+      callback(status);
+    }
+  );
+  const removeEmitterListener = subscription.remove.bind(subscription);
+  subscription.remove = () => {
+    if (removed) return;
+    removed = true;
+    removeEmitterListener();
+    if (--userSubscriptionStatusListeners === 0) {
+      subscriptionStatusCacheListener?.remove();
+      subscriptionStatusCacheListener = null;
+      lastUserSubscriptionStatus = null;
+      NativeModules.Purchasely.stopUserSubscriptionStatusListener();
+    }
+  };
+
+  userSubscriptionStatusListeners++;
+  if (isFirstListener) {
+    // After the JS listener exists, so the status call that the SDK sends on add is not lost.
+    NativeModules.Purchasely.startUserSubscriptionStatusListener();
+  } else if (lastUserSubscriptionStatus) {
+    // The native SDK sends the status call only when its delegate is added.
+    const cached = lastUserSubscriptionStatus;
+    queueMicrotask(() => {
+      // Skip it if a login or logout (or a fresh status) replaced the cache meanwhile.
+      if (!removed && !received && lastUserSubscriptionStatus === cached) {
+        callback(cached);
+      }
+    });
+  }
+  return subscription;
+};
+
+/** Stop the delivery to one listener added with {@link addUserSubscriptionStatusListener}. */
+const removeUserSubscriptionStatusListener = (
+  subscription: EmitterSubscription
+) => {
+  subscription.remove();
+};
+
 const listenToEvents = addEventListener;
 const stopListeningToEvents = removeEventListener;
+/** @deprecated Use {@link addUserSubscriptionStatusListener}. */
 const listenToPurchases = addPurchasedListener;
+/** @deprecated Use {@link removeUserSubscriptionStatusListener}. */
 const stopListeningToPurchases = removePurchasedListener;
 
 type UserAttributeSetListenerCallback = (
@@ -256,6 +340,8 @@ const getAnonymousUserId = (): Promise<string> => {
 };
 
 const userLogin = (userId: string): Promise<boolean> => {
+  // The cached status belongs to the previous user: never replay it.
+  lastUserSubscriptionStatus = null;
   return NativeModules.Purchasely.userLogin(userId);
 };
 
@@ -266,6 +352,7 @@ const userLogin = (userId: string): Promise<boolean> => {
  * attributes. Defaults to `true`, matching both native SDKs' own default.
  */
 const userLogout = (clearUserAttributes: boolean = true): void => {
+  lastUserSubscriptionStatus = null;
   return NativeModules.Purchasely.userLogout(clearUserAttributes);
 };
 
@@ -582,10 +669,34 @@ const Purchasely = {
   removeEventListener,
   listenToEvents,
   stopListeningToEvents,
+  /**
+   * @deprecated Use `Purchasely.addUserSubscriptionStatusListener` with a status callback.
+   * It can report an initial snapshot and later changes, including expiration.
+   * For subscription purchase or restore callbacks, filter `status.reason` to
+   * `'PURCHASED'` or `'RESTORED'`. A replay keeps its original reason, so make
+   * one-time work idempotent. Clean up with the returned subscription's `remove()`.
+   */
   addPurchasedListener,
+  /**
+   * @deprecated Call `remove()` on the subscription returned by
+   * `Purchasely.addUserSubscriptionStatusListener` to remove that listener.
+   */
   removePurchasedListener,
+  /**
+   * @deprecated Use `Purchasely.addUserSubscriptionStatusListener` with a status callback.
+   * It can report an initial snapshot and later changes, including expiration.
+   * For subscription purchase or restore callbacks, filter `status.reason` to
+   * `'PURCHASED'` or `'RESTORED'`. A replay keeps its original reason, so make
+   * one-time work idempotent. Clean up with the returned subscription's `remove()`.
+   */
   listenToPurchases,
+  /**
+   * @deprecated Call `remove()` on the subscription returned by
+   * `Purchasely.addUserSubscriptionStatusListener` to remove that listener.
+   */
   stopListeningToPurchases,
+  addUserSubscriptionStatusListener,
+  removeUserSubscriptionStatusListener,
   addUserAttributeSetListener,
   removeUserAttributeSetListener,
   addUserAttributeRemovedListener,

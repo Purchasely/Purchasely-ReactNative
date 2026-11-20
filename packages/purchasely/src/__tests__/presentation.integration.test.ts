@@ -37,6 +37,7 @@ jest.mock('react-native', () => {
         displayPresentation: jest.fn().mockResolvedValue(undefined),
         closePresentation: jest.fn(),
         goBackToPreviousScreen: jest.fn(),
+        exposedPresentation: jest.fn().mockResolvedValue(true),
         registerActionInterceptor: jest.fn(),
         unregisterActionInterceptor: jest.fn(),
         completeActionInterceptor: jest.fn(),
@@ -107,6 +108,7 @@ describe('façade · integration with native bridge', () => {
         native.displayPresentation.mockClear();
         native.closePresentation.mockClear();
         native.goBackToPreviousScreen.mockClear();
+        native.exposedPresentation.mockClear();
         native.registerActionInterceptor.mockClear();
         native.unregisterActionInterceptor.mockClear();
         native.completeActionInterceptor.mockClear();
@@ -331,6 +333,78 @@ describe('façade · integration with native bridge', () => {
 
             await expect(preloadPromise).rejects.toMatchObject({ message: 'no screen' });
             expect(onLoaded).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('MOB-675 no-op display and exposed()', () => {
+        const noScreenPayload = { ...fakePresentationPayload, type: 'deactivated' };
+
+        it('display() of a deactivated presentation reaches native once and resolves once with the empty outcome', async () => {
+            const onDismissed = jest.fn();
+            const req = PLYPresentationBuilder.placement('home')
+                .onDismissed(onDismissed)
+                .build();
+
+            const displayPromise = req.display();
+            const [requestId] = native.displayPresentation.mock.calls[0];
+            expect(native.displayPresentation).toHaveBeenCalledTimes(1);
+
+            // Native no-op: LOADED, no PRESENTED, then ONE empty outcome.
+            const onPresented = jest.fn();
+            req.onPresented(onPresented);
+            emit(PURCHASELY_PRESENTATION_EVENTS.LOADED, {
+                requestId,
+                presentation: noScreenPayload,
+            });
+            emit(PURCHASELY_PRESENTATION_EVENTS.DISMISSED, {
+                requestId,
+                presentation: noScreenPayload,
+            });
+            // A second DISMISSED for the same display must not settle again.
+            emit(PURCHASELY_PRESENTATION_EVENTS.DISMISSED, {
+                requestId,
+                presentation: noScreenPayload,
+            });
+
+            const outcome = await displayPromise;
+            expect(outcome.presentation?.screenId).toBe('screen-abc');
+            expect(outcome.error).toBeNull();
+            expect(outcome.purchaseResult).toBeNull();
+            expect(outcome.plan).toBeNull();
+            expect(outcome.closeReason).toBeNull();
+            expect(onDismissed).toHaveBeenCalledTimes(1);
+            expect(onPresented).not.toHaveBeenCalled();
+        });
+
+        it('exposed() on a loaded presentation calls native with the request id', async () => {
+            const req = PLYPresentationBuilder.placement('home').build();
+            const preloadPromise = req.preload();
+            const [requestId] = native.preloadPresentation.mock.calls[0];
+            emit(PURCHASELY_PRESENTATION_EVENTS.LOADED, {
+                requestId,
+                presentation: noScreenPayload,
+            });
+            const loaded = await preloadPromise;
+
+            await expect(loaded.exposed()).resolves.toBeUndefined();
+            expect(native.exposedPresentation).toHaveBeenCalledWith(requestId);
+        });
+
+        it('exposed() rejects with the native argument error when the handle is missing', async () => {
+            native.exposedPresentation.mockRejectedValueOnce({
+                code: 'ARG_INVALID',
+                message: 'exposed: no loaded presentation for this requestId',
+            });
+            const req = PLYPresentationBuilder.placement('home').build();
+            const preloadPromise = req.preload();
+            const [requestId] = native.preloadPresentation.mock.calls[0];
+            emit(PURCHASELY_PRESENTATION_EVENTS.LOADED, {
+                requestId,
+                presentation: noScreenPayload,
+            });
+            const loaded = await preloadPromise;
+
+            await expect(loaded.exposed()).rejects.toMatchObject({ code: 'ARG_INVALID' });
         });
     });
 
@@ -1103,6 +1177,28 @@ describe('façade · integration with native bridge', () => {
             const latestId = native.preloadPresentation.mock.calls[1][0];
             expect(native.closePresentation).toHaveBeenCalledWith(latestId);
             expect(native.goBackToPreviousScreen).toHaveBeenCalledWith(latestId);
+        });
+
+        it('MOB-675 exposed() of a loaded presentation keeps the id of its own preload; close() and back() follow display() to the latest preload', async () => {
+            const req = PLYPresentationBuilder.placement('home').build();
+
+            const first = req.preload();
+            const firstId = native.preloadPresentation.mock.calls[0][0];
+            emit(PURCHASELY_PRESENTATION_EVENTS.LOADED, {
+                requestId: firstId,
+                presentation: fakePresentationPayload,
+            });
+            const loaded = await first;
+            req.preload().catch(() => undefined);
+
+            await loaded.exposed();
+            loaded.close();
+            loaded.back();
+
+            const secondId = native.preloadPresentation.mock.calls[1][0];
+            expect(native.exposedPresentation).toHaveBeenCalledWith(firstId);
+            expect(native.closePresentation).toHaveBeenCalledWith(secondId);
+            expect(native.goBackToPreviousScreen).toHaveBeenCalledWith(secondId);
         });
     });
 
