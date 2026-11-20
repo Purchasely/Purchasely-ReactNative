@@ -18,6 +18,10 @@ class PurchaselyView: UIView {
   // `nearestViewController`, `detachController` and `installPreloadedController`
   // are `internal` purely as XCTest seams.
   var _controller: UIViewController?
+  // The presentation-prop path removes the loaded presentation from the
+  // registry. Its controller references it weakly after the preload request
+  // releases it, so keep the callbacks alive until the controller detaches.
+  private var claimedPresentation: PLYPresentation?
   // We drove the controller through an "appeared" transition; one per window entry.
   private var _appeared = false
   // Bumped by every `setupView()`, so a slow preload completion can tell it has
@@ -209,6 +213,7 @@ class PurchaselyView: UIView {
     _appeared = false
     _view = nil
     _controller = nil
+    claimedPresentation = nil
   }
 
   private func getPresentationController(presentation: PurchaselyPresentation?,
@@ -242,6 +247,7 @@ class PurchaselyView: UIView {
               PurchaselyRN.emitPresentationDismissed(forId: routingId, outcome: outcome)
           }
           guard let controller = matched.controller else { return nil }
+          claimedPresentation = matched
           removeOnCloseRequest(matched, controller: controller)
           return controller
       }
