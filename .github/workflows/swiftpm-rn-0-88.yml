@@ -70,9 +70,22 @@ jobs:
 
           export default function App(): React.JSX.Element {
               useEffect(() => {
-                  const mod = !!NativeModules.Purchasely
+                  const api: any = NativeModules.Purchasely
+                  const mod = !!api
                   const view = !!UIManager.getViewManagerConfig('PurchaselyView')
-                  console.error(`[SPM_SMOKE] module=${mod} view=${view}`)
+                  const exports = ['emit', 'signPromotionalOfferWithToken', 'startUserSubscriptionStatusListener', 'stopUserSubscriptionStatusListener', 'exposedPresentation']
+                  const callable = mod && exports.every(name => typeof api[name] === 'function')
+                  const report = (dispatch: boolean, code = 'none') => {
+                      console.error(`[SPM_SMOKE] module=${mod} view=${view} exports=${callable} dispatch=${dispatch} code=${code}`)
+                  }
+                  if (!callable) {
+                      report(false)
+                      return
+                  }
+                  api.exposedPresentation('__purchasely_swiftpm_missing__').then(
+                      () => report(false, 'unexpected-resolve'),
+                      (error: any) => report(error?.code === 'ARG_INVALID', String(error?.code ?? 'missing-code'))
+                  )
               }, [])
               return <Text>SwiftPM smoke</Text>
           }
@@ -148,6 +161,6 @@ jobs:
             grep -q '\[SPM_SMOKE\]' <<<"$LOG" && break
           done
           xcrun simctl terminate "$UDID" "$BUNDLE_ID" || true
-          LINE=$(grep -oE '\[SPM_SMOKE\] module=[a-z]+ view=[a-z]+' <<<"$LOG" | head -1 || true)
+          LINE=$(grep -oE '\[SPM_SMOKE\] module=[a-z]+ view=[a-z]+ exports=[a-z]+ dispatch=[a-z]+ code=[^ ]+' <<<"$LOG" | head -1 || true)
           echo "${LINE:-no [SPM_SMOKE] line in 60s}"
-          test "$LINE" = '[SPM_SMOKE] module=true view=true'
+          test "$LINE" = '[SPM_SMOKE] module=true view=true exports=true dispatch=true code=ARG_INVALID'

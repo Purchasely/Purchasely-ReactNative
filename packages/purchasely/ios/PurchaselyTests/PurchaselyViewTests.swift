@@ -365,48 +365,46 @@ class PurchaselyViewTests: XCTestCase {
     // the view through `setupView()` so the wrapper it installs is what runs.
     func testInstalledCloseRequestOnTheRequestIdPathChainsThenDetaches() {
         let fake = FakeInlinePresentation()
-        let stub: @convention(block) (AnyObject, NSString?) -> AnyObject? = { _, _ in fake }
         assertInstalledCloseRequest(on: fake,
-                                    registry: #selector(PurchaselyRN.loadedPresentation(forRequestId:)),
-                                    stub: stub) {
+                                    registryKey: "req-close") {
             purchaselyView.requestId = "req-close"
         }
     }
 
     func testInstalledCloseRequestOnThePresentationPropPathChainsThenDetaches() {
         let fake = FakeInlinePresentation()
-        let stub: @convention(block) (AnyObject, NSString?, NSString?) -> AnyObject? = { _, _, _ in fake }
         assertInstalledCloseRequest(on: fake,
-                                    registry: #selector(PurchaselyRN.takeLoadedPresentation(matchingScreenId:placementId:)),
-                                    stub: stub) {
+                                    registryKey: "req-close-prop") {
             purchaselyView.presentation = ["id": fake.screenId, "placementId": "inline"]
         }
     }
 
     func testInstalledCloseRequestKeepsAControllerInstalledBeforeTheMainQueueHop() {
         let fake = FakeInlinePresentation()
-        let stub: @convention(block) (AnyObject, NSString?) -> AnyObject? = { _, _ in fake }
         assertInstalledCloseRequest(on: fake,
-                                    registry: #selector(PurchaselyRN.loadedPresentation(forRequestId:)),
-                                    stub: stub,
+                                    registryKey: "req-close-replaced",
                                     replaceBeforeHop: true) {
-            purchaselyView.requestId = "req-close"
+            purchaselyView.requestId = "req-close-replaced"
         }
     }
 
     private func assertInstalledCloseRequest(on fake: FakeInlinePresentation,
-                                             registry selector: Selector,
-                                             stub: Any,
+                                             registryKey: String,
                                              replaceBeforeHop: Bool = false,
                                              mount: () -> Void,
                                              file: StaticString = #filePath,
                                              line: UInt = #line) {
-        // Stubs the bridge registry (not the SDK): only a real preload fills it.
-        guard let method = class_getClassMethod(PurchaselyRN.self, selector) else {
-            return XCTFail("Missing registry method", file: file, line: line)
+        // Seed the same request registry that a completed native preload fills.
+        // Swift static calls are direct, so swapping the Objective-C IMP does
+        // not intercept `PurchaselyView`'s calls to these methods.
+        PurchaselyRN.withState {
+            PurchaselyRN.presentationsByRequest[registryKey] = fake
         }
-        let original = method_setImplementation(method, imp_implementationWithBlock(stub))
-        defer { method_setImplementation(method, original) }
+        defer {
+            PurchaselyRN.withState {
+                PurchaselyRN.presentationsByRequest.removeValue(forKey: registryKey)
+            }
+        }
 
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 400, height: 600))
         let root = UIViewController()
