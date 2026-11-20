@@ -655,13 +655,29 @@ const Purchasely = {
   removeEventListener,
   listenToEvents,
   stopListeningToEvents,
-  /** @deprecated Use {@link addUserSubscriptionStatusListener}. */
+  /**
+   * @deprecated Use `Purchasely.addUserSubscriptionStatusListener` with a status callback.
+   * It can report an initial snapshot and later changes, including expiration.
+   * For subscription purchase or restore callbacks, filter `status.reason` to
+   * `'PURCHASED'` or `'RESTORED'`. Clean up with the returned subscription's `remove()`.
+   */
   addPurchasedListener,
-  /** @deprecated Use {@link removeUserSubscriptionStatusListener}. */
+  /**
+   * @deprecated Call `remove()` on the subscription returned by
+   * `Purchasely.addUserSubscriptionStatusListener` to remove that listener.
+   */
   removePurchasedListener,
-  /** @deprecated Use {@link addUserSubscriptionStatusListener}. */
+  /**
+   * @deprecated Use `Purchasely.addUserSubscriptionStatusListener` with a status callback.
+   * It can report an initial snapshot and later changes, including expiration.
+   * For subscription purchase or restore callbacks, filter `status.reason` to
+   * `'PURCHASED'` or `'RESTORED'`. Clean up with the returned subscription's `remove()`.
+   */
   listenToPurchases,
-  /** @deprecated Use {@link removeUserSubscriptionStatusListener}. */
+  /**
+   * @deprecated Call `remove()` on the subscription returned by
+   * `Purchasely.addUserSubscriptionStatusListener` to remove that listener.
+   */
   stopListeningToPurchases,
   addUserSubscriptionStatusListener,
   removeUserSubscriptionStatusListener,
