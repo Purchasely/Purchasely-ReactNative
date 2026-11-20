@@ -187,6 +187,30 @@ describe('user subscription status listener', () => {
             expect(late).not.toHaveBeenCalled()
         })
 
+        it.each(['logout', 'login'] as const)(
+            'does not cache the old event again after a listener calls user %s',
+            async (identityChange) => {
+                add(jest.fn(() => {
+                    if (identityChange === 'logout') {
+                        Purchasely.userLogout()
+                    } else {
+                        void Purchasely.userLogin('user-b')
+                    }
+                }))
+                const second = jest.fn()
+                add(second)
+
+                native.__emit(EVENT, purchased)
+                expect(second).toHaveBeenCalledWith(purchased)
+
+                const addedAfterChange = jest.fn()
+                add(addedAfterChange)
+                await flush()
+
+                expect(addedAfterChange).not.toHaveBeenCalled()
+            }
+        )
+
         it('counts a double remove once', () => {
             const first = add(jest.fn())
             add(jest.fn())

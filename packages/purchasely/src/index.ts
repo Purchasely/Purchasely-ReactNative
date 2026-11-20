@@ -99,6 +99,7 @@ type UserSubscriptionStatusListenerCallback = (
 
 let userSubscriptionStatusListeners = 0;
 let lastUserSubscriptionStatus: PLYUserSubscriptionStatus | null = null;
+let subscriptionStatusCacheListener: EmitterSubscription | null = null;
 
 /**
  * Listen to the user subscription status. The callback gets one status call
@@ -113,13 +114,23 @@ let lastUserSubscriptionStatus: PLYUserSubscriptionStatus | null = null;
 const addUserSubscriptionStatusListener = (
   callback: UserSubscriptionStatusListenerCallback
 ): EmitterSubscription => {
+  const isFirstListener = userSubscriptionStatusListeners === 0;
+  if (isFirstListener) {
+    // Cache each native event before the client listeners run. A client can
+    // change identity during dispatch and later listeners must not restore it.
+    subscriptionStatusCacheListener = PurchaselyEventEmitter.addListener(
+      'USER_SUBSCRIPTION_STATUS_LISTENER',
+      (status: PLYUserSubscriptionStatus) => {
+        lastUserSubscriptionStatus = status;
+      }
+    );
+  }
   let removed = false;
   let received = false;
   const subscription = PurchaselyEventEmitter.addListener(
     'USER_SUBSCRIPTION_STATUS_LISTENER',
     (status: PLYUserSubscriptionStatus) => {
       received = true;
-      lastUserSubscriptionStatus = status;
       callback(status);
     }
   );
@@ -129,12 +140,15 @@ const addUserSubscriptionStatusListener = (
     removed = true;
     removeEmitterListener();
     if (--userSubscriptionStatusListeners === 0) {
+      subscriptionStatusCacheListener?.remove();
+      subscriptionStatusCacheListener = null;
       lastUserSubscriptionStatus = null;
       NativeModules.Purchasely.stopUserSubscriptionStatusListener();
     }
   };
 
-  if (userSubscriptionStatusListeners++ === 0) {
+  userSubscriptionStatusListeners++;
+  if (isFirstListener) {
     // After the JS listener exists, so the status call that the SDK sends on add is not lost.
     NativeModules.Purchasely.startUserSubscriptionStatusListener();
   } else if (lastUserSubscriptionStatus) {
