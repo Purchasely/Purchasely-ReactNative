@@ -80,6 +80,10 @@ final class PurchaselyRNTests: XCTestCase {
         let result = run.resolved as? [String: Any]
         XCTAssertEqual(result?["planVendorId"] as? String, "monthly")
         XCTAssertEqual(result?["identifier"] as? String, "offer-1")
+        XCTAssertEqual(result?["signature"] as? String, "c2lnbmF0dXJl")
+        XCTAssertEqual(result?["keyIdentifier"] as? String, "KEY1")
+        XCTAssertEqual(result?["nonce"] as? String, "3F2504E0-4F89-11D3-9A0C-0305E82C3301")
+        XCTAssertEqual(result?["timestamp"] as? Double, 1700000000.0)
         XCTAssertEqual(result?["purchaseContextToken"] as? String, nativeToken.uuidString.lowercased())
     }
 

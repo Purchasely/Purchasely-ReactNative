@@ -21,8 +21,9 @@ extension UIColor {
         guard var string = hex?.trimmingCharacters(in: .whitespacesAndNewlines),
               !string.isEmpty else { return nil }
 
-        if string.hasPrefix("#") {
-            string.removeFirst()
+        let nsString = string as NSString
+        if nsString.length > 0, nsString.character(at: 0) == 0x23 {
+            string = nsString.substring(from: 1)
         }
         // UIColor+PLYHelper.m accepts RRGGBB and RRGGBBAA only. It does NOT
         // accept the 3-digit short form — do not add it here, that would be a

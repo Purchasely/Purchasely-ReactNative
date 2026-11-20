@@ -100,5 +100,17 @@ final class UIColorPLYHexTests: XCTestCase {
         XCTAssertEqual(emojiG, 0, accuracy: 0.01)
         XCTAssertEqual(emojiB, CGFloat(1) / 0xff, accuracy: 0.01)
         XCTAssertEqual(emojiA, 1, accuracy: 0.01)
+
+        // NSString.hasPrefix/removeCharactersInRange stripped one UTF-16 '#'
+        // even when a variation selector joined it into one Swift Character.
+        // NSScanner then received six code units beginning with the selector,
+        // so it returned the legacy opaque black value.
+        guard case let (prefixR, prefixG, prefixB, prefixA)? = rgba("#\u{FE0F}12345") else {
+            return XCTFail("a UTF-16 # prefix followed by a variation selector must retain legacy scanner behavior")
+        }
+        XCTAssertEqual(prefixR, 0, accuracy: 0.01)
+        XCTAssertEqual(prefixG, 0, accuracy: 0.01)
+        XCTAssertEqual(prefixB, 0, accuracy: 0.01)
+        XCTAssertEqual(prefixA, 1, accuracy: 0.01)
     }
 }
