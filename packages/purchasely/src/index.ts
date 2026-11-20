@@ -655,9 +655,13 @@ const Purchasely = {
   removeEventListener,
   listenToEvents,
   stopListeningToEvents,
+  /** @deprecated Use {@link addUserSubscriptionStatusListener}. */
   addPurchasedListener,
+  /** @deprecated Use {@link removeUserSubscriptionStatusListener}. */
   removePurchasedListener,
+  /** @deprecated Use {@link addUserSubscriptionStatusListener}. */
   listenToPurchases,
+  /** @deprecated Use {@link removeUserSubscriptionStatusListener}. */
   stopListeningToPurchases,
   addUserSubscriptionStatusListener,
   removeUserSubscriptionStatusListener,
