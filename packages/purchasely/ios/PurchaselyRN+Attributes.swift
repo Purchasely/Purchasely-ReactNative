@@ -8,6 +8,10 @@
 //
 
 import Foundation
+import React
+#if SWIFT_PACKAGE
+import ReactNativePurchaselyBridge
+#endif
 import Purchasely
 
 extension PurchaselyRN {

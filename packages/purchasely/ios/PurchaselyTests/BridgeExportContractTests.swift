@@ -5,18 +5,10 @@
 //  The export shim is parsed as TEXT at registration, not linked: a Swift
 //  @objc signature that disagrees with its RCT_EXTERN_METHOD line produces no
 //  compile error and fails at run time in a client app with "method not
-//  found". This file locks the 63 JS names, the module name, the 60 constant
-//  keys with their numeric values, the 11 event names, AND (below) the exact
-//  Objective-C selector behind each of the 63 exports — pinning the argument
-//  count along with it, since the selector's colon count IS its argument
-//  count.
-//
-//  It does NOT yet turn a selector mismatch during the Swift port into a CI
-//  failure — that is a different, not-yet-existing test, Task 14's
-//  BridgeSelectorResolutionTests. What this file's selector assertion does is
-//  snapshot the Objective-C selectors NOW, against the still-Objective-C
-//  module, so Task 14 has a before-image of the 63 selectors to diff its
-//  after-image against.
+//  found". This file locks the current JS names, module name, 60 constant
+//  keys with their numeric values, 12 event names and exact Objective-C
+//  selectors. BridgeSelectorResolutionTests also verifies every exported
+//  selector resolves on the Swift PurchaselyRN class.
 //
 //  It reads the same table React Native reads. RCTMethodInfo comes from
 //  RCTBridgeModule.h, which the pod's umbrella already exposes, so this file
@@ -25,13 +17,14 @@
 
 import XCTest
 import ObjectiveC
+import React
 @testable import react_native_purchasely
 
 final class BridgeExportContractTests: XCTestCase {
 
     // MARK: - the contract
 
-    /// The 63 JS method names `src/` calls on `NativeModules.Purchasely`.
+    /// The exported JS method names `src/` calls on `NativeModules.Purchasely`.
     /// This is the client contract. Adding a name here is a feature; losing
     /// one is a breaking change. Generated with:
     ///   rg -o 'RCT_(EXPORT|REMAP)_METHOD\((\w+)' -r '$2' ios/PurchaselyRN.m
@@ -61,15 +54,18 @@ final class BridgeExportContractTests: XCTestCase {
         "goBackToPreviousScreen", "clientPresentationDisplayed",
         "clientPresentationClosed", "registerActionInterceptor",
         "unregisterActionInterceptor", "completeActionInterceptor",
+        "startUserSubscriptionStatusListener", "stopUserSubscriptionStatusListener",
+        "emit", "signPromotionalOfferWithToken", "exposedPresentation",
     ]
 
-    /// The 11 event names. `src/` subscribes to these by string.
+    /// The 12 event names. `src/` subscribes to these by string.
     static let expectedEvents: [String] = [
         "PURCHASELY_EVENTS",
         "PURCHASE_LISTENER",
         "USER_ATTRIBUTE_SET_LISTENER",
         "USER_ATTRIBUTE_REMOVED_LISTENER",
         "WEB_REDEMPTION_LISTENER",
+        "USER_SUBSCRIPTION_STATUS_LISTENER",
         "PURCHASELY_PRESENTATION_LOADED",
         "PURCHASELY_PRESENTATION_PRESENTED",
         "PURCHASELY_PRESENTATION_CLOSE_REQUESTED",
@@ -127,42 +123,39 @@ final class BridgeExportContractTests: XCTestCase {
         )
     }
 
-    /// The BARE Objective-C selector behind each of the 63 JS exports —
+    func testCurrentMainBridgeExportsRemainCallable() {
+        let expected = [
+            "startUserSubscriptionStatusListener": "startUserSubscriptionStatusListener",
+            "stopUserSubscriptionStatusListener": "stopUserSubscriptionStatusListener",
+            "emit": "emit:properties:",
+            "signPromotionalOfferWithToken": "signPromotionalOfferWithToken:storeOfferId:purchaseContextToken:resolve:reject:",
+            "exposedPresentation": "exposedPresentation:resolve:reject:",
+        ]
+        var actual: [String: String] = [:]
+        for entry in Self.exportedEntries() {
+            actual[entry.jsName] = Self.bareSelector(from: entry.objcName)
+        }
+        for (name, selector) in expected {
+            XCTAssertEqual(actual[name], selector, "current-main export \(name) must remain callable")
+        }
+    }
+
+    /// The BARE Objective-C selector behind each JS export —
     /// argument label heads and their colons only, e.g. `"start:stores:…"` —
     /// snapshotted from `PurchaselyRN.m` while it is still the live
     /// Objective-C module. The colon count still equals the argument count,
     /// which is what Global Constraint 1 protects, but the value no longer
-    /// carries the macro's parameter types or names, so 61 of these 63
-    /// survive Task 14's rewrite to `RCT_EXTERN_METHOD` lines without going
-    /// red for a legitimate, non-breaking reason (a `RCTMethodInfo.objcName`
-    /// whose text differs only in how the same selector is spelled across
-    /// the two macros). `bareSelector(from:)` below is what produces this
+    /// carries the macro's parameter types or names. `bareSelector(from:)` below is what produces this
     /// from the raw `objcName` at comparison time; these values are already
     /// in that normalised form.
     ///
-    /// The other two, `restoreAllProducts` and `silentRestoreAllProducts`,
-    /// are the ONLY entries allowed to change at Task 14. Both use
-    /// `RCT_REMAP_METHOD` today, so their selector's first segment
-    /// (`resolve:reject:` / `silentRestoreWithResolve:reject:`) does not
-    /// start with the JS name — but `RCT_EXTERN_REMAP_METHOD` is not public
-    /// in RN 0.86 (`RCTBridgeModule.h:310-323`), so Task 14 cannot preserve
-    /// that remap in the shim and must give both a selector whose first
-    /// segment IS the JS name. Per the plan's Task 11 trap 1, the expected
-    /// post-swap selectors are `restoreAllProducts:reject:` and
-    /// `silentRestoreAllProducts:reject:` — see the two inline comments
-    /// below. Neither change is JS-visible: the JS name and argument count
-    /// are unchanged, only the Objective-C spelling.
-    ///
-    /// This is a before-image, not Task 14's BridgeSelectorResolutionTests:
-    /// it snapshots what the Objective-C module exports today so a later
-    /// task has something to diff its Swift-shim after-image against.
-    ///
-    /// Generated by a throwaway test that printed
-    /// `Self.exportedEntries().map { ($0.jsName, Self.bareSelector(from: $0.objcName)) }`
-    /// sorted by JS name, pasted here, then deleted (mirrors the
-    /// constants-capture step in Task 5 Step 2) — never hand-write these.
+    /// The two remapped restore selectors use the JS name as their first
+    /// segment in the extern shim; JS method names and argument counts are
+    /// unchanged.
     static let expectedSelectors: [String: String] = [
         "allProducts": "allProducts:reject:",
+        "emit": "emit:properties:",
+        "exposedPresentation": "exposedPresentation:resolve:reject:",
         "allowCampaigns": "allowCampaigns:",
         "allowDeeplink": "allowDeeplink:",
         "clearBuiltInAttributes": "clearBuiltInAttributes",
@@ -218,6 +211,9 @@ final class BridgeExportContractTests: XCTestCase {
         "setUserAttributeWithString": "setUserAttributeWithString:value:legalBasis:",
         "setUserAttributeWithStringArray": "setUserAttributeWithStringArray:value:legalBasis:",
         "signPromotionalOffer": "signPromotionalOffer:storeOfferId:resolve:reject:",
+        "signPromotionalOfferWithToken": "signPromotionalOfferWithToken:storeOfferId:purchaseContextToken:resolve:reject:",
+        "startUserSubscriptionStatusListener": "startUserSubscriptionStatusListener",
+        "stopUserSubscriptionStatusListener": "stopUserSubscriptionStatusListener",
         // CHANGED AT TASK 14 (was "silentRestoreWithResolve:reject:" via
         // RCT_REMAP_METHOD; RCT_EXTERN_REMAP_METHOD is not public in RN 0.86,
         // so the shim gives it a selector whose first segment is the JS name
@@ -283,10 +279,7 @@ final class BridgeExportContractTests: XCTestCase {
     }
 
     func testExportedMethodCountMatches() {
-        // Self.expectedJSNames.count, not a hardcoded 63: a hardcoded literal
-        // here and the literal list above could drift apart in opposite
-        // directions (one edited, the other forgotten) and still agree with
-        // each other while disagreeing with reality.
+        // Use the shared names inventory rather than a separate literal count.
         XCTAssertEqual(Self.exportedEntries().count, Self.expectedJSNames.count)
     }
 

@@ -10,6 +10,10 @@
 //
 
 import Foundation
+import React
+#if SWIFT_PACKAGE
+import ReactNativePurchaselyBridge
+#endif
 import Purchasely
 
 extension PurchaselyRN {
@@ -266,6 +270,45 @@ extension PurchaselyRN {
                     storeOfferId: storeOfferId ?? "",
                     success: { signature in
                         resolve(signature.asDictionary())
+                    }, failure: { error in
+                        Self.reject(reject, with: error)
+                    }
+                )
+            } else {
+                Self.reject(reject, with: nil)
+            }
+        }
+    }
+
+    @objc(signPromotionalOfferWithToken:storeOfferId:purchaseContextToken:resolve:reject:)
+    func signPromotionalOfferWithToken(
+        _ storeProductId: String?,
+        storeOfferId: String?,
+        purchaseContextToken: String?,
+        resolve: @escaping RCTPromiseResolveBlock,
+        reject: @escaping RCTPromiseRejectBlock
+    ) {
+        let token: UUID?
+        if let purchaseContextToken {
+            guard let parsedToken = UUID(uuidString: purchaseContextToken) else {
+                reject("-1", "`purchaseContextToken` must be a canonical UUID string. Received \"\(purchaseContextToken)\".", nil)
+                return
+            }
+            token = parsedToken
+        } else {
+            token = nil
+        }
+
+        DispatchQueue.main.async {
+            if #available(iOS 12.2, *) {
+                Purchasely.signPromotionalOffer(
+                    storeProductId: storeProductId ?? "",
+                    storeOfferId: storeOfferId ?? "",
+                    purchaseContextToken: token,
+                    success: { signature, usedToken in
+                        var result = signature.asDictionary()
+                        result["purchaseContextToken"] = usedToken.uuidString.lowercased()
+                        resolve(result)
                     }, failure: { error in
                         Self.reject(reject, with: error)
                     }

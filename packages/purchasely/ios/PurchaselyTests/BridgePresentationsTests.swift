@@ -1,6 +1,6 @@
 //
 //  BridgePresentationsTests.swift
-//  Unit tests for PurchaselyRN+Presentations.swift (Task 12). Only the
+//  Unit tests for PurchaselyRN+Presentations.swift. Only the
 //  methods with behaviour observable without a live SDK are covered — a
 //  method whose whole body is a single SDK call is exercised by E2E instead,
 //  per the shared task shape.
@@ -38,6 +38,7 @@ private final class FakePresentation: NSObject, PLYPresentation {
     func display(from sourceViewController: UIViewController?, transitionType: PLYTransition?) {}
     func close() {}
     func back() {}
+    func exposed() {}
     func executeConnection(_ connection: PLYConnection?) {}
     func preload(completion: @escaping ((any PLYPresentation)?, Error?) -> Void) {}
 }
@@ -252,6 +253,56 @@ final class BridgePresentationsTests: XCTestCase {
 
     func testLoadedPresentationForRequestIdIsNilWhenUnregistered() {
         XCTAssertNil(PurchaselyRN.loadedPresentation(forRequestId: "no-such-request"))
+    }
+
+    func testTakeLoadedPresentationKeepsNoControllerPresentationRegistered() {
+        let presentation = FakePresentation()
+        presentation.screenId = "screen-inline"
+        presentation.placementId = "placement-inline"
+        PurchaselyRN.withState { PurchaselyRN.presentationsByRequest["req-inline"] = presentation }
+
+        XCTAssertTrue(PurchaselyRN.takeLoadedPresentation(
+            matchingScreenId: "screen-inline", placementId: "placement-inline"
+        ) === presentation)
+        XCTAssertTrue(PurchaselyRN.loadedPresentation(forRequestId: "req-inline") === presentation)
+        PurchaselyRN.evictPresentationRequest("req-inline")
+    }
+
+    func testFetchedClientAndDeactivatedPresentationsSkipPresentedAndStillDismiss() {
+        for (requestId, type) in [
+            ("req-deactivated", PLYPresentationType.deactivated),
+            ("req-client", PLYPresentationType.client),
+        ] {
+            let recorder = RecordingBridge()
+            recorder.startObserving()
+            let presentation = FakePresentation()
+            presentation.screenId = requestId
+            presentation.type = type
+
+            let handled = recorder.handleFetchedPresentation(
+                presentation,
+                error: nil,
+                requestId: requestId,
+                storageKey: requestId,
+                emitDismissed: { error in
+                    XCTFail("successful fetch must not synthesize dismissal: \(String(describing: error))")
+                }
+            )
+
+            XCTAssertEqual(handled?.screenId, requestId)
+            XCTAssertEqual(recorder.recordedEvents.map(\.name), ["PURCHASELY_PRESENTATION_LOADED"])
+            XCTAssertEqual(PurchaselyRN.loadedPresentation(forRequestId: requestId)?.screenId, requestId)
+
+            let outcome = PLYPresentationOutcome(purchaseResult: .none, plan: nil, presentation: nil, closeReason: .none, error: nil)
+            PurchaselyRN.emitPresentationDismissed(forId: requestId, outcome: outcome)
+
+            XCTAssertEqual(recorder.recordedEvents.map(\.name), [
+                "PURCHASELY_PRESENTATION_LOADED", "PURCHASELY_PRESENTATION_DISMISSED",
+            ])
+            XCTAssertEqual((recorder.recordedEvents.last?.body?["presentation"] as? NSDictionary)?["screenId"] as? String, requestId)
+            XCTAssertNil(PurchaselyRN.loadedPresentation(forRequestId: requestId))
+            recorder.stopObserving()
+        }
     }
 
     func testEvictPresentationRequestOfNilIsANoop() {

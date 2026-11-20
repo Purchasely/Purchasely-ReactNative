@@ -18,10 +18,10 @@ final class BridgeSelectorResolutionTests: XCTestCase {
 
     func testEveryExportedSelectorResolvesOnTheClass() {
         let entries = BridgeExportContractTests.exportedEntries()
-        // Gate against the vacuous-pass failure mode: an empty array would
-        // make the loop below iterate zero times and PASS while checking
-        // nothing. 63 is the frozen JS export count (BridgeExportContractTests).
-        XCTAssertEqual(entries.count, 63, "exportedEntries() must return all 63 exports, or every assertion below is skipped silently")
+        // Compare to the shared client API inventory so a missing inventory
+        // entry cannot make the selector loop pass vacuously.
+        XCTAssertEqual(Set(entries.map(\.jsName)), BridgeExportContractTests.expectedJSNames)
+        XCTAssertEqual(entries.count, BridgeExportContractTests.expectedJSNames.count)
         for entry in entries {
             var arguments: NSArray?
             guard let selector = RCTParseMethodSignature(entry.objcName, &arguments) else {

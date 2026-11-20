@@ -19,6 +19,9 @@
 //
 
 import XCTest
+import React
+import ObjectiveC.runtime
+import Purchasely
 @testable import react_native_purchasely
 
 // Captures events sent through RCTEventEmitter so
@@ -40,7 +43,118 @@ private final class RecordingBridge: PurchaselyRN {
     }
 }
 
+private final class PromotionalOfferSignRun {
+    var nativeCalls = 0
+    var tokenSeenByNative: UUID?
+    var resolved: Any?
+    var rejectCode: String?
+    var rejectedWith: NSError?
+}
+
 final class PurchaselyRNTests: XCTestCase {
+
+    func testCurrentMainSubscriptionStatusPayload() {
+        let absent = PurchaselyRN.userSubscriptionStatusBody(
+            isActive: false, reason: .none, subscription: nil
+        )
+        XCTAssertEqual(absent.count, 3)
+        XCTAssertEqual(absent["isActive"] as? Bool, false)
+        XCTAssertTrue(absent["reason"] is NSNull)
+        XCTAssertTrue(absent["subscription"] is NSNull)
+
+        let active = PurchaselyRN.userSubscriptionStatusBody(
+            isActive: true, reason: .webRedeemed, subscription: ["id": "sub-1"]
+        )
+        XCTAssertEqual(active["isActive"] as? Bool, true)
+        XCTAssertEqual(active["reason"] as? String, "WEB_REDEEMED")
+        XCTAssertEqual((active["subscription"] as? [String: String])?["id"], "sub-1")
+    }
+
+    func testSignPromotionalOfferWithTokenReturnsLowercaseNativeToken() {
+        let nativeToken = UUID(uuidString: "3F2504E0-4F89-11D3-9A0C-0305E82C3301")!
+        let run = signWithToken("3F2504E0-4F89-11D3-9A0C-0305E82C3301", nativeToken: nativeToken, nativeError: nil)
+
+        XCTAssertEqual(run.nativeCalls, 1)
+        XCTAssertEqual(run.tokenSeenByNative, nativeToken)
+        XCTAssertNil(run.rejectCode)
+        let result = run.resolved as? [String: Any]
+        XCTAssertEqual(result?["planVendorId"] as? String, "monthly")
+        XCTAssertEqual(result?["identifier"] as? String, "offer-1")
+        XCTAssertEqual(result?["purchaseContextToken"] as? String, nativeToken.uuidString.lowercased())
+    }
+
+    func testSignPromotionalOfferWithTokenReturnsTokenCreatedByNativeWhenInputIsNil() {
+        let nativeToken = UUID()
+        let run = signWithToken(nil, nativeToken: nativeToken, nativeError: nil)
+
+        XCTAssertEqual(run.nativeCalls, 1)
+        XCTAssertNil(run.tokenSeenByNative)
+        XCTAssertEqual((run.resolved as? [String: Any])?["purchaseContextToken"] as? String, nativeToken.uuidString.lowercased())
+    }
+
+    func testSignPromotionalOfferWithTokenForwardsNativeError() {
+        let error = NSError(domain: "purchasely", code: 7, userInfo: [NSLocalizedDescriptionKey: "signature failed"])
+        let run = signWithToken("3f2504e0-4f89-11d3-9a0c-0305e82c3301", nativeToken: UUID(), nativeError: error)
+
+        XCTAssertEqual(run.nativeCalls, 1)
+        XCTAssertNil(run.resolved)
+        XCTAssertEqual(run.rejectCode, "7")
+        XCTAssertEqual(run.rejectedWith, error)
+    }
+
+    func testSignPromotionalOfferWithTokenRejectsMalformedInputSynchronously() {
+        assertSignRejectsToken("not-a-uuid")
+    }
+
+    func testSignPromotionalOfferWithTokenRejectsEmptyInputSynchronously() {
+        assertSignRejectsToken("")
+    }
+
+    private func assertSignRejectsToken(_ token: String) {
+        var rejectCode: String?
+        var resolved = false
+        purchaselyModule.signPromotionalOfferWithToken(
+            "product", storeOfferId: "offer", purchaseContextToken: token,
+            resolve: { _ in resolved = true },
+            reject: { code, _, _ in rejectCode = code }
+        )
+        XCTAssertEqual(rejectCode, "-1")
+        XCTAssertFalse(resolved)
+    }
+
+    private func signWithToken(_ token: String?, nativeToken: UUID, nativeError: NSError?) -> PromotionalOfferSignRun {
+        let selector = NSSelectorFromString("signPromotionalOfferWithStoreProductId:storeOfferId:purchaseContextToken:success:failure:")
+        guard let method = class_getClassMethod(Purchasely.self, selector) else {
+            XCTFail("Purchasely token-signing method must be present")
+            return PromotionalOfferSignRun()
+        }
+        let original = method_getImplementation(method)
+        let run = PromotionalOfferSignRun()
+        let signatureData = #"{"plan_vendor_id":"monthly","offer_identifier":"offer-1","offer_signature":"c2lnbmF0dXJl","offer_nonce":"3F2504E0-4F89-11D3-9A0C-0305E82C3301","key_identifier":"KEY1","offer_timestamp":1700000000}"#.data(using: .utf8)!
+        let signature = try! JSONDecoder().decode(PLYOfferSignature.self, from: signatureData)
+
+        let replacement: @convention(block) (AnyObject, String, String, UUID?, (PLYOfferSignature, UUID) -> Void, PLYErrorClosure) -> Void = {
+            _, _, _, seenToken, success, failure in
+            run.nativeCalls += 1
+            run.tokenSeenByNative = seenToken
+            if let nativeError {
+                failure(nativeError)
+            } else {
+                success(signature, nativeToken)
+            }
+        }
+        method_setImplementation(method, imp_implementationWithBlock(replacement))
+        defer { method_setImplementation(method, original) }
+
+        let answered = expectation(description: "token signing answered")
+        purchaselyModule.signPromotionalOfferWithToken(
+            "product", storeOfferId: "offer", purchaseContextToken: token,
+            resolve: { run.resolved = $0; answered.fulfill() },
+            reject: { code, _, error in run.rejectCode = code; run.rejectedWith = error as NSError?; answered.fulfill() }
+        )
+        wait(for: [answered], timeout: 5)
+        return run
+    }
 
     var purchaselyModule: PurchaselyRN!
 

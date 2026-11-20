@@ -44,6 +44,17 @@ RCT_EXTERN_METHOD(isEligibleForIntroOffer:(NSString * _Nonnull)planVendorId
                   resolve:(RCTPromiseResolveBlock)resolve
                   reject:(RCTPromiseRejectBlock)reject)
 
+RCT_EXTERN_METHOD(startUserSubscriptionStatusListener)
+RCT_EXTERN_METHOD(stopUserSubscriptionStatusListener)
+RCT_EXTERN_METHOD(emit:(NSString * _Nonnull)name
+                  properties:(NSDictionary * _Nullable)properties)
+
+RCT_EXTERN_METHOD(signPromotionalOfferWithToken:(NSString * _Nonnull)storeProductId
+                  storeOfferId:(NSString * _Nonnull)storeOfferId
+                  purchaseContextToken:(NSString * _Nullable)purchaseContextToken
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+
 RCT_EXTERN_METHOD(setLogLevel:(NSInteger)logLevel)
 
 RCT_EXTERN_METHOD(userLogin:(NSString * _Nonnull)userId
@@ -206,6 +217,10 @@ RCT_EXTERN_METHOD(revokeDataProcessingConsent:(NSArray<NSString *> * _Nonnull)pu
 RCT_EXTERN_METHOD(setDebugMode:(BOOL)enabled)
 
 RCT_EXTERN_METHOD(closeAllScreens)
+
+RCT_EXTERN_METHOD(exposedPresentation:(NSString * _Nullable)requestId
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
 
 RCT_EXTERN_METHOD(preloadPresentation:(NSString *)requestId
                   payload:(NSDictionary *)payload

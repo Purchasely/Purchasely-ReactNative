@@ -8,6 +8,10 @@
 //
 
 import Foundation
+import React
+#if SWIFT_PACKAGE
+import ReactNativePurchaselyBridge
+#endif
 import Purchasely
 
 /// Bridge-local running-mode ordinals. Mirrors `PLYRNRunningMode`
@@ -274,15 +278,15 @@ extension PurchaselyRN {
             if p == "third-party-integrations" {
                 p = "third-party-integration"
             }
-            if p == "all-non-essentials" {
-                return [PLYDataProcessingPurpose.allNonEssentials]
-            }
             switch p {
+            case "all-non-essentials": result.insert(PLYDataProcessingPurpose.allNonEssentials)
             case "analytics": result.insert(PLYDataProcessingPurpose.analytics)
             case "identified-analytics": result.insert(PLYDataProcessingPurpose.identifiedAnalytics)
             case "campaigns": result.insert(PLYDataProcessingPurpose.campaigns)
             case "personalization": result.insert(PLYDataProcessingPurpose.personalization)
             case "third-party-integration": result.insert(PLYDataProcessingPurpose.thirdPartyIntegrations)
+            case "support-investigation": result.insert(PLYDataProcessingPurpose.supportInvestigation)
+            case "refund-handling": result.insert(PLYDataProcessingPurpose.refundHandling)
             default: break
             }
         }
@@ -298,16 +302,9 @@ extension PurchaselyRN {
     @objc(revokeDataProcessingConsent:)
     func revokeDataProcessingConsent(_ purposes: [Any]?) {
         let mapped = Self.mapPurposesFromStrings((purposes ?? []).compactMap { $0 as? String })
-        if !mapped.isEmpty {
-            Purchasely.revokeDataProcessingConsent(for: mapped)
-        } else {
-            // PurchaselyRN.m:1269 logs this with NSLog, not RCTLogWarn/
-            // PLYRNLogWarn — restore that destination (a Release build
-            // filters RCTLogWarn out). Unwrap `purposes` before formatting;
-            // interpolating the Optional directly (`\(purposes)`) printed
-            // "Optional([...])" instead of the array's own description.
-            NSLog("[Purchasely] revokeDataProcessingConsent called with no valid purposes: %@", (purposes ?? []) as NSArray)
-        }
+        // Empty means clear all optional purposes and must reach the SDK.
+        // This matches the previous bridge and preserves its grant-all path.
+        Purchasely.revokeDataProcessingConsent(for: mapped)
     }
 
     // MARK: - synchronize

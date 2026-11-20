@@ -10,18 +10,20 @@
 //
 
 import Foundation
+import React
+#if SWIFT_PACKAGE
+import ReactNativePurchaselyBridge
+#endif
 import Purchasely
 
 @objc(PurchaselyRN)
-class PurchaselyRN: RCTEventEmitter,
+public class PurchaselyRN: RCTEventEmitter,
                         PLYEventDelegate,
                         PLYUserAttributeDelegate,
-                        PLYWebRedemptionDelegate {
-    // The three conformances are declared HERE, in Task 8, because `start`
-    // (Task 9) passes `self` as all three (PurchaselyRN.m:617, :628, :630).
-    // Their method bodies are Task 12's. Until Task 12 lands, satisfy the
-    // protocols with stubs that call PLYRNLogWarn and nothing else, so the
-    // class compiles at every commit boundary.
+                        PLYWebRedemptionDelegate,
+                        PLYUserSubscriptionStatusDelegate {
+    // The SDK delegates are implemented by the bridge class so its lifetime
+    // owns each weak native delegate registration.
 
     // MARK: - shared state
     //
@@ -76,20 +78,21 @@ class PurchaselyRN: RCTEventEmitter,
 
     // MARK: - RCTEventEmitter
 
-    override static func requiresMainQueueSetup() -> Bool {
+    public override static func requiresMainQueueSetup() -> Bool {
         // PurchaselyRN.m:1441 returns YES. Do NOT "align" this with
         // PurchaselyViewManager.swift:20, which returns false on purpose for a
         // different reason — Global Constraint 11, and commit 81c5a65.
         true
     }
 
-    override func supportedEvents() -> [String]! {
+    public override func supportedEvents() -> [String]! {
         [
             "PURCHASELY_EVENTS",
             "PURCHASE_LISTENER",
             "USER_ATTRIBUTE_SET_LISTENER",
             "USER_ATTRIBUTE_REMOVED_LISTENER",
             "WEB_REDEMPTION_LISTENER",
+            "USER_SUBSCRIPTION_STATUS_LISTENER",
             // cross-platform bridge events; the names mirror the Android bridge.
             "PURCHASELY_PRESENTATION_LOADED",
             "PURCHASELY_PRESENTATION_PRESENTED",
@@ -100,7 +103,7 @@ class PurchaselyRN: RCTEventEmitter,
         ]
     }
 
-    override func constantsToExport() -> [AnyHashable: Any]! {
+    public override func constantsToExport() -> [AnyHashable: Any]! {
         // 60 keys. enums.ts builds the JS enums from them, so every key and
         // every value is a client contract. `.rawValue` on every enum
         // (constraint 5) — a bare enum value would be dropped by the bridge.
@@ -183,12 +186,12 @@ class PurchaselyRN: RCTEventEmitter,
         ]
     }
 
-    override func startObserving() {
+    public override func startObserving() {
         shouldEmit = true
         Self.sharedEmitter = self
     }
 
-    override func stopObserving() {
+    public override func stopObserving() {
         shouldEmit = false
     }
 
@@ -196,6 +199,61 @@ class PurchaselyRN: RCTEventEmitter,
     func emitPresentationEvent(_ name: String, body: [String: Any]?) {
         guard shouldEmit else { return }
         sendEvent(withName: name, body: body ?? [:])
+    }
+
+    @objc(emit:properties:)
+    func emit(_ name: String, properties: [String: Any]?) {
+        Purchasely.emit(name: name, properties: properties ?? [:])
+    }
+
+    private var userSubscriptionStatusStarted = false
+
+    @objc(startUserSubscriptionStatusListener)
+    func startUserSubscriptionStatusListener() {
+        DispatchQueue.main.async {
+            guard !self.userSubscriptionStatusStarted else { return }
+            self.userSubscriptionStatusStarted = true
+            Purchasely.addUserSubscriptionStatusDelegate(self)
+        }
+    }
+
+    @objc(stopUserSubscriptionStatusListener)
+    func stopUserSubscriptionStatusListener() {
+        DispatchQueue.main.async {
+            guard self.userSubscriptionStatusStarted else { return }
+            self.userSubscriptionStatusStarted = false
+            Purchasely.removeUserSubscriptionStatusDelegate(self)
+        }
+    }
+
+    public func userSubscriptionStatusUpdated(_ status: PLYUserSubscriptionStatus) {
+        guard shouldEmit else { return }
+        sendEvent(withName: "USER_SUBSCRIPTION_STATUS_LISTENER", body: Self.userSubscriptionStatusBody(
+            isActive: status.isActive,
+            reason: status.reason,
+            subscription: status.subscription?.asDictionary()
+        ))
+    }
+
+    static func userSubscriptionStatusBody(
+        isActive: Bool,
+        reason: PLYUserSubscriptionStatusReason,
+        subscription: Any?
+    ) -> [String: Any] {
+        let wireReason: Any
+        switch reason {
+        case .purchased: wireReason = "PURCHASED"
+        case .restored: wireReason = "RESTORED"
+        case .expired: wireReason = "EXPIRED"
+        case .webRedeemed: wireReason = "WEB_REDEEMED"
+        case .none: wireReason = NSNull()
+        @unknown default: wireReason = NSNull()
+        }
+        return [
+            "isActive": isActive,
+            "reason": wireReason,
+            "subscription": subscription ?? (NSNull() as Any),
+        ]
     }
 
     // MARK: - errors
@@ -232,12 +290,11 @@ class PurchaselyRN: RCTEventEmitter,
         }
     }
 
-    // MARK: - PLYEventDelegate / PLYUserAttributeDelegate / PLYWebRedemptionDelegate
+    // MARK: - SDK delegate conformances
     //
-    // Bodies live in PurchaselyRN+Presentations.swift (Task 12), which
-    // replaces the stubs Task 8 put here so `start` (Task 9) could pass
-    // `self` as all three delegates while the class kept compiling at every
-    // commit boundary in between.
+    // Implementations live in PurchaselyRN+Presentations.swift. The class
+    // conforms to the event, user attribute, web redemption and subscription
+    // status delegates so their callbacks share the module's lifecycle.
     //
     // PLYUserAttributeDelegate declares TWO onUserAttributeSet overloads (4-arg
     // and 5-arg — .swiftinterface, awk '/protocol PLYUserAttributeDelegate/,/^}/').

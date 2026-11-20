@@ -53,11 +53,20 @@ final class BridgeLifecycleTests: XCTestCase {
         XCTAssertEqual(screamingSnakePlural, [PLYDataProcessingPurpose.thirdPartyIntegrations])
     }
 
-    func testMapPurposesFromStringsAllNonEssentialsShortCircuitsToOnlyThatPurpose() {
-        // PurchaselyRN.m:1241-1243: "all-non-essentials" returns immediately
-        // with a single-element set, ignoring any other purpose in the array.
-        let mapped = PurchaselyRN.mapPurposesFromStrings(["analytics", "all-non-essentials", "campaigns"])
-        XCTAssertEqual(mapped, [PLYDataProcessingPurpose.allNonEssentials])
+    func testMapPurposesFromStringsCombinesAllNonEssentialsWithExplicitPurposes() {
+        // The native SDK treats allNonEssentials as a set member, not a
+        // sentinel. Explicit purposes such as identified analytics and
+        // refund handling must remain available alongside it.
+        let mapped = PurchaselyRN.mapPurposesFromStrings([
+            "analytics", "all-non-essentials", "campaigns", "support-investigation", "refund-handling",
+        ])
+        XCTAssertEqual(mapped, [
+            PLYDataProcessingPurpose.analytics,
+            PLYDataProcessingPurpose.allNonEssentials,
+            PLYDataProcessingPurpose.campaigns,
+            PLYDataProcessingPurpose.supportInvestigation,
+            PLYDataProcessingPurpose.refundHandling,
+        ])
     }
 
     func testMapPurposesFromStringsIgnoresUnknownPurposes() {

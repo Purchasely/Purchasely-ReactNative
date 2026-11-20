@@ -61,32 +61,44 @@ final class UIColorPLYHexTests: XCTestCase {
         XCTAssertNil(UIColor.ply_fromHex(""))
         XCTAssertNil(UIColor.ply_fromHex("   "))
         XCTAssertNil(UIColor.ply_fromHex("#12"))       // too short
-        XCTAssertNil(UIColor.ply_fromHex("#1234567"))  // 7 digits
-        // Behaviour change: the Objective-C version ignored the scanner
-        // result and returned opaque black here. See the Task 4 commit.
-        XCTAssertNil(UIColor.ply_fromHex("#GGGGGG"))   // 6 chars, not hex
+        XCTAssertNil(UIColor.ply_fromHex("#1234567"))  // wrong length
+    }
 
-        // UInt32(_:radix:) accepts a leading sign, which the Objective-C
-        // NSScanner-based parser did not. The Objective-C version did NOT
-        // reject "+12345" either — it fed the sign-stripped scan result
-        // through regardless and produced opaque black. Rejecting it here
-        // is the Swift version deliberately being STRICTER than the
-        // Objective-C one, not matching it.
-        //
-        // This divergence IS client-reachable, for "+12345" and for every
-        // other malformed input this parser now rejects. The sole caller is
-        // `plyTransitionFromMap` (PurchaselyRN.m:334-335), which reads
-        // `map["backgroundColors"]["light"/"dark"]` out of the `transition`
-        // dictionary a JS caller passes to `displayPresentation` —
-        // `displayPresentation:payload:transition:resolve:reject:` is the
-        // only exported method with a `transition` parameter.
-        // `preloadPresentation:payload:resolve:reject:` (PurchaselyRN.m:1513)
-        // has no transition parameter at all — not backend paywall JSON. The
-        // Objective-C NSScanner-based parser returned a colour (often opaque black) for
-        // malformed input such as "FF00ZZ", "0xFFFF" or "FF 000", where
-        // `UInt32(_:radix:)` returns nil; the guard here exists to make that
-        // divergence UNIFORM and predictable across all such input, not to
-        // hide it.
-        XCTAssertNil(UIColor.ply_fromHex("+12345"))
+    func testLegacyScannerSemanticsForLengthValidMalformedColours() {
+        func rgba(_ hex: String) -> (CGFloat, CGFloat, CGFloat, CGFloat)? {
+            guard let color = UIColor.ply_fromHex(hex) else { return nil }
+            var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+            color.getRed(&r, green: &g, blue: &b, alpha: &a)
+            return (r, g, b, a)
+        }
+
+        // NSScanner's scanHexInt result was ignored by UIColor+PLYHelper.m.
+        // A malformed suffix therefore preserves the valid prefix it scanned.
+        guard case let (r, g, b, a)? = rgba("FF00ZZ") else {
+            return XCTFail("length-valid malformed input must retain legacy scanner output")
+        }
+        XCTAssertEqual(r, CGFloat(0x00) / 0xff, accuracy: 0.01)
+        XCTAssertEqual(g, CGFloat(0xff) / 0xff, accuracy: 0.01)
+        XCTAssertEqual(b, CGFloat(0x00) / 0xff, accuracy: 0.01)
+        XCTAssertEqual(a, 1, accuracy: 0.01)
+
+        guard case let (blackR, blackG, blackB, blackA)? = rgba("#GGGGGG") else {
+            return XCTFail("an unscannable but length-valid value must produce legacy black")
+        }
+        XCTAssertEqual(blackR, 0, accuracy: 0.01)
+        XCTAssertEqual(blackG, 0, accuracy: 0.01)
+        XCTAssertEqual(blackB, 0, accuracy: 0.01)
+        XCTAssertEqual(blackA, 1, accuracy: 0.01)
+
+        // NSString length counted UTF-16 code units. A variation selector
+        // combines with the preceding digit as one Swift Character, but still
+        // contributes a code unit to NSScanner's length check.
+        guard case let (emojiR, emojiG, emojiB, emojiA)? = rgba("#1\u{FE0F}2345") else {
+            return XCTFail("a six-code-unit colour with a leading # must retain legacy length behavior")
+        }
+        XCTAssertEqual(emojiR, 0, accuracy: 0.01)
+        XCTAssertEqual(emojiG, 0, accuracy: 0.01)
+        XCTAssertEqual(emojiB, CGFloat(1) / 0xff, accuracy: 0.01)
+        XCTAssertEqual(emojiA, 1, accuracy: 0.01)
     }
 }

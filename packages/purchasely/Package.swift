@@ -20,12 +20,7 @@ let reactNativeHeaders: [Target.Dependency] = [
 let purchaselySDK: Target.Dependency =
     .product(name: "Purchasely", package: "PurchaselySPM")
 
-let transitionDependencies: [Target.Dependency] = [
-    purchaselySDK,
-]
-
 let bridgeDependencies: [Target.Dependency] = [
-    "ReactNativePurchaselyTransition",
     purchaselySDK,
 ] + reactNativeHeaders
 
@@ -58,18 +53,6 @@ let packageProducts: [Product] = [
 ]
 
 let packageTargets: [Target] = [
-    // SwiftPM does not support mixed Swift/Objective-C source targets.
-    // Keep the small Swift-only transition shim separate so the ObjC bridge
-    // can consume its generated Objective-C interface.
-    .target(
-        name: "ReactNativePurchaselyTransition",
-        dependencies: transitionDependencies,
-        path: "ios",
-        sources: [
-            "PLYTransitionFactory.swift",
-        ]
-    ),
-
     // Objective-C React Native bridge + hybrid helpers.
     .target(
         name: "ReactNativePurchaselyBridge",
@@ -99,6 +82,17 @@ let packageTargets: [Target] = [
         sources: [
             "PurchaselyView.swift",
             "PurchaselyViewManager.swift",
+            "PurchaselyRN.swift",
+            "PurchaselyRN+Attributes.swift",
+            "PurchaselyRN+Interceptors.swift",
+            "PurchaselyRN+Lifecycle.swift",
+            "PurchaselyRN+Presentations.swift",
+            "PurchaselyRN+Products.swift",
+            "Classes/Serialization/PLYOfferSignature+Bridge.swift",
+            "Classes/Serialization/PLYPlan+Bridge.swift",
+            "Classes/Serialization/PLYPresentationPlan+Bridge.swift",
+            "Classes/Serialization/PLYProduct+Bridge.swift",
+            "Classes/Serialization/UIColor+PLYHex.swift",
         ]
     ),
 

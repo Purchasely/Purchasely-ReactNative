@@ -1,15 +1,19 @@
 //
 //  PurchaselyRN+Presentations.swift
 //  Preload, display, close, back, BYOS, transitions, the static members the
-//  embedded PurchaselyView calls, and the bodies of the three delegate
-//  conformances Task 8 stubbed.
+//  embedded PurchaselyView calls, and the bodies of the four delegate
+//  conformances.
 //
 //  Ported from PurchaselyRN.m:76-320, :378-458, :1240-1450, :1489-1900
-//  (Task 12 of the Swift bridge migration plan). Transliteration only — see
-//  the plan's Global Constraints before touching anything here.
+//  in the Objective-C bridge. Preserve its event, payload and lifecycle
+//  contracts at the React Native boundary.
 //
 
 import Foundation
+import React
+#if SWIFT_PACKAGE
+import ReactNativePurchaselyBridge
+#endif
 import Purchasely
 
 /// Event names this file emits. Mirrors the `kPresentationEvent*` statics at
@@ -101,6 +105,61 @@ extension PurchaselyRN {
             map["metadata"] = metadata.getRawMetadata()
         }
         return map
+    }
+
+    // Owns the successful-fetch boundary shared by preload and display paths.
+    // Display supplies its dismissal callback so the presentation remains
+    // cached until the native dismissal outcome arrives.
+    @discardableResult
+    func handleFetchedPresentation(
+        _ presentation: (any PLYPresentation)?,
+        error: Error?,
+        requestId: String?,
+        storageKey: String,
+        emitDismissed: (Error?) -> Void
+    ) -> (any PLYPresentation)? {
+        var loaded: [String: Any] = [:]
+        loaded["requestId"] = requestId
+        if let presentation {
+            loaded["presentation"] = Self.presentationToMap(presentation)
+        }
+        if let error {
+            loaded["error"] = Self.presentationErrorToMap(error)
+        }
+        emitPresentationEvent(PresentationEventName.loaded, body: loaded)
+
+        if let error {
+            var presented: [String: Any] = [:]
+            presented["requestId"] = requestId
+            presented["error"] = Self.presentationErrorToMap(error)
+            emitPresentationEvent(PresentationEventName.presented, body: presented)
+            emitDismissed(error)
+            return nil
+        }
+
+        guard let presentation else {
+            let missing = NSError(domain: "io.purchasely.presentation", code: 404,
+                                  userInfo: [NSLocalizedDescriptionKey: "Presentation not found"])
+            var presented: [String: Any] = [:]
+            presented["requestId"] = requestId
+            presented["error"] = Self.presentationErrorToMap(missing)
+            emitPresentationEvent(PresentationEventName.presented, body: presented)
+            emitDismissed(missing)
+            return nil
+        }
+
+        Self.withState { Self.presentationsByRequest[storageKey] = presentation }
+        // These presentations have no RN screen. The native display path
+        // still completes through onDismissed, but nothing was shown to the
+        // user, so it must not produce PRESENTED.
+        if presentation.type == .deactivated || presentation.type == .client {
+            return presentation
+        }
+        var presented: [String: Any] = [:]
+        presented["requestId"] = requestId
+        presented["presentation"] = Self.presentationToMap(presentation)
+        emitPresentationEvent(PresentationEventName.presented, body: presented)
+        return presentation
     }
 
     // MARK: - presentationErrorToMap (PurchaselyRN.m:149-159)
@@ -299,16 +358,23 @@ extension PurchaselyRN {
     // rename kept these resolving unchanged at PurchaselyView.swift's
     // existing call sites.
 
+    @objc(loadedPresentationForRequestId:)
     static func loadedPresentation(forRequestId requestId: String) -> (any PLYPresentation)? {
         withState { presentationsByRequest[requestId] }
     }
 
+    @objc(takeLoadedPresentationMatchingScreenId:placementId:)
     static func takeLoadedPresentation(matchingScreenId screenId: String?, placementId: String?) -> (any PLYPresentation)? {
         guard let screenId, let placementId else { return nil }
         return withState {
             for (key, presentation) in presentationsByRequest
             where presentation.screenId == screenId && presentation.placementId == placementId {
-                presentationsByRequest.removeValue(forKey: key)
+                // `NONE`/`CLIENT` presentations have no controller. Keep them
+                // registered so a re-applied inline prop or exposed() call
+                // can reuse the loaded presentation without fetching again.
+                if presentation.controller != nil {
+                    presentationsByRequest.removeValue(forKey: key)
+                }
                 return presentation
             }
             return nil
@@ -463,6 +529,21 @@ extension PurchaselyRN {
         }
     }
 
+    @objc(exposedPresentation:resolve:reject:)
+    func exposedPresentation(
+        _ requestId: String?,
+        resolve: @escaping RCTPromiseResolveBlock,
+        reject: @escaping RCTPromiseRejectBlock
+    ) {
+        guard let requestId,
+              let presentation = Self.loadedPresentation(forRequestId: requestId) else {
+            reject("ARG_INVALID", "exposed: no loaded presentation for this requestId, pass a presentation returned by preload()", nil)
+            return
+        }
+        presentation.exposed()
+        resolve(true)
+    }
+
     // MARK: - displayPresentation (PurchaselyRN.m:1590-1747)
 
     @objc(displayPresentation:payload:transition:resolve:reject:)
@@ -520,49 +601,13 @@ extension PurchaselyRN {
 
         let onFetchCompletion: ((any PLYPresentation)?, Error?) -> Void = { [weak self] presentation, error in
             guard let self else { return }
-
-            var loaded: [String: Any] = [:]
-            loaded["requestId"] = requestId
-            if let presentation {
-                loaded["presentation"] = Self.presentationToMap(presentation)
-            }
-            if let error {
-                loaded["error"] = Self.presentationErrorToMap(error)
-            }
-            self.emitPresentationEvent(PresentationEventName.loaded, body: loaded)
-
-            if let error {
-                // P0.4: synthesize onPresented(null, error) since the native
-                // pipeline failed before the controller was shown.
-                var presented: [String: Any] = [:]
-                presented["requestId"] = requestId
-                presented["error"] = Self.presentationErrorToMap(error)
-                self.emitPresentationEvent(PresentationEventName.presented, body: presented)
-                emitDismissed(error)
-                return
-            }
-
-            guard let presentation else {
-                let missing = NSError(domain: "io.purchasely.presentation", code: 404,
-                                       userInfo: [NSLocalizedDescriptionKey: "Presentation not found"])
-                var presented: [String: Any] = [:]
-                presented["requestId"] = requestId
-                presented["error"] = Self.presentationErrorToMap(missing)
-                self.emitPresentationEvent(PresentationEventName.presented, body: presented)
-                emitDismissed(missing)
-                return
-            }
-
-            capturedPresentation = presentation
-            Self.withState { Self.presentationsByRequest[storageKey] = presentation }
-            // v6: by the time this completion fires, `display(transition:
-            // completion:)` has already triggered the display — there is no
-            // separate native "visible" callback wired at this layer, so
-            // onPresented is emitted here, mirroring the Android contract.
-            var presented: [String: Any] = [:]
-            presented["requestId"] = requestId
-            presented["presentation"] = Self.presentationToMap(presentation)
-            self.emitPresentationEvent(PresentationEventName.presented, body: presented)
+            capturedPresentation = self.handleFetchedPresentation(
+                presentation,
+                error: error,
+                requestId: requestId,
+                storageKey: storageKey,
+                emitDismissed: emitDismissed
+            )
         }
 
         // v6: the dismiss outcome is delivered through the builder's
@@ -721,7 +766,7 @@ extension PurchaselyRN {
     // MARK: - delegate bodies (replacing Task 8's stubs)
 
     // PLYEventDelegate. PurchaselyRN.m:1332-1341.
-    func eventTriggered(_ event: PLYEvent, properties: [String: Any]?) {
+    public func eventTriggered(_ event: PLYEvent, properties: [String: Any]?) {
         guard shouldEmit else { return }
         if let properties {
             sendEvent(withName: "PURCHASELY_EVENTS", body: ["name": NSString.fromPLYEvent(event), "properties": properties])
@@ -737,7 +782,7 @@ extension PurchaselyRN {
     // Re-reads `Purchasely.getUserAttribute(for:)` rather than using the
     // passed `value` — ported faithfully from PurchaselyRN.m:1358, not fixed
     // here.
-    func onUserAttributeSet(key: String, type: PLYUserAttributeType, value: Any?, source: PLYUserAttributeSource, processingLegalBasis: PLYDataProcessingLegalBasis) {
+    public func onUserAttributeSet(key: String, type: PLYUserAttributeType, value: Any?, source: PLYUserAttributeSource, processingLegalBasis: PLYDataProcessingLegalBasis) {
         guard shouldEmit else { return }
         var body: [String: Any] = [:]
         body["key"] = key
@@ -751,14 +796,14 @@ extension PurchaselyRN {
     }
 
     // PurchaselyRN.m:1369-1378.
-    func onUserAttributeRemoved(key: String, source: PLYUserAttributeSource) {
+    public func onUserAttributeRemoved(key: String, source: PLYUserAttributeSource) {
         guard shouldEmit else { return }
         sendEvent(withName: "USER_ATTRIBUTE_REMOVED_LISTENER", body: ["key": key, "source": source.rawValue])
     }
 
     // PLYWebRedemptionDelegate. PurchaselyRN.m:1391-1403. `context` and
     // `context.subscription` are separately nullable in the emitted body.
-    func webRedemptionCompleted(result: PLYWebRedemptionResult) {
+    public func webRedemptionCompleted(result: PLYWebRedemptionResult) {
         guard shouldEmit else { return }
         let subscription = result.context?.subscription
         let body = Self.webRedemptionBody(
