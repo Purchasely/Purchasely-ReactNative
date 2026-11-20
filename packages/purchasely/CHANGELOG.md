@@ -67,7 +67,8 @@ Full changelog available at https://docs.purchasely.com/changelog/63-subscriptio
 ### Fixed
 
 - iOS: closing an inline `PLYPresentationView` mounted with a preloaded
-  `presentation` removes the paywall and delivers `onPresentationClosed` once.
+  `presentation` or a `placementId` removes the paywall and delivers
+  `onPresentationClosed` once.
 - Android: an embedded `<PLYPresentationView>` that unmounts right after it
   mounts (for example, when its screen is popped or replaced) no longer
   crashes the app with
